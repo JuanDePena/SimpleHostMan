@@ -187,6 +187,7 @@ Read these before making architectural changes:
 - `/opt/simplehostman/src/docs/ARQUITECTURE.md`
 - `/opt/simplehostman/src/docs/MULTI_DOMAIN.md`
 - `/opt/simplehostman/src/docs/REPO_LAYOUT.md`
+- `/opt/simplehostman/src/docs/MONOREPO_MIGRATION.md`
 
 Read these when working on product behavior and boundaries:
 

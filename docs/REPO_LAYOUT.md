@@ -21,6 +21,8 @@ The shared docs tree now lives directly at:
 
 Current transition note:
 
+- the phased unification plan for the source tree is documented in [`/opt/simplehostman/src/docs/MONOREPO_MIGRATION.md`](/opt/simplehostman/src/docs/MONOREPO_MIGRATION.md)
+
 - `simplehost-panel` already owns `SHP` packaging, public-web tooling, and `postgresql-shp` templates
 - `simplehost-panel` also owns the bootstrap inventory at `bootstrap/apps.bootstrap.yaml`
 - `simplehost-manager` already owns node-local `wireguard`, `pdns`, `mariadb`, `postgresql-apps`, app container, and app proxy artifacts
