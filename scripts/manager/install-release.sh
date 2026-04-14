@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-runtime_root="${SHM_RUNTIME_ROOT:-/opt/simplehost/shm}"
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+runtime_root="${SHM_RUNTIME_ROOT:-/opt/simplehostman/release}"
 version="${1:-$(node -e "const fs=require('node:fs'); console.log(JSON.parse(fs.readFileSync('${repo_root}/package.json','utf8')).version)")}"
 release_dir="${runtime_root}/releases/${version}"
 temp_dir="${release_dir}.tmp.$$"

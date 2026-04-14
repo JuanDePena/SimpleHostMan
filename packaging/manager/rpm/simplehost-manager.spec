@@ -11,7 +11,7 @@ Requires(post): systemd
 Requires(postun): systemd
 
 %description
-Prebuilt SimpleHost Manager release bundle for installation under /opt/simplehost/shm.
+Prebuilt SimpleHost Manager release bundle for installation under /opt/simplehostman/release.
 
 %prep
 %setup -q -n %{name}-%{version}
@@ -20,21 +20,21 @@ Prebuilt SimpleHost Manager release bundle for installation under /opt/simplehos
 # Release bundle is prebuilt.
 
 %install
-mkdir -p %{buildroot}/opt/simplehost/shm/releases/%{version}
-cp -a . %{buildroot}/opt/simplehost/shm/releases/%{version}
+mkdir -p %{buildroot}/opt/simplehostman/release/releases/%{version}
+cp -a . %{buildroot}/opt/simplehostman/release/releases/%{version}
 mkdir -p %{buildroot}/etc/systemd/system
 cp packaging/systemd/shm-agent.service %{buildroot}/etc/systemd/system/
 mkdir -p %{buildroot}/etc/shm
 cp packaging/env/shm-agent.env.example %{buildroot}/etc/shm/
 
 %post
-ln -sfn /opt/simplehost/shm/releases/%{version} /opt/simplehost/shm/current
+ln -sfn /opt/simplehostman/release/releases/%{version} /opt/simplehostman/release/current
 %systemd_post shm-agent.service
 
 %postun
 %systemd_postun_with_restart shm-agent.service
 
 %files
-/opt/simplehost/shm/releases/%{version}
+/opt/simplehostman/release/releases/%{version}
 /etc/systemd/system/shm-agent.service
 /etc/shm/shm-agent.env.example

@@ -1,283 +1,268 @@
 # Repository and Directory Layout
 
 Date drafted: 2026-03-11
+Updated: 2026-04-14
 Target OS: AlmaLinux 10.1
 
 ## Scope
 
-This document defines the exact repository and directory layout for the SimpleHost platform after moving the former `/home/server` tree into `/opt`.
+This document defines the canonical source layout for the unified SimpleHost workspace and the current transition boundaries around legacy repos and runtime material.
 
-Current canonical paths:
+## Canonical paths
 
-- source workspace root: `/opt/simplehostman/src`
+- workspace root: `/opt/simplehostman`
 - source workspace root: `/opt/simplehostman/src`
 - shared docs root: `/opt/simplehostman/src/docs`
 - bootstrap inventory: `/opt/simplehostman/src/bootstrap/apps.bootstrap.yaml`
-- consolidated root: `/opt/simplehostman`
-
-## Current state
-
-The shared docs tree now lives directly at:
-
-- `/opt/simplehostman/src/docs`
-
-Current transition note:
-
-- the phased unification plan for the source tree is documented in [`/opt/simplehostman/src/docs/MONOREPO_MIGRATION.md`](/opt/simplehostman/src/docs/MONOREPO_MIGRATION.md)
-- `/opt/simplehostman/src` is now the canonical source workspace
-- `/opt/simplehostman/repos/*` remains transitional legacy source material during migration
-- `/opt/simplehostman/src` is now the canonical source workspace
-- legacy repos under `/opt/simplehostman/repos` remain transitional inputs and historical reference material only
-- shared open documentation lives in `/opt/simplehostman/src/docs`
-- remaining open cross-workspace work is tracked in [`/opt/simplehostman/src/docs/TODO.md`](/opt/simplehostman/src/docs/TODO.md)
+- runtime and release root: `/opt/simplehostman/release`
 
 ## Top-level layout
 
-The exact top-level layout is:
+The current canonical top-level layout is:
 
 ```text
-/opt
-  /simplehost
-    /repos
-      /docs
-      /simplehost-panel
-      /simplehost-manager
-    /spanel
-      /releases
-      /current -> releases/<version>
-      /shared
-    /shm
-      /releases
-      /current -> releases/<version>
-      /shared
+/opt/simplehostman
+  /src
+    /apps
+    /packages
+    /platform
+    /bootstrap
+    /packaging
+    /scripts
+    /docs
+  /repos
+    /simplehost-panel
+    /simplehost-manager
+  /release
+    /releases
+    /shared
 ```
 
-## Repository layout
+Meaning:
 
-### `simplehost-panel`
+- `src/` is the canonical source workspace
+- `repos/` contains transitional legacy source trees retained for migration reference
+- `release/` is the neutral runtime root reserved for the later runtime/release migration phase
 
-Repository path:
-
-- `/opt/simplehostman/repos/simplehost-panel`
-
-Repository type:
-
-- Node.js monorepo
-- `TypeScript`
-- `pnpm` workspaces
-
-Exact directory layout:
+## Canonical source layout
 
 ```text
-/opt/simplehostman/repos/simplehost-panel
+/opt/simplehostman/src
   /apps
-    /api
-    /web
+    /control
+      /api
+      /web
     /worker
-  /bootstrap
-    apps.bootstrap.yaml
-  /packaging
-    /env
-    /postgresql
-      /shp
-        /conf
-        /sql
-    /systemd
-  /packages
-    /config
-    /contracts
-    /database
-    /testing
-    /ui
-  /docs
-  package.json
-  pnpm-workspace.yaml
-  tsconfig.base.json
-  README.md
-```
-
-Responsibility split:
-
-- `apps/api`: public and internal HTTP API
-- `apps/web`: operator and tenant web UI
-- `apps/worker`: background jobs, planners, and async control-plane tasks
-- `bootstrap/apps.bootstrap.yaml`: transitional bootstrap/import-export inventory owned by `SHP`
-- `packaging/env`: product-owned environment file examples for packaged installs
-- `packaging/postgresql/shp`: dedicated `postgresql-shp` config and SQL templates owned by `SHP`
-- `packaging/systemd`: product-owned `systemd` units for packaged installs
-- `packages/config`: runtime config loading and validation
-- `packages/contracts`: shared schemas and API contracts
-- `packages/database`: ORM, migrations, seed data, and persistence helpers
-- `packages/database`: ORM, migrations, seed data, persistence helpers, and operational snapshots such as installed package inventory
-- `packages/testing`: test fixtures and shared test helpers
-- `packages/ui`: shared UI components
-
-### `simplehost-manager`
-
-Repository path:
-
-- `/opt/simplehostman/repos/simplehost-manager`
-
-Repository type:
-
-- Node.js monorepo
-- `TypeScript`
-- `pnpm` workspaces
-
-Exact directory layout:
-
-```text
-/opt/simplehostman/repos/simplehost-manager
-  /apps
     /agent
     /cli
-  /packaging
-    /env
-    /systemd
-  /platform
-    /containers
-      /env
-      /quadlet
-    /host
-      /fail2ban
-        /jail.d
-      /firewalld
-        /services
-        /zones
-      /observability
-      /ssh
-      /systemd
-    /httpd
-      /conf.d
-      /vhosts
-    /mariadb
-      /conf
-      /sql
-    /pdns
-      /primary
-      /secondary
-      /tsig
-    /postgresql
-      /apps
-        /conf
-        /sql
-    /wireguard
   /packages
-    /contracts
-    /drivers
-    /node-config
-    /renderers
-    /testing
+    /panel-config
+    /panel-contracts
+    /panel-database
+    /panel-testing
+    /panel-ui
+    /manager-contracts
+    /manager-control-plane-client
+    /manager-drivers
+    /manager-node-config
+    /manager-renderers
+    /manager-testing
+  /platform
+  /bootstrap
+  /packaging
+    /panel
+    /manager
+  /scripts
+    /panel
+    /manager
   /docs
-  package.json
-  pnpm-workspace.yaml
-  tsconfig.base.json
-  README.md
 ```
 
-Responsibility split:
+## App ownership
 
-- `apps/agent`: long-running node agent service
-- `apps/cli`: local maintenance and break-glass CLI
-- `packaging`: product-owned install artifacts for packaged `SHM` installs
-- `platform`: node-local service templates and bootstrap material managed by `SHM`
-- `packages/contracts`: shared job and status schemas
-- `packages/drivers`: service adapters for DNS, Apache, databases, packages, backups, and mail
-- `packages/node-config`: node identity, TLS, and config loading
-- `packages/renderers`: renderers for vhosts, Quadlet units, DNS changes, and env files
-- `packages/testing`: node-driver and renderer test helpers
+### `apps/control`
 
-### Shared docs
+Path:
 
-Tree path:
+- `/opt/simplehostman/src/apps/control`
+
+Responsibility:
+
+- unified source ownership for UI and API
+- transitional internal separation between `web/` and `api/`
+- eventual target is one control-plane runtime and one port
+
+### `apps/worker`
+
+Path:
+
+- `/opt/simplehostman/src/apps/worker`
+
+Responsibility:
+
+- background jobs
+- planners and reconciliation loops
+- asynchronous control-plane execution
+
+### `apps/agent`
+
+Path:
+
+- `/opt/simplehostman/src/apps/agent`
+
+Responsibility:
+
+- node-local execution
+- rendering and apply logic
+- runtime status and health reporting
+
+### `apps/cli`
+
+Path:
+
+- `/opt/simplehostman/src/apps/cli`
+
+Responsibility:
+
+- local operator tooling
+- break-glass maintenance commands
+
+## Package ownership
+
+### Panel-origin packages
+
+- `panel-config`
+- `panel-contracts`
+- `panel-database`
+- `panel-testing`
+- `panel-ui`
+
+### Manager-origin packages
+
+- `manager-contracts`
+- `manager-control-plane-client`
+- `manager-drivers`
+- `manager-node-config`
+- `manager-renderers`
+- `manager-testing`
+
+These names remain transitional. The source of truth is already `src/packages/*`.
+
+## Non-app source trees
+
+### `platform`
+
+Path:
+
+- `/opt/simplehostman/src/platform`
+
+Contains:
+
+- host templates
+- container templates
+- Apache templates
+- DNS templates
+- database templates
+- WireGuard templates
+
+### `bootstrap`
+
+Path:
+
+- `/opt/simplehostman/src/bootstrap`
+
+Contains:
+
+- bootstrap inventory and import/export seed material
+
+### `packaging`
+
+Path:
+
+- `/opt/simplehostman/src/packaging`
+
+Current transitional split:
+
+- `/opt/simplehostman/src/packaging/panel`
+- `/opt/simplehostman/src/packaging/manager`
+
+This split is preserved only to avoid mixing source migration with runtime/release migration.
+
+### `scripts`
+
+Path:
+
+- `/opt/simplehostman/src/scripts`
+
+Current transitional split:
+
+- `/opt/simplehostman/src/scripts/panel`
+- `/opt/simplehostman/src/scripts/manager`
+
+These scripts now belong to the unified source tree even if many remain product-owned in behavior.
+
+### `docs`
+
+Path:
 
 - `/opt/simplehostman/src/docs`
 
-Current exact directory layout:
+Contains:
+
+- architecture guides
+- operational runbooks
+- migration plans
+- shared UI guidance
+- TODO tracking
+
+## Legacy repos
+
+Legacy repos still present during migration:
+
+- `/opt/simplehostman/repos/simplehost-panel`
+- `/opt/simplehostman/repos/simplehost-manager`
+
+They are retained for:
+
+- migration comparison
+- history lookup
+- verifying that source content has been imported into `src`
+
+They are not the canonical source tree anymore.
+
+## Runtime and release direction
+
+Current runtime normalization target:
 
 ```text
-/opt/simplehostman/src/docs
-  AGENTS.md
-  ARQUITECTURE.md
-  BASH.md
-  CONTAINERS.md
-  DATABASES.md
-  DNS.md
-  HARDENING.md
-  MAIL.md
-  MULTI_DOMAIN.md
-  UI_STYLE.md
-  PROXY.md
-  REPO_LAYOUT.md
-  TODO.md
-```
-
-Current responsibility split:
-
-- shared architecture and operational documentation
-- cross-workspace guidance and TODO tracking
-- no runtime ownership of definitive product or host-service artifacts
-- migration runbooks from the former panel-local docs tree now live under `/opt/simplehostman/src/docs/MIGRATIONS`
-
-## Runtime layout
-
-### `SHP`
-
-Runtime path:
-
-- `/opt/simplehostman/spanel`
-
-Exact runtime layout:
-
-```text
-/opt/simplehostman/spanel
+/opt/simplehostman/release
   /releases
     /<version>
-  /current -> releases/<version>
   /shared
-    /tmp
 ```
 
-Non-`/opt` runtime paths:
+Notes:
 
-- `/etc/spanel/`
-- `/var/lib/spanel/`
-- `/var/log/spanel/`
-
-### `SHM`
-
-Runtime path:
-
-- `/opt/simplehostman/shm`
-
-Exact runtime layout:
-
-```text
-/opt/simplehostman/shm
-  /releases
-    /<version>
-  /current -> releases/<version>
-  /shared
-    /tmp
-```
-
-Non-`/opt` runtime paths:
-
-- `/etc/shm/`
-- `/var/lib/shm/`
-- `/var/log/shm/`
+- this root has already been reserved in the filesystem
+- final release structure is a later migration phase
+- imported panel/manager packaging and deploy scripts may still reflect legacy product-specific assumptions and should be treated as transitional until runtime migration is executed
 
 ## Rules
 
-- Keep repositories under `/opt/simplehostman/repos`.
-- Keep installed runtime code under `/opt/simplehostman/spanel` and `/opt/simplehostman/shm`.
-- Keep mutable runtime state outside `/opt`.
-- Treat `/opt/simplehostman/src/docs` as the canonical shared docs tree.
-- Treat `/opt/simplehostman/src/bootstrap/apps.bootstrap.yaml` as the canonical bootstrap inventory file.
-- Keep definitive `SHP` and `SHM` packaging artifacts in their owning repositories.
+- Keep canonical source in `/opt/simplehostman/src`.
+- Keep shared docs in `/opt/simplehostman/src/docs`.
+- Use `/opt/simplehostman/repos/*` only as transitional reference material.
+- Do not reintroduce `/opt/simplehostman/spanel` or `/opt/simplehostman/shm` as canonical paths.
+- Keep mutable runtime state outside the source tree.
+- Keep runtime migration separate from source migration.
 
 ## Current transition direction
 
-Keep reducing the operational role of the bootstrap YAML as soon as PostgreSQL
-desired state and product workflows fully cover the same use cases, and keep
-the resulting open work in [`/opt/simplehostman/src/docs/TODO.md`](/opt/simplehostman/src/docs/TODO.md).
+The phased execution plan is tracked in [`/opt/simplehostman/src/docs/MONOREPO_MIGRATION.md`](/opt/simplehostman/src/docs/MONOREPO_MIGRATION.md).
+
+The current source-phase priorities are:
+
+1. make `src` fully self-hosted and buildable
+2. remove residual source dependencies on legacy repos
+3. harden `apps/control` as the single control-plane source boundary
+4. postpone runtime/release convergence until the source workspace is stable

@@ -5,8 +5,8 @@ version="${1:?usage: deploy-release.sh <version> [target-host|local] [active|dis
 target_host="${2:-local}"
 mode="${3:-active}"
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-runtime_root="${SHM_RUNTIME_ROOT:-/opt/simplehost/shm}"
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+runtime_root="${SHM_RUNTIME_ROOT:-/opt/simplehostman/release}"
 release_dir="${runtime_root}/releases/${version}"
 
 if [[ "${mode}" != "active" && "${mode}" != "disabled" ]]; then

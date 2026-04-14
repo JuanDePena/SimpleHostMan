@@ -2,7 +2,7 @@
 set -euo pipefail
 
 bundle_path="${1:?usage: install-bundle.sh <bundle.tar.gz>}"
-runtime_root="${SHM_RUNTIME_ROOT:-/opt/simplehost/shm}"
+runtime_root="${SHM_RUNTIME_ROOT:-/opt/simplehostman/release}"
 extract_dir="$(mktemp -d)"
 
 cleanup() {

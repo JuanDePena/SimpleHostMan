@@ -22,7 +22,7 @@ Before promoting the secondary:
 - confirm the secondary reports `pg_is_in_recovery() = true`
 - confirm `pg_stat_wal_receiver.status = streaming`
 - confirm `wg0` is active on both nodes
-- confirm `/opt/simplehostman/spanel/current` exists on the secondary and points to
+- confirm `/opt/simplehostman/release/current` exists on the secondary and points to
   a populated release tree
 
 ## Passive runtime refresh
@@ -34,13 +34,13 @@ If the standby does not have the build toolchain available, refresh it from the
 installed runtime on the primary and keep only `spanel-web` active:
 
 ```bash
-release_version="$(basename "$(readlink -f /opt/simplehostman/spanel/current)")"
+release_version="$(basename "$(readlink -f /opt/simplehostman/release/current)")"
 
 ssh root@vps-16535090.vps.ovh.ca \
-  'install -d /opt/simplehostman/spanel/releases /opt/simplehostman/spanel/shared /etc/spanel /var/log/spanel'
+  'install -d /opt/simplehostman/release/releases /opt/simplehostman/release/shared /etc/spanel /var/log/spanel'
 
-rsync -a --delete "/opt/simplehostman/spanel/releases/${release_version}/" \
-  "root@vps-16535090.vps.ovh.ca:/opt/simplehostman/spanel/releases/${release_version}/"
+rsync -a --delete "/opt/simplehostman/release/releases/${release_version}/" \
+  "root@vps-16535090.vps.ovh.ca:/opt/simplehostman/release/releases/${release_version}/"
 
 rsync -a \
   /etc/systemd/system/spanel-api.service \
@@ -59,7 +59,7 @@ rsync -a \
   root@vps-16535090.vps.ovh.ca:/etc/spanel/
 
 ssh root@vps-16535090.vps.ovh.ca \
-  "ln -sfn /opt/simplehostman/spanel/releases/${release_version} /opt/simplehostman/spanel/current && \
+  "ln -sfn /opt/simplehostman/release/releases/${release_version} /opt/simplehostman/release/current && \
    chown root:spanel /etc/spanel/api.env /etc/spanel/web.env /etc/spanel/worker.env && \
    chmod 0640 /etc/spanel/api.env /etc/spanel/web.env /etc/spanel/worker.env && \
    systemctl daemon-reload && \
@@ -135,7 +135,7 @@ standby from the currently active primary.
 - Confirm the current primary is healthy and serving `SHP` traffic correctly.
 - Confirm the node you want to fail back to reports `pg_is_in_recovery() = true`.
 - Confirm `pg_stat_wal_receiver.status = streaming` on that standby.
-- Confirm `/opt/simplehostman/spanel/current` on the standby points to the same
+- Confirm `/opt/simplehostman/release/current` on the standby points to the same
   installed release generation you expect to promote.
 - Confirm `spanel-api` and `spanel-worker` are still disabled on the standby
   before promotion, and that `spanel-web` is only being used for passive smoke

@@ -19,7 +19,9 @@
     "start:worker": "pnpm --filter @simplehost/panel-worker start",
     "start:agent": "pnpm --filter @simplehost/manager-agent start",
     "start:cli": "pnpm --filter @simplehost/manager-cli start",
-    "test": "pnpm -r --if-present test"
+    "test": "pnpm -r --if-present test",
+    "build:control": "pnpm --dir apps/control build",
+    "typecheck:control": "pnpm --dir apps/control typecheck"
   },
   "devDependencies": {
     "@types/node": "^22.15.30",

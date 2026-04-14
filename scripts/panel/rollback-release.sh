@@ -2,7 +2,7 @@
 set -euo pipefail
 
 version="${1:?usage: rollback-release.sh <version>}"
-runtime_root="${SHP_RUNTIME_ROOT:-/opt/simplehost/spanel}"
+runtime_root="${SHP_RUNTIME_ROOT:-/opt/simplehostman/release}"
 release_dir="${runtime_root}/releases/${version}"
 
 if [[ ! -d "${release_dir}" ]]; then

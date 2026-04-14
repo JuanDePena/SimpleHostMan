@@ -31,7 +31,7 @@ Containerized services:
 
 ## Status on 2026-03-14
 
-- `SHP` and `SHM` themselves are not containerized; they are installed as host-native Node.js release trees under `/opt/simplehostman/spanel` and `/opt/simplehostman/shm`.
+- `SHP` and `SHM` themselves are not containerized. Their imported release and packaging material is being normalized toward the neutral runtime root under `/opt/simplehostman/release`.
 - This runbook now mainly covers customer app workloads and optional MariaDB container services.
 - Node-local service ownership for app workload containers, `wireguard`, `pdns`, `postgresql-apps`, and `mariadb` lives in `simplehost-manager`, not in the shared docs tree.
 - `SHM` now has a real `container.reconcile` driver for Quadlet-managed services, which is the preferred path for bringing in additional containerized services such as RustDesk.

@@ -21,7 +21,7 @@ if [[ -z "${public_ip}" ]]; then
   exit 1
 fi
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 ssl_listen_template="${repo_root}/packaging/httpd/spanel-ssl-listen.conf"
 http_template="${repo_root}/packaging/httpd/spanel-web-http.conf.template"
 https_template="${repo_root}/packaging/httpd/spanel-web-https.conf.template"

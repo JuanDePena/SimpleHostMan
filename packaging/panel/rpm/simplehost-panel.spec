@@ -11,7 +11,7 @@ Requires(post): systemd
 Requires(postun): systemd
 
 %description
-Prebuilt SimpleHost Panel release bundle for installation under /opt/simplehost/spanel.
+Prebuilt SimpleHost Panel release bundle for installation under /opt/simplehostman/release.
 
 %prep
 %setup -q -n %{name}-%{version}
@@ -20,8 +20,8 @@ Prebuilt SimpleHost Panel release bundle for installation under /opt/simplehost/
 # Release bundle is prebuilt.
 
 %install
-mkdir -p %{buildroot}/opt/simplehost/spanel/releases/%{version}
-cp -a . %{buildroot}/opt/simplehost/spanel/releases/%{version}
+mkdir -p %{buildroot}/opt/simplehostman/release/releases/%{version}
+cp -a . %{buildroot}/opt/simplehostman/release/releases/%{version}
 mkdir -p %{buildroot}/etc/systemd/system
 cp packaging/systemd/spanel-api.service %{buildroot}/etc/systemd/system/
 cp packaging/systemd/spanel-web.service %{buildroot}/etc/systemd/system/
@@ -32,7 +32,7 @@ cp packaging/env/spanel-web.env.example %{buildroot}/etc/spanel/
 cp packaging/env/spanel-worker.env.example %{buildroot}/etc/spanel/
 
 %post
-ln -sfn /opt/simplehost/spanel/releases/%{version} /opt/simplehost/spanel/current
+ln -sfn /opt/simplehostman/release/releases/%{version} /opt/simplehostman/release/current
 %systemd_post spanel-api.service
 %systemd_post spanel-web.service
 %systemd_post spanel-worker.service
@@ -43,7 +43,7 @@ ln -sfn /opt/simplehost/spanel/releases/%{version} /opt/simplehost/spanel/curren
 %systemd_postun_with_restart spanel-worker.service
 
 %files
-/opt/simplehost/spanel/releases/%{version}
+/opt/simplehostman/release/releases/%{version}
 /etc/systemd/system/spanel-api.service
 /etc/systemd/system/spanel-web.service
 /etc/systemd/system/spanel-worker.service

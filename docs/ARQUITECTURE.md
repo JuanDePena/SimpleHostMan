@@ -32,8 +32,8 @@ Detailed service docs:
 
 Product design references:
 
-- [`/opt/simplehostman/repos/simplehost-panel/README.md`](/opt/simplehostman/repos/simplehost-panel/README.md)
-- [`/opt/simplehostman/repos/simplehost-manager/README.md`](/opt/simplehostman/repos/simplehost-manager/README.md)
+- [`/opt/simplehostman/src/apps/control/README.md`](/opt/simplehostman/src/apps/control/README.md)
+- [`/opt/simplehostman/src/apps/agent/README.md`](/opt/simplehostman/src/apps/agent/README.md)
 
 ## Status on 2026-03-14
 

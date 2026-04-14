@@ -121,4 +121,4 @@ Minimum rollback for the runtime pilot:
 Current operational note:
 
 - the repository changes for automatic `container.reconcile` dispatch and `appServices` runtime reporting are implemented in `repos/simplehost-panel` and `repos/simplehost-manager`
-- the installed releases under `/opt/simplehostman/spanel/current` and `/opt/simplehostman/shm/current` still need a formal release deployment before the live dashboard and agent expose those new capabilities
+- the installed releases still need a formal deployment under the normalized `/opt/simplehostman/release` runtime layout before the live dashboard and agent expose those new capabilities

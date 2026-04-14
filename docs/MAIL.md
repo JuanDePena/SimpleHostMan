@@ -26,7 +26,7 @@ Related references:
 - [`/opt/simplehostman/src/docs/DNS.md`](/opt/simplehostman/src/docs/DNS.md)
 - [`/opt/simplehostman/src/docs/HARDENING.md`](/opt/simplehostman/src/docs/HARDENING.md)
 - [`/opt/simplehostman/src/docs/REPO_LAYOUT.md`](/opt/simplehostman/src/docs/REPO_LAYOUT.md)
-- [`/opt/simplehostman/repos/simplehost-panel/README.md`](/opt/simplehostman/repos/simplehost-panel/README.md)
+- [`/opt/simplehostman/src/apps/control/README.md`](/opt/simplehostman/src/apps/control/README.md)
 
 ## Status on 2026-04-11
 

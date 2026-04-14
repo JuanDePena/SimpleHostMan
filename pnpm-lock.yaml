@@ -54,6 +54,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/manager-renderers
 
+  apps/control: {}
+
   apps/control/api:
     dependencies:
       '@simplehost/panel-config':

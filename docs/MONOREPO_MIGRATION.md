@@ -23,21 +23,24 @@ The source trees should be unified first. The runtime layout under `/opt/simpleh
 
 Current checkpoint on 2026-04-14:
 
-- `/opt/simplehostman/src` is now a working pnpm workspace
-- `bootstrap`, `platform`, `packaging`, `scripts`, and `docs/MIGRATIONS` are already imported
-- low-friction packages are imported under `src/packages/*`
+- `/opt/simplehostman/src` is now a working pnpm workspace and the canonical source tree
+- `bootstrap`, `platform`, `packaging`, `scripts`, and `docs/MIGRATIONS` are imported under `src`
 - `worker`, `agent`, and `cli` are imported under `src/apps/*`
 - `apps/control` now owns the transitional `api/` and `web/` source trees
-- the workspace now installs, builds, and typechecks from `src`
+- root and app READMEs now live inside `src` and replace the old repo-level README references for architecture work
+- imported release scripts now resolve the unified source root correctly from `src/scripts/*`
+- imported panel and manager service templates now point at `/opt/simplehostman/release/current` and the current app paths under `apps/control`, `apps/worker`, and `apps/agent`
+- clean-room validation passed from the unified tree: `pnpm install --frozen-lockfile`, `pnpm build:clean-room`, `pnpm typecheck`, and `git diff --check`
 
-Current checkpoint on 2026-04-14:
+## Remaining legacy surface after the current checkpoint
 
-- `/opt/simplehostman/src` is now a working pnpm workspace
-- `bootstrap`, `platform`, `packaging`, `scripts`, and `docs/MIGRATIONS` are already imported
-- low-friction packages are imported under `src/packages/*`
-- `worker`, `agent`, and `cli` are imported under `src/apps/*`
-- `apps/control` now owns the transitional `api/` and `web/` source trees
-- the workspace now installs and typechecks from `src`
+The following areas are still transitional even though `src` is now canonical:
+
+- legacy repos under `/opt/simplehostman/repos/*` are still kept for comparison and migration reference
+- imported product packaging under `src/packaging/{panel,manager}` still carries legacy product boundaries
+- imported release scripts under `src/scripts/{panel,manager}` now build from the unified source tree, but still preserve legacy product-specific release flows that must be normalized later
+- imported service names such as `spanel-*` and `shm-agent` remain transitional until release/runtime convergence
+- imported packaging is now source-aligned with `/opt/simplehostman/release`, but product boundaries inside `packaging/{panel,manager}` are still transitional
 
 ## Target layout
 

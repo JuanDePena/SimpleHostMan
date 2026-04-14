@@ -1,15 +1,41 @@
-# Control App Transition Layout
+# Control App
 
-This directory is the transitional source container for the unified control plane.
+`apps/control` is the canonical source boundary for the SimpleHost control plane.
 
-Current internal layout:
+Current root:
+
+- `/opt/simplehostman/src/apps/control`
+
+## Transitional layout
+
+The source tree still keeps two internal entrypoints while ownership is unified:
 
 - `api/`: former `simplehost-panel/apps/api`
 - `web/`: former `simplehost-panel/apps/web`
 
-The short-term goal is to keep separate entrypoints while consolidating source ownership under `apps/control`.
-The later goal is to collapse both into one runtime process and one port.
+This separation is temporary. The migration target is one control-plane app that serves UI and `/v1/*` from one process and one port.
 
-This directory is now the canonical source location for control-plane UI and API code inside `/opt/simplehostman/src`.
+## Current responsibilities
 
-This directory is now the canonical source location for control-plane UI and API code inside `/opt/simplehostman/src`.
+- operator and tenant-facing UI
+- control-plane HTTP API
+- authentication and sessions
+- desired-state CRUD
+- jobs, audit, drift, backups, packages, and operational views
+
+## Commands
+
+From `/opt/simplehostman/src`:
+
+- `pnpm start:control:api`
+- `pnpm start:control:web`
+
+From this directory:
+
+- `pnpm start:api`
+- `pnpm start:web`
+
+## Migration notes
+
+- `apps/control` is already the canonical source location for control-plane UI and API code.
+- The remaining work is runtime unification and release normalization, not source ownership.
