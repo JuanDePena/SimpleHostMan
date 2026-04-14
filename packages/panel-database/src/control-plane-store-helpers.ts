@@ -1,0 +1,811 @@
+import {
+  createCipheriv,
+  createDecipheriv,
+  createHash,
+  randomBytes,
+  randomUUID
+} from "node:crypto";
+
+import type {
+  AppServiceSnapshot,
+  AuditEventSummary,
+  BackupsOverview,
+  CodeServerServiceSnapshot,
+  DispatchedJobEnvelope,
+  InstalledPackageSummary,
+  InventoryAppSummary,
+  InventoryDatabaseSummary,
+  InventoryImportSummary,
+  InventoryNodeSummary,
+  InventoryZoneSummary,
+  JobHistoryEntry,
+  MailManagedDomainSnapshot,
+  MailServiceSnapshot,
+  NodeHealthSnapshot,
+  ReconciliationRunSummary,
+  RegisteredNodeState,
+  ReportedJobResult,
+  ResourceDriftSummary,
+  RustDeskListenerSnapshot,
+  RustDeskServiceSnapshot
+} from "@simplehost/panel-contracts";
+
+import type {
+  AppDispatchRow,
+  AuditEventRow,
+  BackupPolicyRow,
+  BackupRunRow,
+  DriftStatusRow,
+  InventoryAppRow,
+  InventoryDatabaseRow,
+  InventoryImportRow,
+  InventoryNodeRow,
+  InventoryZoneRow,
+  InstalledPackageRow,
+  JobHistoryRow,
+  JobRow,
+  NodeHealthRow,
+  NodeRow,
+  QueuedDispatchJob,
+  ReconciliationRunRow,
+  ResultRow
+} from "./control-plane-store-types.js";
+
+export function normalizeTimestamp(value: Date | string): string {
+  return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
+}
+
+export function hashToken(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+interface EncryptedJobPayloadEnvelope {
+  __simplehostEncryptedJobPayload: true;
+  alg: "aes-256-gcm";
+  iv: string;
+  tag: string;
+  ciphertext: string;
+}
+
+function isEncryptedJobPayloadEnvelope(
+  value: unknown
+): value is EncryptedJobPayloadEnvelope {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  return (
+    record.__simplehostEncryptedJobPayload === true &&
+    record.alg === "aes-256-gcm" &&
+    typeof record.iv === "string" &&
+    typeof record.tag === "string" &&
+    typeof record.ciphertext === "string"
+  );
+}
+
+export function deriveJobPayloadKey(secret: string | null): Buffer | null {
+  if (!secret) {
+    return null;
+  }
+
+  return createHash("sha256").update(secret).digest();
+}
+
+export function encodeStoredJobPayload(
+  payload: Record<string, unknown>,
+  key: Buffer | null
+): Record<string, unknown> {
+  if (!key) {
+    return payload;
+  }
+
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", key, iv);
+  const ciphertext = Buffer.concat([
+    cipher.update(JSON.stringify(payload), "utf8"),
+    cipher.final()
+  ]);
+  const tag = cipher.getAuthTag();
+
+  return {
+    __simplehostEncryptedJobPayload: true,
+    alg: "aes-256-gcm",
+    iv: iv.toString("base64url"),
+    tag: tag.toString("base64url"),
+    ciphertext: ciphertext.toString("base64url")
+  };
+}
+
+export function decodeStoredJobPayload(
+  payload: Record<string, unknown>,
+  key: Buffer | null
+): Record<string, unknown> {
+  if (!isEncryptedJobPayloadEnvelope(payload)) {
+    return payload;
+  }
+
+  if (!key) {
+    throw new Error("SHP job payload secret is required to decrypt queued jobs.");
+  }
+
+  const decipher = createDecipheriv(
+    "aes-256-gcm",
+    key,
+    Buffer.from(payload.iv, "base64url")
+  );
+  decipher.setAuthTag(Buffer.from(payload.tag, "base64url"));
+
+  const plaintext = Buffer.concat([
+    decipher.update(Buffer.from(payload.ciphertext, "base64url")),
+    decipher.final()
+  ]).toString("utf8");
+  const decoded = JSON.parse(plaintext) as unknown;
+
+  if (!decoded || typeof decoded !== "object" || Array.isArray(decoded)) {
+    throw new Error("Stored SHP job payload did not decode to an object.");
+  }
+
+  return decoded as Record<string, unknown>;
+}
+
+export function encodeDesiredPassword(
+  password: string,
+  key: Buffer | null
+): Record<string, unknown> {
+  return encodeStoredJobPayload({ password }, key);
+}
+
+export function decodeDesiredPassword(
+  payload: Record<string, unknown> | null,
+  key: Buffer | null
+): string | null {
+  if (!payload) {
+    return null;
+  }
+
+  const decoded = decodeStoredJobPayload(payload, key);
+  return typeof decoded.password === "string" ? decoded.password : null;
+}
+
+export function sanitizePayload(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((entry) => sanitizePayload(entry));
+  }
+
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+
+  const record = value as Record<string, unknown>;
+  const sanitized: Record<string, unknown> = {};
+
+  for (const [key, entry] of Object.entries(record)) {
+    sanitized[key] =
+      key.toLowerCase().includes("password") ||
+      key.toLowerCase().includes("secret") ||
+      key.toLowerCase().includes("token")
+        ? "[redacted]"
+        : sanitizePayload(entry);
+  }
+
+  return sanitized;
+}
+
+export function stripSensitivePayloadFields(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((entry) => stripSensitivePayloadFields(entry));
+  }
+
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+
+  const record = value as Record<string, unknown>;
+  const stripped: Record<string, unknown> = {};
+
+  for (const [key, entry] of Object.entries(record)) {
+    const normalizedKey = key.toLowerCase();
+
+    if (
+      normalizedKey.includes("password") ||
+      normalizedKey.includes("secret") ||
+      normalizedKey.includes("token")
+    ) {
+      continue;
+    }
+
+    stripped[key] = stripSensitivePayloadFields(entry);
+  }
+
+  return stripped;
+}
+
+export function toDispatchedJob(
+  row: JobRow,
+  payloadKey: Buffer | null,
+  options: { sanitizeSecrets?: boolean } = {}
+): DispatchedJobEnvelope {
+  const { sanitizeSecrets = true } = options;
+  const decodedPayload = decodeStoredJobPayload(row.payload, payloadKey);
+
+  return {
+    id: row.id,
+    desiredStateVersion: row.desired_state_version,
+    kind: row.kind as DispatchedJobEnvelope["kind"],
+    nodeId: row.node_id,
+    createdAt: normalizeTimestamp(row.created_at),
+    payload: (sanitizeSecrets ? sanitizePayload(decodedPayload) : decodedPayload) as Record<
+      string,
+      unknown
+    >
+  };
+}
+
+export function toRegisteredNodeState(row: NodeRow): RegisteredNodeState {
+  return {
+    nodeId: row.node_id,
+    hostname: row.hostname,
+    version: row.version,
+    supportedJobKinds: row.supported_job_kinds as RegisteredNodeState["supportedJobKinds"],
+    acceptedAt: normalizeTimestamp(row.accepted_at),
+    lastSeenAt: normalizeTimestamp(row.last_seen_at)
+  };
+}
+
+export function toReportedJobResult(row: ResultRow): ReportedJobResult {
+  return {
+    jobId: row.job_id,
+    kind: row.kind as ReportedJobResult["kind"],
+    nodeId: row.node_id,
+    status: row.status as ReportedJobResult["status"],
+    summary: row.summary,
+    details: row.details ?? undefined,
+    completedAt: normalizeTimestamp(row.completed_at)
+  };
+}
+
+export function toInventoryImportSummary(row: InventoryImportRow): InventoryImportSummary {
+  return {
+    importId: row.import_id,
+    sourcePath: row.source_path,
+    importedAt: normalizeTimestamp(row.imported_at),
+    tenantCount: Number(row.summary.tenantCount ?? 0),
+    nodeCount: Number(row.summary.nodeCount ?? 0),
+    zoneCount: Number(row.summary.zoneCount ?? 0),
+    appCount: Number(row.summary.appCount ?? 0),
+    siteCount: Number(row.summary.siteCount ?? 0),
+    databaseCount: Number(row.summary.databaseCount ?? 0)
+  };
+}
+
+export function toInventoryNodeSummary(row: InventoryNodeRow): InventoryNodeSummary {
+  return {
+    nodeId: row.node_id,
+    hostname: row.hostname,
+    publicIpv4: row.public_ipv4,
+    wireguardAddress: row.wireguard_address
+  };
+}
+
+export function toInventoryZoneSummary(row: InventoryZoneRow): InventoryZoneSummary {
+  return {
+    zoneName: row.zone_name,
+    tenantSlug: row.tenant_slug,
+    primaryNodeId: row.primary_node_id
+  };
+}
+
+export function toInventoryAppSummary(row: InventoryAppRow): InventoryAppSummary {
+  return {
+    slug: row.slug,
+    tenantSlug: row.tenant_slug,
+    zoneName: row.zone_name,
+    primaryNodeId: row.primary_node_id,
+    standbyNodeId: row.standby_node_id ?? undefined,
+    canonicalDomain: row.canonical_domain,
+    aliases: row.aliases,
+    backendPort: row.backend_port,
+    runtimeImage: row.runtime_image,
+    storageRoot: row.storage_root,
+    mode: row.mode
+  };
+}
+
+export function toInventoryDatabaseSummary(
+  row: InventoryDatabaseRow
+): InventoryDatabaseSummary {
+  return {
+    appSlug: row.app_slug,
+    engine: row.engine,
+    databaseName: row.database_name,
+    databaseUser: row.database_user,
+    primaryNodeId: row.primary_node_id,
+    standbyNodeId: row.standby_node_id ?? undefined,
+    pendingMigrationTo: row.pending_migration_to ?? undefined,
+    migrationCompletedFrom: row.migration_completed_from ?? undefined,
+    migrationCompletedAt: row.migration_completed_at
+      ? normalizeTimestamp(row.migration_completed_at)
+      : undefined
+  };
+}
+
+export function toBackupPolicySummary(
+  row: BackupPolicyRow
+): BackupsOverview["policies"][number] {
+  return {
+    policySlug: row.policy_slug,
+    tenantSlug: row.tenant_slug,
+    targetNodeId: row.target_node_id,
+    schedule: row.schedule,
+    retentionDays: row.retention_days,
+    storageLocation: row.storage_location,
+    resourceSelectors: row.resource_selectors
+  };
+}
+
+export function toBackupRunSummary(row: BackupRunRow): BackupsOverview["latestRuns"][number] {
+  return {
+    runId: row.run_id,
+    policySlug: row.policy_slug,
+    nodeId: row.node_id,
+    status: row.status,
+    summary: row.summary,
+    startedAt: normalizeTimestamp(row.started_at),
+    completedAt: row.completed_at ? normalizeTimestamp(row.completed_at) : undefined
+  };
+}
+
+export function toInstalledPackageSummary(
+  row: InstalledPackageRow
+): InstalledPackageSummary {
+  return {
+    nodeId: row.node_id,
+    hostname: row.hostname,
+    packageName: row.package_name,
+    epoch: row.epoch ?? undefined,
+    version: row.version,
+    release: row.release,
+    arch: row.arch,
+    nevra: row.nevra,
+    source: row.source ?? undefined,
+    installedAt: row.installed_at ? normalizeTimestamp(row.installed_at) : undefined,
+    lastCollectedAt: normalizeTimestamp(row.last_collected_at)
+  };
+}
+
+export function toReconciliationRunSummary(
+  row: ReconciliationRunRow
+): ReconciliationRunSummary {
+  return {
+    runId: row.run_id,
+    desiredStateVersion: row.desired_state_version,
+    startedAt: normalizeTimestamp(row.started_at),
+    completedAt: normalizeTimestamp(row.completed_at),
+    generatedJobCount: row.generated_job_count,
+    skippedJobCount: row.skipped_job_count,
+    missingCredentialCount: row.missing_credential_count,
+    jobs: Array.isArray(row.summary.jobs)
+      ? (row.summary.jobs as ReconciliationRunSummary["jobs"])
+      : []
+  };
+}
+
+export function normalizeCodeServerSnapshot(
+  value: unknown
+): CodeServerServiceSnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  if (typeof record.serviceName !== "string") {
+    return undefined;
+  }
+
+  return {
+    serviceName: record.serviceName,
+    enabled: Boolean(record.enabled),
+    active: Boolean(record.active),
+    version: typeof record.version === "string" ? record.version : undefined,
+    bindAddress: typeof record.bindAddress === "string" ? record.bindAddress : undefined,
+    authMode: typeof record.authMode === "string" ? record.authMode : undefined,
+    settingsProfileHash:
+      typeof record.settingsProfileHash === "string"
+        ? record.settingsProfileHash
+        : undefined,
+    checkedAt: typeof record.checkedAt === "string" ? record.checkedAt : new Date(0).toISOString()
+  };
+}
+
+function normalizeAppServiceSnapshot(
+  value: unknown
+): AppServiceSnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  if (
+    typeof record.appSlug !== "string" ||
+    typeof record.serviceName !== "string" ||
+    typeof record.containerName !== "string"
+  ) {
+    return undefined;
+  }
+
+  return {
+    appSlug: record.appSlug,
+    serviceName: record.serviceName,
+    containerName: record.containerName,
+    enabled: Boolean(record.enabled),
+    active: Boolean(record.active),
+    image: typeof record.image === "string" ? record.image : undefined,
+    backendPort:
+      typeof record.backendPort === "number" ? record.backendPort : undefined,
+    stateRoot: typeof record.stateRoot === "string" ? record.stateRoot : undefined,
+    envFilePath:
+      typeof record.envFilePath === "string" ? record.envFilePath : undefined,
+    quadletPath:
+      typeof record.quadletPath === "string" ? record.quadletPath : undefined,
+    checkedAt:
+      typeof record.checkedAt === "string" ? record.checkedAt : new Date(0).toISOString()
+  };
+}
+
+function normalizeRustDeskListenerSnapshot(
+  value: unknown
+): RustDeskListenerSnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  if (
+    (record.protocol !== "tcp" && record.protocol !== "udp") ||
+    typeof record.address !== "string" ||
+    typeof record.port !== "number"
+  ) {
+    return undefined;
+  }
+
+  return {
+    protocol: record.protocol,
+    address: record.address,
+    port: record.port
+  };
+}
+
+export function normalizeRustDeskSnapshot(
+  value: unknown
+): RustDeskServiceSnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  if (
+    typeof record.hbbsServiceName !== "string" ||
+    typeof record.hbbrServiceName !== "string"
+  ) {
+    return undefined;
+  }
+
+  const listeners = Array.isArray(record.listeners)
+    ? record.listeners
+        .map(normalizeRustDeskListenerSnapshot)
+        .filter((entry): entry is RustDeskListenerSnapshot => Boolean(entry))
+    : [];
+
+  return {
+    hbbsServiceName: record.hbbsServiceName,
+    hbbsEnabled: Boolean(record.hbbsEnabled),
+    hbbsActive: Boolean(record.hbbsActive),
+    hbbrServiceName: record.hbbrServiceName,
+    hbbrEnabled: Boolean(record.hbbrEnabled),
+    hbbrActive: Boolean(record.hbbrActive),
+    publicKey: typeof record.publicKey === "string" ? record.publicKey : undefined,
+    publicKeyPath:
+      typeof record.publicKeyPath === "string" ? record.publicKeyPath : undefined,
+    listeners,
+    checkedAt: typeof record.checkedAt === "string" ? record.checkedAt : new Date(0).toISOString()
+  };
+}
+
+function normalizeMailManagedDomainSnapshot(
+  value: unknown
+): MailManagedDomainSnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  if (
+    typeof record.domainName !== "string" ||
+    typeof record.mailHost !== "string" ||
+    typeof record.webmailHostname !== "string" ||
+    (record.deliveryRole !== "primary" && record.deliveryRole !== "standby")
+  ) {
+    return undefined;
+  }
+
+  return {
+    domainName: record.domainName,
+    mailHost: record.mailHost,
+    webmailHostname: record.webmailHostname,
+    deliveryRole: record.deliveryRole,
+    mailboxCount: Number(record.mailboxCount ?? 0),
+    aliasCount: Number(record.aliasCount ?? 0)
+  };
+}
+
+export function normalizeMailSnapshot(value: unknown): MailServiceSnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  if (
+    typeof record.postfixServiceName !== "string" ||
+    typeof record.dovecotServiceName !== "string" ||
+    typeof record.rspamdServiceName !== "string" ||
+    typeof record.redisServiceName !== "string"
+  ) {
+    return undefined;
+  }
+
+  const managedDomains = Array.isArray(record.managedDomains)
+    ? record.managedDomains
+        .map(normalizeMailManagedDomainSnapshot)
+        .filter((entry): entry is MailManagedDomainSnapshot => Boolean(entry))
+    : [];
+
+  return {
+    postfixServiceName: record.postfixServiceName,
+    postfixEnabled: Boolean(record.postfixEnabled),
+    postfixActive: Boolean(record.postfixActive),
+    dovecotServiceName: record.dovecotServiceName,
+    dovecotEnabled: Boolean(record.dovecotEnabled),
+    dovecotActive: Boolean(record.dovecotActive),
+    rspamdServiceName: record.rspamdServiceName,
+    rspamdEnabled: Boolean(record.rspamdEnabled),
+    rspamdActive: Boolean(record.rspamdActive),
+    redisServiceName: record.redisServiceName,
+    redisEnabled: Boolean(record.redisEnabled),
+    redisActive: Boolean(record.redisActive),
+    configRoot: typeof record.configRoot === "string" ? record.configRoot : undefined,
+    statePath: typeof record.statePath === "string" ? record.statePath : undefined,
+    vmailRoot: typeof record.vmailRoot === "string" ? record.vmailRoot : undefined,
+    dkimRoot: typeof record.dkimRoot === "string" ? record.dkimRoot : undefined,
+    roundcubeRoot:
+      typeof record.roundcubeRoot === "string" ? record.roundcubeRoot : undefined,
+    managedDomains,
+    checkedAt: typeof record.checkedAt === "string" ? record.checkedAt : new Date(0).toISOString()
+  };
+}
+
+export function toNodeHealthSnapshot(row: NodeHealthRow): NodeHealthSnapshot {
+  const runtimeSnapshot =
+    row.runtime_snapshot && typeof row.runtime_snapshot === "object"
+      ? row.runtime_snapshot
+      : {};
+
+  return {
+    nodeId: row.node_id,
+    hostname: row.hostname,
+    desiredRole: "inventory",
+    currentVersion: row.current_version ?? undefined,
+    desiredVersion: undefined,
+    lastSeenAt: row.last_seen_at ? normalizeTimestamp(row.last_seen_at) : undefined,
+    pendingJobCount: Number(row.pending_job_count),
+    latestJobStatus: (row.latest_job_status as NodeHealthSnapshot["latestJobStatus"]) ?? undefined,
+    latestJobSummary: row.latest_job_summary ?? undefined,
+    driftedResourceCount: Number(row.drifted_resource_count ?? 0),
+    primaryZoneCount: Number(row.primary_zone_count ?? 0),
+    primaryAppCount: Number(row.primary_app_count ?? 0),
+    backupPolicyCount: Number(row.backup_policy_count ?? 0),
+    appServices: Array.isArray((runtimeSnapshot as Record<string, unknown>).appServices)
+      ? ((runtimeSnapshot as Record<string, unknown>).appServices as unknown[])
+          .map(normalizeAppServiceSnapshot)
+          .filter((entry): entry is AppServiceSnapshot => Boolean(entry))
+      : [],
+    codeServer: normalizeCodeServerSnapshot(
+      (runtimeSnapshot as Record<string, unknown>).codeServer
+    ),
+    rustdesk: normalizeRustDeskSnapshot(
+      (runtimeSnapshot as Record<string, unknown>).rustdesk
+    ),
+    mail: normalizeMailSnapshot((runtimeSnapshot as Record<string, unknown>).mail)
+  };
+}
+
+export function toJobHistoryEntry(
+  row: JobHistoryRow,
+  payloadKey: Buffer | null
+): JobHistoryEntry {
+  return {
+    jobId: row.id,
+    desiredStateVersion: row.desired_state_version,
+    kind: row.kind as JobHistoryEntry["kind"],
+    nodeId: row.node_id,
+    createdAt: normalizeTimestamp(row.created_at),
+    claimedAt: row.claimed_at ? normalizeTimestamp(row.claimed_at) : undefined,
+    completedAt: row.completed_at ? normalizeTimestamp(row.completed_at) : undefined,
+    status: (row.status as JobHistoryEntry["status"]) ?? undefined,
+    summary: row.summary ?? undefined,
+    dispatchReason: row.dispatch_reason ?? undefined,
+    resourceKey: row.resource_key ?? undefined,
+    payload: sanitizePayload(
+      decodeStoredJobPayload(row.payload, payloadKey)
+    ) as Record<string, unknown>,
+    details: row.details
+      ? (sanitizePayload(row.details) as Record<string, unknown>)
+      : undefined
+  };
+}
+
+export function toAuditEventSummary(row: AuditEventRow): AuditEventSummary {
+  return {
+    eventId: row.event_id,
+    actorType: row.actor_type,
+    actorId: row.actor_id ?? undefined,
+    eventType: row.event_type,
+    entityType: row.entity_type ?? undefined,
+    entityId: row.entity_id ?? undefined,
+    payload: (row.payload ?? {}) as Record<string, unknown>,
+    occurredAt: normalizeTimestamp(row.occurred_at)
+  };
+}
+
+export function titleizeSlug(value: string): string {
+  return value
+    .split(/[-_]/g)
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(" ");
+}
+
+export function createDesiredStateVersion(): string {
+  return `dispatch-${Date.now()}-${randomUUID().slice(0, 8)}`;
+}
+
+export function stableStringify(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map((entry) => stableStringify(entry)).join(",")}]`;
+  }
+
+  if (!value || typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+
+  const record = value as Record<string, unknown>;
+  const keys = Object.keys(record).sort();
+  return `{${keys
+    .map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
+    .join(",")}}`;
+}
+
+export function hashDesiredPayload(payload: Record<string, unknown>): string {
+  return createHash("sha256").update(stableStringify(payload)).digest("hex");
+}
+
+export function createStableId(prefix: string, ...parts: string[]): string {
+  return `${prefix}-${createHash("sha256").update(parts.join("\u0000")).digest("hex").slice(0, 16)}`;
+}
+
+export function relativeRecordNameForZone(hostname: string, zoneName: string): string {
+  const normalizedHost = hostname.replace(/\.$/, "").toLowerCase();
+  const normalizedZone = zoneName.replace(/\.$/, "").toLowerCase();
+
+  if (normalizedHost === normalizedZone) {
+    return "@";
+  }
+
+  const suffix = `.${normalizedZone}`;
+
+  if (!normalizedHost.endsWith(suffix)) {
+    throw new Error(`${hostname} does not belong to zone ${zoneName}.`);
+  }
+
+  return normalizedHost.slice(0, -suffix.length);
+}
+
+export function createQueuedDispatchJob(
+  envelope: DispatchedJobEnvelope,
+  resourceKey: string,
+  resourceKind: string
+): QueuedDispatchJob {
+  const resourceSuffix = createHash("sha256")
+    .update(resourceKey)
+    .digest("hex")
+    .slice(0, 12);
+
+  return {
+    envelope: {
+      ...envelope,
+      id: `${envelope.id}-${resourceSuffix}`
+    },
+    resourceKey,
+    resourceKind,
+    payloadHash: hashDesiredPayload(envelope.payload)
+  };
+}
+
+export function createResourceDriftSummary(
+  job: QueuedDispatchJob,
+  latest: DriftStatusRow | null
+): ResourceDriftSummary {
+  if (!latest) {
+    return {
+      resourceKind: job.resourceKind as ResourceDriftSummary["resourceKind"],
+      resourceKey: job.resourceKey,
+      nodeId: job.envelope.nodeId,
+      driftStatus: "out_of_sync",
+      desiredPayloadHash: job.payloadHash,
+      dispatchRecommended: true
+    };
+  }
+
+  if (!latest.completed_at) {
+    return {
+      resourceKind: job.resourceKind as ResourceDriftSummary["resourceKind"],
+      resourceKey: job.resourceKey,
+      nodeId: job.envelope.nodeId,
+      driftStatus: "pending",
+      desiredPayloadHash: job.payloadHash,
+      latestPayloadHash: latest.payload_hash ?? undefined,
+      latestJobId: latest.id,
+      dispatchRecommended: latest.payload_hash !== job.payloadHash
+    };
+  }
+
+  if (latest.payload_hash !== job.payloadHash) {
+    return {
+      resourceKind: job.resourceKind as ResourceDriftSummary["resourceKind"],
+      resourceKey: job.resourceKey,
+      nodeId: job.envelope.nodeId,
+      driftStatus: "out_of_sync",
+      desiredPayloadHash: job.payloadHash,
+      latestPayloadHash: latest.payload_hash ?? undefined,
+      latestJobId: latest.id,
+      latestJobStatus: (latest.status as ResourceDriftSummary["latestJobStatus"]) ?? undefined,
+      latestSummary: latest.summary ?? undefined,
+      dispatchRecommended: true
+    };
+  }
+
+  if (latest.status !== "applied") {
+    return {
+      resourceKind: job.resourceKind as ResourceDriftSummary["resourceKind"],
+      resourceKey: job.resourceKey,
+      nodeId: job.envelope.nodeId,
+      driftStatus: "failed",
+      desiredPayloadHash: job.payloadHash,
+      latestPayloadHash: latest.payload_hash ?? undefined,
+      latestJobId: latest.id,
+      latestJobStatus: (latest.status as ResourceDriftSummary["latestJobStatus"]) ?? undefined,
+      latestSummary: latest.summary ?? undefined,
+      dispatchRecommended: true
+    };
+  }
+
+  return {
+    resourceKind: job.resourceKind as ResourceDriftSummary["resourceKind"],
+    resourceKey: job.resourceKey,
+    nodeId: job.envelope.nodeId,
+    driftStatus: "in_sync",
+    desiredPayloadHash: job.payloadHash,
+    latestPayloadHash: latest.payload_hash ?? undefined,
+    latestJobId: latest.id,
+    latestJobStatus: "applied",
+    latestSummary: latest.summary ?? undefined,
+    dispatchRecommended: false
+  };
+}

@@ -1,0 +1,540 @@
+export const supportedJobKinds = [
+  "dns.sync",
+  "proxy.render",
+  "certificate.renew",
+  "container.reconcile",
+  "postgres.reconcile",
+  "mariadb.reconcile",
+  "code-server.update",
+  "package.inventory.collect",
+  "package.install",
+  "backup.trigger",
+  "mail.sync"
+] as const;
+
+export type ShmJobKind = (typeof supportedJobKinds)[number];
+export type ShmJobStatus = "applied" | "skipped" | "failed";
+
+export interface ShmJobEnvelope {
+  id: string;
+  desiredStateVersion: string;
+  kind: ShmJobKind;
+  nodeId: string;
+  createdAt: string;
+  payload: Record<string, unknown>;
+}
+
+export interface ShmJobResult {
+  jobId: string;
+  kind: ShmJobKind;
+  nodeId: string;
+  status: ShmJobStatus;
+  summary: string;
+  details?: Record<string, unknown>;
+  completedAt: string;
+}
+
+export interface ShmNodeSnapshot {
+  nodeId: string;
+  hostname: string;
+  status: "ready";
+  stateDir: string;
+  reportBufferDir: string;
+  generatedAt: string;
+  nodeToken?: string;
+}
+
+export interface ShmNodeRegistrationRequest {
+  nodeId: string;
+  hostname: string;
+  version: string;
+  supportedJobKinds: ShmJobKind[];
+  generatedAt: string;
+  runtimeSnapshot?: ShmNodeRuntimeSnapshot;
+}
+
+export interface ShmNodeRegistrationResponse {
+  nodeId: string;
+  acceptedAt: string;
+  pollIntervalMs: number;
+  nodeToken?: string;
+}
+
+export interface ShmJobClaimRequest {
+  nodeId: string;
+  hostname: string;
+  version: string;
+  maxJobs: number;
+  runtimeSnapshot?: ShmNodeRuntimeSnapshot;
+}
+
+export interface ShmJobClaimResponse {
+  nodeId: string;
+  claimedAt: string;
+  jobs: ShmJobEnvelope[];
+}
+
+export interface ShmJobReportRequest {
+  nodeId: string;
+  result: ShmJobResult;
+}
+
+export interface ShmSpoolEntry {
+  schemaVersion: 1;
+  job: ShmJobEnvelope;
+  state: "claimed" | "executed";
+  claimedAt: string;
+  executedAt?: string;
+  resultStatus?: ShmJobStatus;
+}
+
+export interface ShmBufferedReport {
+  schemaVersion: 1;
+  result: ShmJobResult;
+  bufferedAt: string;
+  deliveryAttempts: number;
+  lastDeliveryError?: string;
+}
+
+export function isSupportedJobKind(value: string): value is ShmJobKind {
+  return supportedJobKinds.includes(value as ShmJobKind);
+}
+
+export interface ProxyRenderPayload {
+  vhostName: string;
+  serverName: string;
+  serverAliases?: string[];
+  documentRoot?: string;
+  proxyPassUrl?: string;
+  proxyPreserveHost?: boolean;
+  tls?: boolean;
+}
+
+export interface DnsRecordPayload {
+  name: string;
+  type: "A" | "AAAA" | "CNAME" | "MX" | "TXT";
+  value: string;
+  ttl: number;
+}
+
+export interface DnsSyncPayload {
+  zoneName: string;
+  serial: number;
+  nameservers: string[];
+  records: DnsRecordPayload[];
+}
+
+export interface PostgresReconcilePayload {
+  appSlug: string;
+  databaseName: string;
+  roleName: string;
+  password: string;
+}
+
+export interface MariadbReconcilePayload {
+  appSlug: string;
+  databaseName: string;
+  userName: string;
+  password: string;
+}
+
+export interface ContainerReconcilePayload {
+  serviceName: string;
+  containerName: string;
+  image: string;
+  description?: string;
+  exec?: string;
+  network?: string;
+  publishPorts?: string[];
+  volumes?: string[];
+  hostDirectories?: string[];
+  environment?: Record<string, string>;
+  envFileName?: string;
+  restart?: "always" | "on-failure" | "no";
+  restartSec?: number;
+  wantedBy?: string;
+  enable?: boolean;
+  start?: boolean;
+}
+
+export interface CodeServerUpdatePayload {
+  rpmUrl: string;
+  expectedSha256?: string;
+}
+
+export interface PackageInventoryCollectPayload {
+  includePackagePatterns?: string[];
+}
+
+export interface PackageInstallPayload {
+  packageNames?: string[];
+  rpmUrl?: string;
+  expectedSha256?: string;
+  allowReinstall?: boolean;
+}
+
+export interface InstalledPackageSummary {
+  packageName: string;
+  epoch?: string;
+  version: string;
+  release: string;
+  arch: string;
+  nevra: string;
+  source?: string;
+  installedAt?: string;
+}
+
+export interface CodeServerServiceSnapshot {
+  serviceName: string;
+  enabled: boolean;
+  active: boolean;
+  version?: string;
+  bindAddress?: string;
+  authMode?: string;
+  settingsProfileHash?: string;
+  checkedAt: string;
+}
+
+export interface RustDeskListenerSnapshot {
+  protocol: "tcp" | "udp";
+  address: string;
+  port: number;
+}
+
+export interface RustDeskServiceSnapshot {
+  hbbsServiceName: string;
+  hbbsEnabled: boolean;
+  hbbsActive: boolean;
+  hbbrServiceName: string;
+  hbbrEnabled: boolean;
+  hbbrActive: boolean;
+  publicKey?: string;
+  publicKeyPath?: string;
+  listeners: RustDeskListenerSnapshot[];
+  checkedAt: string;
+}
+
+export interface MailSyncMailboxPayload {
+  address: string;
+  localPart: string;
+  desiredPassword?: string;
+  quotaBytes?: number;
+}
+
+export interface MailSyncAliasPayload {
+  address: string;
+  localPart: string;
+  destinations: string[];
+}
+
+export interface MailSyncDomainPayload {
+  domainName: string;
+  tenantSlug: string;
+  zoneName: string;
+  mailHost: string;
+  webmailHostname: string;
+  dkimSelector: string;
+  deliveryRole: "primary" | "standby";
+  mailboxes: MailSyncMailboxPayload[];
+  aliases: MailSyncAliasPayload[];
+}
+
+export interface MailManagedDomainSnapshot {
+  domainName: string;
+  mailHost: string;
+  webmailHostname: string;
+  deliveryRole: "primary" | "standby";
+  mailboxCount: number;
+  aliasCount: number;
+}
+
+export interface MailServiceSnapshot {
+  postfixServiceName: string;
+  postfixEnabled: boolean;
+  postfixActive: boolean;
+  dovecotServiceName: string;
+  dovecotEnabled: boolean;
+  dovecotActive: boolean;
+  rspamdServiceName: string;
+  rspamdEnabled: boolean;
+  rspamdActive: boolean;
+  redisServiceName: string;
+  redisEnabled: boolean;
+  redisActive: boolean;
+  configRoot?: string;
+  statePath?: string;
+  vmailRoot?: string;
+  dkimRoot?: string;
+  roundcubeRoot?: string;
+  managedDomains: MailManagedDomainSnapshot[];
+  checkedAt: string;
+}
+
+export interface AppServiceSnapshot {
+  appSlug: string;
+  serviceName: string;
+  containerName: string;
+  enabled: boolean;
+  active: boolean;
+  image?: string;
+  backendPort?: number;
+  stateRoot?: string;
+  envFilePath?: string;
+  quadletPath?: string;
+  checkedAt: string;
+}
+
+export interface ShmNodeRuntimeSnapshot {
+  appServices?: AppServiceSnapshot[];
+  codeServer?: CodeServerServiceSnapshot;
+  rustdesk?: RustDeskServiceSnapshot;
+  mail?: MailServiceSnapshot;
+}
+
+export interface MailSyncPayload {
+  generatedAt: string;
+  domains: MailSyncDomainPayload[];
+}
+
+export function isProxyRenderPayload(value: unknown): value is ProxyRenderPayload {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const payload = value as Record<string, unknown>;
+
+  const hasDocumentRoot = typeof payload.documentRoot === "string";
+  const hasProxyPassUrl = typeof payload.proxyPassUrl === "string";
+  return (
+    typeof payload.vhostName === "string" &&
+    typeof payload.serverName === "string" &&
+    (hasDocumentRoot || hasProxyPassUrl) &&
+    (payload.serverAliases === undefined ||
+      (Array.isArray(payload.serverAliases) &&
+        payload.serverAliases.every((item) => typeof item === "string"))) &&
+    (payload.proxyPreserveHost === undefined ||
+      typeof payload.proxyPreserveHost === "boolean") &&
+    (payload.tls === undefined || typeof payload.tls === "boolean")
+  );
+}
+
+export function isDnsSyncPayload(value: unknown): value is DnsSyncPayload {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const payload = value as Record<string, unknown>;
+  return (
+    typeof payload.zoneName === "string" &&
+    typeof payload.serial === "number" &&
+    Array.isArray(payload.records) &&
+    payload.records.every((record) => {
+      if (!record || typeof record !== "object") {
+        return false;
+      }
+
+      const candidate = record as Record<string, unknown>;
+
+      return (
+        typeof candidate.name === "string" &&
+        typeof candidate.type === "string" &&
+        typeof candidate.value === "string" &&
+        typeof candidate.ttl === "number"
+      );
+    }) &&
+    Array.isArray(payload.nameservers) &&
+    payload.nameservers.every((item) => typeof item === "string")
+  );
+}
+
+export function isPostgresReconcilePayload(
+  value: unknown
+): value is PostgresReconcilePayload {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const payload = value as Record<string, unknown>;
+  return (
+    typeof payload.appSlug === "string" &&
+    typeof payload.databaseName === "string" &&
+    typeof payload.roleName === "string" &&
+    typeof payload.password === "string"
+  );
+}
+
+export function isMariadbReconcilePayload(
+  value: unknown
+): value is MariadbReconcilePayload {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const payload = value as Record<string, unknown>;
+  return (
+    typeof payload.appSlug === "string" &&
+    typeof payload.databaseName === "string" &&
+    typeof payload.userName === "string" &&
+    typeof payload.password === "string"
+  );
+}
+
+export function isContainerReconcilePayload(
+  value: unknown
+): value is ContainerReconcilePayload {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const payload = value as Record<string, unknown>;
+  const environment = payload.environment;
+
+  return (
+    typeof payload.serviceName === "string" &&
+    typeof payload.containerName === "string" &&
+    typeof payload.image === "string" &&
+    (payload.description === undefined || typeof payload.description === "string") &&
+    (payload.exec === undefined || typeof payload.exec === "string") &&
+    (payload.network === undefined || typeof payload.network === "string") &&
+    (payload.publishPorts === undefined ||
+      (Array.isArray(payload.publishPorts) &&
+        payload.publishPorts.every((item) => typeof item === "string"))) &&
+    (payload.volumes === undefined ||
+      (Array.isArray(payload.volumes) &&
+        payload.volumes.every((item) => typeof item === "string"))) &&
+    (payload.hostDirectories === undefined ||
+      (Array.isArray(payload.hostDirectories) &&
+        payload.hostDirectories.every((item) => typeof item === "string"))) &&
+    (environment === undefined ||
+      (!Array.isArray(environment) &&
+        environment !== null &&
+        Object.values(environment as Record<string, unknown>).every(
+          (item) => typeof item === "string"
+        ))) &&
+    (payload.envFileName === undefined || typeof payload.envFileName === "string") &&
+    (payload.restart === undefined ||
+      payload.restart === "always" ||
+      payload.restart === "on-failure" ||
+      payload.restart === "no") &&
+    (payload.restartSec === undefined || typeof payload.restartSec === "number") &&
+    (payload.wantedBy === undefined || typeof payload.wantedBy === "string") &&
+    (payload.enable === undefined || typeof payload.enable === "boolean") &&
+    (payload.start === undefined || typeof payload.start === "boolean")
+  );
+}
+
+export function isCodeServerUpdatePayload(
+  value: unknown
+): value is CodeServerUpdatePayload {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const payload = value as Record<string, unknown>;
+  return (
+    typeof payload.rpmUrl === "string" &&
+    (payload.expectedSha256 === undefined || typeof payload.expectedSha256 === "string")
+  );
+}
+
+export function isPackageInventoryCollectPayload(
+  value: unknown
+): value is PackageInventoryCollectPayload {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+
+  const payload = value as Record<string, unknown>;
+  return (
+    payload.includePackagePatterns === undefined ||
+    (Array.isArray(payload.includePackagePatterns) &&
+      payload.includePackagePatterns.every((item) => typeof item === "string"))
+  );
+}
+
+export function isPackageInstallPayload(
+  value: unknown
+): value is PackageInstallPayload {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+
+  const payload = value as Record<string, unknown>;
+  const hasPackageNames =
+    Array.isArray(payload.packageNames) &&
+    payload.packageNames.length > 0 &&
+    payload.packageNames.every((item) => typeof item === "string");
+  const hasRpmUrl = typeof payload.rpmUrl === "string" && payload.rpmUrl.length > 0;
+
+  return (
+    (hasPackageNames || hasRpmUrl) &&
+    (payload.packageNames === undefined ||
+      (Array.isArray(payload.packageNames) &&
+        payload.packageNames.every((item) => typeof item === "string"))) &&
+    (payload.rpmUrl === undefined || typeof payload.rpmUrl === "string") &&
+    (payload.expectedSha256 === undefined || typeof payload.expectedSha256 === "string") &&
+    (payload.allowReinstall === undefined || typeof payload.allowReinstall === "boolean")
+  );
+}
+
+export function isMailSyncPayload(value: unknown): value is MailSyncPayload {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const payload = value as Record<string, unknown>;
+
+  return (
+    typeof payload.generatedAt === "string" &&
+    Array.isArray(payload.domains) &&
+    payload.domains.every((domain) => {
+      if (!domain || typeof domain !== "object") {
+        return false;
+      }
+
+      const candidate = domain as Record<string, unknown>;
+
+      return (
+        typeof candidate.domainName === "string" &&
+        typeof candidate.tenantSlug === "string" &&
+        typeof candidate.zoneName === "string" &&
+        typeof candidate.mailHost === "string" &&
+        typeof candidate.webmailHostname === "string" &&
+        typeof candidate.dkimSelector === "string" &&
+        (candidate.deliveryRole === "primary" || candidate.deliveryRole === "standby") &&
+        Array.isArray(candidate.mailboxes) &&
+        candidate.mailboxes.every((mailbox) => {
+          if (!mailbox || typeof mailbox !== "object") {
+            return false;
+          }
+
+          const mailboxCandidate = mailbox as Record<string, unknown>;
+
+          return (
+            typeof mailboxCandidate.address === "string" &&
+            typeof mailboxCandidate.localPart === "string" &&
+            (mailboxCandidate.desiredPassword === undefined ||
+              typeof mailboxCandidate.desiredPassword === "string") &&
+            (mailboxCandidate.quotaBytes === undefined ||
+              typeof mailboxCandidate.quotaBytes === "number")
+          );
+        }) &&
+        Array.isArray(candidate.aliases) &&
+        candidate.aliases.every((alias) => {
+          if (!alias || typeof alias !== "object") {
+            return false;
+          }
+
+          const aliasCandidate = alias as Record<string, unknown>;
+
+          return (
+            typeof aliasCandidate.address === "string" &&
+            typeof aliasCandidate.localPart === "string" &&
+            Array.isArray(aliasCandidate.destinations) &&
+            aliasCandidate.destinations.every((destination) => typeof destination === "string")
+          );
+        })
+      );
+    })
+  );
+}

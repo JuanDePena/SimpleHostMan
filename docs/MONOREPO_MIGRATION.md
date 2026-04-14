@@ -83,9 +83,8 @@ Expected ownership:
 ### Documentation
 
 - `src/docs` remains the canonical shared docs tree
-- `repos/simplehost-panel/docs` should be reviewed file by file and either:
-  - merged into `src/docs`, or
-  - kept app-local only if it documents behavior unique to `apps/control` or `apps/worker`
+- `repos/simplehost-panel/docs/MIGRATIONS` has already been absorbed into `src/docs/MIGRATIONS`
+- any future app-local docs should stay next to the app only if they describe behavior unique to `apps/control` or `apps/worker`
 
 ## Migration principles
 

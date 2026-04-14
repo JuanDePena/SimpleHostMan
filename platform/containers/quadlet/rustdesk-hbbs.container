@@ -1,0 +1,19 @@
+[Unit]
+Description=RustDesk ID and rendezvous service
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+ContainerName=rustdesk-hbbs
+Image=docker.io/rustdesk/rustdesk-server:1.1.14
+Exec=hbbs
+Network=host
+Volume=/srv/containers/rustdesk/data:/root:Z
+
+[Service]
+Restart=always
+RestartSec=5
+TimeoutStartSec=900
+
+[Install]
+WantedBy=multi-user.target

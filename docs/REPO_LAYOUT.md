@@ -215,6 +215,7 @@ Current responsibility split:
 - shared architecture and operational documentation
 - cross-workspace guidance and TODO tracking
 - no runtime ownership of definitive product or host-service artifacts
+- migration runbooks from the former panel-local docs tree now live under `/opt/simplehostman/src/docs/MIGRATIONS`
 
 ## Runtime layout
 
