@@ -21,7 +21,9 @@ if [[ -z "${public_ip}" ]]; then
   exit 1
 fi
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${script_dir}/../lib/workspace-paths.sh"
+repo_root="$(simplehost_workspace_root)"
 ssl_listen_template="${repo_root}/packaging/httpd/spanel-ssl-listen.conf"
 http_template="${repo_root}/packaging/httpd/spanel-web-http.conf.template"
 https_template="${repo_root}/packaging/httpd/spanel-web-https.conf.template"

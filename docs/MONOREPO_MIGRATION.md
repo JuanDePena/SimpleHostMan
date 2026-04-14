@@ -31,8 +31,10 @@ Current checkpoint on 2026-04-14:
 - imported release scripts now resolve the unified source root correctly from `src/scripts/*`
 - imported panel and manager service templates now point at `/opt/simplehostman/release/current` and the current app paths under `apps/control`, `apps/worker`, and `apps/agent`
 - canonical README files now exist for `apps/*`, `packages`, `platform`, `bootstrap`, `packaging`, and `scripts` inside `src`
+- `apps/control/tsconfig.json` now acts as the composite source boundary for the transitional `control-api` and `control-web` entrypoints
 - root workspace build slices now exist for `panel-runtime` and `manager-runtime` through `tsconfig.panel.json`, `tsconfig.manager.json`, and matching root scripts
-- imported panel and manager release scripts now build only their relevant runtime slice from the unified workspace
+- imported panel and manager release scripts now share a canonical path helper in `src/scripts/lib/workspace-paths.sh`
+- `pnpm audit:legacy-roots` now guards against reintroducing functional references to legacy repo roots or retired package names outside docs/build output
 - clean-room validation passed from the unified tree: `pnpm install --frozen-lockfile`, `pnpm build:clean-room`, `pnpm typecheck`, `pnpm build:panel-runtime`, `pnpm build:manager-runtime`, `pnpm typecheck:panel-runtime`, `pnpm typecheck:manager-runtime`, and `git diff --check`
 
 ## Remaining legacy surface after the current checkpoint

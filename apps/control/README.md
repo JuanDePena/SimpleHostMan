@@ -18,6 +18,10 @@ Sub-entrypoint docs:
 - `/opt/simplehostman/src/apps/control/api/README.md`
 - `/opt/simplehostman/src/apps/control/web/README.md`
 
+The composite build boundary is:
+
+- `/opt/simplehostman/src/apps/control/tsconfig.json`
+
 This separation is temporary. The migration target is one control-plane app that serves UI and `/v1/*` from one process and one port.
 
 ## Current responsibilities
@@ -32,11 +36,15 @@ This separation is temporary. The migration target is one control-plane app that
 
 From `/opt/simplehostman/src`:
 
+- `pnpm build:control`
+- `pnpm typecheck:control`
 - `pnpm start:control:api`
 - `pnpm start:control:web`
 
 From this directory:
 
+- `pnpm build`
+- `pnpm typecheck:local`
 - `pnpm start:api`
 - `pnpm start:web`
 - `pnpm build:api`
@@ -47,4 +55,5 @@ From this directory:
 ## Migration notes
 
 - `apps/control` is already the canonical source location for control-plane UI and API code.
+- `apps/control/tsconfig.json` is the current ownership boundary for both transitional sub-entrypoints.
 - The remaining work is runtime unification and release normalization, not source ownership.

@@ -20,7 +20,7 @@
     "start:agent": "pnpm --filter @simplehost/manager-agent start",
     "start:cli": "pnpm --filter @simplehost/manager-cli start",
     "test": "pnpm -r --if-present test",
-    "build:control": "pnpm --dir apps/control build",
+    "build:control": "tsc -b apps/control/tsconfig.json",
     "typecheck:control": "pnpm --dir apps/control typecheck:local",
     "build:panel-runtime": "tsc -b tsconfig.panel.json",
     "build:manager-runtime": "tsc -b tsconfig.manager.json",
@@ -29,7 +29,8 @@
     "build:control:api": "pnpm --dir apps/control build:api",
     "build:control:web": "pnpm --dir apps/control build:web",
     "typecheck:control:api": "pnpm --dir apps/control typecheck:api",
-    "typecheck:control:web": "pnpm --dir apps/control typecheck:web"
+    "typecheck:control:web": "pnpm --dir apps/control typecheck:web",
+    "audit:legacy-roots": "node scripts/audit-legacy-roots.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.15.30",

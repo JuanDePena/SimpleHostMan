@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-version="${1:-$(node -e "const fs=require('node:fs'); console.log(JSON.parse(fs.readFileSync('${repo_root}/package.json','utf8')).version)")}"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${script_dir}/../lib/workspace-paths.sh"
+repo_root="$(simplehost_workspace_root)"
+version="${1:-$(simplehost_read_workspace_version "${repo_root}")}"
 work_dir="$(mktemp -d)"
 staging_dir="${work_dir}/simplehost-manager-${version}"
 bundle_dir="${repo_root}/dist/releases"

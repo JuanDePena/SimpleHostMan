@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-workspace_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${script_dir}/../lib/workspace-paths.sh"
+workspace_root="$(simplehost_workspace_root)"
 
 if ! command -v pnpm >/dev/null 2>&1; then
   echo "pnpm is required. Install Node.js, npm, and pnpm first." >&2

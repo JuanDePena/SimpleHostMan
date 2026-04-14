@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${script_dir}/../lib/workspace-paths.sh"
+
 version="${1:?usage: rollback-release.sh <version>}"
-runtime_root="${SHP_RUNTIME_ROOT:-/opt/simplehostman/release}"
+runtime_root="$(simplehost_resolve_runtime_root SHP_RUNTIME_ROOT)"
 release_dir="${runtime_root}/releases/${version}"
 
 if [[ ! -d "${release_dir}" ]]; then

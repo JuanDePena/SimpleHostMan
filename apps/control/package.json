@@ -6,7 +6,7 @@
   "scripts": {
     "build:api": "pnpm --dir api build",
     "build:web": "pnpm --dir web build",
-    "build": "pnpm build:api && pnpm build:web",
+    "build": "tsc -b tsconfig.json",
     "clean:api": "pnpm --dir api clean",
     "clean:web": "pnpm --dir web clean",
     "clean": "pnpm clean:api && pnpm clean:web",

@@ -10,5 +10,11 @@ Path:
 
 - `panel/`: scripts imported from the former `SHP` repository
 - `manager/`: scripts imported from the former `SHM` repository
+- `lib/`: shared shell helpers used by both sides while the release flows are still transitional
 
 These scripts now resolve the unified source root under `/opt/simplehostman/src`, even when their operational behavior is still product-specific.
+
+## Shared helpers
+
+- `lib/workspace-paths.sh`: canonical resolver for the workspace root, normalized release root, workspace version, and transitional runtime entrypoint paths
+- `audit-legacy-roots.mjs`: workspace guard that fails if code or scripts reintroduce legacy-root references outside docs and ignored build output

@@ -5,8 +5,10 @@ version="${1:?usage: deploy-release.sh <version> [target-host|local] [active|pas
 target_host="${2:-local}"
 mode="${3:-active}"
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-runtime_root="${SHP_RUNTIME_ROOT:-/opt/simplehostman/release}"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${script_dir}/../lib/workspace-paths.sh"
+repo_root="$(simplehost_workspace_root)"
+runtime_root="$(simplehost_resolve_runtime_root SHP_RUNTIME_ROOT)"
 release_dir="${runtime_root}/releases/${version}"
 
 if [[ "${mode}" != "active" && "${mode}" != "passive" ]]; then

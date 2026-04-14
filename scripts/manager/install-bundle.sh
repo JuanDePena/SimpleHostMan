@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${script_dir}/../lib/workspace-paths.sh"
+
 bundle_path="${1:?usage: install-bundle.sh <bundle.tar.gz>}"
-runtime_root="${SHM_RUNTIME_ROOT:-/opt/simplehostman/release}"
+runtime_root="$(simplehost_resolve_runtime_root SHM_RUNTIME_ROOT)"
 extract_dir="$(mktemp -d)"
 
 cleanup() {

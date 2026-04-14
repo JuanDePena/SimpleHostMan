@@ -47,7 +47,10 @@ Useful commands:
 - `pnpm install`
 - `pnpm build`
 - `pnpm build:clean-room`
+- `pnpm build:control`
 - `pnpm typecheck`
+- `pnpm typecheck:control`
+- `pnpm audit:legacy-roots`
 - `pnpm test`
 - `pnpm start:control:api`
 - `pnpm start:control:web`
