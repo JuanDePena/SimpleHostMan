@@ -1,6 +1,8 @@
 import { createPanelRuntimeConfig, type PanelRuntimeConfig } from "@simplehost/panel-config";
 import {
   type AuditEventSummary,
+  type AuthLoginRequest,
+  type AuthLoginResponse,
   type AuthenticatedUserSummary,
   type BackupsOverview,
   type DesiredStateApplyRequest,
@@ -55,6 +57,9 @@ export interface PanelWebApi {
       responseType?: "json" | "text";
     }
   ): Promise<T>;
+  login(credentials: AuthLoginRequest): Promise<AuthLoginResponse>;
+  logout(token: string): Promise<void>;
+  getCurrentUser(token: string): Promise<AuthenticatedUserSummary>;
   loadDashboardData(token: string): Promise<DashboardData>;
   loadRustDeskPublicConnection(): Promise<RustDeskPublicConnectionInfo>;
   loadDesiredStateSpec(token: string): Promise<DesiredStateSpec>;
@@ -127,6 +132,21 @@ async function requestWithBaseUrl<T>(
 export function createPanelWebApiFromRequest(request: PanelWebApiRequest): PanelWebApi {
   return {
     request,
+    login(credentials: AuthLoginRequest): Promise<AuthLoginResponse> {
+      return request<AuthLoginResponse>("/v1/auth/login", {
+        method: "POST",
+        body: credentials
+      });
+    },
+    async logout(token: string): Promise<void> {
+      await request("/v1/auth/logout", {
+        method: "POST",
+        token
+      });
+    },
+    getCurrentUser(token: string): Promise<AuthenticatedUserSummary> {
+      return request<AuthenticatedUserSummary>("/v1/auth/me", { token });
+    },
     async loadDashboardData(token: string): Promise<DashboardData> {
       const [
         currentUser,
@@ -142,7 +162,7 @@ export function createPanelWebApiFromRequest(request: PanelWebApiRequest): Panel
         mail,
         packages
       ] = await Promise.all([
-        request<AuthenticatedUserSummary>("/v1/auth/me", { token }),
+        this.getCurrentUser(token),
         request<OperationsOverview>("/v1/operations/overview", { token }),
         request<InventoryStateSnapshot>("/v1/inventory/summary", { token }),
         request<DesiredStateExportResponse>("/v1/resources/spec", { token }),

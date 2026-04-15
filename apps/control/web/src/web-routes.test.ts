@@ -15,6 +15,15 @@ function createStubApi(
     request: async () => {
       throw new Error("Unexpected API request in test");
     },
+    login: async () => {
+      throw new Error("Unexpected login request in test");
+    },
+    logout: async () => {
+      throw new Error("Unexpected logout request in test");
+    },
+    getCurrentUser: async () => {
+      throw new Error("Unexpected current-user request in test");
+    },
     loadDashboardData: async () => {
       throw new Error("Unexpected dashboard load in test");
     },
@@ -144,7 +153,7 @@ test("login failures render the login page with the API error message", async ()
       startedAt: Date.now()
     },
     createStubApi({
-      request: async () => {
+      login: async () => {
         throw new WebApiError(401, "Invalid credentials");
       }
     })

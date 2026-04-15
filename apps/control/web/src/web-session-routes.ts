@@ -1,6 +1,5 @@
 import {
-  type AuthLoginRequest,
-  type AuthLoginResponse
+  type AuthLoginRequest
 } from "@simplehost/panel-contracts";
 
 import {
@@ -38,13 +37,10 @@ export const handleSessionWebRoutes: WebRouteHandler = async ({
     const form = await readFormBody(request);
 
     try {
-      const login = await api.request<AuthLoginResponse>("/v1/auth/login", {
-        method: "POST",
-        body: {
+      const login = await api.login({
           email: form.get("email")?.trim() ?? "",
           password: form.get("password")?.trim() ?? ""
-        } satisfies AuthLoginRequest
-      });
+        } satisfies AuthLoginRequest);
 
       redirect(
         response,
@@ -61,10 +57,7 @@ export const handleSessionWebRoutes: WebRouteHandler = async ({
   if (request.method === "POST" && url.pathname === "/auth/logout") {
     if (sessionToken) {
       try {
-        await api.request("/v1/auth/logout", {
-          method: "POST",
-          token: sessionToken
-        });
+        await api.logout(sessionToken);
       } catch {
         // Ignore logout errors and clear the local cookie anyway.
       }

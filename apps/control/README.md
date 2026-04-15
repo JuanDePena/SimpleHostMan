@@ -80,4 +80,5 @@ From this directory:
 - `control-web` now also exposes `createPanelWebSurface`, which plays the same role for UI routing that `PanelApiSurface` already plays for the API boundary.
 - `WebRouteContext` now carries `sessionToken`, aligning the web auth/session seam more closely with `ApiRouteContext.bearerToken`.
 - web-side login redirects, unauthorized handling, and login error rendering now flow through a shared auth/session helper layer and route-context factory.
+- `PanelWebApi` now exposes semantic auth methods, reducing the remaining raw `/v1/auth/*` coupling inside `control-web`.
 - The remaining work is runtime unification and release normalization, not source ownership.
