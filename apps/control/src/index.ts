@@ -40,9 +40,7 @@ export async function createCombinedControlRuntime(
 ) {
   const runtime = await startCombinedControlServer({ context });
 
-  console.log(
-    `SHP Control listening on http://${context.config.web.host}:${context.config.web.port}`
-  );
+  console.log(`SHP Control listening on ${runtime.origin}`);
 
   return runtime;
 }

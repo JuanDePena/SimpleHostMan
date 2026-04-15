@@ -19,9 +19,11 @@ Current role:
 - expose a semantic route boundary in `route-surface.ts`
 - expose a single high-level candidate primitive in `combined-surface.ts`
 - expose a reusable combined HTTP server candidate in `server.ts`
+- expose a shared validation harness in `test-harness.ts` so split and combined flows can reuse the same fixtures and stubbed API surface
 - define the candidate runtime shape in `runtime-contract.ts`
 - keep an end-to-endish smoke test in `combined-smoke.test.ts` that compares split and combined behavior over the real web surface
 - keep a real HTTP e2e smoke in `combined-server.test.ts` that boots the candidate on an ephemeral port
+- keep focused request-context coverage in `request-context.test.ts` so per-request cache semantics stay pinned down during convergence
 - concentrate semantic auth, dashboard bootstrap, and runtime health in `bootstrap-surface.ts` so the combined candidate depends on higher-level surfaces instead of raw request wiring
 - provide a safe source-level checkpoint before the runtime model is actually unified
 

@@ -23,11 +23,7 @@ export const handleMailRoute: WebRouteHandler = async ({
     const token = await requireSessionToken({ requireSession });
     const form = await readFormBody(request);
     const next = parseMailDomainForm(form);
-    await api.request("/v1/mail/domains", {
-      method: "POST",
-      token,
-      body: next
-    });
+    await api.upsertMailDomain(token, next);
     redirect(
       response,
       noticeReturnTo(
@@ -43,10 +39,7 @@ export const handleMailRoute: WebRouteHandler = async ({
     const token = await requireSessionToken({ requireSession });
     const form = await readFormBody(request);
     const domainName = form.get("domainName")?.trim() ?? "";
-    await api.request(`/v1/mail/domains/${encodeURIComponent(domainName)}`, {
-      method: "DELETE",
-      token
-    });
+    await api.deleteMailDomain(token, domainName);
     redirect(
       response,
       noticeReturnTo(
@@ -62,11 +55,7 @@ export const handleMailRoute: WebRouteHandler = async ({
     const token = await requireSessionToken({ requireSession });
     const form = await readFormBody(request);
     const next = parseMailboxForm(form);
-    await api.request("/v1/mail/mailboxes", {
-      method: "POST",
-      token,
-      body: next
-    });
+    await api.upsertMailbox(token, next);
     redirect(
       response,
       noticeReturnTo(
@@ -82,10 +71,7 @@ export const handleMailRoute: WebRouteHandler = async ({
     const token = await requireSessionToken({ requireSession });
     const form = await readFormBody(request);
     const address = form.get("address")?.trim() ?? "";
-    await api.request(`/v1/mail/mailboxes/${encodeURIComponent(address)}`, {
-      method: "DELETE",
-      token
-    });
+    await api.deleteMailbox(token, address);
     redirect(
       response,
       noticeReturnTo(
@@ -101,11 +87,7 @@ export const handleMailRoute: WebRouteHandler = async ({
     const token = await requireSessionToken({ requireSession });
     const form = await readFormBody(request);
     const next = parseMailAliasForm(form);
-    await api.request("/v1/mail/aliases", {
-      method: "POST",
-      token,
-      body: next
-    });
+    await api.upsertMailAlias(token, next);
     redirect(
       response,
       noticeReturnTo(
@@ -121,10 +103,7 @@ export const handleMailRoute: WebRouteHandler = async ({
     const token = await requireSessionToken({ requireSession });
     const form = await readFormBody(request);
     const address = form.get("address")?.trim() ?? "";
-    await api.request(`/v1/mail/aliases/${encodeURIComponent(address)}`, {
-      method: "DELETE",
-      token
-    });
+    await api.deleteMailAlias(token, address);
     redirect(
       response,
       noticeReturnTo(
@@ -140,11 +119,7 @@ export const handleMailRoute: WebRouteHandler = async ({
     const token = await requireSessionToken({ requireSession });
     const form = await readFormBody(request);
     const next = parseMailboxQuotaForm(form);
-    await api.request("/v1/mail/quotas", {
-      method: "POST",
-      token,
-      body: next
-    });
+    await api.upsertMailboxQuota(token, next);
     redirect(
       response,
       noticeReturnTo(
@@ -160,10 +135,7 @@ export const handleMailRoute: WebRouteHandler = async ({
     const token = await requireSessionToken({ requireSession });
     const form = await readFormBody(request);
     const mailboxAddress = form.get("mailboxAddress")?.trim() ?? "";
-    await api.request(`/v1/mail/quotas/${encodeURIComponent(mailboxAddress)}`, {
-      method: "DELETE",
-      token
-    });
+    await api.deleteMailboxQuota(token, mailboxAddress);
     redirect(
       response,
       noticeReturnTo(

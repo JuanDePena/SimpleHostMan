@@ -76,6 +76,30 @@ function createStubApi(
     loadProxyPreview: async () => {
       throw new Error("Unexpected proxy preview in test");
     },
+    upsertMailDomain: async () => {
+      throw new Error("Unexpected mail domain upsert in test");
+    },
+    deleteMailDomain: async () => {
+      throw new Error("Unexpected mail domain delete in test");
+    },
+    upsertMailbox: async () => {
+      throw new Error("Unexpected mailbox upsert in test");
+    },
+    deleteMailbox: async () => {
+      throw new Error("Unexpected mailbox delete in test");
+    },
+    upsertMailAlias: async () => {
+      throw new Error("Unexpected mail alias upsert in test");
+    },
+    deleteMailAlias: async () => {
+      throw new Error("Unexpected mail alias delete in test");
+    },
+    upsertMailboxQuota: async () => {
+      throw new Error("Unexpected mailbox quota upsert in test");
+    },
+    deleteMailboxQuota: async () => {
+      throw new Error("Unexpected mailbox quota delete in test");
+    },
     loadDesiredStateSpec: async () => {
       throw new Error("Unexpected desired-state load in test");
     },

@@ -25,6 +25,10 @@ import {
   type ResourceDriftSummary,
   type RustDeskPublicConnectionInfo
   ,
+  type UpsertMailAliasRequest,
+  type UpsertMailDomainRequest,
+  type UpsertMailboxQuotaRequest,
+  type UpsertMailboxRequest,
   type RustDeskOverview
 } from "@simplehost/panel-contracts";
 import { type PanelNotice } from "@simplehost/panel-ui";
@@ -101,6 +105,14 @@ export interface PanelWebApi extends ControlAuthSurface {
     request: PackageInstallRequest
   ): Promise<JobDispatchResponse>;
   loadProxyPreview(token: string, slug: string): Promise<ProxyRenderPayload>;
+  upsertMailDomain(token: string, request: UpsertMailDomainRequest): Promise<void>;
+  deleteMailDomain(token: string, domainName: string): Promise<void>;
+  upsertMailbox(token: string, request: UpsertMailboxRequest): Promise<void>;
+  deleteMailbox(token: string, address: string): Promise<void>;
+  upsertMailAlias(token: string, request: UpsertMailAliasRequest): Promise<void>;
+  deleteMailAlias(token: string, address: string): Promise<void>;
+  upsertMailboxQuota(token: string, request: UpsertMailboxQuotaRequest): Promise<void>;
+  deleteMailboxQuota(token: string, mailboxAddress: string): Promise<void>;
   loadDesiredStateSpec(token: string): Promise<DesiredStateSpec>;
   applyDesiredStateSpec(token: string, spec: DesiredStateSpec, reason: string): Promise<void>;
   mutateDesiredState(
@@ -336,6 +348,61 @@ export function createPanelWebApiFromRequest(request: PanelWebApiRequest): Panel
         `/v1/apps/${encodeURIComponent(slug)}/proxy-preview`,
         { token }
       );
+    },
+    async upsertMailDomain(token: string, upsertRequest: UpsertMailDomainRequest): Promise<void> {
+      await request("/v1/mail/domains", {
+        method: "POST",
+        token,
+        body: upsertRequest
+      });
+    },
+    async deleteMailDomain(token: string, domainName: string): Promise<void> {
+      await request(`/v1/mail/domains/${encodeURIComponent(domainName)}`, {
+        method: "DELETE",
+        token
+      });
+    },
+    async upsertMailbox(token: string, upsertRequest: UpsertMailboxRequest): Promise<void> {
+      await request("/v1/mail/mailboxes", {
+        method: "POST",
+        token,
+        body: upsertRequest
+      });
+    },
+    async deleteMailbox(token: string, address: string): Promise<void> {
+      await request(`/v1/mail/mailboxes/${encodeURIComponent(address)}`, {
+        method: "DELETE",
+        token
+      });
+    },
+    async upsertMailAlias(token: string, upsertRequest: UpsertMailAliasRequest): Promise<void> {
+      await request("/v1/mail/aliases", {
+        method: "POST",
+        token,
+        body: upsertRequest
+      });
+    },
+    async deleteMailAlias(token: string, address: string): Promise<void> {
+      await request(`/v1/mail/aliases/${encodeURIComponent(address)}`, {
+        method: "DELETE",
+        token
+      });
+    },
+    async upsertMailboxQuota(
+      token: string,
+      upsertRequest: UpsertMailboxQuotaRequest
+    ): Promise<void> {
+      await request("/v1/mail/quotas", {
+        method: "POST",
+        token,
+        body: upsertRequest
+      });
+    },
+    async deleteMailboxQuota(token: string, mailboxAddress: string): Promise<void> {
+      await request(`/v1/mail/quotas/${encodeURIComponent(mailboxAddress)}`, {
+        method: "DELETE",
+        token
+      });
     },
     async loadDesiredStateSpec(token: string): Promise<DesiredStateSpec> {
       const exported = await request<DesiredStateExportResponse>("/v1/resources/spec", {

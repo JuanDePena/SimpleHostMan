@@ -56,6 +56,10 @@ Current checkpoint on 2026-04-14:
 - `apps/control/src/combined-surface.ts` now acts as the central high-level primitive for the one-process candidate, wiring together bootstrap, route surface, request-context creation, and the combined request handler
 - `apps/control/src/server.ts` now exposes a reusable combined server candidate that can be booted on an ephemeral port for workspace-level smoke validation
 - `apps/control/src/combined-server.test.ts` now exercises that real HTTP candidate with an authenticated end-to-end flow, complementing the split-vs-combined parity smoke tests
+- `apps/control/src/test-harness.ts` now centralizes stubbed API surfaces, shared fixtures, and split-vs-combined request-handler wiring so candidate tests reuse one canonical setup
+- `apps/control/src/request-context.test.ts` now locks the request-level caching contract for resolved session state, authenticated dashboard bootstrap, and health snapshot memoization
+- `control-web` now routes semantic mail/domain/mailbox/quota mutations through `PanelWebApi`, shrinking another slice of direct transport-shaped coupling
+- `pnpm test:control:candidate` now acts as the shortest canonical test command for the combined candidate before any runtime promotion work
 - `pnpm audit:legacy-roots` now guards against reintroducing functional references to legacy repo roots or retired package names outside docs/build output
 - clean-room validation passed from the unified tree: `pnpm install --frozen-lockfile`, `pnpm build:clean-room`, `pnpm typecheck`, `pnpm build:panel-runtime`, `pnpm build:manager-runtime`, `pnpm typecheck:panel-runtime`, `pnpm typecheck:manager-runtime`, and `git diff --check`
 
