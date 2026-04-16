@@ -1,11 +1,14 @@
-import { formatCombinedControlStartupManifest } from "./startup-manifest.js";
+import { formatCombinedControlReleaseSandboxBundle } from "./release-sandbox-bundle.js";
 import { packCombinedControlReleaseSandbox } from "./release-sandbox-pack.js";
+import { formatCombinedControlStartupManifest } from "./startup-manifest.js";
 
 const packed = await packCombinedControlReleaseSandbox();
 
 console.log("Combined control release-sandbox bundle");
 console.log(`Sandbox root: ${packed.layout.sandboxRoot}`);
-console.log(`Entrypoint: ${packed.bundle.entrypoint}`);
-console.log(`Env file: ${packed.bundle.envFile}`);
+console.log(`Entrypoint: ${packed.bundle.paths.entrypoint}`);
+console.log(`Env file: ${packed.bundle.paths.envFile}`);
 console.log("");
 console.log(formatCombinedControlStartupManifest(packed.startupManifest));
+console.log("");
+console.log(formatCombinedControlReleaseSandboxBundle(packed.bundle));

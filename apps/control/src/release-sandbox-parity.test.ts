@@ -11,7 +11,10 @@ function pickComparableHeaders(headers: Record<string, string>) {
   return {
     "content-type": headers["content-type"],
     location: headers.location,
-    "set-cookie": headers["set-cookie"]
+    "set-cookie":
+      typeof headers["set-cookie"] === "string"
+        ? headers["set-cookie"].replace(/Max-Age=\d+/i, "Max-Age=<ttl>")
+        : headers["set-cookie"]
   };
 }
 

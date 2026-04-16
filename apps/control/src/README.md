@@ -32,6 +32,7 @@ Current role:
 - expose a release-like smoke runner in `release-candidate-runner.ts`
 - expose a CLI entrypoint for the release-candidate runner in `release-candidate-cli.ts`
 - expose a workspace-local release-sandbox layout in `release-sandbox-layout.ts`
+- expose a persistent release-sandbox bundle contract in `release-sandbox-bundle.ts`
 - expose a release-sandbox packer in `release-sandbox-pack.ts`
 - expose a CLI entrypoint for packing the release-sandbox in `release-sandbox-pack-cli.ts`
 - expose a runtime entrypoint used inside the sandbox in `release-sandbox-entrypoint.ts`
@@ -45,6 +46,7 @@ Current role:
 - keep a release-candidate runner test in `release-candidate-runner.test.ts` for passing and degraded release-like scenarios
 - keep a release-sandbox smoke test in `release-sandbox-smoke.test.ts` for the packed sandbox runtime
 - keep a release-sandbox parity test in `release-sandbox-parity.test.ts` to compare direct and sandbox-started combined candidates
+- keep a release-sandbox bundle parity test in `release-sandbox-bundle-parity.test.ts` to lock bundle metadata against the direct combined candidate
 - keep focused request-context coverage in `request-context.test.ts` so per-request cache semantics stay pinned down during convergence
 
 The current checkpoint now distinguishes:
@@ -53,6 +55,7 @@ The current checkpoint now distinguishes:
 - source-level preflight (`preflight-cli`, `preflight-runner`)
 - source-level release-candidate (`release-candidate-cli`, `release-candidate-runner`)
 - source-level release-sandbox (`release-sandbox-layout`, `release-sandbox-pack`, `release-sandbox-runner`)
+- source-level release-sandbox bundle parity (`release-sandbox-bundle`, `release-sandbox-bundle-parity.test.ts`)
 
 That still stops short of any packaging or release promotion against `/opt/simplehostman/release`.
 - concentrate semantic auth, dashboard bootstrap, and runtime health in `bootstrap-surface.ts` so the combined candidate depends on higher-level surfaces instead of raw request wiring

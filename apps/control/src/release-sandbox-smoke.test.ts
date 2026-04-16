@@ -13,6 +13,10 @@ test("release-sandbox candidate serves key HTTP routes over a packed sandbox lay
   try {
     const healthResponse = await fetch(new URL("/healthz", runtime.origin));
     assert.equal(healthResponse.status, 200);
+    assert.equal(runtime.bundle.kind, "combined-release-sandbox-bundle");
+    assert.equal(runtime.bundle.startup.origin, runtime.origin);
+    assert.match(runtime.startupSummary, /Combined control startup manifest/);
+    assert.match(runtime.bundleSummary, /Combined control release-sandbox bundle/);
 
     const loginResponse = await fetch(new URL("/auth/login", runtime.origin), {
       method: "POST",
@@ -68,6 +72,29 @@ test("release-sandbox candidate serves key HTTP routes over a packed sandbox lay
       }
     );
     assert.equal(packageInstallResponse.status, 303);
+
+    const mailDomainUpsertResponse = await fetch(
+      new URL("/resources/mail/domains/upsert", runtime.origin),
+      {
+        method: "POST",
+        headers: {
+          cookie,
+          "content-type": "application/x-www-form-urlencoded; charset=utf-8"
+        },
+        body: [
+          "domainName=adudoc.com",
+          "tenantSlug=adudoc",
+          "zoneName=adudoc.com",
+          "primaryNodeId=primary",
+          "standbyNodeId=secondary",
+          "mailHost=mail.adudoc.com",
+          "dkimSelector=mail",
+          "returnTo=%2F%3Fview%3Dmail"
+        ].join("&"),
+        redirect: "manual"
+      }
+    );
+    assert.equal(mailDomainUpsertResponse.status, 303);
   } finally {
     await runtime.close();
   }

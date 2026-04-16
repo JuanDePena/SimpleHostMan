@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { cp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -13,28 +14,31 @@ import {
   type CombinedControlReleaseSandboxLayout
 } from "./release-sandbox-layout.js";
 import {
+  createCombinedControlReleaseSandboxBundle,
+  formatCombinedControlReleaseSandboxBundle,
+  type CombinedControlReleaseSandboxBundle
+} from "./release-sandbox-bundle.js";
+import {
   createCombinedControlStartupManifest,
   formatCombinedControlStartupManifest,
   type CombinedControlStartupManifest
 } from "./startup-manifest.js";
-
-export interface CombinedControlReleaseSandboxBundle {
-  readonly kind: "combined-release-sandbox-bundle";
-  readonly version: string;
-  readonly workspaceRoot: string;
-  readonly sandboxRoot: string;
-  readonly currentRoot: string;
-  readonly entrypoint: string;
-  readonly envFile: string;
-  readonly startupManifestFile: string;
-  readonly startupSummaryFile: string;
-}
 
 export interface PackCombinedControlReleaseSandboxResult {
   readonly layout: CombinedControlReleaseSandboxLayout;
   readonly config: CombinedControlReleaseCandidateConfig;
   readonly startupManifest: CombinedControlStartupManifest;
   readonly bundle: CombinedControlReleaseSandboxBundle;
+}
+
+function resolveSourceCommitish(workspaceRoot: string): string {
+  try {
+    return execFileSync("git", ["-C", workspaceRoot, "rev-parse", "--short", "HEAD"], {
+      encoding: "utf8"
+    }).trim();
+  } catch {
+    return "unknown";
+  }
 }
 
 function toEnvFileContent(config: CombinedControlReleaseCandidateConfig): string {
@@ -74,17 +78,25 @@ export async function packCombinedControlReleaseSandbox(args: {
     port: args.port
   });
   const startupManifest = createCombinedControlStartupManifest(config);
-  const bundle: CombinedControlReleaseSandboxBundle = {
-    kind: "combined-release-sandbox-bundle",
+  const bundle = createCombinedControlReleaseSandboxBundle({
     version: layout.version,
-    workspaceRoot: layout.workspaceRoot,
-    sandboxRoot: layout.sandboxRoot,
-    currentRoot: layout.currentRoot,
-    entrypoint: join(layout.controlDistRoot, "release-sandbox-entrypoint.js"),
-    envFile: layout.envFile,
-    startupManifestFile: layout.startupManifestFile,
-    startupSummaryFile: layout.startupSummaryFile
-  };
+    sandboxId: layout.sandboxId,
+    sourceCommitish: resolveSourceCommitish(layout.workspaceRoot),
+    paths: {
+      workspaceRoot: layout.workspaceRoot,
+      sandboxRoot: layout.sandboxRoot,
+      currentRoot: layout.currentRoot,
+      entrypoint: join(layout.controlDistRoot, "release-sandbox-entrypoint.js"),
+      envFile: layout.envFile,
+      startupManifestFile: layout.startupManifestFile,
+      startupSummaryFile: layout.startupSummaryFile,
+      bundleManifestFile: layout.bundleManifestFile,
+      bundleSummaryFile: layout.bundleSummaryFile,
+      logsDir: layout.logsDir,
+      runDir: layout.runDir
+    },
+    startupManifest
+  });
 
   if (args.clean !== false) {
     await rm(layout.sandboxRoot, { recursive: true, force: true });
@@ -134,6 +146,10 @@ export async function packCombinedControlReleaseSandbox(args: {
   await writeFile(
     layout.bundleManifestFile,
     JSON.stringify(bundle, null, 2).concat("\n")
+  );
+  await writeFile(
+    layout.bundleSummaryFile,
+    formatCombinedControlReleaseSandboxBundle(bundle).concat("\n")
   );
 
   return {

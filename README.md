@@ -64,6 +64,7 @@ Useful commands:
 - `pnpm test:control`
 - `pnpm test:control:preflight`
 - `pnpm test:control:release-candidate`
+- `pnpm test:control:bundle-parity`
 - `pnpm test:control:release-sandbox`
 - `pnpm test:control:runtime-parity`
 - `pnpm test:control:combined-smoke`
@@ -72,6 +73,7 @@ Useful commands:
 - `pnpm check:control:candidate`
 - `pnpm check:control:preflight`
 - `pnpm check:control:release-candidate`
+- `pnpm check:control:bundle-parity`
 - `pnpm check:control:release-sandbox`
 - `pnpm pack:control:release-sandbox`
 - `pnpm start:control:release-sandbox`

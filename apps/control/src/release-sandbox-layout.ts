@@ -18,6 +18,7 @@ export interface CombinedControlReleaseSandboxLayout {
   readonly startupManifestFile: string;
   readonly startupSummaryFile: string;
   readonly bundleManifestFile: string;
+  readonly bundleSummaryFile: string;
   readonly logsDir: string;
   readonly runDir: string;
   readonly version: string;
@@ -110,6 +111,7 @@ export function createCombinedControlReleaseSandboxLayout(args: {
     startupManifestFile: join(metaDir, "startup-manifest.json"),
     startupSummaryFile: join(metaDir, "startup-summary.txt"),
     bundleManifestFile: join(metaDir, "bundle.json"),
+    bundleSummaryFile: join(metaDir, "bundle-summary.txt"),
     logsDir,
     runDir,
     version
