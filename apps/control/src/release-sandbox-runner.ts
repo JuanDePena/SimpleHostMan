@@ -77,7 +77,9 @@ async function waitForHealthz(origin: string, timeoutMs = 15_000): Promise<void>
     : new Error(`Timed out waiting for ${origin}/healthz`);
 }
 
-async function resolvePort(port: number | undefined): Promise<number> {
+export async function resolveCombinedControlReleaseSandboxPort(
+  port: number | undefined
+): Promise<number> {
   if (typeof port === "number" && port > 0) {
     return port;
   }
@@ -155,6 +157,18 @@ function validateSandboxArtifacts(args: {
   }
   if (promotion && !existsSync(bundle.paths.promotionHistoryFile)) {
     throw new Error(`Sandbox promotion history missing: ${bundle.paths.promotionHistoryFile}`);
+  }
+  if (promotion && !existsSync(bundle.paths.deployManifestFile)) {
+    throw new Error(`Sandbox deploy manifest missing: ${bundle.paths.deployManifestFile}`);
+  }
+  if (promotion && !existsSync(bundle.paths.deploySummaryFile)) {
+    throw new Error(`Sandbox deploy summary missing: ${bundle.paths.deploySummaryFile}`);
+  }
+  if (promotion && !existsSync(bundle.paths.rollbackManifestFile)) {
+    throw new Error(`Sandbox rollback manifest missing: ${bundle.paths.rollbackManifestFile}`);
+  }
+  if (promotion && !existsSync(bundle.paths.rollbackSummaryFile)) {
+    throw new Error(`Sandbox rollback summary missing: ${bundle.paths.rollbackSummaryFile}`);
   }
   if (!lstatSync(bundle.paths.currentRoot).isSymbolicLink()) {
     throw new Error(`Sandbox current root is not a symlink: ${bundle.paths.currentRoot}`);
@@ -292,7 +306,7 @@ export async function startExistingCombinedControlReleaseSandbox(args: {
   const active = await resolveActiveCombinedControlReleaseSandbox(args);
   const originMatch = active.bundle.startup.origin.match(/:(\d+)$/);
   const port =
-    typeof args.port === "number"
+    typeof args.port === "number" && args.port > 0
       ? args.port
       : originMatch
         ? Number(originMatch[1])
@@ -316,7 +330,7 @@ export async function startCombinedControlReleaseSandbox(args: {
   version?: string;
 } = {}): Promise<CombinedControlReleaseSandboxRuntime> {
   const host = args.host ?? "127.0.0.1";
-  const port = await resolvePort(args.port);
+  const port = await resolveCombinedControlReleaseSandboxPort(args.port);
   const packed = await packCombinedControlReleaseSandbox({
     ...args,
     host,

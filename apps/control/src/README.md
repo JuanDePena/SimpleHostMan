@@ -38,6 +38,9 @@ Current role:
 - expose a CLI entrypoint for packing the release-sandbox in `release-sandbox-pack-cli.ts`
 - expose a CLI entrypoint for activating a packed release-sandbox in `release-sandbox-activate-cli.ts`
 - expose a CLI entrypoint for promoting an active release-sandbox version in `release-sandbox-promote-cli.ts`
+- expose deploy and rollback manifest helpers in `release-sandbox-deployment.ts`
+- expose a promotion-ready runner in `release-sandbox-promotion-ready.ts`
+- expose a CLI entrypoint for the promotion-ready runner in `release-sandbox-promotion-ready-cli.ts`
 - expose a CLI entrypoint for inspecting packed release-sandbox state in `release-sandbox-inspect-cli.ts`
 - expose a runtime entrypoint used inside the sandbox in `release-sandbox-entrypoint.ts`
 - expose a release-sandbox runner in `release-sandbox-runner.ts`
@@ -53,6 +56,7 @@ Current role:
 - keep a release-sandbox bundle parity test in `release-sandbox-bundle-parity.test.ts` to lock bundle metadata against the direct combined candidate
 - keep a release-sandbox activation test in `release-sandbox-activation.test.ts` to lock switching and rollback behavior inside the sandbox
 - keep a release-sandbox promotion test in `release-sandbox-promotion.test.ts` to lock promotion metadata and history inside the sandbox
+- keep a release-sandbox promotion-ready test in `release-sandbox-promotion-ready.test.ts` to lock deploy/rollback manifests and the promotion-ready report inside the sandbox
 - keep focused request-context coverage in `request-context.test.ts` so per-request cache semantics stay pinned down during convergence
 
 The current checkpoint now distinguishes:
@@ -62,6 +66,7 @@ The current checkpoint now distinguishes:
 - source-level release-candidate (`release-candidate-cli`, `release-candidate-runner`)
 - source-level release-sandbox (`release-sandbox-layout`, `release-sandbox-pack`, `release-sandbox-runner`)
 - source-level release-sandbox bundle parity (`release-sandbox-bundle`, `release-sandbox-bundle-parity.test.ts`)
+- source-level release-sandbox promotion-ready (`release-sandbox-deployment`, `release-sandbox-promotion-ready`)
 
 The current sandbox now simulates a more release-like filesystem shape inside the workspace:
 
@@ -69,6 +74,7 @@ The current sandbox now simulates a more release-like filesystem shape inside th
 - `current` as a symlink to the versioned release directory
 - `shared/meta` for release inventory plus activation metadata
 - persistent promotion metadata and history under `shared/meta`
+- persistent deploy/rollback manifests and summaries under `shared/meta`
 - `shared/tmp`, `shared/logs`, and `shared/run` for shared writable state
 
 That still stops short of any packaging or release promotion against `/opt/simplehostman/release`.

@@ -110,6 +110,10 @@ export async function packCombinedControlReleaseSandbox(args: {
       promotionManifestFile: layout.promotionManifestFile,
       promotionSummaryFile: layout.promotionSummaryFile,
       promotionHistoryFile: layout.promotionHistoryFile,
+      deployManifestFile: layout.deployManifestFile,
+      deploySummaryFile: layout.deploySummaryFile,
+      rollbackManifestFile: layout.rollbackManifestFile,
+      rollbackSummaryFile: layout.rollbackSummaryFile,
       logsDir: layout.logsDir,
       runDir: layout.runDir
     },

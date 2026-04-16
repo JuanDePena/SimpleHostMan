@@ -38,6 +38,10 @@ export interface CombinedControlReleaseSandboxBundlePaths {
   readonly promotionManifestFile: string;
   readonly promotionSummaryFile: string;
   readonly promotionHistoryFile: string;
+  readonly deployManifestFile: string;
+  readonly deploySummaryFile: string;
+  readonly rollbackManifestFile: string;
+  readonly rollbackSummaryFile: string;
   readonly logsDir: string;
   readonly runDir: string;
 }
@@ -95,12 +99,14 @@ export function createCombinedControlReleaseSandboxBundle(args: {
         "startup manifest origin matches the booted runtime",
         "env file resolves combined release-sandbox mode",
         "current symlink points at the active versioned release",
-        "promotion metadata can describe the active release as a release-like promotion"
+        "promotion metadata can describe the active release as a release-like promotion",
+        "deploy and rollback manifests can describe the next release action without touching the real release root"
       ],
       parity: [
         "representative routes match direct combined candidate",
         "startup metadata remains aligned with workspace candidate",
-        "active release metadata remains aligned after version switching"
+        "active release metadata remains aligned after version switching",
+        "promotion metadata remains aligned with the active release after deploy/rollback rehearsal"
       ]
     }
   };
@@ -130,6 +136,9 @@ export function formatCombinedControlReleaseSandboxBundle(
     `Env file: ${bundle.paths.envFile}`,
     `Startup manifest: ${bundle.paths.startupManifestFile}`,
     `Bundle manifest: ${bundle.paths.bundleManifestFile}`,
-    `Activation manifest: ${bundle.paths.activationManifestFile}`
+    `Activation manifest: ${bundle.paths.activationManifestFile}`,
+    `Promotion manifest: ${bundle.paths.promotionManifestFile}`,
+    `Deploy manifest: ${bundle.paths.deployManifestFile}`,
+    `Rollback manifest: ${bundle.paths.rollbackManifestFile}`
   ].join("\n");
 }

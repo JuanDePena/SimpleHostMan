@@ -73,13 +73,16 @@ Current checkpoint on 2026-04-14:
 - `apps/control/src/release-sandbox-bundle-parity.test.ts` now validates that the packed sandbox bundle stays aligned with the direct combined candidate metadata
 - `apps/control/src/release-sandbox-activation.ts` plus `release-sandbox-activation.test.ts` now model release inventory, activation metadata, version switching, and rollback inside one workspace-local sandbox
 - `apps/control/src/release-sandbox-promotion.ts` plus `release-sandbox-promotion.test.ts` now model release-like promotion manifests and promotion history inside the workspace-local sandbox
+- `apps/control/src/release-sandbox-deployment.ts`, `release-sandbox-promotion-ready.ts`, and `release-sandbox-promotion-ready.test.ts` now model deploy/rollback manifests plus a promotion-ready report for the promoted sandbox candidate
 - the sandbox now models `releases/<version>`, `current` as a symlink, `shared/meta`, promotion history, and `shared/{tmp,logs,run}` inside `.tmp/control-release-sandbox`, making it a closer rehearsal for a future real release layout
+- the sandbox now also materializes `deploy.json`, `deploy-summary.txt`, `rollback.json`, and `rollback-summary.txt` inside `shared/meta`
 - `pnpm test:control:candidate` now acts as the shortest canonical test command for the combined candidate before any runtime promotion work
 - `pnpm test:control:runtime-parity` now acts as the canonical process-level parity check between split and combined candidate servers
 - `pnpm check:control:preflight` now acts as the canonical source-level pre-promotion check for the combined candidate
 - `pnpm check:control:release-candidate` now acts as the canonical source-level release-like smoke check for the combined candidate
 - `pnpm check:control:bundle-parity` now acts as the canonical bundle-contract check for the sandboxed candidate
 - `pnpm check:control:release-sandbox` now acts as the canonical source-level release-sandbox check for the combined candidate
+- `pnpm check:control:promotion-ready` now acts as the canonical source-level promotion-ready check for the promoted sandbox candidate
 - `pnpm activate:control:release-sandbox -- <version> [sandboxId]` now acts as the canonical source-level release switching command inside the sandbox
 - `pnpm promote:control:release-sandbox -- <version> [sandboxId]` now acts as the canonical source-level release promotion command inside the sandbox
 - `pnpm inspect:control:release-sandbox -- [sandboxId]` now acts as the canonical source-level inspection command for sandbox inventory and active release state
@@ -109,6 +112,7 @@ Before `apps/control` can attempt any promotion of `combined` beyond source-leve
 - `pnpm check:control:release-candidate`
 - `pnpm check:control:bundle-parity`
 - `pnpm check:control:release-sandbox`
+- `pnpm check:control:promotion-ready`
 
 And all of the following should still be true:
 
@@ -127,6 +131,7 @@ Promotion language at the current checkpoint:
 - `candidate release-layout-ready`: the sandboxed candidate now exercises versioned releases, a `current` symlink, and shared writable roots inside the workspace
 - `candidate release-switch-ready`: the sandboxed candidate now supports inventory-backed version switching and rollback inside the workspace
 - `candidate release-promotion-ready`: the sandboxed candidate now supports promotion manifests and promotion history inside the workspace
+- `candidate promotion-ready`: the sandboxed candidate now also emits deploy/rollback manifests plus a human-readable promotion-ready report inside the workspace
 - `release-ready`: still not reached; packaging and deploy flows remain split-first
 
 ## Target layout

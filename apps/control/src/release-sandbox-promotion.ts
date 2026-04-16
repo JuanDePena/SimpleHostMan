@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 
 import type { CombinedControlReleaseSandboxBundle } from "./release-sandbox-bundle.js";
+import { materializeCombinedControlReleaseSandboxDeployment } from "./release-sandbox-deployment.js";
 import {
   activateCombinedControlReleaseSandboxVersion,
   readCombinedControlReleaseSandboxInventory,
@@ -206,6 +207,11 @@ export async function promoteCombinedControlReleaseSandboxVersion(args: {
   );
   await writeCombinedControlReleaseSandboxPromotionHistory({
     layout,
+    history: nextHistory
+  });
+  await materializeCombinedControlReleaseSandboxDeployment({
+    layout,
+    promotion,
     history: nextHistory
   });
 
