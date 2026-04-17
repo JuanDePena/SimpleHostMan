@@ -19,6 +19,7 @@ export interface CombinedControlReleaseShadowManifest {
   readonly shadowPromotionManifestFile: string;
   readonly shadowDeployManifestFile: string;
   readonly shadowRollbackManifestFile: string;
+  readonly shadowHandoffManifestFile: string;
   readonly sourceCommitish: string;
   readonly sourceSandboxRoot: string;
   readonly sourceReleaseVersionRoot: string;
@@ -58,6 +59,7 @@ export function createCombinedControlReleaseShadowManifest(args: {
     shadowPromotionManifestFile: args.layout.promotionManifestFile,
     shadowDeployManifestFile: args.layout.deployManifestFile,
     shadowRollbackManifestFile: args.layout.rollbackManifestFile,
+    shadowHandoffManifestFile: args.layout.handoffManifestFile,
     sourceCommitish: args.sandboxBundle.sourceCommitish,
     sourceSandboxRoot: args.sourceSandboxRoot,
     sourceReleaseVersionRoot: args.sourceReleaseVersionRoot,
@@ -91,6 +93,7 @@ export function formatCombinedControlReleaseShadowManifest(
     `Shadow promotion manifest: ${manifest.shadowPromotionManifestFile}`,
     `Shadow deploy manifest: ${manifest.shadowDeployManifestFile}`,
     `Shadow rollback manifest: ${manifest.shadowRollbackManifestFile}`,
+    `Shadow handoff manifest: ${manifest.shadowHandoffManifestFile}`,
     `Source sandbox root: ${manifest.sourceSandboxRoot}`,
     `Source release version root: ${manifest.sourceReleaseVersionRoot}`,
     `Source promotion manifest: ${manifest.sourcePromotionManifestFile}`,

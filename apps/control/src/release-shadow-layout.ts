@@ -40,6 +40,8 @@ export interface CombinedControlReleaseShadowLayout {
   readonly deploySummaryFile: string;
   readonly rollbackManifestFile: string;
   readonly rollbackSummaryFile: string;
+  readonly handoffManifestFile: string;
+  readonly handoffSummaryFile: string;
 }
 
 export function createCombinedControlReleaseShadowLayout(args: {
@@ -109,6 +111,8 @@ export function createCombinedControlReleaseShadowLayout(args: {
     deployManifestFile: join(sharedMetaDir, "deploy.json"),
     deploySummaryFile: join(sharedMetaDir, "deploy-summary.txt"),
     rollbackManifestFile: join(sharedMetaDir, "rollback.json"),
-    rollbackSummaryFile: join(sharedMetaDir, "rollback-summary.txt")
+    rollbackSummaryFile: join(sharedMetaDir, "rollback-summary.txt"),
+    handoffManifestFile: join(sharedMetaDir, "handoff.json"),
+    handoffSummaryFile: join(sharedMetaDir, "handoff-summary.txt")
   };
 }

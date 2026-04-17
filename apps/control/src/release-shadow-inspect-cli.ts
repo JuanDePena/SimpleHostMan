@@ -5,6 +5,10 @@ import {
   resolveActiveCombinedControlReleaseShadow
 } from "./release-shadow-activation.js";
 import {
+  formatCombinedControlReleaseShadowHandoffManifest,
+  readCombinedControlReleaseShadowHandoffManifest
+} from "./release-shadow-handoff.js";
+import {
   formatCombinedControlReleaseShadowPromotion,
   formatCombinedControlReleaseShadowPromotionHistory,
   readCombinedControlReleaseShadowPromotionHistory,
@@ -17,6 +21,9 @@ const promotionHistory = await readCombinedControlReleaseShadowPromotionHistory(
   sandboxId
 });
 const promotion = await readCombinedControlReleaseShadowPromotionManifest({
+  sandboxId
+});
+const handoff = await readCombinedControlReleaseShadowHandoffManifest({
   sandboxId
 });
 
@@ -36,3 +43,8 @@ try {
 
 console.log("");
 console.log(formatCombinedControlReleaseShadowPromotionHistory(promotionHistory));
+
+if (handoff) {
+  console.log("");
+  console.log(formatCombinedControlReleaseShadowHandoffManifest(handoff));
+}

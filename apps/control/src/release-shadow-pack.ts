@@ -18,6 +18,10 @@ import {
   formatCombinedControlReleaseShadowManifest,
   type CombinedControlReleaseShadowManifest
 } from "./release-shadow-manifest.js";
+import {
+  materializeCombinedControlReleaseShadowHandoff,
+  type CombinedControlReleaseShadowHandoffManifest
+} from "./release-shadow-handoff.js";
 import type { CombinedControlReleaseSandboxBundle } from "./release-sandbox-bundle.js";
 import { packCombinedControlReleaseSandbox } from "./release-sandbox-pack.js";
 import {
@@ -36,6 +40,7 @@ import { resolveCombinedControlReleaseSandboxPort } from "./release-sandbox-runn
 export interface PackCombinedControlReleaseShadowResult {
   readonly layout: ReturnType<typeof createCombinedControlReleaseShadowLayout>;
   readonly manifest: CombinedControlReleaseShadowManifest;
+  readonly handoffManifest: CombinedControlReleaseShadowHandoffManifest;
   readonly inventory: CombinedControlReleaseShadowInventory;
   readonly activation: CombinedControlReleaseShadowActivationManifest;
   readonly promotion: CombinedControlReleaseShadowPromotionManifest;
@@ -206,10 +211,18 @@ export async function packCombinedControlReleaseShadow(args: {
     sourceRollbackManifestFile: active.layout.rollbackManifestFile,
     availableVersions
   });
+  const handoffManifest = await materializeCombinedControlReleaseShadowHandoff({
+    layout,
+    manifest,
+    promotion: shadowPromotion.promotion,
+    deployManifest,
+    rollbackManifest
+  });
 
   return {
     layout,
     manifest,
+    handoffManifest,
     inventory,
     activation: shadowPromotion.activation,
     promotion: shadowPromotion.promotion,

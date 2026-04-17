@@ -11,5 +11,6 @@ console.log(`Release version root: ${packed.layout.releaseVersionRoot}`);
 console.log(`Release entrypoint: ${packed.layout.releaseEntrypoint}`);
 console.log(`Current entrypoint: ${packed.layout.currentEntrypoint}`);
 console.log(`Env file: ${packed.layout.envFile}`);
+console.log(`Handoff manifest: ${packed.layout.handoffManifestFile}`);
 console.log("");
 console.log(formatCombinedControlReleaseShadowManifest(packed.manifest));

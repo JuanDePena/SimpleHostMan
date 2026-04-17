@@ -6,6 +6,10 @@ import { registerGracefulShutdown } from "@simplehost/control-shared";
 
 import { createCombinedControlReleaseShadowLayout } from "./release-shadow-layout.js";
 import {
+  readCombinedControlReleaseShadowHandoffManifest,
+  type CombinedControlReleaseShadowHandoffManifest
+} from "./release-shadow-handoff.js";
+import {
   packCombinedControlReleaseShadow,
   type PackCombinedControlReleaseShadowResult
 } from "./release-shadow-pack.js";
@@ -19,6 +23,7 @@ export interface CombinedControlReleaseShadowRuntime {
   readonly shadowManifest: CombinedControlReleaseShadowManifest;
   readonly startupSummary: string;
   readonly shadowSummary: string;
+  readonly handoffManifest: CombinedControlReleaseShadowHandoffManifest;
   readonly packed: PackCombinedControlReleaseShadowResult;
   readonly child: ChildProcess;
   readonly stdoutLog: string[];
@@ -96,6 +101,12 @@ function validateReleaseShadowArtifacts(args: {
   if (!existsSync(layout.shadowManifestFile)) {
     throw new Error(`Release-shadow manifest missing: ${layout.shadowManifestFile}`);
   }
+  if (!existsSync(layout.handoffManifestFile)) {
+    throw new Error(`Release-shadow handoff manifest missing: ${layout.handoffManifestFile}`);
+  }
+  if (!existsSync(layout.handoffSummaryFile)) {
+    throw new Error(`Release-shadow handoff summary missing: ${layout.handoffSummaryFile}`);
+  }
   if (!existsSync(layout.releasesInventoryFile)) {
     throw new Error(
       `Release-shadow releases inventory missing: ${layout.releasesInventoryFile}`
@@ -152,6 +163,9 @@ async function startPackedCombinedControlReleaseShadow(args: {
   const shadowManifest = readJsonFile<CombinedControlReleaseShadowManifest>(
     args.packed.layout.shadowManifestFile
   );
+  const handoffManifest = readJsonFile<CombinedControlReleaseShadowHandoffManifest>(
+    args.packed.layout.handoffManifestFile
+  );
   const startupSummary = await readFile(args.packed.layout.startupSummaryFile, "utf8");
   const shadowSummary = await readFile(args.packed.layout.shadowSummaryFile, "utf8");
 
@@ -185,6 +199,7 @@ async function startPackedCombinedControlReleaseShadow(args: {
     origin: startupManifest.origin,
     manifest: startupManifest,
     shadowManifest,
+    handoffManifest,
     startupSummary,
     shadowSummary,
     packed: args.packed,
@@ -232,6 +247,14 @@ export async function startExistingCombinedControlReleaseShadow(args: {
   const packed: PackCombinedControlReleaseShadowResult = {
     layout,
     manifest: readJsonFile<CombinedControlReleaseShadowManifest>(layout.shadowManifestFile),
+    handoffManifest:
+      (await readCombinedControlReleaseShadowHandoffManifest({
+        workspaceRoot: layout.workspaceRoot,
+        sandboxId: layout.sandboxId
+      })) ??
+      (() => {
+        throw new Error("Release-shadow handoff state is incomplete");
+      })(),
     inventory: readJsonFile(layout.releasesInventoryFile),
     activation: readJsonFile(layout.activationManifestFile),
     promotion: readJsonFile(layout.promotionManifestFile),
