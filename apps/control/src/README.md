@@ -45,6 +45,11 @@ Current role:
 - expose a runtime entrypoint used inside the sandbox in `release-sandbox-entrypoint.ts`
 - expose a release-sandbox runner in `release-sandbox-runner.ts`
 - expose a CLI entrypoint for starting the release-sandbox in `release-sandbox-start-cli.ts`
+- expose a workspace-local shadow layout for `/opt/simplehostman/release` in `release-shadow-layout.ts`
+- expose a release-shadow manifest in `release-shadow-manifest.ts`
+- expose a release-shadow packer in `release-shadow-pack.ts`
+- expose a release-shadow runner in `release-shadow-runner.ts`
+- expose CLI entrypoints for packing and starting the release-shadow in `release-shadow-pack-cli.ts` and `release-shadow-start-cli.ts`
 - define the candidate runtime shape in `runtime-contract.ts`
 - keep an end-to-endish smoke test in `combined-smoke.test.ts` that compares split and combined behavior over the real web surface
 - keep a real HTTP e2e smoke in `combined-server.test.ts` that boots the candidate on an ephemeral port
@@ -57,6 +62,8 @@ Current role:
 - keep a release-sandbox activation test in `release-sandbox-activation.test.ts` to lock switching and rollback behavior inside the sandbox
 - keep a release-sandbox promotion test in `release-sandbox-promotion.test.ts` to lock promotion metadata and history inside the sandbox
 - keep a release-sandbox promotion-ready test in `release-sandbox-promotion-ready.test.ts` to lock deploy/rollback manifests and the promotion-ready report inside the sandbox
+- keep a release-shadow smoke test in `release-shadow-smoke.test.ts` for the shadow release-root candidate
+- keep a release-shadow parity test in `release-shadow-parity.test.ts` to compare the shadow release-root candidate against the release-sandbox candidate
 - keep focused request-context coverage in `request-context.test.ts` so per-request cache semantics stay pinned down during convergence
 
 The current checkpoint now distinguishes:
@@ -67,6 +74,7 @@ The current checkpoint now distinguishes:
 - source-level release-sandbox (`release-sandbox-layout`, `release-sandbox-pack`, `release-sandbox-runner`)
 - source-level release-sandbox bundle parity (`release-sandbox-bundle`, `release-sandbox-bundle-parity.test.ts`)
 - source-level release-sandbox promotion-ready (`release-sandbox-deployment`, `release-sandbox-promotion-ready`)
+- source-level release-shadow (`release-shadow-layout`, `release-shadow-pack`, `release-shadow-runner`)
 
 The current sandbox now simulates a more release-like filesystem shape inside the workspace:
 
@@ -76,6 +84,12 @@ The current sandbox now simulates a more release-like filesystem shape inside th
 - persistent promotion metadata and history under `shared/meta`
 - persistent deploy/rollback manifests and summaries under `shared/meta`
 - `shared/tmp`, `shared/logs`, and `shared/run` for shared writable state
+
+The next rehearsal layer now targets a workspace-local shadow of `/opt/simplehostman/release`:
+
+- `.tmp/control-release-shadow/<sandboxId>/opt/simplehostman/release`
+- `releases/<version>` and `current` within that shadow root
+- copied promotion/deploy/rollback metadata under `shared/meta`
 
 That still stops short of any packaging or release promotion against `/opt/simplehostman/release`.
 - concentrate semantic auth, dashboard bootstrap, and runtime health in `bootstrap-surface.ts` so the combined candidate depends on higher-level surfaces instead of raw request wiring

@@ -57,6 +57,7 @@ From `/opt/simplehostman/src`:
 - `pnpm test:control:promotion-ready`
 - `pnpm test:control:bundle-parity`
 - `pnpm test:control:release-sandbox`
+- `pnpm test:control:release-shadow`
 - `pnpm test:control:candidate`
 - `pnpm test:control:runtime-parity`
 - `pnpm test:control:combined-smoke`
@@ -68,12 +69,15 @@ From `/opt/simplehostman/src`:
 - `pnpm check:control:promotion-ready`
 - `pnpm check:control:bundle-parity`
 - `pnpm check:control:release-sandbox`
+- `pnpm check:control:release-shadow`
 - `pnpm pack:control:release-sandbox`
+- `pnpm pack:control:release-shadow`
 - `pnpm activate:control:release-sandbox -- <version> [sandboxId]`
 - `pnpm promote:control:release-sandbox -- <version> [sandboxId]`
 - `pnpm promotion-ready:control:release-sandbox`
 - `pnpm inspect:control:release-sandbox -- [sandboxId]`
 - `pnpm start:control:release-sandbox`
+- `pnpm start:control:release-shadow`
 
 From this directory:
 
@@ -102,6 +106,7 @@ From this directory:
 - `pnpm test:release-sandbox:promotion-ready`
 - `pnpm test:release-sandbox:bundle-parity`
 - `pnpm test:release-sandbox`
+- `pnpm test:release-shadow`
 - `pnpm test:candidate`
 - `pnpm test:runtime-parity`
 - `pnpm test:combined-smoke`
@@ -113,12 +118,15 @@ From this directory:
 - `pnpm check:release-sandbox:promotion-ready`
 - `pnpm check:release-sandbox:bundle-parity`
 - `pnpm check:release-sandbox`
+- `pnpm check:release-shadow`
 - `pnpm pack:release-sandbox`
+- `pnpm pack:release-shadow`
 - `pnpm activate:release-sandbox -- <version> [sandboxId]`
 - `pnpm promote:release-sandbox -- <version> [sandboxId]`
 - `pnpm promotion-ready`
 - `pnpm inspect:release-sandbox -- [sandboxId]`
 - `pnpm start:release-sandbox`
+- `pnpm start:release-shadow`
 
 ## Migration notes
 
