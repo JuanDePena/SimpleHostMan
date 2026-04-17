@@ -47,9 +47,12 @@ Current role:
 - expose a CLI entrypoint for starting the release-sandbox in `release-sandbox-start-cli.ts`
 - expose a workspace-local shadow layout for `/opt/simplehostman/release` in `release-shadow-layout.ts`
 - expose a release-shadow manifest in `release-shadow-manifest.ts`
+- expose release-shadow inventory and activation helpers in `release-shadow-activation.ts`
+- expose release-shadow promotion metadata and history in `release-shadow-promotion.ts`
+- expose release-shadow deploy/rollback manifests in `release-shadow-deployment.ts`
 - expose a release-shadow packer in `release-shadow-pack.ts`
 - expose a release-shadow runner in `release-shadow-runner.ts`
-- expose CLI entrypoints for packing and starting the release-shadow in `release-shadow-pack-cli.ts` and `release-shadow-start-cli.ts`
+- expose CLI entrypoints for packing, starting, inspecting, and promotion-ready checks for the release-shadow in `release-shadow-pack-cli.ts`, `release-shadow-start-cli.ts`, `release-shadow-inspect-cli.ts`, and `release-shadow-promotion-ready-cli.ts`
 - define the candidate runtime shape in `runtime-contract.ts`
 - keep an end-to-endish smoke test in `combined-smoke.test.ts` that compares split and combined behavior over the real web surface
 - keep a real HTTP e2e smoke in `combined-server.test.ts` that boots the candidate on an ephemeral port
@@ -64,6 +67,8 @@ Current role:
 - keep a release-sandbox promotion-ready test in `release-sandbox-promotion-ready.test.ts` to lock deploy/rollback manifests and the promotion-ready report inside the sandbox
 - keep a release-shadow smoke test in `release-shadow-smoke.test.ts` for the shadow release-root candidate
 - keep a release-shadow parity test in `release-shadow-parity.test.ts` to compare the shadow release-root candidate against the release-sandbox candidate
+- keep a release-shadow activation test in `release-shadow-activation.test.ts` to lock copied inventory plus version switching inside the shadow
+- keep a release-shadow promotion-ready test in `release-shadow-promotion-ready.test.ts` to lock deploy/rollback manifests and the promotion-ready report inside the shadow
 - keep focused request-context coverage in `request-context.test.ts` so per-request cache semantics stay pinned down during convergence
 
 The current checkpoint now distinguishes:
@@ -75,6 +80,7 @@ The current checkpoint now distinguishes:
 - source-level release-sandbox bundle parity (`release-sandbox-bundle`, `release-sandbox-bundle-parity.test.ts`)
 - source-level release-sandbox promotion-ready (`release-sandbox-deployment`, `release-sandbox-promotion-ready`)
 - source-level release-shadow (`release-shadow-layout`, `release-shadow-pack`, `release-shadow-runner`)
+- source-level release-shadow lifecycle (`release-shadow-activation`, `release-shadow-promotion`, `release-shadow-deployment`)
 
 The current sandbox now simulates a more release-like filesystem shape inside the workspace:
 

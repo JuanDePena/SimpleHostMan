@@ -58,6 +58,7 @@ From `/opt/simplehostman/src`:
 - `pnpm test:control:bundle-parity`
 - `pnpm test:control:release-sandbox`
 - `pnpm test:control:release-shadow`
+- `pnpm test:control:release-shadow:promotion-ready`
 - `pnpm test:control:candidate`
 - `pnpm test:control:runtime-parity`
 - `pnpm test:control:combined-smoke`
@@ -70,6 +71,8 @@ From `/opt/simplehostman/src`:
 - `pnpm check:control:bundle-parity`
 - `pnpm check:control:release-sandbox`
 - `pnpm check:control:release-shadow`
+- `pnpm inspect:control:release-shadow -- [sandboxId]`
+- `pnpm promotion-ready:control:release-shadow`
 - `pnpm pack:control:release-sandbox`
 - `pnpm pack:control:release-shadow`
 - `pnpm activate:control:release-sandbox -- <version> [sandboxId]`
@@ -78,6 +81,7 @@ From `/opt/simplehostman/src`:
 - `pnpm inspect:control:release-sandbox -- [sandboxId]`
 - `pnpm start:control:release-sandbox`
 - `pnpm start:control:release-shadow`
+- `pnpm inspect:control:release-shadow -- [sandboxId]`
 
 From this directory:
 
@@ -107,6 +111,7 @@ From this directory:
 - `pnpm test:release-sandbox:bundle-parity`
 - `pnpm test:release-sandbox`
 - `pnpm test:release-shadow`
+- `pnpm test:release-shadow:promotion-ready`
 - `pnpm test:candidate`
 - `pnpm test:runtime-parity`
 - `pnpm test:combined-smoke`
@@ -119,6 +124,8 @@ From this directory:
 - `pnpm check:release-sandbox:bundle-parity`
 - `pnpm check:release-sandbox`
 - `pnpm check:release-shadow`
+- `pnpm inspect:release-shadow -- [sandboxId]`
+- `pnpm promotion-ready:release-shadow`
 - `pnpm pack:release-sandbox`
 - `pnpm pack:release-shadow`
 - `pnpm activate:release-sandbox -- <version> [sandboxId]`
@@ -127,6 +134,7 @@ From this directory:
 - `pnpm inspect:release-sandbox -- [sandboxId]`
 - `pnpm start:release-sandbox`
 - `pnpm start:release-shadow`
+- `pnpm inspect:release-shadow -- [sandboxId]`
 
 ## Migration notes
 
@@ -170,6 +178,8 @@ From this directory:
 - `apps/control/src/release-sandbox-promotion-ready.test.ts` now validates deploy/rollback manifests and the promotion-ready report for the promoted sandbox candidate.
 - the release-sandbox now simulates a more realistic layout with `releases/<version>`, `current` as a symlink, persistent promotion metadata in `shared/meta`, and `shared/{tmp,logs,run}` while remaining fully workspace-local.
 - the release-sandbox now also materializes `deploy.json`, `deploy-summary.txt`, `rollback.json`, and `rollback-summary.txt` inside `shared/meta`, making sandbox promotion closer to a future release rehearsal.
+- `apps/control/src/release-shadow-activation.ts`, `release-shadow-promotion.ts`, `release-shadow-deployment.ts`, `release-shadow-inspect-cli.ts`, and `release-shadow-promotion-ready.ts` now give the release-root shadow its own inventory, activation/promote metadata, deploy/rollback manifests, inspection output, and promotion-ready report.
+- the release-shadow now keeps multi-version inventory plus `shared/meta` activation/promotion/deploy state of its own, making it behave more like a real release root rehearsal instead of a single packed copy.
 - `apps/control/src/request-context.test.ts` now locks the per-request caching behavior for session resolution, authenticated dashboard bootstrap, and health snapshot reuse.
 - the combined request handler now routes over `PanelApiSurface` and `PanelWebSurface` directly instead of wiring raw request listeners by hand.
 - `apps/control/src/router.test.ts` now locks parity for key split-vs-combined routes such as `/`, `/login`, `/v1/auth/me`, and `/v1/resources/spec`.

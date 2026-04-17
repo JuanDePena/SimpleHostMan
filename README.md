@@ -68,6 +68,7 @@ Useful commands:
 - `pnpm test:control:bundle-parity`
 - `pnpm test:control:release-sandbox`
 - `pnpm test:control:release-shadow`
+- `pnpm test:control:release-shadow:promotion-ready`
 - `pnpm test:control:runtime-parity`
 - `pnpm test:control:combined-smoke`
 - `pnpm test:control:combined:e2e`
@@ -79,6 +80,8 @@ Useful commands:
 - `pnpm check:control:bundle-parity`
 - `pnpm check:control:release-sandbox`
 - `pnpm check:control:release-shadow`
+- `pnpm inspect:control:release-shadow -- [sandboxId]`
+- `pnpm promotion-ready:control:release-shadow`
 - `pnpm pack:control:release-sandbox`
 - `pnpm activate:control:release-sandbox -- <version> [sandboxId]`
 - `pnpm promote:control:release-sandbox -- <version> [sandboxId]`
@@ -87,6 +90,7 @@ Useful commands:
 - `pnpm start:control:release-sandbox`
 - `pnpm pack:control:release-shadow`
 - `pnpm start:control:release-shadow`
+- `pnpm inspect:control:release-shadow -- [sandboxId]`
 - `pnpm start:worker`
 - `pnpm start:agent`
 - `pnpm start:cli`

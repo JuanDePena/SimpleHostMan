@@ -96,6 +96,29 @@ function validateReleaseShadowArtifacts(args: {
   if (!existsSync(layout.shadowManifestFile)) {
     throw new Error(`Release-shadow manifest missing: ${layout.shadowManifestFile}`);
   }
+  if (!existsSync(layout.releasesInventoryFile)) {
+    throw new Error(
+      `Release-shadow releases inventory missing: ${layout.releasesInventoryFile}`
+    );
+  }
+  if (!existsSync(layout.activationManifestFile)) {
+    throw new Error(
+      `Release-shadow activation manifest missing: ${layout.activationManifestFile}`
+    );
+  }
+  if (!existsSync(layout.promotionManifestFile)) {
+    throw new Error(
+      `Release-shadow promotion manifest missing: ${layout.promotionManifestFile}`
+    );
+  }
+  if (!existsSync(layout.deployManifestFile)) {
+    throw new Error(`Release-shadow deploy manifest missing: ${layout.deployManifestFile}`);
+  }
+  if (!existsSync(layout.rollbackManifestFile)) {
+    throw new Error(
+      `Release-shadow rollback manifest missing: ${layout.rollbackManifestFile}`
+    );
+  }
   if (!lstatSync(layout.currentRoot).isSymbolicLink()) {
     throw new Error(`Release-shadow current root is not a symlink: ${layout.currentRoot}`);
   }
@@ -198,6 +221,24 @@ export async function startCombinedControlReleaseShadow(args: {
   port?: number;
 } = {}): Promise<CombinedControlReleaseShadowRuntime> {
   const packed = await packCombinedControlReleaseShadow(args);
+  return startPackedCombinedControlReleaseShadow({ packed });
+}
+
+export async function startExistingCombinedControlReleaseShadow(args: {
+  workspaceRoot?: string;
+  sandboxId?: string;
+} = {}): Promise<CombinedControlReleaseShadowRuntime> {
+  const layout = createCombinedControlReleaseShadowLayout(args);
+  const packed: PackCombinedControlReleaseShadowResult = {
+    layout,
+    manifest: readJsonFile<CombinedControlReleaseShadowManifest>(layout.shadowManifestFile),
+    inventory: readJsonFile(layout.releasesInventoryFile),
+    activation: readJsonFile(layout.activationManifestFile),
+    promotion: readJsonFile(layout.promotionManifestFile),
+    history: readJsonFile(layout.promotionHistoryFile),
+    deployManifest: readJsonFile(layout.deployManifestFile),
+    rollbackManifest: readJsonFile(layout.rollbackManifestFile)
+  };
   return startPackedCombinedControlReleaseShadow({ packed });
 }
 

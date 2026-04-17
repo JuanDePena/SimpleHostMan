@@ -22,6 +22,7 @@ export interface CombinedControlReleaseShadowLayout {
   readonly sharedRunDir: string;
   readonly logsDir: string;
   readonly runDir: string;
+  readonly metaDir: string;
   readonly envFile: string;
   readonly startupManifestFile: string;
   readonly startupSummaryFile: string;
@@ -29,6 +30,16 @@ export interface CombinedControlReleaseShadowLayout {
   readonly currentEntrypoint: string;
   readonly shadowManifestFile: string;
   readonly shadowSummaryFile: string;
+  readonly releasesInventoryFile: string;
+  readonly activationManifestFile: string;
+  readonly activationSummaryFile: string;
+  readonly promotionManifestFile: string;
+  readonly promotionSummaryFile: string;
+  readonly promotionHistoryFile: string;
+  readonly deployManifestFile: string;
+  readonly deploySummaryFile: string;
+  readonly rollbackManifestFile: string;
+  readonly rollbackSummaryFile: string;
 }
 
 export function createCombinedControlReleaseShadowLayout(args: {
@@ -50,6 +61,7 @@ export function createCombinedControlReleaseShadowLayout(args: {
   const sharedTmpDir = join(sharedRoot, "tmp");
   const sharedLogsDir = join(sharedRoot, "logs");
   const sharedRunDir = join(sharedRoot, "run");
+  const metaDir = join(releaseVersionRoot, "meta");
 
   return {
     workspaceRoot,
@@ -68,9 +80,10 @@ export function createCombinedControlReleaseShadowLayout(args: {
     sharedRunDir,
     logsDir: join(sharedLogsDir, "control"),
     runDir: join(sharedRunDir, "control"),
+    metaDir,
     envFile: join(releaseVersionRoot, "env", "control.env"),
-    startupManifestFile: join(releaseVersionRoot, "meta", "startup-manifest.json"),
-    startupSummaryFile: join(releaseVersionRoot, "meta", "startup-summary.txt"),
+    startupManifestFile: join(metaDir, "startup-manifest.json"),
+    startupSummaryFile: join(metaDir, "startup-summary.txt"),
     releaseEntrypoint: join(
       releaseVersionRoot,
       "apps",
@@ -85,7 +98,17 @@ export function createCombinedControlReleaseShadowLayout(args: {
       "dist",
       "release-sandbox-entrypoint.js"
     ),
-    shadowManifestFile: join(sharedMetaDir, "release-shadow.json"),
-    shadowSummaryFile: join(sharedMetaDir, "release-shadow-summary.txt")
+    shadowManifestFile: join(metaDir, "release-shadow.json"),
+    shadowSummaryFile: join(metaDir, "release-shadow-summary.txt"),
+    releasesInventoryFile: join(sharedMetaDir, "releases.json"),
+    activationManifestFile: join(sharedMetaDir, "activation.json"),
+    activationSummaryFile: join(sharedMetaDir, "activation-summary.txt"),
+    promotionManifestFile: join(sharedMetaDir, "promotion.json"),
+    promotionSummaryFile: join(sharedMetaDir, "promotion-summary.txt"),
+    promotionHistoryFile: join(sharedMetaDir, "promotion-history.json"),
+    deployManifestFile: join(sharedMetaDir, "deploy.json"),
+    deploySummaryFile: join(sharedMetaDir, "deploy-summary.txt"),
+    rollbackManifestFile: join(sharedMetaDir, "rollback.json"),
+    rollbackSummaryFile: join(sharedMetaDir, "rollback-summary.txt")
   };
 }

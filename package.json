@@ -26,6 +26,8 @@
     "start:control:release-sandbox": "pnpm --dir apps/control start:release-sandbox",
     "pack:control:release-shadow": "pnpm --dir apps/control pack:release-shadow",
     "start:control:release-shadow": "pnpm --dir apps/control start:release-shadow",
+    "inspect:control:release-shadow": "pnpm --dir apps/control inspect:release-shadow",
+    "promotion-ready:control:release-shadow": "pnpm --dir apps/control promotion-ready:release-shadow",
     "activate:control:release-sandbox": "pnpm --dir apps/control activate:release-sandbox",
     "inspect:control:release-sandbox": "pnpm --dir apps/control inspect:release-sandbox",
     "promote:control:release-sandbox": "pnpm --dir apps/control promote:release-sandbox",
@@ -67,6 +69,7 @@
     "check:control:bundle-parity": "pnpm --dir apps/control check:release-sandbox:bundle-parity",
     "check:control:release-sandbox": "pnpm --dir apps/control check:release-sandbox",
     "check:control:release-shadow": "pnpm --dir apps/control check:release-shadow",
+    "test:control:release-shadow:promotion-ready": "pnpm --dir apps/control test:release-shadow:promotion-ready",
     "test:control:web": "pnpm --dir apps/control test:web",
     "build:control:entrypoint": "pnpm --dir apps/control build:entrypoint",
     "typecheck:control:entrypoint": "pnpm --dir apps/control typecheck:entrypoint"

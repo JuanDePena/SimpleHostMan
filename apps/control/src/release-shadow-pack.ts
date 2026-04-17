@@ -2,32 +2,46 @@ import { cp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { existsSync, lstatSync } from "node:fs";
 
 import {
-  readCombinedControlReleaseSandboxDeployManifest,
-  readCombinedControlReleaseSandboxRollbackManifest,
-  type CombinedControlReleaseSandboxDeployManifest,
-  type CombinedControlReleaseSandboxRollbackManifest
-} from "./release-sandbox-deployment.js";
+  type CombinedControlReleaseShadowActivationManifest,
+  type CombinedControlReleaseShadowInventory,
+  writeCombinedControlReleaseShadowInventory
+} from "./release-shadow-activation.js";
+import {
+  type CombinedControlReleaseShadowDeployManifest,
+  type CombinedControlReleaseShadowRollbackManifest,
+  readCombinedControlReleaseShadowDeployManifest,
+  readCombinedControlReleaseShadowRollbackManifest
+} from "./release-shadow-deployment.js";
 import { createCombinedControlReleaseShadowLayout } from "./release-shadow-layout.js";
 import {
   createCombinedControlReleaseShadowManifest,
   formatCombinedControlReleaseShadowManifest,
   type CombinedControlReleaseShadowManifest
 } from "./release-shadow-manifest.js";
+import type { CombinedControlReleaseSandboxBundle } from "./release-sandbox-bundle.js";
 import { packCombinedControlReleaseSandbox } from "./release-sandbox-pack.js";
 import {
-  promoteCombinedControlReleaseSandboxVersion,
-  readCombinedControlReleaseSandboxPromotionManifest,
-  type CombinedControlReleaseSandboxPromotionManifest
-} from "./release-sandbox-promotion.js";
-import { resolveActiveCombinedControlReleaseSandbox } from "./release-sandbox-activation.js";
+  type CombinedControlReleaseShadowPromotionHistory,
+  type CombinedControlReleaseShadowPromotionManifest,
+  promoteCombinedControlReleaseShadowVersion
+} from "./release-shadow-promotion.js";
+import {
+  readCombinedControlReleaseSandboxInventory,
+  resolveActiveCombinedControlReleaseSandbox
+} from "./release-sandbox-activation.js";
+import { createCombinedControlReleaseSandboxLayout } from "./release-sandbox-layout.js";
+import { promoteCombinedControlReleaseSandboxVersion } from "./release-sandbox-promotion.js";
 import { resolveCombinedControlReleaseSandboxPort } from "./release-sandbox-runner.js";
 
 export interface PackCombinedControlReleaseShadowResult {
   readonly layout: ReturnType<typeof createCombinedControlReleaseShadowLayout>;
   readonly manifest: CombinedControlReleaseShadowManifest;
-  readonly promotion: CombinedControlReleaseSandboxPromotionManifest;
-  readonly deployManifest: CombinedControlReleaseSandboxDeployManifest;
-  readonly rollbackManifest: CombinedControlReleaseSandboxRollbackManifest;
+  readonly inventory: CombinedControlReleaseShadowInventory;
+  readonly activation: CombinedControlReleaseShadowActivationManifest;
+  readonly promotion: CombinedControlReleaseShadowPromotionManifest;
+  readonly history: CombinedControlReleaseShadowPromotionHistory;
+  readonly deployManifest: CombinedControlReleaseShadowDeployManifest;
+  readonly rollbackManifest: CombinedControlReleaseShadowRollbackManifest;
 }
 
 async function removePathIfExists(path: string) {
@@ -66,25 +80,10 @@ export async function packCombinedControlReleaseShadow(args: {
     workspaceRoot: packedSandbox.layout.workspaceRoot,
     sandboxId: packedSandbox.layout.sandboxId
   });
-  const promotion =
-    await readCombinedControlReleaseSandboxPromotionManifest({
-      workspaceRoot: packedSandbox.layout.workspaceRoot,
-      sandboxId: packedSandbox.layout.sandboxId
-    });
-  const deployManifest =
-    await readCombinedControlReleaseSandboxDeployManifest({
-      workspaceRoot: packedSandbox.layout.workspaceRoot,
-      sandboxId: packedSandbox.layout.sandboxId
-    });
-  const rollbackManifest =
-    await readCombinedControlReleaseSandboxRollbackManifest({
-      workspaceRoot: packedSandbox.layout.workspaceRoot,
-      sandboxId: packedSandbox.layout.sandboxId
-    });
-
-  if (!promotion || !deployManifest || !rollbackManifest) {
-    throw new Error("Sandbox promotion state is incomplete; deploy/rollback manifests missing");
-  }
+  const sourceInventory = await readCombinedControlReleaseSandboxInventory({
+    workspaceRoot: packedSandbox.layout.workspaceRoot,
+    sandboxId: packedSandbox.layout.sandboxId
+  });
 
   const layout = createCombinedControlReleaseShadowLayout({
     workspaceRoot: packedSandbox.layout.workspaceRoot,
@@ -104,42 +103,117 @@ export async function packCombinedControlReleaseShadow(args: {
   await mkdir(layout.logsDir, { recursive: true });
   await mkdir(layout.runDir, { recursive: true });
 
-  await removePathIfExists(layout.releaseVersionRoot);
-  await cp(active.layout.releaseVersionRoot, layout.releaseVersionRoot, {
-    recursive: true
-  });
+  const availableVersions = sourceInventory.releases.map((release) => release.version);
+  let activeShadowManifest: CombinedControlReleaseShadowManifest | null = null;
+
+  for (const release of sourceInventory.releases) {
+    const sourceReleaseLayout = createCombinedControlReleaseSandboxLayout({
+      workspaceRoot: packedSandbox.layout.workspaceRoot,
+      sandboxId: packedSandbox.layout.sandboxId,
+      version: release.version
+    });
+    const shadowReleaseLayout = createCombinedControlReleaseShadowLayout({
+      workspaceRoot: packedSandbox.layout.workspaceRoot,
+      sandboxId: packedSandbox.layout.sandboxId,
+      version: release.version
+    });
+
+    await removePathIfExists(shadowReleaseLayout.releaseVersionRoot);
+    await cp(sourceReleaseLayout.releaseVersionRoot, shadowReleaseLayout.releaseVersionRoot, {
+      recursive: true
+    });
+
+    const sourceBundle = JSON.parse(
+      await readFile(sourceReleaseLayout.bundleManifestFile, "utf8")
+    ) as CombinedControlReleaseSandboxBundle;
+    const releaseShadowManifest = createCombinedControlReleaseShadowManifest({
+      layout: shadowReleaseLayout,
+      sandboxBundle: sourceBundle,
+      sourceSandboxRoot: packedSandbox.layout.sandboxRoot,
+      sourceReleaseVersionRoot: sourceReleaseLayout.releaseVersionRoot,
+      sourcePromotionManifestFile: sourceReleaseLayout.promotionManifestFile,
+      sourceDeployManifestFile: sourceReleaseLayout.deployManifestFile,
+      sourceRollbackManifestFile: sourceReleaseLayout.rollbackManifestFile,
+      availableVersions
+    });
+    await writeFile(
+      shadowReleaseLayout.shadowManifestFile,
+      JSON.stringify(releaseShadowManifest, null, 2).concat("\n")
+    );
+    await writeFile(
+      shadowReleaseLayout.shadowSummaryFile,
+      formatCombinedControlReleaseShadowManifest(releaseShadowManifest).concat("\n")
+    );
+
+    if (release.version === active.activation.activeVersion) {
+      activeShadowManifest = releaseShadowManifest;
+    }
+  }
 
   await removePathIfExists(layout.currentRoot);
   await symlink(layout.releaseVersionRoot, layout.currentRoot);
+  const inventory: CombinedControlReleaseShadowInventory = {
+    kind: "combined-release-shadow-inventory",
+    sandboxId: layout.sandboxId,
+    workspaceRoot: layout.workspaceRoot,
+    releases: sourceInventory.releases.map((release) => {
+      const shadowReleaseLayout = createCombinedControlReleaseShadowLayout({
+        workspaceRoot: layout.workspaceRoot,
+        sandboxId: layout.sandboxId,
+        version: release.version
+      });
+      return {
+        version: release.version,
+        releaseVersionRoot: shadowReleaseLayout.releaseVersionRoot,
+        envFile: shadowReleaseLayout.envFile,
+        startupManifestFile: shadowReleaseLayout.startupManifestFile,
+        startupSummaryFile: shadowReleaseLayout.startupSummaryFile,
+        shadowManifestFile: shadowReleaseLayout.shadowManifestFile,
+        packedAt: release.packedAt,
+        sourceCommitish: release.sourceCommitish
+      };
+    })
+  };
+  await writeCombinedControlReleaseShadowInventory({
+    layout,
+    inventory
+  });
+  const shadowPromotion = await promoteCombinedControlReleaseShadowVersion({
+    workspaceRoot: layout.workspaceRoot,
+    sandboxId: layout.sandboxId,
+    version: active.activation.activeVersion
+  });
+  const deployManifest = await readCombinedControlReleaseShadowDeployManifest({
+    workspaceRoot: layout.workspaceRoot,
+    sandboxId: layout.sandboxId
+  });
+  const rollbackManifest = await readCombinedControlReleaseShadowRollbackManifest({
+    workspaceRoot: layout.workspaceRoot,
+    sandboxId: layout.sandboxId
+  });
 
-  await cp(active.layout.sharedMetaDir, layout.sharedMetaDir, { recursive: true });
+  if (!deployManifest || !rollbackManifest) {
+    throw new Error("Release-shadow deployment state is incomplete");
+  }
 
-  const manifest = createCombinedControlReleaseShadowManifest({
+  const manifest = activeShadowManifest ?? createCombinedControlReleaseShadowManifest({
     layout,
     sandboxBundle: active.bundle,
-    promotionManifest: promotion,
-    deployManifest,
-    rollbackManifest,
     sourceSandboxRoot: active.layout.sandboxRoot,
     sourceReleaseVersionRoot: active.layout.releaseVersionRoot,
     sourcePromotionManifestFile: active.layout.promotionManifestFile,
     sourceDeployManifestFile: active.layout.deployManifestFile,
-    sourceRollbackManifestFile: active.layout.rollbackManifestFile
+    sourceRollbackManifestFile: active.layout.rollbackManifestFile,
+    availableVersions
   });
-
-  await writeFile(
-    layout.shadowManifestFile,
-    JSON.stringify(manifest, null, 2).concat("\n")
-  );
-  await writeFile(
-    layout.shadowSummaryFile,
-    formatCombinedControlReleaseShadowManifest(manifest).concat("\n")
-  );
 
   return {
     layout,
     manifest,
-    promotion,
+    inventory,
+    activation: shadowPromotion.activation,
+    promotion: shadowPromotion.promotion,
+    history: shadowPromotion.history,
     deployManifest,
     rollbackManifest
   };
