@@ -58,6 +58,7 @@ From `/opt/simplehostman/src`:
 - `pnpm test:control:bundle-parity`
 - `pnpm test:control:release-sandbox`
 - `pnpm test:control:release-shadow`
+- `pnpm test:control:release-target`
 - `pnpm test:control:release-handoff`
 - `pnpm test:control:release-shadow:promotion-ready`
 - `pnpm test:control:release-rehearsal`
@@ -73,10 +74,13 @@ From `/opt/simplehostman/src`:
 - `pnpm check:control:bundle-parity`
 - `pnpm check:control:release-sandbox`
 - `pnpm check:control:release-shadow`
+- `pnpm check:control:release-target`
 - `pnpm check:control:release-handoff`
 - `pnpm check:control:release-rehearsal`
 - `pnpm inspect:control:release-shadow -- [sandboxId]`
 - `pnpm promotion-ready:control:release-shadow`
+- `pnpm apply:control:release-target -- [sandboxId] [version]`
+- `pnpm start:control:release-target`
 - `pnpm handoff:control:release-shadow -- [sandboxId] [version]`
 - `pnpm rehearse:control:release-shadow -- [sandboxId] [version]`
 - `pnpm pack:control:release-sandbox`
@@ -117,6 +121,7 @@ From this directory:
 - `pnpm test:release-sandbox:bundle-parity`
 - `pnpm test:release-sandbox`
 - `pnpm test:release-shadow`
+- `pnpm test:release-target`
 - `pnpm test:release-handoff`
 - `pnpm test:release-shadow:promotion-ready`
 - `pnpm test:release-rehearsal`
@@ -132,10 +137,13 @@ From this directory:
 - `pnpm check:release-sandbox:bundle-parity`
 - `pnpm check:release-sandbox`
 - `pnpm check:release-shadow`
+- `pnpm check:release-target`
 - `pnpm check:release-handoff`
 - `pnpm check:release-rehearsal`
 - `pnpm inspect:release-shadow -- [sandboxId]`
 - `pnpm promotion-ready:release-shadow`
+- `pnpm apply:release-target -- [sandboxId] [version]`
+- `pnpm start:release-target`
 - `pnpm release-handoff -- [sandboxId] [version]`
 - `pnpm release-rehearsal -- [sandboxId] [version]`
 - `pnpm pack:release-sandbox`
@@ -192,6 +200,7 @@ From this directory:
 - the release-sandbox now also materializes `deploy.json`, `deploy-summary.txt`, `rollback.json`, and `rollback-summary.txt` inside `shared/meta`, making sandbox promotion closer to a future release rehearsal.
 - `apps/control/src/release-shadow-activation.ts`, `release-shadow-promotion.ts`, `release-shadow-deployment.ts`, `release-shadow-inspect-cli.ts`, and `release-shadow-promotion-ready.ts` now give the release-root shadow its own inventory, activation/promote metadata, deploy/rollback manifests, inspection output, and promotion-ready report.
 - `apps/control/src/release-shadow-handoff.ts`, `release-shadow-handoff-runner.ts`, `release-shadow-handoff-cli.ts`, and `release-shadow-handoff.test.ts` now define and validate a dry-run handoff plan from the promoted `release-shadow` toward `/opt/simplehostman/release`, without touching the real release root.
+- `apps/control/src/release-target-layout.ts`, `release-target-apply.ts`, `release-target-runner.ts`, `release-target-apply-cli.ts`, `release-target-start-cli.ts`, and `release-target.test.ts` now apply that handoff into a separate workspace-local emulated release root and validate that the resulting runtime still matches the promoted shadow.
 - the release-shadow now keeps multi-version inventory plus `shared/meta` activation/promotion/deploy state of its own, making it behave more like a real release root rehearsal instead of a single packed copy.
 - `apps/control/src/release-rehearsal.ts`, `release-rehearsal-cli.ts`, and `release-rehearsal.test.ts` now validate that the promoted release-shadow stays aligned with the release-sandbox it came from, both in metadata and in representative HTTP behavior.
 - `apps/control/src/request-context.test.ts` now locks the per-request caching behavior for session resolution, authenticated dashboard bootstrap, and health snapshot reuse.

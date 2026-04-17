@@ -55,6 +55,9 @@ Current role:
 - expose CLI entrypoints for packing, starting, inspecting, and promotion-ready checks for the release-shadow in `release-shadow-pack-cli.ts`, `release-shadow-start-cli.ts`, `release-shadow-inspect-cli.ts`, and `release-shadow-promotion-ready-cli.ts`
 - expose a dry-run handoff contract toward `/opt/simplehostman/release` in `release-shadow-handoff.ts`
 - expose a runner and CLI entrypoint for validating that handoff in `release-shadow-handoff-runner.ts` and `release-shadow-handoff-cli.ts`
+- expose a workspace-local emulated release root in `release-target-layout.ts`
+- expose a handoff applier plus runtime runner for that emulated release root in `release-target-apply.ts` and `release-target-runner.ts`
+- expose CLI entrypoints for applying and starting the emulated release root in `release-target-apply-cli.ts` and `release-target-start-cli.ts`
 - define the candidate runtime shape in `runtime-contract.ts`
 - keep an end-to-endish smoke test in `combined-smoke.test.ts` that compares split and combined behavior over the real web surface
 - keep a real HTTP e2e smoke in `combined-server.test.ts` that boots the candidate on an ephemeral port
@@ -72,6 +75,7 @@ Current role:
 - keep a release-shadow activation test in `release-shadow-activation.test.ts` to lock copied inventory plus version switching inside the shadow
 - keep a release-shadow promotion-ready test in `release-shadow-promotion-ready.test.ts` to lock deploy/rollback manifests and the promotion-ready report inside the shadow
 - keep a release-shadow handoff test in `release-shadow-handoff.test.ts` to lock the dry-run handoff contract toward `/opt/simplehostman/release`
+- keep a release-target test in `release-target.test.ts` to lock the applied handoff against a separate emulated release root
 - expose an end-to-end release rehearsal between the release-sandbox and release-shadow in `release-rehearsal.ts` and `release-rehearsal-cli.ts`
 - keep a release-rehearsal test in `release-rehearsal.test.ts` to lock metadata and representative HTTP parity between the promoted shadow and the sandbox it came from
 - keep focused request-context coverage in `request-context.test.ts` so per-request cache semantics stay pinned down during convergence
@@ -87,6 +91,7 @@ The current checkpoint now distinguishes:
 - source-level release-shadow (`release-shadow-layout`, `release-shadow-pack`, `release-shadow-runner`)
 - source-level release-shadow lifecycle (`release-shadow-activation`, `release-shadow-promotion`, `release-shadow-deployment`)
 - source-level release-shadow handoff (`release-shadow-handoff`, `release-shadow-handoff-runner`, `release-shadow-handoff-cli.ts`)
+- source-level release target (`release-target-layout`, `release-target-apply`, `release-target-runner`)
 - source-level release rehearsal (`release-rehearsal`, `release-rehearsal-cli`, `release-rehearsal.test.ts`)
 
 The current sandbox now simulates a more release-like filesystem shape inside the workspace:
