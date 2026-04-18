@@ -58,6 +58,9 @@ Current role:
 - expose a workspace-local emulated release root in `release-target-layout.ts`
 - expose a handoff applier plus runtime runner for that emulated release root in `release-target-apply.ts` and `release-target-runner.ts`
 - expose CLI entrypoints for applying and starting the emulated release root in `release-target-apply-cli.ts` and `release-target-start-cli.ts`
+- expose a real release-root staging layout under `/opt/simplehostman/release/.staging/control` in `release-root-staging-layout.ts`
+- expose plan, diff, apply, inspect, and runtime helpers for that staging area in `release-root-staging.ts` and `release-root-staging-runner.ts`
+- expose CLI entrypoints for planning, diffing, applying, inspecting, and starting the staging area in `release-root-staging-plan-cli.ts`, `release-root-staging-diff-cli.ts`, `release-root-staging-apply-cli.ts`, `release-root-staging-inspect-cli.ts`, and `release-root-staging-start-cli.ts`
 - define the candidate runtime shape in `runtime-contract.ts`
 - keep an end-to-endish smoke test in `combined-smoke.test.ts` that compares split and combined behavior over the real web surface
 - keep a real HTTP e2e smoke in `combined-server.test.ts` that boots the candidate on an ephemeral port
@@ -76,6 +79,7 @@ Current role:
 - keep a release-shadow promotion-ready test in `release-shadow-promotion-ready.test.ts` to lock deploy/rollback manifests and the promotion-ready report inside the shadow
 - keep a release-shadow handoff test in `release-shadow-handoff.test.ts` to lock the dry-run handoff contract toward `/opt/simplehostman/release`
 - keep a release-target test in `release-target.test.ts` to lock the applied handoff against a separate emulated release root
+- keep a release-root staging test in `release-root-staging.test.ts` to lock parity between the real release-root staging area and the workspace-local `release-target`
 - expose an end-to-end release rehearsal between the release-sandbox and release-shadow in `release-rehearsal.ts` and `release-rehearsal-cli.ts`
 - keep a release-rehearsal test in `release-rehearsal.test.ts` to lock metadata and representative HTTP parity between the promoted shadow and the sandbox it came from
 - keep focused request-context coverage in `request-context.test.ts` so per-request cache semantics stay pinned down during convergence
@@ -92,6 +96,7 @@ The current checkpoint now distinguishes:
 - source-level release-shadow lifecycle (`release-shadow-activation`, `release-shadow-promotion`, `release-shadow-deployment`)
 - source-level release-shadow handoff (`release-shadow-handoff`, `release-shadow-handoff-runner`, `release-shadow-handoff-cli.ts`)
 - source-level release target (`release-target-layout`, `release-target-apply`, `release-target-runner`)
+- source-level release-root staging (`release-root-staging-layout`, `release-root-staging`, `release-root-staging-runner`)
 - source-level release rehearsal (`release-rehearsal`, `release-rehearsal-cli`, `release-rehearsal.test.ts`)
 
 The current sandbox now simulates a more release-like filesystem shape inside the workspace:
@@ -108,6 +113,13 @@ The next rehearsal layer now targets a workspace-local shadow of `/opt/simplehos
 - `.tmp/control-release-shadow/<sandboxId>/opt/simplehostman/release`
 - `releases/<version>` and `current` within that shadow root
 - copied promotion/deploy/rollback metadata under `shared/meta`
+
+The next rehearsal layer after that now targets the real release root, but only under staging:
+
+- `/opt/simplehostman/release/.staging/control`
+- `releases/<version>` and `current` within that staging root
+- shared metadata, logs, tmp, and run state inside staging only
+- parity checks against the workspace-local `release-target`
 
 That still stops short of any packaging or release promotion against `/opt/simplehostman/release`.
 - concentrate semantic auth, dashboard bootstrap, and runtime health in `bootstrap-surface.ts` so the combined candidate depends on higher-level surfaces instead of raw request wiring
