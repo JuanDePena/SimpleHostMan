@@ -73,6 +73,7 @@ for (const filePath of [
   layout.cutoverReadySummaryFile,
   layout.cutoverRehearsalSummaryFile,
   layout.cutoverParitySummaryFile,
+  layout.cutoverHandoffSummaryFile,
   layout.startupSummaryFile
 ]) {
   try {

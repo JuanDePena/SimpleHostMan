@@ -42,6 +42,8 @@ export interface CombinedControlReleaseRootCutoverTargetLayout {
   readonly cutoverRehearsalSummaryFile: string;
   readonly cutoverParityManifestFile: string;
   readonly cutoverParitySummaryFile: string;
+  readonly cutoverHandoffManifestFile: string;
+  readonly cutoverHandoffSummaryFile: string;
 }
 
 export function createCombinedControlReleaseRootCutoverTargetLayout(args: {
@@ -115,6 +117,8 @@ export function createCombinedControlReleaseRootCutoverTargetLayout(args: {
     cutoverRehearsalManifestFile: join(sharedMetaDir, "cutover-rehearsal.json"),
     cutoverRehearsalSummaryFile: join(sharedMetaDir, "cutover-rehearsal-summary.txt"),
     cutoverParityManifestFile: join(sharedMetaDir, "cutover-parity.json"),
-    cutoverParitySummaryFile: join(sharedMetaDir, "cutover-parity-summary.txt")
+    cutoverParitySummaryFile: join(sharedMetaDir, "cutover-parity-summary.txt"),
+    cutoverHandoffManifestFile: join(sharedMetaDir, "cutover-handoff.json"),
+    cutoverHandoffSummaryFile: join(sharedMetaDir, "cutover-handoff-summary.txt")
   };
 }

@@ -76,6 +76,7 @@ Useful commands:
 - `pnpm test:control:release-root-cutover-target:ready`
 - `pnpm test:control:release-root-cutover-target:rehearsal`
 - `pnpm test:control:release-root-cutover-target:parity`
+- `pnpm test:control:release-root-cutover-target:handoff`
 - `pnpm test:control:release-root-promotion:activation`
 - `pnpm test:control:release-root-promotion:promotion`
 - `pnpm test:control:release-root-promotion:ready`
@@ -124,6 +125,7 @@ Useful commands:
 - `pnpm cutover-ready:control:release-root-cutover-target -- [workspaceRoot] [targetId] [version]`
 - `pnpm rehearse:control:release-root-cutover-target -- [workspaceRoot] [targetId] [version] [previousVersion]`
 - `pnpm parity:control:release-root-cutover-target -- [workspaceRoot] [targetId] [version] [previousVersion] [actualReleaseRoot]`
+- `pnpm handoff:control:release-root-cutover-target -- [workspaceRoot] [targetId] [version] [previousVersion] [actualReleaseRoot]`
 - `pnpm start:control:release-target`
 - `pnpm handoff:control:release-shadow -- [sandboxId] [version]`
 - `pnpm rehearse:control:release-shadow -- [sandboxId] [version]`
