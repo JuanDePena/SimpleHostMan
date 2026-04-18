@@ -171,6 +171,7 @@ Promotion language at the current checkpoint:
 - `candidate release-root-cutover-rollback-ready`: that emulated actual release root now also keeps cutover history and can rehearse rollback back to the previous `current` target when one exists
 - `candidate release-root-cutover-ready-report`: that emulated actual release root now also emits an auditable readiness report covering manifests, cutover history, `current`, `healthz`, and login before any move toward the real release root
 - `candidate release-root-cutover-rehearsal-ready`: that emulated actual release root now also exercises a full cutover -> ready -> rollback cycle with a persisted rehearsal report before any move toward the real release root
+- `candidate release-root-cutover-parity-ready`: that emulated actual release root now also proves the rehearsed cutover cycle stays aligned with the actual cutover plan and readiness checks computed against the real release-root shape
 - `candidate release-rehearsal-ready`: the promoted release-shadow now also proves it stays aligned with the release-sandbox it came from before any move toward the real release root
 - `release-ready`: still not reached; packaging and deploy flows remain split-first
 

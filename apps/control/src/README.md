@@ -75,6 +75,8 @@ Current role:
 - expose a CLI entrypoint for that cutover-target readiness runner in `release-root-cutover-target-ready-cli.ts`
 - expose an end-to-end cutover rehearsal runner for the emulated actual release root in `release-root-cutover-target-rehearsal.ts`
 - expose a CLI entrypoint for that cutover rehearsal runner in `release-root-cutover-target-rehearsal-cli.ts`
+- expose a cutover parity runner that compares the real cutover plan against the emulated target rehearsal in `release-root-cutover-target-parity.ts`
+- expose a CLI entrypoint for that cutover parity runner in `release-root-cutover-target-parity-cli.ts`
 - define the candidate runtime shape in `runtime-contract.ts`
 - keep an end-to-endish smoke test in `combined-smoke.test.ts` that compares split and combined behavior over the real web surface
 - keep a real HTTP e2e smoke in `combined-server.test.ts` that boots the candidate on an ephemeral port
@@ -101,6 +103,7 @@ Current role:
 - keep a release-root cutover test in `release-root-cutover.test.ts` to lock plan and readiness checks against a fake actual release root before touching `/opt/simplehostman/release/current`
 - keep a release-root cutover target ready test in `release-root-cutover-target-ready.test.ts` to lock manifest, history, `current`, and runtime health/login checks for the emulated actual release root
 - keep a release-root cutover target rehearsal test in `release-root-cutover-target-rehearsal.test.ts` to lock the cutover -> ready -> rollback cycle on the emulated actual release root
+- keep a release-root cutover target parity test in `release-root-cutover-target-parity.test.ts` to lock agreement between the actual cutover plan and the emulated target rehearsal
 - expose an end-to-end release rehearsal between the release-sandbox and release-shadow in `release-rehearsal.ts` and `release-rehearsal-cli.ts`
 - keep a release-rehearsal test in `release-rehearsal.test.ts` to lock metadata and representative HTTP parity between the promoted shadow and the sandbox it came from
 - keep focused request-context coverage in `request-context.test.ts` so per-request cache semantics stay pinned down during convergence
@@ -125,6 +128,7 @@ The current checkpoint now distinguishes:
 - source-level release-root cutover rollback rehearsal (`release-root-cutover-target-rollback`)
 - source-level release-root cutover target ready (`release-root-cutover-target-ready`)
 - source-level release-root cutover target rehearsal (`release-root-cutover-target-rehearsal`)
+- source-level release-root cutover target parity (`release-root-cutover-target-parity`)
 - source-level release rehearsal (`release-rehearsal`, `release-rehearsal-cli`, `release-rehearsal.test.ts`)
 
 The current sandbox now simulates a more release-like filesystem shape inside the workspace:
