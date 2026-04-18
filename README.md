@@ -70,6 +70,8 @@ Useful commands:
 - `pnpm test:control:release-shadow`
 - `pnpm test:control:release-root-staging`
 - `pnpm test:control:release-root-promotion`
+- `pnpm test:control:release-root-promotion:activation`
+- `pnpm test:control:release-root-promotion:ready`
 - `pnpm test:control:release-target`
 - `pnpm test:control:release-handoff`
 - `pnpm test:control:release-shadow:promotion-ready`
@@ -87,6 +89,7 @@ Useful commands:
 - `pnpm check:control:release-shadow`
 - `pnpm check:control:release-root-staging`
 - `pnpm check:control:release-root-promotion`
+- `pnpm promotion-ready:control:release-root-promotion`
 - `pnpm check:control:release-target`
 - `pnpm check:control:release-handoff`
 - `pnpm check:control:release-rehearsal`
@@ -102,6 +105,7 @@ Useful commands:
 - `pnpm diff:control:release-root-promotion -- [workspaceRoot] [targetId] [version]`
 - `pnpm apply:control:release-root-promotion -- [workspaceRoot] [targetId] [version]`
 - `pnpm inspect:control:release-root-promotion -- [workspaceRoot] [targetId] [version]`
+- `pnpm activate:control:release-root-promotion -- <version> [targetId]`
 - `pnpm start:control:release-root-promotion -- [workspaceRoot] [targetId] [version]`
 - `pnpm start:control:release-target`
 - `pnpm handoff:control:release-shadow -- [sandboxId] [version]`

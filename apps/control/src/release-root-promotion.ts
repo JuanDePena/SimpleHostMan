@@ -7,6 +7,10 @@ import {
   type CombinedControlReleaseRootPromotionLayout
 } from "./release-root-promotion-layout.js";
 import {
+  activateCombinedControlReleaseRootPromotionVersion,
+  syncCombinedControlReleaseRootPromotionInventory
+} from "./release-root-promotion-activation.js";
+import {
   readCombinedControlReleaseRootStagingApplyManifest,
   type CombinedControlReleaseRootStagingApplyManifest
 } from "./release-root-staging.js";
@@ -381,6 +385,15 @@ export async function applyCombinedControlReleaseRootPromotion(args: {
     planned.layout.applySummaryFile,
     formatCombinedControlReleaseRootPromotionApply(applyManifest).concat("\n")
   );
+  await syncCombinedControlReleaseRootPromotionInventory({
+    workspaceRoot: planned.layout.workspaceRoot,
+    targetId: planned.layout.targetId
+  });
+  await activateCombinedControlReleaseRootPromotionVersion({
+    workspaceRoot: planned.layout.workspaceRoot,
+    targetId: planned.layout.targetId,
+    version: planned.layout.version
+  });
 
   return {
     layout: planned.layout,

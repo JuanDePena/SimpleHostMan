@@ -36,6 +36,9 @@ export interface CombinedControlReleaseRootPromotionLayout {
   readonly diffSummaryFile: string;
   readonly applyManifestFile: string;
   readonly applySummaryFile: string;
+  readonly releasesInventoryFile: string;
+  readonly activationManifestFile: string;
+  readonly activationSummaryFile: string;
   readonly promotionManifestFile: string;
   readonly deployManifestFile: string;
   readonly rollbackManifestFile: string;
@@ -102,6 +105,9 @@ export function createCombinedControlReleaseRootPromotionLayout(args: {
     diffSummaryFile: join(sharedMetaDir, "diff-summary.txt"),
     applyManifestFile: join(sharedMetaDir, "apply.json"),
     applySummaryFile: join(sharedMetaDir, "apply-summary.txt"),
+    releasesInventoryFile: join(sharedMetaDir, "releases.json"),
+    activationManifestFile: join(sharedMetaDir, "activation.json"),
+    activationSummaryFile: join(sharedMetaDir, "activation-summary.txt"),
     promotionManifestFile: join(sharedMetaDir, "promotion.json"),
     deployManifestFile: join(sharedMetaDir, "deploy.json"),
     rollbackManifestFile: join(sharedMetaDir, "rollback.json"),

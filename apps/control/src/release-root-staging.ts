@@ -118,6 +118,7 @@ async function removePathIfExists(path: string) {
 
 async function materializeStagingPlan(args: {
   workspaceRoot?: string;
+  sandboxId?: string;
   version?: string;
   host?: string;
   port?: number;
@@ -129,6 +130,7 @@ async function materializeStagingPlan(args: {
 }> {
   const packedShadow = await packCombinedControlReleaseShadow({
     workspaceRoot: args.workspaceRoot,
+    sandboxId: args.sandboxId,
     version: args.version,
     host: args.host,
     port: args.port,
@@ -185,6 +187,7 @@ async function materializeStagingPlan(args: {
 
 export async function planCombinedControlReleaseRootStaging(args: {
   workspaceRoot?: string;
+  sandboxId?: string;
   version?: string;
   host?: string;
   port?: number;
@@ -220,6 +223,7 @@ export function formatCombinedControlReleaseRootStagingPlan(
 
 export async function applyCombinedControlReleaseRootStaging(args: {
   workspaceRoot?: string;
+  sandboxId?: string;
   version?: string;
   host?: string;
   port?: number;
@@ -360,6 +364,7 @@ export async function readCombinedControlReleaseRootStagingApplyManifest(args: {
 
 export async function diffCombinedControlReleaseRootStaging(args: {
   workspaceRoot?: string;
+  sandboxId?: string;
   version?: string;
   host?: string;
   port?: number;

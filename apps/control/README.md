@@ -60,6 +60,8 @@ From `/opt/simplehostman/src`:
 - `pnpm test:control:release-shadow`
 - `pnpm test:control:release-root-staging`
 - `pnpm test:control:release-root-promotion`
+- `pnpm test:control:release-root-promotion:activation`
+- `pnpm test:control:release-root-promotion:ready`
 - `pnpm test:control:release-target`
 - `pnpm test:control:release-handoff`
 - `pnpm test:control:release-shadow:promotion-ready`
@@ -78,6 +80,7 @@ From `/opt/simplehostman/src`:
 - `pnpm check:control:release-shadow`
 - `pnpm check:control:release-root-staging`
 - `pnpm check:control:release-root-promotion`
+- `pnpm promotion-ready:control:release-root-promotion`
 - `pnpm check:control:release-target`
 - `pnpm check:control:release-handoff`
 - `pnpm check:control:release-rehearsal`
@@ -93,6 +96,7 @@ From `/opt/simplehostman/src`:
 - `pnpm diff:control:release-root-promotion -- [workspaceRoot] [targetId] [version]`
 - `pnpm apply:control:release-root-promotion -- [workspaceRoot] [targetId] [version]`
 - `pnpm inspect:control:release-root-promotion -- [workspaceRoot] [targetId] [version]`
+- `pnpm activate:control:release-root-promotion -- <version> [targetId]`
 - `pnpm start:control:release-root-promotion -- [workspaceRoot] [targetId] [version]`
 - `pnpm start:control:release-target`
 - `pnpm handoff:control:release-shadow -- [sandboxId] [version]`
@@ -137,6 +141,8 @@ From this directory:
 - `pnpm test:release-shadow`
 - `pnpm test:release-root-staging`
 - `pnpm test:release-root-promotion`
+- `pnpm test:release-root-promotion:activation`
+- `pnpm test:release-root-promotion:ready`
 - `pnpm test:release-target`
 - `pnpm test:release-handoff`
 - `pnpm test:release-shadow:promotion-ready`
@@ -155,6 +161,7 @@ From this directory:
 - `pnpm check:release-shadow`
 - `pnpm check:release-root-staging`
 - `pnpm check:release-root-promotion`
+- `pnpm promotion-ready:release-root-promotion`
 - `pnpm check:release-target`
 - `pnpm check:release-handoff`
 - `pnpm check:release-rehearsal`
@@ -170,6 +177,7 @@ From this directory:
 - `pnpm diff:release-root-promotion -- [workspaceRoot] [targetId] [version]`
 - `pnpm apply:release-root-promotion -- [workspaceRoot] [targetId] [version]`
 - `pnpm inspect:release-root-promotion -- [workspaceRoot] [targetId] [version]`
+- `pnpm activate:release-root-promotion -- <version> [targetId]`
 - `pnpm start:release-root-promotion -- [workspaceRoot] [targetId] [version]`
 - `pnpm start:release-target`
 - `pnpm release-handoff -- [sandboxId] [version]`

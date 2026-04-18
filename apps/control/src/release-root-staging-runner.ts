@@ -198,6 +198,7 @@ async function startAppliedReleaseRootStaging(args: {
 
 export async function startCombinedControlReleaseRootStaging(args: {
   workspaceRoot?: string;
+  sandboxId?: string;
   version?: string;
   host?: string;
   port?: number;

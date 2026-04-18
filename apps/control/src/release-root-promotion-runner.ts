@@ -98,6 +98,16 @@ function validateReleaseRootPromotionArtifacts(args: {
       `Release-root promotion apply manifest missing: ${layout.applyManifestFile}`
     );
   }
+  if (!existsSync(layout.releasesInventoryFile)) {
+    throw new Error(
+      `Release-root promotion inventory missing: ${layout.releasesInventoryFile}`
+    );
+  }
+  if (!existsSync(layout.activationManifestFile)) {
+    throw new Error(
+      `Release-root promotion activation manifest missing: ${layout.activationManifestFile}`
+    );
+  }
   if (!existsSync(layout.handoffManifestFile)) {
     throw new Error(
       `Release-root promotion handoff manifest missing: ${layout.handoffManifestFile}`

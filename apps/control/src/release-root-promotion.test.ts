@@ -29,6 +29,7 @@ async function login(origin: string) {
 test("release-root promotion applies actual staging into an emulated live root and matches staging behavior", async () => {
   const version = "0.1.0";
   const targetId = "release-root-promotion";
+  const sandboxId = `${targetId}-staging`;
 
   const existingStaging =
     await readCombinedControlReleaseRootStagingApplyManifest({
@@ -37,6 +38,7 @@ test("release-root promotion applies actual staging into an emulated live root a
 
   if (!existingStaging) {
     await applyCombinedControlReleaseRootStaging({
+      sandboxId,
       version,
       host: "127.0.0.1",
       port: 0,
@@ -47,6 +49,7 @@ test("release-root promotion applies actual staging into an emulated live root a
   const staging = existingStaging
     ? await startExistingCombinedControlReleaseRootStaging({ version })
     : await startCombinedControlReleaseRootStaging({
+        sandboxId,
         version,
         host: "127.0.0.1",
         port: 0

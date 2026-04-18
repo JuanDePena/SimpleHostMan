@@ -1,6 +1,12 @@
 import { readFileSync } from "node:fs";
 
 import {
+  formatCombinedControlReleaseRootPromotionActivation,
+  formatCombinedControlReleaseRootPromotionInventory,
+  readCombinedControlReleaseRootPromotionInventory,
+  resolveActiveCombinedControlReleaseRootPromotion
+} from "./release-root-promotion-activation.js";
+import {
   diffCombinedControlReleaseRootPromotion,
   formatCombinedControlReleaseRootPromotionApply,
   formatCombinedControlReleaseRootPromotionDiff,
@@ -11,9 +17,10 @@ import {
 import { createCombinedControlReleaseRootPromotionLayout } from "./release-root-promotion-layout.js";
 
 const layout = createCombinedControlReleaseRootPromotionLayout();
-const [planManifest, applyManifest] = await Promise.all([
+const [planManifest, applyManifest, inventory] = await Promise.all([
   readCombinedControlReleaseRootPromotionPlanManifest(),
-  readCombinedControlReleaseRootPromotionApplyManifest()
+  readCombinedControlReleaseRootPromotionApplyManifest(),
+  readCombinedControlReleaseRootPromotionInventory()
 ]);
 const diffed = await diffCombinedControlReleaseRootPromotion({ persist: true });
 
@@ -33,6 +40,18 @@ console.log("");
 
 if (applyManifest) {
   console.log(formatCombinedControlReleaseRootPromotionApply(applyManifest));
+  console.log("");
+}
+
+console.log(formatCombinedControlReleaseRootPromotionInventory(inventory));
+console.log("");
+
+try {
+  const active = await resolveActiveCombinedControlReleaseRootPromotion();
+  console.log(formatCombinedControlReleaseRootPromotionActivation(active.activation));
+  console.log("");
+} catch {
+  console.log(`Activation unavailable: ${layout.activationManifestFile}`);
   console.log("");
 }
 
