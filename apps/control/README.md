@@ -64,6 +64,7 @@ From `/opt/simplehostman/src`:
 - `pnpm test:control:release-root-promotion:promotion`
 - `pnpm test:control:release-root-promotion:ready`
 - `pnpm test:control:release-root-cutover`
+- `pnpm test:control:release-root-cutover-target`
 - `pnpm test:control:release-target`
 - `pnpm test:control:release-handoff`
 - `pnpm test:control:release-shadow:promotion-ready`
@@ -83,6 +84,7 @@ From `/opt/simplehostman/src`:
 - `pnpm check:control:release-root-staging`
 - `pnpm check:control:release-root-promotion`
 - `pnpm check:control:release-root-cutover`
+- `pnpm check:control:release-root-cutover-target`
 - `pnpm promote:control:release-root-promotion -- <version> [targetId]`
 - `pnpm promotion-ready:control:release-root-promotion`
 - `pnpm check:control:release-target`
@@ -106,6 +108,9 @@ From `/opt/simplehostman/src`:
 - `pnpm plan:control:release-root-cutover -- [workspaceRoot] [targetId] [version] [actualReleaseRoot]`
 - `pnpm inspect:control:release-root-cutover -- [workspaceRoot] [targetId] [version] [actualReleaseRoot]`
 - `pnpm cutover-ready:control:release-root-cutover -- [workspaceRoot] [targetId] [version] [actualReleaseRoot]`
+- `pnpm apply:control:release-root-cutover-target -- [workspaceRoot] [targetId] [version]`
+- `pnpm inspect:control:release-root-cutover-target -- [workspaceRoot] [targetId] [version]`
+- `pnpm start:control:release-root-cutover-target -- [workspaceRoot] [targetId] [version]`
 - `pnpm start:control:release-target`
 - `pnpm handoff:control:release-shadow -- [sandboxId] [version]`
 - `pnpm rehearse:control:release-shadow -- [sandboxId] [version]`
@@ -153,6 +158,7 @@ From this directory:
 - `pnpm test:release-root-promotion:promotion`
 - `pnpm test:release-root-promotion:ready`
 - `pnpm test:release-root-cutover`
+- `pnpm test:release-root-cutover-target`
 - `pnpm test:release-target`
 - `pnpm test:release-handoff`
 - `pnpm test:release-shadow:promotion-ready`
@@ -172,6 +178,7 @@ From this directory:
 - `pnpm check:release-root-staging`
 - `pnpm check:release-root-promotion`
 - `pnpm check:release-root-cutover`
+- `pnpm check:release-root-cutover-target`
 - `pnpm promote:release-root-promotion -- <version> [targetId]`
 - `pnpm promotion-ready:release-root-promotion`
 - `pnpm check:release-target`
@@ -195,6 +202,9 @@ From this directory:
 - `pnpm plan:release-root-cutover -- [workspaceRoot] [targetId] [version] [actualReleaseRoot]`
 - `pnpm inspect:release-root-cutover -- [workspaceRoot] [targetId] [version] [actualReleaseRoot]`
 - `pnpm cutover-ready:release-root-cutover -- [workspaceRoot] [targetId] [version] [actualReleaseRoot]`
+- `pnpm apply:release-root-cutover-target -- [workspaceRoot] [targetId] [version]`
+- `pnpm inspect:release-root-cutover-target -- [workspaceRoot] [targetId] [version]`
+- `pnpm start:release-root-cutover-target -- [workspaceRoot] [targetId] [version]`
 - `pnpm start:release-target`
 - `pnpm release-handoff -- [sandboxId] [version]`
 - `pnpm release-rehearsal -- [sandboxId] [version]`
@@ -255,6 +265,7 @@ From this directory:
 - `apps/control/src/release-target-layout.ts`, `release-target-apply.ts`, `release-target-runner.ts`, `release-target-apply-cli.ts`, `release-target-start-cli.ts`, and `release-target.test.ts` now apply that handoff into a separate workspace-local emulated release root and validate that the resulting runtime still matches the promoted shadow.
 - `apps/control/src/release-root-staging-layout.ts`, `release-root-staging.ts`, `release-root-staging-runner.ts`, `release-root-staging-plan-cli.ts`, `release-root-staging-diff-cli.ts`, `release-root-staging-apply-cli.ts`, `release-root-staging-inspect-cli.ts`, `release-root-staging-start-cli.ts`, and `release-root-staging.test.ts` now materialize that handoff under `/opt/simplehostman/release/.staging/control`, validate drift and startup there, and prove parity against the workspace-local `release-target` without touching the real `current`.
 - `apps/control/src/release-root-cutover-layout.ts`, `release-root-cutover.ts`, `release-root-cutover-ready.ts`, `release-root-cutover-plan-cli.ts`, `release-root-cutover-ready-cli.ts`, `release-root-cutover-inspect-cli.ts`, and `release-root-cutover.test.ts` now define a plan-only cutover layer toward the actual release root, including rollback-candidate detection from the real `current` symlink shape without mutating it.
+- `apps/control/src/release-root-cutover-target-layout.ts`, `release-root-cutover-target.ts`, `release-root-cutover-target-runner.ts`, `release-root-cutover-target-apply-cli.ts`, `release-root-cutover-target-start-cli.ts`, `release-root-cutover-target-inspect-cli.ts`, and `release-root-cutover-target.test.ts` now apply that cutover plan into a separate workspace-local emulated actual release root and prove that the cutover result still matches `release-root promotion`.
 - the release-shadow now keeps multi-version inventory plus `shared/meta` activation/promotion/deploy state of its own, making it behave more like a real release root rehearsal instead of a single packed copy.
 - `apps/control/src/release-rehearsal.ts`, `release-rehearsal-cli.ts`, and `release-rehearsal.test.ts` now validate that the promoted release-shadow stays aligned with the release-sandbox it came from, both in metadata and in representative HTTP behavior.
 - `apps/control/src/request-context.test.ts` now locks the per-request caching behavior for session resolution, authenticated dashboard bootstrap, and health snapshot reuse.
