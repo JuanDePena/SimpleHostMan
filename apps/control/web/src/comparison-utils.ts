@@ -1,6 +1,7 @@
 import { escapeHtml } from "@simplehost/ui";
 
 import {
+  type DesiredStateComparisonOptions,
   type DesiredStateComparisonRow,
   type DesiredStateComparisonState,
   type DesiredStateRelatedPanelItem
@@ -42,16 +43,19 @@ function renderComparisonStatePill<Copy extends ComparisonCopyLabels>(
 export function createComparisonRow(
   label: string,
   desiredValue: string,
-  appliedValue?: string | null
+  appliedValue?: string | null,
+  options: DesiredStateComparisonOptions = {}
 ): DesiredStateComparisonRow {
   const normalizedDesired = desiredValue.trim();
   const normalizedApplied = appliedValue?.trim() ?? "";
+  const appliedKnown =
+    options.appliedKnown ?? (appliedValue !== undefined && appliedValue !== null);
 
   return {
     field: label,
     desiredValue: normalizedDesired,
     appliedValue: normalizedApplied || "",
-    state: normalizedApplied
+    state: appliedKnown
       ? normalizedDesired === normalizedApplied
         ? "match"
         : "changed"

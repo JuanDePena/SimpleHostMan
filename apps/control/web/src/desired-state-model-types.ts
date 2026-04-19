@@ -3,6 +3,7 @@ import { type DataTableRow } from "@simplehost/ui";
 import { type DashboardData } from "./api-client.js";
 import { type DesiredStateTabId } from "./dashboard-routing.js";
 import {
+  type DesiredStateComparisonOptions,
   type DesiredStateComparisonRow,
   type DesiredStateRelatedPanelItem,
   type DesiredStateSelectOption
@@ -66,7 +67,8 @@ export interface BuildDesiredStateModelArgs<Copy extends DesiredStateModelCopy> 
   createComparisonRow: (
     label: string,
     desiredValue: string,
-    appliedValue?: string | null
+    appliedValue?: string | null,
+    options?: DesiredStateComparisonOptions
   ) => DesiredStateComparisonRow;
   createComparisonDeltaItems: (
     copy: Copy,

@@ -12,24 +12,19 @@ Current baseline:
 - active release: `2604.19.13`
 - active services: `simplehost-control`, `simplehost-worker`, `simplehost-agent`
 
-## 1. Finish real per-action diffs in `SimpleHost Control`
-
-- Move from comparison summaries to field-accurate diffs before `dns.sync`, `proxy.render`, `database reconcile`, and destructive operations.
-- Keep those previews tied to the actual last applied or effective runtime state, not only to desired state.
-
-## 2. Deepen diagnostics, jobs, audit, and backups
+## 1. Deepen diagnostics, jobs, audit, and backups
 
 - Keep improving cross-links between resources, jobs, drift, audit, nodes, and backup runs.
 - Make backup policies and failures more operational from the UI, not only visible.
 - Keep pushing resource detail views toward one-place operational diagnosis.
 
-## 3. Keep shrinking transitional bootstrap state
+## 2. Keep shrinking transitional bootstrap state
 
 - Continue reducing the daily operational role of YAML bootstrap and import paths.
 - The bootstrap inventory lives in [`/opt/simplehostman/src/bootstrap/apps.bootstrap.yaml`](/opt/simplehostman/src/bootstrap/apps.bootstrap.yaml).
 - Keep reducing its day-to-day role in favor of PostgreSQL desired state plus controlled import and export flows.
 
-## 4. Finish the mail execution backend from the documented design
+## 3. Finish the mail execution backend from the documented design
 
 - The target mail architecture is documented in [`/opt/simplehostman/src/docs/MAIL.md`](/opt/simplehostman/src/docs/MAIL.md).
 - `SimpleHost Control` desired-state objects, operator CRUD, `mail.sync` dispatching, baseline DNS derivation, and `webmail.<domain>` proxy scaffolding are already in place.

@@ -39,6 +39,7 @@ export function buildDesiredStateModel<Copy extends DesiredStateModelCopy>(
     copy: args.copy,
     createComparisonDeltaItems: args.createComparisonDeltaItems,
     createComparisonRow: args.createComparisonRow,
+    data: args.data,
     formatDnsRecordPreview: args.formatDnsRecordPreview,
     readBooleanPayloadValue: args.readBooleanPayloadValue,
     readObjectArrayPayloadValue: args.readObjectArrayPayloadValue,

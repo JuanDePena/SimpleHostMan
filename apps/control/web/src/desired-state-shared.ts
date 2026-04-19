@@ -1,6 +1,9 @@
 export type DesiredStatePillTone = "default" | "success" | "danger" | "muted";
 export type DesiredStateRelatedPanelTone = "default" | "success" | "danger";
 export type DesiredStateComparisonState = "match" | "changed" | "unknown";
+export type DesiredStateComparisonOptions = {
+  appliedKnown?: boolean;
+};
 
 export type DesiredStateRelatedPanelItem = {
   title: string;
