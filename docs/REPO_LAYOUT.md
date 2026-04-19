@@ -253,14 +253,17 @@ Notes:
 
 ## Current transition direction
 
-The phased execution plan is tracked in [`/opt/simplehostman/src/docs/MONOREPO_MIGRATION.md`](/opt/simplehostman/src/docs/MONOREPO_MIGRATION.md).
+The source-unification phase is complete:
 
-The current source-phase priorities are:
+1. `/opt/simplehostman/src` is the only canonical source tree
+2. the former split roots have been absorbed and removed
+3. `control`, `worker`, `agent`, and shared packages now build from one workspace
 
-1. make `src` fully self-hosted and buildable
-2. remove residual source dependencies on legacy repos
-3. harden `apps/control` as the single control-plane source boundary
-4. postpone runtime/release convergence until the source workspace is stable
+Current work is no longer monorepo migration. It is runtime refinement:
+
+1. harden `apps/control` as the single control-plane runtime boundary
+2. keep `worker` and `agent` independently deployable
+3. continue normalizing release and cutover flows under `/opt/simplehostman/release`
 
 ## Ownership quick references
 
