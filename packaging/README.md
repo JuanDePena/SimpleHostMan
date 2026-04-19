@@ -14,19 +14,23 @@ Use:
 
 ## Layout
 
-- `env/`: environment examples for `control`, `worker`, `agent`, and retained legacy unit names
+- `env/`: environment examples for `control`, `worker`, and `agent`
 - `systemd/`: service units for the runtime services shipped from this workspace
 - `httpd/`: Apache-facing control-plane templates
 - `postgresql/`: PostgreSQL support templates that still belong with packaging rather than platform
 - `rpm/`: RPM specs for the shipped release bundles
 
 The old `panel/` and `manager/` subtree split has been removed.
-Packaging is now organized by artifact type while still preserving the current runtime-facing names where compatibility matters, such as:
+Packaging is now organized by artifact type and aligned to the unified runtime naming:
 
-- `spanel-*` service units
-- `shm-agent.service`
-- `simplehost-panel.spec`
-- `simplehost-manager.spec`
+- `simplehost-control.service`
+- `simplehost-worker.service`
+- `simplehost-agent.service`
+- `simplehost-control.env.example`
+- `simplehost-worker.env.example`
+- `simplehost-agent.env.example`
+- `simplehost-control.spec`
+- `simplehost-agent.spec`
 
 For now, packaging should keep assuming the deployed control plane remains in split mode even though `apps/control` already has a validated combined candidate in source.
 Source-level combined-mode validation currently lives in workspace scripts and tests only; packaging should not yet promote that candidate to the default runtime.
