@@ -17,7 +17,7 @@ if [[ "${mode}" != "active" && "${mode}" != "disabled" ]]; then
 fi
 
 if [[ "${target_host}" == "local" || ! -d "${release_dir}" ]]; then
-  bash "${repo_root}/scripts/panel/install-release.sh" "${version}"
+  bash "${repo_root}/scripts/control/install-release.sh" "${version}"
 fi
 
 ensure_env_version() {

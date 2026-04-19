@@ -33,7 +33,7 @@ Containerized services:
 
 - `SimpleHost Control` and `SimpleHost Agent` themselves are not containerized. Their imported release and packaging material is being normalized toward the neutral runtime root under `/opt/simplehostman/release`.
 - This runbook now mainly covers customer app workloads and optional MariaDB container services.
-- Node-local service ownership for app workload containers, `wireguard`, `pdns`, `postgresql-apps`, and `mariadb` lives in `simplehost-manager`, not in the shared docs tree.
+- Node-local service ownership for app workload containers, `wireguard`, `pdns`, `postgresql-apps`, and `mariadb` now lives in the agent-side runtime layer, not in the shared docs tree.
 - `SimpleHost Agent` now has a real `container.reconcile` driver for Quadlet-managed services, which is the preferred path for bringing in additional containerized services such as RustDesk.
 
 ## Selected runtime model

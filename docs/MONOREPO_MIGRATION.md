@@ -6,10 +6,10 @@ Target root: `/opt/simplehostman/src`
 
 ## Purpose
 
-This document defines the phased migration from the former split source trees plus shared docs:
+This document defines the phased migration from the former split control-plane and agent source trees plus shared docs:
 
-- former `simplehost-panel`
-- former `simplehost-manager`
+- former control-plane source tree
+- former agent source tree
 - `/opt/simplehostman/src/docs`
 
 into a single unified source workspace rooted at `/opt/simplehostman/src`.
@@ -29,12 +29,12 @@ Current checkpoint on 2026-04-14:
 - `apps/control` now owns the transitional `control-shared`, `control-api`, `control-web`, and combined-entrypoint source trees
 - root and app READMEs now live inside `src` and replace the old repo-level README references for architecture work
 - imported release scripts now resolve the unified source root correctly from `src/scripts/*`
-- imported panel and manager service templates now point at `/opt/simplehostman/release/current` and the current app paths under `apps/control`, `apps/worker`, and `apps/agent`
+- imported control and agent service templates now point at `/opt/simplehostman/release/current` and the current app paths under `apps/control`, `apps/worker`, and `apps/agent`
 - packaging is now normalized under shared artifact-type paths such as `src/packaging/env`, `src/packaging/systemd`, `src/packaging/httpd`, `src/packaging/postgresql`, and `src/packaging/rpm`
 - canonical README files now exist for `apps/*`, `packages`, `platform`, `bootstrap`, `packaging`, and `scripts` inside `src`
 - `apps/control/tsconfig.json` now acts as the composite source boundary for the transitional `control-shared`, `control-api`, `control-web`, and combined entrypoint candidate
-- root workspace build slices now exist for `panel-runtime` and `manager-runtime` through `tsconfig.panel.json`, `tsconfig.manager.json`, and matching root scripts
-- imported panel and manager release scripts now share a canonical path helper in `src/scripts/lib/workspace-paths.sh`
+- root workspace build slices now exist for `control-runtime` and `agent-runtime` through `tsconfig.control.json`, `tsconfig.agent.json`, and matching root scripts
+- imported control and agent release scripts now share a canonical path helper in `src/scripts/lib/workspace-paths.sh`
 - `apps/control/src/index.ts` now exists as a transitory one-process candidate that can serve UI routes and `/v1/*` from one combined request surface without changing the current runtime model
 - the web layer now depends on an injected `ControlWebApi` interface instead of a hard-wired module-global HTTP client, and the combined candidate already uses an in-process implementation backed by the API request handler
 - the combined control candidate now has a pure router layer, source-level routing tests, and explicit `combined|split` mode selection through `SIMPLEHOST_CONTROL_RUNTIME_MODE`
@@ -105,16 +105,16 @@ Current checkpoint on 2026-04-14:
 - `pnpm plan:control:release-root-staging -- [workspaceRoot] [version]`, `pnpm diff:control:release-root-staging -- [workspaceRoot] [version]`, `pnpm apply:control:release-root-staging -- [workspaceRoot] [version]`, `pnpm inspect:control:release-root-staging -- [workspaceRoot] [version]`, and `pnpm start:control:release-root-staging -- [workspaceRoot] [version]` now act as the canonical source-level staging commands against `/opt/simplehostman/release/.staging/control`
 - `pnpm rehearse:control:release-shadow -- [sandboxId] [version]` now acts as the canonical source-level rehearsal command between the sandboxed candidate and its promoted release-root shadow
 - `pnpm audit:legacy-roots` now guards against reintroducing functional references to legacy repo roots or retired package names outside docs/build output
-- clean-room validation passed from the unified tree: `pnpm install --frozen-lockfile`, `pnpm build:clean-room`, `pnpm typecheck`, `pnpm build:panel-runtime`, `pnpm build:manager-runtime`, `pnpm typecheck:panel-runtime`, `pnpm typecheck:manager-runtime`, and `git diff --check`
+- clean-room validation passed from the unified tree: `pnpm install --frozen-lockfile`, `pnpm build:clean-room`, `pnpm typecheck`, `pnpm build:control-runtime`, `pnpm build:agent-runtime`, `pnpm typecheck:control-runtime`, `pnpm typecheck:agent-runtime`, and `git diff --check`
 
 ## Remaining legacy surface after the current checkpoint
 
 The following areas are still transitional even though `src` is now canonical:
 
-- imported product packaging under `src/packaging/{panel,manager}` still carries legacy product boundaries
-- imported release scripts under `src/scripts/{panel,manager}` now build from the unified source tree, but still preserve legacy product-specific release flows that must be normalized later
+- imported product packaging under `src/packaging` still carries runtime-specific boundaries
+- imported release scripts under `src/scripts/{control,agent}` now build from the unified source tree, but still preserve runtime-specific release flows that must be normalized later
 - runtime-facing service names are now normalized as `simplehost-control`, `simplehost-worker`, and `simplehost-agent`
-- imported packaging is now source-aligned with `/opt/simplehostman/release`, but product boundaries inside `packaging/{panel,manager}` are still transitional
+- imported packaging is now source-aligned with `/opt/simplehostman/release`, but service and artifact boundaries inside `packaging` are still transitional
 
 ## Combined candidate pre-promotion checklist
 
@@ -206,8 +206,8 @@ Expected ownership:
 - `apps/agent`: long-running node agent currently provided by `SimpleHost Agent`
 - `apps/cli`: break-glass and local operator CLI
 - `packages/*`: shared contracts, UI primitives, persistence, renderers, drivers, config, and test helpers
-- `platform`: host-level templates and managed artifacts currently owned by `simplehost-manager/platform`
-- `bootstrap`: bootstrap inventory and import/export material currently owned by `simplehost-panel/bootstrap`
+- `platform`: host-level templates and managed artifacts imported from the former agent-side platform tree
+- `bootstrap`: bootstrap inventory and import/export material imported from the former control-plane bootstrap tree
 - `packaging`: service units, environment examples, RPM specs, and install payloads
 - `scripts`: deploy, install, rollback, maintenance, and migration helpers
 - `docs`: integrated architecture and operational documentation
@@ -216,33 +216,33 @@ Expected ownership:
 
 ### Apps
 
-- former `simplehost-panel/apps/web` -> `src/apps/control`
-- former `simplehost-panel/apps/api` -> `src/apps/control`
-- former `simplehost-panel/apps/worker` -> `src/apps/worker`
-- former `simplehost-manager/apps/agent` -> `src/apps/agent`
-- former `simplehost-manager/apps/cli` -> `src/apps/cli`
+- former control-plane `apps/web` -> `src/apps/control`
+- former control-plane `apps/api` -> `src/apps/control`
+- former control-plane `apps/worker` -> `src/apps/worker`
+- former agent `apps/agent` -> `src/apps/agent`
+- former agent `apps/cli` -> `src/apps/cli`
 
 ### Packages
 
-- former `simplehost-panel/packages/*` -> `src/packages/*`
-- former `simplehost-manager/packages/*` -> `src/packages/*`
+- former control-plane `packages/*` -> `src/packages/*`
+- former agent `packages/*` -> `src/packages/*`
 
 ### Platform and bootstrap
 
-- former `simplehost-manager/platform` -> `src/platform`
-- former `simplehost-panel/bootstrap` -> `src/bootstrap`
+- former agent `platform` -> `src/platform`
+- former control-plane `bootstrap` -> `src/bootstrap`
 
 ### Packaging and scripts
 
-- former `simplehost-panel/packaging` -> shared artifact-type subtrees under `src/packaging/*`
-- former `simplehost-manager/packaging` -> shared artifact-type subtrees under `src/packaging/*`
-- former `simplehost-panel/scripts` -> `src/scripts/panel` during transition, then normalized under `src/scripts/*`
-- former `simplehost-manager/scripts` -> `src/scripts/manager` during transition, then normalized under `src/scripts/*`
+- former control-plane `packaging` -> shared artifact-type subtrees under `src/packaging/*`
+- former agent `packaging` -> shared artifact-type subtrees under `src/packaging/*`
+- former control-plane `scripts` -> `src/scripts/control` during transition, then normalized under `src/scripts/*`
+- former agent `scripts` -> `src/scripts/agent` during transition, then normalized under `src/scripts/*`
 
 ### Documentation
 
 - `src/docs` remains the canonical shared docs tree
-- the former `simplehost-panel/docs/MIGRATIONS` content has already been absorbed into `src/docs/MIGRATIONS`
+- the former control-plane `docs/MIGRATIONS` content has already been absorbed into `src/docs/MIGRATIONS`
 - any future app-local docs should stay next to the app only if they describe behavior unique to `apps/control` or `apps/worker`
 
 ## Migration principles
@@ -278,10 +278,10 @@ Unify the trees that are least risky and most structural.
 
 Work:
 - keep `src/docs` as the shared documentation root
-- migrate former `simplehost-manager/platform` into `src/platform`
-- migrate former `simplehost-panel/bootstrap` into `src/bootstrap`
-- migrate former `simplehost-panel/packaging` and former `simplehost-manager/packaging` into unified artifact-type subtrees under `src/packaging/*`
-- migrate former `simplehost-panel/scripts` and former `simplehost-manager/scripts` into transition paths under `src/scripts`
+- migrate former agent `platform` into `src/platform`
+- migrate former control-plane `bootstrap` into `src/bootstrap`
+- migrate former control-plane `packaging` and former agent `packaging` into unified artifact-type subtrees under `src/packaging/*`
+- migrate former control-plane `scripts` and former agent `scripts` into transition paths under `src/scripts`
 
 Acceptance criteria:
 - non-runtime structure is unified under `src`
@@ -333,8 +333,8 @@ Goal:
 Unify `web` and `api` into one source tree before unifying them into one process.
 
 Work:
-- move former `simplehost-panel/apps/web` into `src/apps/control`
-- move former `simplehost-panel/apps/api` into `src/apps/control`
+- move former control-plane `apps/web` into `src/apps/control`
+- move former control-plane `apps/api` into `src/apps/control`
 - keep temporary internal separation such as `src/apps/control/shared/*`, `src/apps/control/web/*`, and `src/apps/control/api/*`
 - share route wiring, auth context, config loading, and contracts where appropriate
 - keep `/v1/*` compatibility intact

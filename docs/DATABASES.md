@@ -81,7 +81,7 @@ Source-controlled database artifacts:
 - [`/opt/simplehostman/src/platform/postgresql/apps/conf/postgresql.apps.primary.conf`](/opt/simplehostman/src/platform/postgresql/apps/conf/postgresql.apps.primary.conf)
 - [`/opt/simplehostman/src/platform/postgresql/apps/conf/postgresql.apps.standby.conf`](/opt/simplehostman/src/platform/postgresql/apps/conf/postgresql.apps.standby.conf)
 - [`/opt/simplehostman/src/platform/postgresql/apps/conf/pg_hba.apps.conf`](/opt/simplehostman/src/platform/postgresql/apps/conf/pg_hba.apps.conf)
-- [`/opt/simplehostman/src/scripts/manager/bootstrap-apps-standby.sh`](/opt/simplehostman/src/scripts/manager/bootstrap-apps-standby.sh)
+- [`/opt/simplehostman/src/scripts/agent/bootstrap-apps-standby.sh`](/opt/simplehostman/src/scripts/agent/bootstrap-apps-standby.sh)
 - [`/opt/simplehostman/src/platform/postgresql/apps/sql/create-app-database.sql.template`](/opt/simplehostman/src/platform/postgresql/apps/sql/create-app-database.sql.template)
 - [`/opt/simplehostman/src/platform/mariadb/conf/primary.cnf`](/opt/simplehostman/src/platform/mariadb/conf/primary.cnf)
 - [`/opt/simplehostman/src/platform/mariadb/conf/replica.cnf`](/opt/simplehostman/src/platform/mariadb/conf/replica.cnf)
@@ -90,7 +90,7 @@ Source-controlled database artifacts:
 - [`/opt/simplehostman/src/packaging/postgresql/control/conf/postgresql.control.primary.conf`](/opt/simplehostman/src/packaging/postgresql/control/conf/postgresql.control.primary.conf)
 - [`/opt/simplehostman/src/packaging/postgresql/control/conf/postgresql.control.standby.conf`](/opt/simplehostman/src/packaging/postgresql/control/conf/postgresql.control.standby.conf)
 - [`/opt/simplehostman/src/packaging/postgresql/control/conf/pg_hba.control.conf`](/opt/simplehostman/src/packaging/postgresql/control/conf/pg_hba.control.conf)
-- [`/opt/simplehostman/src/scripts/panel/bootstrap-control-standby.sh`](/opt/simplehostman/src/scripts/panel/bootstrap-control-standby.sh)
+- [`/opt/simplehostman/src/scripts/control/bootstrap-control-standby.sh`](/opt/simplehostman/src/scripts/control/bootstrap-control-standby.sh)
 - [`/opt/simplehostman/src/packaging/postgresql/control/sql/create-control-database.sql.template`](/opt/simplehostman/src/packaging/postgresql/control/sql/create-control-database.sql.template)
 
 ## PostgreSQL applications design
@@ -251,7 +251,7 @@ Secondary node bootstrap:
    - `/var/lib/pgsql/control/wal-archive`
 2. Create the host-native cluster unit:
    - `postgresql-new-systemd-unit --unit postgresql@control --datadir /var/lib/pgsql/control/data`
-3. Bootstrap the standby data directory from the primary with [`/opt/simplehostman/src/scripts/panel/bootstrap-control-standby.sh`](/opt/simplehostman/src/scripts/panel/bootstrap-control-standby.sh).
+3. Bootstrap the standby data directory from the primary with [`/opt/simplehostman/src/scripts/control/bootstrap-control-standby.sh`](/opt/simplehostman/src/scripts/control/bootstrap-control-standby.sh).
 4. Install these rendered artifacts into the cluster data directory:
    - [`/opt/simplehostman/src/packaging/postgresql/control/conf/postgresql.control.standby.conf`](/opt/simplehostman/src/packaging/postgresql/control/conf/postgresql.control.standby.conf) as `postgresql.conf`
    - [`/opt/simplehostman/src/packaging/postgresql/control/conf/pg_hba.control.conf`](/opt/simplehostman/src/packaging/postgresql/control/conf/pg_hba.control.conf) as `pg_hba.conf`

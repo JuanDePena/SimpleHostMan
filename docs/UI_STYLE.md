@@ -19,12 +19,12 @@ It is intended to prevent future UI work from drifting back into:
 
 The current implementation lives primarily in:
 
-- `/opt/simplehostman/src/packages/panel-ui/src/base-styles.ts`
-- `/opt/simplehostman/src/packages/panel-ui/src/admin-shell-styles.ts`
-- `/opt/simplehostman/src/packages/panel-ui/src/client-behaviors.ts`
-- `/opt/simplehostman/src/packages/panel-ui/src/admin-shell.ts`
-- `/opt/simplehostman/src/packages/panel-ui/src/panel-shell.ts`
-- `/opt/simplehostman/src/packages/panel-ui/src/data-table.ts`
+- `/opt/simplehostman/src/packages/ui/src/base-styles.ts`
+- `/opt/simplehostman/src/packages/ui/src/admin-shell-styles.ts`
+- `/opt/simplehostman/src/packages/ui/src/client-behaviors.ts`
+- `/opt/simplehostman/src/packages/ui/src/admin-shell.ts`
+- `/opt/simplehostman/src/packages/ui/src/panel-shell.ts`
+- `/opt/simplehostman/src/packages/ui/src/data-table.ts`
 
 The most visible `SimpleHost Control` workspace wiring currently lives in:
 

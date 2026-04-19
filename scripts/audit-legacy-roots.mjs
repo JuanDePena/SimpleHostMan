@@ -5,14 +5,20 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const ignoreDirs = new Set(['.git', 'node_modules', 'dist']);
+const ignoreDirs = new Set(['.git', 'node_modules', 'dist', '.tmp']);
 const ignoreExtensions = new Set(['.md', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.map', '.lock']);
 const ignoreBasenames = new Set(['pnpm-lock.yaml', 'audit-legacy-roots.mjs']);
 const forbiddenPatterns = [
   { label: '/opt/simplehostman/repos', regex: /\/opt\/simplehostman\/repos\//g },
   { label: '/opt/simplehost/repos', regex: /\/opt\/simplehost\/repos\//g },
-  { label: '@simplehost/panel-api', regex: /@simplehost\/panel-api/g },
-  { label: '@simplehost/panel-web', regex: /@simplehost\/panel-web/g }
+  { label: '@simplehost/panel-*', regex: /@simplehost\/panel-/g },
+  { label: '@simplehost/manager-*', regex: /@simplehost\/manager-/g },
+  { label: 'packages/panel-*', regex: /packages\/panel-/g },
+  { label: 'packages/manager-*', regex: /packages\/manager-/g },
+  { label: 'scripts/panel', regex: /scripts\/panel/g },
+  { label: 'scripts/manager', regex: /scripts\/manager/g },
+  { label: 'tsconfig.panel.json', regex: /tsconfig\.panel\.json/g },
+  { label: 'tsconfig.manager.json', regex: /tsconfig\.manager\.json/g }
 ];
 const findings = [];
 

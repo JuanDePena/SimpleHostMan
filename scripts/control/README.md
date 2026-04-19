@@ -5,7 +5,7 @@ back the unified release workflow.
 
 Path:
 
-- `/opt/simplehostman/src/scripts/panel`
+- `/opt/simplehostman/src/scripts/control`
 
 Typical responsibilities:
 

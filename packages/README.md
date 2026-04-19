@@ -6,26 +6,26 @@ Path:
 
 - `/opt/simplehostman/src/packages`
 
-## Current transitional split
+## Runtime package groups
 
-Panel-origin packages:
+Control runtime packages:
 
-- `panel-config`
-- `panel-contracts`
-- `panel-database`
-- `panel-testing`
-- `panel-ui`
+- `control-config`
+- `control-contracts`
+- `control-database`
+- `control-testing`
+- `ui`
 
-Manager-origin packages:
+Agent runtime packages:
 
-- `manager-contracts`
-- `manager-control-plane-client`
-- `manager-drivers`
-- `manager-node-config`
-- `manager-renderers`
-- `manager-testing`
+- `agent-contracts`
+- `agent-control-plane-client`
+- `agent-drivers`
+- `agent-runtime-config`
+- `agent-renderers`
+- `agent-testing`
 
-These names remain transitional. The source of truth is already this tree.
+These names are now the canonical monorepo boundaries for shared runtime code.
 
 ## Ownership rules
 

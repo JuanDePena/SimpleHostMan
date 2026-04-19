@@ -52,17 +52,17 @@ Meaning:
     /agent
     /cli
   /packages
-    /panel-config
-    /panel-contracts
-    /panel-database
-    /panel-testing
-    /panel-ui
-    /manager-contracts
-    /manager-control-plane-client
-    /manager-drivers
-    /manager-node-config
-    /manager-renderers
-    /manager-testing
+    /control-config
+    /control-contracts
+    /control-database
+    /control-testing
+    /ui
+    /agent-contracts
+    /agent-control-plane-client
+    /agent-drivers
+    /agent-runtime-config
+    /agent-renderers
+    /agent-testing
   /platform
   /bootstrap
   /packaging
@@ -72,8 +72,8 @@ Meaning:
     /postgresql
     /rpm
   /scripts
-    /panel
-    /manager
+    /control
+    /agent
   /docs
 ```
 
@@ -130,24 +130,24 @@ Responsibility:
 
 ## Package ownership
 
-### Panel-origin packages
+### Control runtime packages
 
-- `panel-config`
-- `panel-contracts`
-- `panel-database`
-- `panel-testing`
-- `panel-ui`
+- `control-config`
+- `control-contracts`
+- `control-database`
+- `control-testing`
+- `ui`
 
-### Manager-origin packages
+### Agent runtime packages
 
-- `manager-contracts`
-- `manager-control-plane-client`
-- `manager-drivers`
-- `manager-node-config`
-- `manager-renderers`
-- `manager-testing`
+- `agent-contracts`
+- `agent-control-plane-client`
+- `agent-drivers`
+- `agent-runtime-config`
+- `agent-renderers`
+- `agent-testing`
 
-These names remain transitional. The source of truth is already `src/packages/*`.
+These names are now the canonical package boundaries inside `src/packages/*`.
 
 ## Non-app source trees
 
@@ -200,8 +200,8 @@ Path:
 
 Current transitional split:
 
-- `/opt/simplehostman/src/scripts/panel`
-- `/opt/simplehostman/src/scripts/manager`
+- `/opt/simplehostman/src/scripts/control`
+- `/opt/simplehostman/src/scripts/agent`
 
 These scripts now belong to the unified source tree even if many remain product-owned in behavior.
 
@@ -221,7 +221,7 @@ Contains:
 
 ## Former split roots
 
-The former `simplehost-panel` and `simplehost-manager` source trees have already been absorbed into `/opt/simplehostman/src` and removed from the live workspace.
+The former split control-plane and agent source trees have already been absorbed into `/opt/simplehostman/src` and removed from the live workspace.
 
 Historical references may still appear in migration notes, but they are no longer live workspace inputs.
 
@@ -240,7 +240,7 @@ Notes:
 
 - this root has already been reserved in the filesystem
 - final release structure is a later migration phase
-- imported panel/manager packaging and deploy scripts may still reflect legacy product-specific assumptions and should be treated as transitional until runtime migration is executed
+- imported control/agent packaging and deploy scripts may still reflect runtime-specific assumptions and should be treated as transitional until runtime migration is executed
 
 ## Rules
 

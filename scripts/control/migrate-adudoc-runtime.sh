@@ -37,7 +37,7 @@ require_command podman
 require_command psql
 
 if [[ "${BUILD_IMAGE}" == "true" ]]; then
-  "${SRC_ROOT}/scripts/manager/build-app-runtime-image.sh" "${IMAGE_TAG}"
+  "${SRC_ROOT}/scripts/agent/build-app-runtime-image.sh" "${IMAGE_TAG}"
 fi
 
 install -d \

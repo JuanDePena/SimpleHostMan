@@ -22,15 +22,23 @@ rm -rf "${temp_dir}/.git" "${temp_dir}/node_modules"
 (
   cd "${temp_dir}"
   pnpm install --frozen-lockfile
-  pnpm build:manager-runtime
+  pnpm build:control-runtime
 )
 
 rm -rf "${release_dir}"
 mv "${temp_dir}" "${release_dir}"
 ln -sfn "${release_dir}" "${runtime_root}/current"
 
-install -m 0644 "${repo_root}/packaging/systemd/simplehost-agent.service" /etc/systemd/system/simplehost-agent.service
-install -m 0644 "${repo_root}/packaging/env/simplehost-agent.env.example" /etc/simplehost/agent.env.example
+install -m 0644 "${repo_root}/packaging/systemd/simplehost-control.service" /etc/systemd/system/simplehost-control.service
+install -m 0644 "${repo_root}/packaging/systemd/simplehost-worker.service" /etc/systemd/system/simplehost-worker.service
+install -m 0644 "${repo_root}/packaging/env/simplehost-control.env.example" /etc/simplehost/control.env.example
+install -m 0644 "${repo_root}/packaging/env/simplehost-worker.env.example" /etc/simplehost/worker.env.example
+bash "${release_dir}/scripts/normalize-api-env.sh" /etc/simplehost/control.env.example
+
+if [[ -f /etc/simplehost/control.env ]]; then
+  bash "${release_dir}/scripts/normalize-api-env.sh" /etc/simplehost/control.env
+fi
+
 systemctl daemon-reload
 
-echo "Installed agent release ${version} into ${release_dir}"
+echo "Installed control release ${version} into ${release_dir}"

@@ -5,7 +5,7 @@ unified release workflow.
 
 Path:
 
-- `/opt/simplehostman/src/scripts/manager`
+- `/opt/simplehostman/src/scripts/agent`
 
 Typical responsibilities:
 
