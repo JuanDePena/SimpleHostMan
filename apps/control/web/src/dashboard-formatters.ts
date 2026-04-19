@@ -1,9 +1,9 @@
-import { escapeHtml } from "@simplehost/panel-ui";
+import { escapeHtml } from "@simplehost/ui";
 
 import {
   type DnsRecordPayload,
   type OperationsOverview
-} from "@simplehost/panel-contracts";
+} from "@simplehost/control-contracts";
 
 import { type WebLocale } from "./request.js";
 import { type SelectOption, type PillTone } from "./web-types.js";

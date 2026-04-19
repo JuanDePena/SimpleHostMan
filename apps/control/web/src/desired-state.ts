@@ -12,7 +12,7 @@ import type {
   UpsertMailboxQuotaRequest,
   UpsertMailboxRequest,
   UpsertMailDomainRequest
-} from "@simplehost/panel-contracts";
+} from "@simplehost/control-contracts";
 
 const slugPattern = /^[a-z0-9](?:[a-z0-9-_]{0,61}[a-z0-9])?$/;
 const hostnamePattern =

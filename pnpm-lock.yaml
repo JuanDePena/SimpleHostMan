@@ -20,39 +20,39 @@ importers:
 
   apps/agent:
     dependencies:
-      '@simplehost/manager-contracts':
+      '@simplehost/agent-contracts':
         specifier: workspace:*
-        version: link:../../packages/manager-contracts
-      '@simplehost/manager-control-plane-client':
+        version: link:../../packages/agent-contracts
+      '@simplehost/agent-control-plane-client':
         specifier: workspace:*
-        version: link:../../packages/manager-control-plane-client
-      '@simplehost/manager-drivers':
+        version: link:../../packages/agent-control-plane-client
+      '@simplehost/agent-drivers':
         specifier: workspace:*
-        version: link:../../packages/manager-drivers
-      '@simplehost/manager-node-config':
+        version: link:../../packages/agent-drivers
+      '@simplehost/agent-runtime-config':
         specifier: workspace:*
-        version: link:../../packages/manager-node-config
-      '@simplehost/manager-renderers':
+        version: link:../../packages/agent-runtime-config
+      '@simplehost/agent-renderers':
         specifier: workspace:*
-        version: link:../../packages/manager-renderers
+        version: link:../../packages/agent-renderers
 
   apps/cli:
     dependencies:
-      '@simplehost/manager-contracts':
+      '@simplehost/agent-contracts':
         specifier: workspace:*
-        version: link:../../packages/manager-contracts
-      '@simplehost/manager-control-plane-client':
+        version: link:../../packages/agent-contracts
+      '@simplehost/agent-control-plane-client':
         specifier: workspace:*
-        version: link:../../packages/manager-control-plane-client
-      '@simplehost/manager-drivers':
+        version: link:../../packages/agent-control-plane-client
+      '@simplehost/agent-drivers':
         specifier: workspace:*
-        version: link:../../packages/manager-drivers
-      '@simplehost/manager-node-config':
+        version: link:../../packages/agent-drivers
+      '@simplehost/agent-runtime-config':
         specifier: workspace:*
-        version: link:../../packages/manager-node-config
-      '@simplehost/manager-renderers':
+        version: link:../../packages/agent-runtime-config
+      '@simplehost/agent-renderers':
         specifier: workspace:*
-        version: link:../../packages/manager-renderers
+        version: link:../../packages/agent-renderers
 
   apps/control:
     dependencies:
@@ -71,68 +71,68 @@ importers:
       '@simplehost/control-shared':
         specifier: workspace:*
         version: link:../shared
-      '@simplehost/panel-config':
+      '@simplehost/control-config':
         specifier: workspace:*
-        version: link:../../../packages/panel-config
-      '@simplehost/panel-contracts':
+        version: link:../../../packages/control-config
+      '@simplehost/control-contracts':
         specifier: workspace:*
-        version: link:../../../packages/panel-contracts
-      '@simplehost/panel-database':
+        version: link:../../../packages/control-contracts
+      '@simplehost/control-database':
         specifier: workspace:*
-        version: link:../../../packages/panel-database
+        version: link:../../../packages/control-database
 
   apps/control/shared:
     dependencies:
-      '@simplehost/panel-config':
+      '@simplehost/control-config':
         specifier: workspace:*
-        version: link:../../../packages/panel-config
-      '@simplehost/panel-contracts':
+        version: link:../../../packages/control-config
+      '@simplehost/control-contracts':
         specifier: workspace:*
-        version: link:../../../packages/panel-contracts
+        version: link:../../../packages/control-contracts
 
   apps/control/web:
     dependencies:
       '@simplehost/control-shared':
         specifier: workspace:*
         version: link:../shared
-      '@simplehost/panel-config':
+      '@simplehost/control-config':
         specifier: workspace:*
-        version: link:../../../packages/panel-config
-      '@simplehost/panel-contracts':
+        version: link:../../../packages/control-config
+      '@simplehost/control-contracts':
         specifier: workspace:*
-        version: link:../../../packages/panel-contracts
-      '@simplehost/panel-ui':
+        version: link:../../../packages/control-contracts
+      '@simplehost/ui':
         specifier: workspace:*
-        version: link:../../../packages/panel-ui
+        version: link:../../../packages/ui
 
   apps/worker:
     dependencies:
-      '@simplehost/panel-config':
+      '@simplehost/control-config':
         specifier: workspace:*
-        version: link:../../packages/panel-config
-      '@simplehost/panel-contracts':
+        version: link:../../packages/control-config
+      '@simplehost/control-contracts':
         specifier: workspace:*
-        version: link:../../packages/panel-contracts
-      '@simplehost/panel-database':
+        version: link:../../packages/control-contracts
+      '@simplehost/control-database':
         specifier: workspace:*
-        version: link:../../packages/panel-database
+        version: link:../../packages/control-database
 
-  packages/manager-contracts: {}
+  packages/agent-contracts: {}
 
-  packages/manager-control-plane-client:
+  packages/agent-control-plane-client:
     dependencies:
-      '@simplehost/manager-contracts':
+      '@simplehost/agent-contracts':
         specifier: workspace:*
-        version: link:../manager-contracts
+        version: link:../agent-contracts
 
-  packages/manager-drivers:
+  packages/agent-drivers:
     dependencies:
-      '@simplehost/manager-contracts':
+      '@simplehost/agent-contracts':
         specifier: workspace:*
-        version: link:../manager-contracts
-      '@simplehost/manager-renderers':
+        version: link:../agent-contracts
+      '@simplehost/agent-renderers':
         specifier: workspace:*
-        version: link:../manager-renderers
+        version: link:../agent-renderers
       mysql2:
         specifier: ^3.15.3
         version: 3.22.0(@types/node@22.19.17)
@@ -140,25 +140,25 @@ importers:
         specifier: ^8.16.3
         version: 8.20.0
 
-  packages/manager-node-config: {}
+  packages/agent-runtime-config: {}
 
-  packages/manager-renderers:
+  packages/agent-renderers:
     dependencies:
-      '@simplehost/manager-contracts':
+      '@simplehost/agent-contracts':
         specifier: workspace:*
-        version: link:../manager-contracts
+        version: link:../agent-contracts
 
-  packages/manager-testing: {}
+  packages/agent-testing: {}
 
-  packages/panel-config: {}
+  packages/control-config: {}
 
-  packages/panel-contracts: {}
+  packages/control-contracts: {}
 
-  packages/panel-database:
+  packages/control-database:
     dependencies:
-      '@simplehost/panel-contracts':
+      '@simplehost/control-contracts':
         specifier: workspace:*
-        version: link:../panel-contracts
+        version: link:../control-contracts
       pg:
         specifier: ^8.16.3
         version: 8.20.0
@@ -166,9 +166,9 @@ importers:
         specifier: ^2.8.1
         version: 2.8.3
 
-  packages/panel-testing: {}
+  packages/control-testing: {}
 
-  packages/panel-ui: {}
+  packages/ui: {}
 
 packages:
 

@@ -1,4 +1,4 @@
-import { escapeHtml } from "@simplehost/panel-ui";
+import { escapeHtml } from "@simplehost/ui";
 
 type PillRenderer = (
   value: string,

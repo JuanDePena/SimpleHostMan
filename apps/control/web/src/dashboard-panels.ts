@@ -1,9 +1,9 @@
-import { escapeHtml } from "@simplehost/panel-ui";
+import { escapeHtml } from "@simplehost/ui";
 
 import {
   type AuditEventSummary,
   type JobHistoryEntry
-} from "@simplehost/panel-contracts";
+} from "@simplehost/control-contracts";
 
 import { buildDashboardViewUrl, type DashboardView } from "./dashboard-routing.js";
 import { renderActionFacts } from "./panel-renderers.js";

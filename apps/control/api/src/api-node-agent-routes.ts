@@ -2,7 +2,7 @@ import type {
   JobClaimRequest,
   JobReportRequest,
   NodeRegistrationRequest
-} from "@simplehost/panel-contracts";
+} from "@simplehost/control-contracts";
 
 import { readJsonBody, writeJson } from "./api-http.js";
 import type { ApiRouteHandler } from "./api-route-context.js";

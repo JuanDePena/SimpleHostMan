@@ -1,6 +1,6 @@
 import {
   type AuthLoginRequest
-} from "@simplehost/panel-contracts";
+} from "@simplehost/control-contracts";
 
 import {
   clearSessionCookie,

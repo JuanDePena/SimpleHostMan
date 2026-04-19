@@ -3,7 +3,7 @@ import type {
   UpsertMailboxQuotaRequest,
   UpsertMailboxRequest,
   UpsertMailDomainRequest
-} from "@simplehost/panel-contracts";
+} from "@simplehost/control-contracts";
 
 import {
   matchRoute,

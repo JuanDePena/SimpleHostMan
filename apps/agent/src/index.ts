@@ -11,7 +11,7 @@ import {
   claimJobs,
   registerNode,
   reportJob
-} from "@simplehost/manager-control-plane-client";
+} from "@simplehost/agent-control-plane-client";
 import {
   supportedJobKinds,
   type AppServiceSnapshot,
@@ -27,8 +27,8 @@ import {
   type AgentNodeRuntimeSnapshot,
   type AgentNodeSnapshot,
   type AgentSpoolEntry
-} from "@simplehost/manager-contracts";
-import { executeAllowlistedJob } from "@simplehost/manager-drivers";
+} from "@simplehost/agent-contracts";
+import { executeAllowlistedJob } from "@simplehost/agent-drivers";
 import {
   createAgentRuntimeConfig,
   ensureAgentStateDirectories,
@@ -37,8 +37,8 @@ import {
   readJsonFile,
   removeFileIfExists,
   writeJsonFileAtomic
-} from "@simplehost/manager-node-config";
-import { renderJobResult, renderNodeSnapshot } from "@simplehost/manager-renderers";
+} from "@simplehost/agent-runtime-config";
+import { renderJobResult, renderNodeSnapshot } from "@simplehost/agent-renderers";
 
 const execFileAsync = promisify(execFile);
 const rustDeskTrackedPorts = new Set([21115, 21116, 21117, 21118, 21119]);

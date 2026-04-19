@@ -3,7 +3,7 @@ import type {
   DatabaseReconcileRequest,
   DesiredStateApplyRequest,
   InventoryImportRequest
-} from "@simplehost/panel-contracts";
+} from "@simplehost/control-contracts";
 
 import {
   matchRoute,

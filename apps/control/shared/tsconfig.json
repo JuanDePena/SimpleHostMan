@@ -9,10 +9,10 @@
   ],
   "references": [
     {
-      "path": "../../../packages/panel-config"
+      "path": "../../../packages/control-config"
     },
     {
-      "path": "../../../packages/panel-contracts"
+      "path": "../../../packages/control-contracts"
     }
   ]
 }

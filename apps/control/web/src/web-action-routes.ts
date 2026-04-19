@@ -6,7 +6,7 @@ import {
   type JobDispatchResponse,
   type PackageInstallRequest,
   type PackageInventoryRefreshRequest
-} from "@simplehost/panel-contracts";
+} from "@simplehost/control-contracts";
 
 import { noticeLocation, noticeReturnTo } from "./api-client.js";
 import { readFormBody, redirect } from "./request.js";

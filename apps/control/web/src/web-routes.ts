@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 
-import { type PanelNotice } from "@simplehost/panel-ui";
+import { type PanelNotice } from "@simplehost/ui";
 import { isUnauthorizedError } from "@simplehost/control-shared";
 
 import { type ControlWebApi } from "./api-client.js";

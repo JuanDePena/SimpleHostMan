@@ -13,7 +13,7 @@ import {
   createPostgresControlPlaneStore,
   NodeAuthorizationError,
   UserAuthorizationError
-} from "@simplehost/panel-database";
+} from "@simplehost/control-database";
 
 import { writeJson } from "./api-http.js";
 import { createApiRequestHandler } from "./api-routes.js";

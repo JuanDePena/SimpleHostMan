@@ -3,7 +3,7 @@ import { type Server } from "node:http";
 import {
   createControlRuntimeConfig,
   type ControlRuntimeConfig
-} from "@simplehost/panel-config";
+} from "@simplehost/control-config";
 
 export interface RuntimeHealthSnapshot {
   service: string;

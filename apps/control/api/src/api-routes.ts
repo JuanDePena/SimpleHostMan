@@ -1,12 +1,12 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import { type ControlRuntimeConfig } from "@simplehost/panel-config";
+import { type ControlRuntimeConfig } from "@simplehost/control-config";
 import { createRuntimeHealthSnapshot } from "@simplehost/control-shared";
-import { createControlApiMetadata } from "@simplehost/panel-contracts";
+import { createControlApiMetadata } from "@simplehost/control-contracts";
 import {
   createControlDatabaseHealthSummary,
   type ControlPlaneStore
-} from "@simplehost/panel-database";
+} from "@simplehost/control-database";
 
 import { handleAuthRoutes } from "./api-auth-routes.js";
 import { readBearerToken, writeJson } from "./api-http.js";

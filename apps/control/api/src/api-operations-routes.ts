@@ -6,7 +6,7 @@ import type {
   PackageInventoryRefreshRequest,
   RustDeskOverview,
   RustDeskPublicConnectionInfo
-} from "@simplehost/panel-contracts";
+} from "@simplehost/control-contracts";
 
 import {
   readIntegerSearchParam,

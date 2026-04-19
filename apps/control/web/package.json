@@ -17,9 +17,9 @@
   },
   "dependencies": {
     "@simplehost/control-shared": "workspace:*",
-    "@simplehost/panel-config": "workspace:*",
-    "@simplehost/panel-contracts": "workspace:*",
-    "@simplehost/panel-ui": "workspace:*"
+    "@simplehost/control-config": "workspace:*",
+    "@simplehost/control-contracts": "workspace:*",
+    "@simplehost/ui": "workspace:*"
   },
   "description": "Transitional web entrypoint inside the unified control-plane app"
 }

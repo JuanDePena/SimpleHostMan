@@ -1,4 +1,4 @@
-import { type PanelNotice } from "@simplehost/panel-ui";
+import { type PanelNotice } from "@simplehost/ui";
 import {
   ControlSessionRequiredError,
   isUnauthorizedError

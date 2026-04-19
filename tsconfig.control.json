@@ -1,0 +1,26 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "./packages/control-config"
+    },
+    {
+      "path": "./packages/control-contracts"
+    },
+    {
+      "path": "./packages/control-testing"
+    },
+    {
+      "path": "./packages/ui"
+    },
+    {
+      "path": "./packages/control-database"
+    },
+    {
+      "path": "./apps/control"
+    },
+    {
+      "path": "./apps/worker"
+    }
+  ]
+}

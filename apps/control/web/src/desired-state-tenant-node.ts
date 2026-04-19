@@ -1,4 +1,4 @@
-import { escapeHtml } from "@simplehost/panel-ui";
+import { escapeHtml } from "@simplehost/ui";
 
 import { type DashboardData } from "./api-client.js";
 import { buildDashboardViewUrl } from "./dashboard-routing.js";

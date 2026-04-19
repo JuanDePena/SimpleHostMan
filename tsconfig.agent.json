@@ -1,0 +1,13 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/agent-contracts" },
+    { "path": "./packages/agent-runtime-config" },
+    { "path": "./packages/agent-testing" },
+    { "path": "./packages/agent-control-plane-client" },
+    { "path": "./packages/agent-renderers" },
+    { "path": "./packages/agent-drivers" },
+    { "path": "./apps/agent" },
+    { "path": "./apps/cli" }
+  ]
+}

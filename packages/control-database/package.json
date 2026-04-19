@@ -1,0 +1,23 @@
+{
+  "name": "@simplehost/control-database",
+  "version": "2604.19.11",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "migrations"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "migrate": "node dist/migrate-cli.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@simplehost/control-contracts": "workspace:*",
+    "pg": "^8.16.3",
+    "yaml": "^2.8.1"
+  }
+}

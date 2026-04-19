@@ -2,7 +2,7 @@ import {
   escapeHtml,
   renderPanelShell,
   type PanelNotice
-} from "@simplehost/panel-ui";
+} from "@simplehost/ui";
 
 import { type WebLocale } from "./request.js";
 import { copyByLocale } from "./web-copy.js";

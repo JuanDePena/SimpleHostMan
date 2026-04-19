@@ -2,7 +2,7 @@ import type {
   AuthLoginRequest,
   AuthLoginResponse,
   AuthenticatedUserSummary
-} from "@simplehost/panel-contracts";
+} from "@simplehost/control-contracts";
 
 export interface ControlAuthSurface {
   login(credentials: AuthLoginRequest): Promise<AuthLoginResponse>;

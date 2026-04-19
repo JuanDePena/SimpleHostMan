@@ -1,4 +1,4 @@
-import { escapeHtml, type DataTableRow } from "@simplehost/panel-ui";
+import { escapeHtml, type DataTableRow } from "@simplehost/ui";
 
 import { buildDashboardViewUrl } from "./dashboard-routing.js";
 import { type BackupCopy, type BackupsWorkspaceArgs } from "./dashboard-backups-types.js";

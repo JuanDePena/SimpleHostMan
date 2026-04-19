@@ -4,7 +4,7 @@ import test from "node:test";
 import type {
   AuthLoginResponse,
   AuthenticatedUserSummary
-} from "@simplehost/panel-contracts";
+} from "@simplehost/control-contracts";
 import {
   ControlSessionRequiredError,
   createRuntimeHealthSnapshot,

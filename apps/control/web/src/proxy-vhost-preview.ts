@@ -1,5 +1,5 @@
-import { type ProxyRenderPayload } from "@simplehost/panel-contracts";
-import { escapeHtml, renderPanelShell } from "@simplehost/panel-ui";
+import { type ProxyRenderPayload } from "@simplehost/control-contracts";
+import { escapeHtml, renderPanelShell } from "@simplehost/ui";
 
 import { type WebLocale } from "./request.js";
 

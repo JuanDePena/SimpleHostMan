@@ -2,12 +2,12 @@ import { realpathSync } from "node:fs";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 
-import { createControlRuntimeConfig } from "@simplehost/panel-config";
-import { createControlApiMetadata } from "@simplehost/panel-contracts";
+import { createControlRuntimeConfig } from "@simplehost/control-config";
+import { createControlApiMetadata } from "@simplehost/control-contracts";
 import {
   createControlDatabaseHealthSummary,
   createPostgresControlPlaneStore
-} from "@simplehost/panel-database";
+} from "@simplehost/control-database";
 
 export async function runWorkerIteration(): Promise<void> {
   const config = createControlRuntimeConfig();

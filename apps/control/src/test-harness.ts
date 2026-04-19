@@ -5,7 +5,7 @@ import type {
   AuthenticatedUserSummary,
   JobDispatchResponse,
   ProxyRenderPayload
-} from "@simplehost/panel-contracts";
+} from "@simplehost/control-contracts";
 import {
   createControlApiHttpHandler,
   writeJson,

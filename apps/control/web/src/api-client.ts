@@ -1,4 +1,4 @@
-import { createControlRuntimeConfig, type ControlRuntimeConfig } from "@simplehost/panel-config";
+import { createControlRuntimeConfig, type ControlRuntimeConfig } from "@simplehost/control-config";
 import {
   type AppReconcileRequest,
   type AuditEventSummary,
@@ -30,8 +30,8 @@ import {
   type UpsertMailboxQuotaRequest,
   type UpsertMailboxRequest,
   type RustDeskOverview
-} from "@simplehost/panel-contracts";
-import { type PanelNotice } from "@simplehost/panel-ui";
+} from "@simplehost/control-contracts";
+import { type PanelNotice } from "@simplehost/ui";
 import {
   createControlSessionSurface,
   loadAuthenticatedControlDashboardBootstrap,

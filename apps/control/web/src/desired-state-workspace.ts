@@ -1,6 +1,6 @@
-import { escapeHtml, renderDataTable, type DataTableRow } from "@simplehost/panel-ui";
+import { escapeHtml, renderDataTable, type DataTableRow } from "@simplehost/ui";
 
-import { type AuditEventSummary, type JobHistoryEntry } from "@simplehost/panel-contracts";
+import { type AuditEventSummary, type JobHistoryEntry } from "@simplehost/control-contracts";
 
 import { type DashboardData } from "./api-client.js";
 import {

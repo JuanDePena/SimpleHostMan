@@ -2,7 +2,7 @@ import {
   escapeHtml,
   renderDataTable,
   type PanelNotice
-} from "@simplehost/panel-ui";
+} from "@simplehost/ui";
 
 import { type DashboardData } from "./api-client.js";
 import {

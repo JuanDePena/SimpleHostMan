@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import type { PanelNotice } from "@simplehost/panel-ui";
+import type { PanelNotice } from "@simplehost/ui";
 import type {
   ControlAuthenticatedSession,
   ControlAuthenticatedDashboardBootstrap,

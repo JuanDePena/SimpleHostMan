@@ -2,37 +2,37 @@
   "files": [],
   "references": [
     {
-      "path": "./packages/manager-contracts"
+      "path": "./packages/agent-contracts"
     },
     {
-      "path": "./packages/manager-node-config"
+      "path": "./packages/agent-runtime-config"
     },
     {
-      "path": "./packages/manager-testing"
+      "path": "./packages/agent-testing"
     },
     {
-      "path": "./packages/panel-config"
+      "path": "./packages/control-config"
     },
     {
-      "path": "./packages/panel-contracts"
+      "path": "./packages/control-contracts"
     },
     {
-      "path": "./packages/panel-testing"
+      "path": "./packages/control-testing"
     },
     {
-      "path": "./packages/panel-ui"
+      "path": "./packages/ui"
     },
     {
-      "path": "./packages/manager-control-plane-client"
+      "path": "./packages/agent-control-plane-client"
     },
     {
-      "path": "./packages/manager-renderers"
+      "path": "./packages/agent-renderers"
     },
     {
-      "path": "./packages/panel-database"
+      "path": "./packages/control-database"
     },
     {
-      "path": "./packages/manager-drivers"
+      "path": "./packages/agent-drivers"
     },
     {
       "path": "./apps/control"

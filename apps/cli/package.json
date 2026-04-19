@@ -1,5 +1,5 @@
 {
-  "name": "@simplehost/manager-cli",
+  "name": "@simplehost/agent-cli",
   "version": "2604.19.11",
   "private": true,
   "type": "module",
@@ -18,10 +18,10 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@simplehost/manager-control-plane-client": "workspace:*",
-    "@simplehost/manager-contracts": "workspace:*",
-    "@simplehost/manager-drivers": "workspace:*",
-    "@simplehost/manager-node-config": "workspace:*",
-    "@simplehost/manager-renderers": "workspace:*"
+    "@simplehost/agent-control-plane-client": "workspace:*",
+    "@simplehost/agent-contracts": "workspace:*",
+    "@simplehost/agent-drivers": "workspace:*",
+    "@simplehost/agent-runtime-config": "workspace:*",
+    "@simplehost/agent-renderers": "workspace:*"
   }
 }

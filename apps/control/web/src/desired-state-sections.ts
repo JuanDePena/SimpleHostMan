@@ -1,4 +1,4 @@
-import { type DataTableRow } from "@simplehost/panel-ui";
+import { type DataTableRow } from "@simplehost/ui";
 
 import { type DashboardData } from "./api-client.js";
 import { buildDashboardViewUrl } from "./dashboard-routing.js";

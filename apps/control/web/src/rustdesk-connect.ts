@@ -1,5 +1,5 @@
-import { type RustDeskPublicConnectionInfo } from "@simplehost/panel-contracts";
-import { escapeHtml, renderPanelShell, type PanelNotice } from "@simplehost/panel-ui";
+import { type RustDeskPublicConnectionInfo } from "@simplehost/control-contracts";
+import { escapeHtml, renderPanelShell, type PanelNotice } from "@simplehost/ui";
 
 import { type WebLocale } from "./request.js";
 

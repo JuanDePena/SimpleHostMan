@@ -5,7 +5,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type {
   AuthLoginResponse,
   AuthenticatedUserSummary
-} from "@simplehost/panel-contracts";
+} from "@simplehost/control-contracts";
 import {
   createControlApiHttpHandler,
   type ControlApiSurface

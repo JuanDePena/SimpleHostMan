@@ -11,7 +11,7 @@ import type {
   PackageInventorySnapshot,
   ResourceDriftSummary,
   RustDeskOverview
-} from "@simplehost/panel-contracts";
+} from "@simplehost/control-contracts";
 
 import type { ControlAuthSurface, ControlAuthenticatedSession } from "./auth.js";
 import { requireControlSession } from "./auth.js";

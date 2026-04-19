@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import type { ControlRuntimeConfig } from "@simplehost/panel-config";
-import type { ControlPlaneStore } from "@simplehost/panel-database";
+import type { ControlRuntimeConfig } from "@simplehost/control-config";
+import type { ControlPlaneStore } from "@simplehost/control-database";
 
 export interface ApiRouteContext {
   request: IncomingMessage;

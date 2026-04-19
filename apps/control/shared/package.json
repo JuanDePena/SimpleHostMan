@@ -15,7 +15,7 @@
   },
   "description": "Shared process helpers for the transitional control-plane entrypoints",
   "dependencies": {
-    "@simplehost/panel-config": "workspace:*",
-    "@simplehost/panel-contracts": "workspace:*"
+    "@simplehost/control-config": "workspace:*",
+    "@simplehost/control-contracts": "workspace:*"
   }
 }

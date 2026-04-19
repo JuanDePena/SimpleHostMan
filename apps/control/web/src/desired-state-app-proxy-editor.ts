@@ -1,4 +1,4 @@
-import { escapeHtml } from "@simplehost/panel-ui";
+import { escapeHtml } from "@simplehost/ui";
 
 import { buildDashboardViewUrl } from "./dashboard-routing.js";
 import { type RenderAppProxyDesiredStatePanelsArgs } from "./desired-state-app-proxy-types.js";

@@ -3,15 +3,15 @@
 import {
   claimJobs,
   registerNode
-} from "@simplehost/manager-control-plane-client";
-import { isSupportedJobKind, supportedJobKinds } from "@simplehost/manager-contracts";
-import { createDemoJob, executeAllowlistedJob } from "@simplehost/manager-drivers";
+} from "@simplehost/agent-control-plane-client";
+import { isSupportedJobKind, supportedJobKinds } from "@simplehost/agent-contracts";
+import { createDemoJob, executeAllowlistedJob } from "@simplehost/agent-drivers";
 import {
   createAgentRuntimeConfig,
   ensureAgentStateDirectories,
   getAgentStatePaths
-} from "@simplehost/manager-node-config";
-import { renderJobResult, renderNodeSnapshot } from "@simplehost/manager-renderers";
+} from "@simplehost/agent-runtime-config";
+import { renderJobResult, renderNodeSnapshot } from "@simplehost/agent-renderers";
 
 async function createSnapshotForCli() {
   const config = createAgentRuntimeConfig();

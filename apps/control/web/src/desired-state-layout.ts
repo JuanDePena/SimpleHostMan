@@ -1,4 +1,4 @@
-import { escapeHtml, renderTabs, type TabItem } from "@simplehost/panel-ui";
+import { escapeHtml, renderTabs, type TabItem } from "@simplehost/ui";
 
 export interface DesiredStateLayoutPane {
   id: string;

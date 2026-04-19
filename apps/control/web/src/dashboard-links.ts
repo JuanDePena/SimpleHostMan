@@ -1,9 +1,9 @@
-import { escapeHtml } from "@simplehost/panel-ui";
+import { escapeHtml } from "@simplehost/ui";
 
 import {
   type JobHistoryEntry,
   type ResourceDriftSummary
-} from "@simplehost/panel-contracts";
+} from "@simplehost/control-contracts";
 
 import { buildDashboardViewUrl } from "./dashboard-routing.js";
 import { type PillTone } from "./web-types.js";
