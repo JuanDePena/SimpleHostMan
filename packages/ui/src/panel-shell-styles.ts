@@ -8,13 +8,16 @@ export function renderPanelShellStyleBlock(): string {
       .hero {
         display: grid;
         gap: 0.55rem;
-        padding: 0.84rem;
-        border: 1px solid var(--line);
+        padding: 0.92rem 1rem 0.88rem;
+        border: 1px solid rgba(13, 32, 56, 0.1);
         border-radius: var(--radius-hero);
         background:
-          linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(236, 244, 251, 0.96)),
-          linear-gradient(90deg, rgba(16, 39, 68, 0.06), rgba(183, 243, 77, 0.06));
-        box-shadow: 0 1.5rem 4rem rgba(16, 39, 68, 0.14);
+          linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(246, 249, 253, 0.94)),
+          linear-gradient(135deg, rgba(13, 32, 56, 0.025), rgba(0, 127, 255, 0.03) 60%, rgba(255, 255, 255, 0));
+        box-shadow:
+          0 0.95rem 2.4rem rgba(16, 39, 68, 0.1),
+          inset 0 1px 0 rgba(255, 255, 255, 0.72);
+        backdrop-filter: blur(0.5rem);
       }
 
       .page-login {
@@ -63,12 +66,12 @@ export function renderPanelShellStyleBlock(): string {
         margin: 0 auto;
         padding: 1.25rem 1.25rem 1.1rem;
         background:
-          linear-gradient(160deg, rgba(255, 255, 255, 0.92), rgba(234, 247, 255, 0.88)),
-          linear-gradient(135deg, rgba(0, 116, 255, 0.12), rgba(42, 208, 255, 0.08) 55%, rgba(146, 235, 255, 0.14));
-        border-color: rgba(11, 61, 145, 0.12);
+          linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(245, 249, 253, 0.95)),
+          linear-gradient(135deg, rgba(0, 116, 255, 0.05), rgba(42, 208, 255, 0.035) 55%, rgba(146, 235, 255, 0.06));
+        border-color: rgba(13, 32, 56, 0.1);
         box-shadow:
-          0 1.8rem 4rem rgba(11, 61, 145, 0.12),
-          inset 0 1px 0 rgba(255, 255, 255, 0.65);
+          0 1.2rem 2.8rem rgba(16, 39, 68, 0.11),
+          inset 0 1px 0 rgba(255, 255, 255, 0.7);
       }
 
       .hero-center .hero-row {
