@@ -6,6 +6,12 @@ Root path:
 
 - `/opt/simplehostman/src`
 
+Canonical workspace versioning now uses the UTC format `YYMM.DD.HH`, for example `2604.19.02`.
+Use:
+
+- `pnpm version:set -- 2604.19.02`
+- `pnpm version:set:now`
+
 The workspace is intentionally split into source migration and runtime migration.
 At this stage, source code, packaging material, scripts, bootstrap inventory, and docs are being unified here first. Runtime and release normalization under `/opt/simplehostman/release` remains a later phase.
 

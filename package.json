@@ -1,6 +1,6 @@
 {
   "name": "simplehost-source",
-  "version": "0.1.0",
+  "version": "2604.19.03",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.32.1",
@@ -10,6 +10,9 @@
   },
   "scripts": {
     "bootstrap": "pnpm install",
+    "version:set": "node scripts/set-version.mjs",
+    "version:set:now": "node scripts/set-version.mjs --now",
+    "version:print-now": "node scripts/set-version.mjs --print-now",
     "build": "tsc -b tsconfig.json",
     "build:clean-room": "pnpm clean && pnpm build",
     "typecheck": "pnpm -r --if-present typecheck",

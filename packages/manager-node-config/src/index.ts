@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -74,6 +75,19 @@ export interface ShmStatePaths {
   reportBufferDir: string;
 }
 
+function readPackageVersion(fallback: string): string {
+  try {
+    const payload = JSON.parse(
+      readFileSync(new URL("../package.json", import.meta.url), "utf8")
+    ) as { version?: string };
+    return typeof payload.version === "string" && payload.version.trim().length > 0
+      ? payload.version.trim()
+      : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 function readString(value: string | undefined, fallback: string): string {
   return value && value.trim().length > 0 ? value.trim() : fallback;
 }
@@ -97,6 +111,7 @@ export function createShmRuntimeConfig(
 ): ShmRuntimeConfig {
   const hostname = readString(env.SHM_HOSTNAME, os.hostname());
   const stateDir = readString(env.SHM_STATE_DIR, "/var/lib/shm");
+  const defaultVersion = readPackageVersion("0000.00.00");
 
   return {
     nodeId: readString(env.SHM_NODE_ID, hostname),
@@ -110,7 +125,7 @@ export function createShmRuntimeConfig(
     stateDir,
     logDir: readString(env.SHM_LOG_DIR, "/var/log/shm"),
     heartbeatMs: readPositiveInt(env.SHM_HEARTBEAT_MS, 10000),
-    version: readString(env.SHM_VERSION, "0.1.0"),
+    version: readString(env.SHM_VERSION, defaultVersion),
     services: {
       containers: {
         quadletDir: readString(

@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 export interface PanelListenerConfig {
   host: string;
   port: number;
@@ -50,6 +52,19 @@ export interface PanelRuntimeConfig {
   rustdesk: PanelRustDeskRuntimeConfig;
 }
 
+function readPackageVersion(fallback: string): string {
+  try {
+    const payload = JSON.parse(
+      readFileSync(new URL("../package.json", import.meta.url), "utf8")
+    ) as { version?: string };
+    return typeof payload.version === "string" && payload.version.trim().length > 0
+      ? payload.version.trim()
+      : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 function readString(value: string | undefined, fallback: string): string {
   return value && value.trim().length > 0 ? value.trim() : fallback;
 }
@@ -81,9 +96,11 @@ function readOptionalString(value: string | undefined): string | null {
 export function createPanelRuntimeConfig(
   env: NodeJS.ProcessEnv = process.env
 ): PanelRuntimeConfig {
+  const defaultVersion = readPackageVersion("0000.00.00");
+
   return {
     env: readString(env.NODE_ENV, "development"),
-    version: readString(env.SHP_VERSION, "0.1.0"),
+    version: readString(env.SHP_VERSION, defaultVersion),
     api: {
       host: readString(env.SHP_API_HOST, "127.0.0.1"),
       port: readPort(env.SHP_API_PORT, 3100)
