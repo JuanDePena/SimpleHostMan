@@ -7,17 +7,17 @@ import {
 import { isSupportedJobKind, supportedJobKinds } from "@simplehost/manager-contracts";
 import { createDemoJob, executeAllowlistedJob } from "@simplehost/manager-drivers";
 import {
-  createShmRuntimeConfig,
-  ensureShmStateDirectories,
-  getShmStatePaths
+  createAgentRuntimeConfig,
+  ensureAgentStateDirectories,
+  getAgentStatePaths
 } from "@simplehost/manager-node-config";
 import { renderJobResult, renderNodeSnapshot } from "@simplehost/manager-renderers";
 
 async function createSnapshotForCli() {
-  const config = createShmRuntimeConfig();
-  const statePaths = getShmStatePaths(config);
+  const config = createAgentRuntimeConfig();
+  const statePaths = getAgentStatePaths(config);
 
-  await ensureShmStateDirectories(config);
+  await ensureAgentStateDirectories(config);
 
   return {
     nodeId: config.nodeId,
@@ -30,7 +30,7 @@ async function createSnapshotForCli() {
 }
 
 function createRegistrationPayload(snapshot: Awaited<ReturnType<typeof createSnapshotForCli>>) {
-  const config = createShmRuntimeConfig();
+  const config = createAgentRuntimeConfig();
 
   return {
     nodeId: snapshot.nodeId,
@@ -42,11 +42,13 @@ function createRegistrationPayload(snapshot: Awaited<ReturnType<typeof createSna
 }
 
 async function main(): Promise<void> {
-  const config = createShmRuntimeConfig();
+  const config = createAgentRuntimeConfig();
   const command = process.argv[2] ?? "help";
 
   if (command === "help") {
-    console.log("Usage: shm <health|paths|register|claim|run-job <kind>>");
+    console.log(
+      "Usage: simplehost-agent <health|paths|register|claim|run-job <kind>>"
+    );
     return;
   }
 
@@ -61,7 +63,7 @@ async function main(): Promise<void> {
       JSON.stringify(
         {
           configPath: config.configPath,
-          statePaths: getShmStatePaths(config),
+          statePaths: getAgentStatePaths(config),
           logDir: config.logDir
         },
         null,

@@ -1,15 +1,15 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import type { PanelRuntimeConfig } from "@simplehost/panel-config";
-import type { PanelControlPlaneStore } from "@simplehost/panel-database";
+import type { ControlRuntimeConfig } from "@simplehost/panel-config";
+import type { ControlPlaneStore } from "@simplehost/panel-database";
 
 export interface ApiRouteContext {
   request: IncomingMessage;
   response: ServerResponse;
   url: URL;
   bearerToken: string | null;
-  controlPlaneStore: PanelControlPlaneStore;
-  config: PanelRuntimeConfig;
+  controlPlaneStore: ControlPlaneStore;
+  config: ControlRuntimeConfig;
   startedAt: number;
 }
 

@@ -1,15 +1,15 @@
-export type PanelDatabaseEngine = "postgresql" | "mariadb";
+export type ControlDatabaseEngine = "postgresql" | "mariadb";
 
-export interface PanelDatabaseSettings {
+export interface ControlDatabaseSettings {
   applicationName: string;
-  engine: PanelDatabaseEngine;
+  engine: ControlDatabaseEngine;
   url: string;
   host: string;
   port: number | null;
   database: string;
 }
 
-export function detectPanelDatabaseEngine(url: string): PanelDatabaseEngine {
+export function detectControlDatabaseEngine(url: string): ControlDatabaseEngine {
   if (url.startsWith("mariadb://") || url.startsWith("mysql://")) {
     return "mariadb";
   }
@@ -17,15 +17,15 @@ export function detectPanelDatabaseEngine(url: string): PanelDatabaseEngine {
   return "postgresql";
 }
 
-export function createPanelDatabaseSettings(
+export function createControlDatabaseSettings(
   url: string,
   applicationName = "simplehost-panel"
-): PanelDatabaseSettings {
+): ControlDatabaseSettings {
   const parsed = new URL(url);
 
   return {
     applicationName,
-    engine: detectPanelDatabaseEngine(url),
+    engine: detectControlDatabaseEngine(url),
     url,
     host: parsed.hostname,
     port: parsed.port ? Number.parseInt(parsed.port, 10) : null,
@@ -33,8 +33,8 @@ export function createPanelDatabaseSettings(
   };
 }
 
-export function createPanelDatabaseHealthSummary(url: string): Record<string, unknown> {
-  const settings = createPanelDatabaseSettings(url);
+export function createControlDatabaseHealthSummary(url: string): Record<string, unknown> {
+  const settings = createControlDatabaseSettings(url);
 
   return {
     applicationName: settings.applicationName,
@@ -46,15 +46,15 @@ export function createPanelDatabaseHealthSummary(url: string): Record<string, un
 }
 
 export {
-  getAppliedPanelMigrations,
-  runPanelDatabaseMigrations,
-  type PanelDatabaseMigrationPlan,
-  type PanelDatabaseMigrationRecord
+  getAppliedControlMigrations,
+  runControlDatabaseMigrations,
+  type ControlDatabaseMigrationPlan,
+  type ControlDatabaseMigrationRecord
 } from "./migrations.js";
 export {
   createPostgresControlPlaneStore,
   NodeAuthorizationError,
   UserAuthorizationError,
-  type PanelControlPlaneStore,
-  type PanelControlPlaneStoreOptions
+  type ControlPlaneStore,
+  type ControlPlaneStoreOptions
 } from "./control-plane-store.js";

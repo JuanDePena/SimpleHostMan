@@ -6,41 +6,41 @@ import {
   type ControlProcessContext
 } from "@simplehost/control-shared";
 
-import { createHttpPanelWebApi, type PanelWebApi } from "./api-client.js";
+import { createHttpControlWebApi, type ControlWebApi } from "./api-client.js";
 import { renderLoginPage } from "./auth-pages.js";
 import { createDashboardHandler } from "./dashboard-page-routes.js";
 import {
   createRequestHandler,
   createServerRequestListener,
-  startPanelWebServer,
-  type StartPanelWebServerArgs
+  startControlWebServer,
+  type StartControlWebServerArgs
 } from "./web-routes.js";
 
 export {
-  createPanelWebApiFromRequest,
-  createHttpPanelWebApi,
-  type PanelWebApi,
-  type PanelWebApiRequestOptions,
-  type PanelWebApiRequest,
+  createControlWebApiFromRequest,
+  createHttpControlWebApi,
+  type ControlWebApi,
+  type ControlWebApiRequestOptions,
+  type ControlWebApiRequest,
   WebApiError
 } from "./api-client.js";
 
-export interface PanelWebProcessContext {
-  config: StartPanelWebServerArgs["config"];
+export interface ControlWebProcessContext {
+  config: StartControlWebServerArgs["config"];
   startedAt: number;
 }
 
-export interface PanelWebSurface extends StartPanelWebServerArgs {
-  context: PanelWebProcessContext;
+export interface ControlWebSurface extends StartControlWebServerArgs {
+  context: ControlWebProcessContext;
   requestHandler: ReturnType<typeof createRequestHandler>;
   requestListener: ReturnType<typeof createServerRequestListener>;
 }
 
-export function createPanelWebSurface(
-  context: PanelWebProcessContext = createControlProcessContext(),
-  api: PanelWebApi = createHttpPanelWebApi(context.config)
-): PanelWebSurface {
-  const serverArgs: StartPanelWebServerArgs = {
+export function createControlWebSurface(
+  context: ControlWebProcessContext = createControlProcessContext(),
+  api: ControlWebApi = createHttpControlWebApi(context.config)
+): ControlWebSurface {
+  const serverArgs: StartControlWebServerArgs = {
     api,
     config: context.config,
     handleDashboard: createDashboardHandler({
@@ -61,22 +61,22 @@ export function createPanelWebSurface(
   };
 }
 
-export function createPanelWebRequestListener(
-  context: PanelWebProcessContext = createControlProcessContext(),
-  api: PanelWebApi = createHttpPanelWebApi(context.config)
+export function createControlWebRequestListener(
+  context: ControlWebProcessContext = createControlProcessContext(),
+  api: ControlWebApi = createHttpControlWebApi(context.config)
 ): ReturnType<typeof createServerRequestListener> {
-  return createPanelWebSurface(context, api).requestListener;
+  return createControlWebSurface(context, api).requestListener;
 }
 
-export function createPanelWebRuntime(
-  context: PanelWebProcessContext = createControlProcessContext(),
-  api: PanelWebApi = createHttpPanelWebApi(context.config)
+export function createControlWebRuntime(
+  context: ControlWebProcessContext = createControlProcessContext(),
+  api: ControlWebApi = createHttpControlWebApi(context.config)
 ): {
-  server: ReturnType<typeof startPanelWebServer>;
+  server: ReturnType<typeof startControlWebServer>;
   close: () => Promise<void>;
 } {
-  const surface = createPanelWebSurface(context, api);
-  const server = startPanelWebServer(surface);
+  const surface = createControlWebSurface(context, api);
+  const server = startControlWebServer(surface);
 
   return {
     server,
@@ -86,16 +86,16 @@ export function createPanelWebRuntime(
   };
 }
 
-export function startPanelWeb(
+export function startControlWeb(
   context: ControlProcessContext = createControlProcessContext(),
-  api: PanelWebApi = createHttpPanelWebApi(context.config)
-): ReturnType<typeof startPanelWebServer> {
-  const runtime = createPanelWebRuntime(context, api);
+  api: ControlWebApi = createHttpControlWebApi(context.config)
+): ReturnType<typeof startControlWebServer> {
+  const runtime = createControlWebRuntime(context, api);
   return runtime.server;
 }
 
 if (isMainModule(import.meta.url)) {
-  const runtime = createPanelWebRuntime();
+  const runtime = createControlWebRuntime();
 
   registerGracefulShutdown(runtime.close);
 }

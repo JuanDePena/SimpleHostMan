@@ -1,6 +1,7 @@
-# Panel Scripts
+# Control Scripts
 
-This subtree contains imported `SHP` operational scripts.
+This subtree contains the legacy control-plane operational scripts that still
+back the unified release workflow.
 
 Path:
 

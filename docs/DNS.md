@@ -23,8 +23,8 @@ The goal is to replace legacy DNS hosted on an older cPanel VPS with a PowerDNS 
 
 - Public operator aliases for the nodes are `vps-prd.pyrosa.com.do` and `vps-des.pyrosa.com.do`; the underlying system hostnames remain the legacy OVH names.
 - PowerDNS ownership and templates now live in [`/opt/simplehostman/src/platform/pdns`](/opt/simplehostman/src/platform/pdns).
-- `dns.sync` is already dispatched from `SHP` and executed by `SHM` against the local PowerDNS API.
-- Desired DNS state now lives in `SHP` PostgreSQL; `apps.yaml` is only the bootstrap/import-export path.
+- `dns.sync` is already dispatched from `SimpleHost Control` and executed by `SimpleHost Agent` against the local PowerDNS API.
+- Desired DNS state now lives in `SimpleHost Control` PostgreSQL; `apps.yaml` is only the bootstrap/import-export path.
 
 ## Selected platform
 

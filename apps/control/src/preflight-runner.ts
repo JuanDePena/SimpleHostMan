@@ -135,7 +135,7 @@ export async function runCombinedControlPreflight(
         });
         expectStatus(response, 200, "authenticated overview");
         const html = await response.text();
-        if (!html.includes("SimpleHostPanel")) {
+        if (!html.includes("SimpleHost")) {
           throw new Error("Authenticated overview did not render the dashboard shell");
         }
         return {

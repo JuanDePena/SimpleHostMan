@@ -5,12 +5,12 @@ import {
   type ControlDashboardBootstrap,
   type ControlProcessContext
 } from "@simplehost/control-shared";
-import type { PanelApiSurface } from "@simplehost/control-api";
-import type { PanelWebApi, PanelWebSurface } from "@simplehost/control-web";
+import type { ControlApiSurface } from "@simplehost/control-api";
+import type { ControlWebApi, ControlWebSurface } from "@simplehost/control-web";
 
 export interface ControlBootstrapSurface {
-  apiSurface: Pick<PanelApiSurface, "auth" | "requestHandler">;
-  auth: Pick<PanelApiSurface["auth"], "login" | "logout" | "getCurrentUser">;
+  apiSurface: Pick<ControlApiSurface, "auth" | "requestHandler">;
+  auth: Pick<ControlApiSurface["auth"], "login" | "logout" | "getCurrentUser">;
   session: ReturnType<typeof createControlSessionSurface>;
   dashboard: {
     loadBootstrap(token: string): Promise<ControlDashboardBootstrap>;
@@ -21,14 +21,14 @@ export interface ControlBootstrapSurface {
   runtime: {
     getHealthSnapshot(): ReturnType<typeof createRuntimeHealthSnapshot<{ mode: string }>>;
   };
-  webSurface: Pick<PanelWebSurface, "requestListener">;
+  webSurface: Pick<ControlWebSurface, "requestListener">;
 }
 
 export function createControlBootstrapSurface(args: {
   context: ControlProcessContext;
-  apiSurface: Pick<PanelApiSurface, "auth" | "requestHandler">;
-  webApi: Pick<PanelWebApi, "loadDashboardBootstrap" | "loadAuthenticatedDashboard">;
-  webSurface: Pick<PanelWebSurface, "requestListener">;
+  apiSurface: Pick<ControlApiSurface, "auth" | "requestHandler">;
+  webApi: Pick<ControlWebApi, "loadDashboardBootstrap" | "loadAuthenticatedDashboard">;
+  webSurface: Pick<ControlWebSurface, "requestListener">;
 }): ControlBootstrapSurface {
   const session = createControlSessionSurface(args.apiSurface.auth);
 

@@ -4,8 +4,8 @@ import { Pool, type PoolClient } from "pg";
 
 import {
   type AuthenticatedUserSummary,
-  panelGlobalRoles,
-  type PanelGlobalRole,
+  controlGlobalRoles,
+  type ControlGlobalRole,
   type TenantMembershipRole
 } from "@simplehost/panel-contracts";
 
@@ -27,7 +27,7 @@ import type {
   JobRow,
   NodeCredentialRow,
   NodeRow,
-  PanelControlPlaneStoreOptions,
+  ControlPlaneStoreOptions,
   SessionRow,
   UserCredentialRow,
   UserGlobalRoleRow,
@@ -277,7 +277,7 @@ export async function upsertUserCredential(
 export async function replaceUserGlobalRoles(
   client: PoolClient,
   userId: string,
-  roles: PanelGlobalRole[]
+  roles: ControlGlobalRole[]
 ): Promise<void> {
   await client.query(`DELETE FROM shp_user_global_roles WHERE user_id = $1`, [userId]);
 
@@ -322,7 +322,7 @@ export async function replaceUserTenantMemberships(
 export async function getUserGlobalRoles(
   client: PoolClient,
   userId: string
-): Promise<PanelGlobalRole[]> {
+): Promise<ControlGlobalRole[]> {
   const result = await client.query<UserGlobalRoleRow>(
     `SELECT role
      FROM shp_user_global_roles
@@ -333,8 +333,8 @@ export async function getUserGlobalRoles(
 
   return result.rows
     .map((row) => row.role)
-    .filter((role): role is PanelGlobalRole =>
-      panelGlobalRoles.includes(role as PanelGlobalRole)
+    .filter((role): role is ControlGlobalRole =>
+      controlGlobalRoles.includes(role as ControlGlobalRole)
     );
 }
 
@@ -464,7 +464,7 @@ export async function authenticateSession(
 
 export function ensureGlobalRole(
   user: AuthenticatedUserSummary,
-  allowedRoles: PanelGlobalRole[]
+  allowedRoles: ControlGlobalRole[]
 ): void {
   if (!allowedRoles.some((role) => user.globalRoles.includes(role))) {
     throw new UserAuthorizationError("User does not have the required role.");
@@ -474,7 +474,7 @@ export function ensureGlobalRole(
 export async function requireAuthorizedUser(
   client: PoolClient,
   presentedToken: string | null,
-  allowedRoles: PanelGlobalRole[]
+  allowedRoles: ControlGlobalRole[]
 ): Promise<AuthenticatedUserSummary> {
   const user = await authenticateSession(client, presentedToken);
   ensureGlobalRole(user, allowedRoles);
@@ -483,7 +483,7 @@ export async function requireAuthorizedUser(
 
 export async function ensureBootstrapAdmin(
   pool: Pool,
-  options: PanelControlPlaneStoreOptions
+  options: ControlPlaneStoreOptions
 ): Promise<void> {
   if (!options.bootstrapAdminEmail || !options.bootstrapAdminPassword) {
     return;
@@ -533,7 +533,7 @@ export async function ensureBootstrapAdmin(
 
 interface ControlPlaneAuthContext {
   pool: Pool;
-  options: PanelControlPlaneStoreOptions;
+  options: ControlPlaneStoreOptions;
   pollIntervalMs: number;
   jobPayloadKey: Buffer | null;
 }
@@ -556,7 +556,7 @@ export function createControlPlaneAuthMethods(
         } else {
           if (!options.bootstrapEnrollmentToken) {
             throw new NodeAuthorizationError(
-              "Bootstrap enrollment token is not configured on SHP."
+              "Bootstrap enrollment token is not configured on SimpleHost Control."
             );
           }
 

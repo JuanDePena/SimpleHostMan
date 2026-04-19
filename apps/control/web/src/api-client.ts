@@ -1,4 +1,4 @@
-import { createPanelRuntimeConfig, type PanelRuntimeConfig } from "@simplehost/panel-config";
+import { createControlRuntimeConfig, type ControlRuntimeConfig } from "@simplehost/panel-config";
 import {
   type AppReconcileRequest,
   type AuditEventSummary,
@@ -57,7 +57,7 @@ export class WebApiError extends Error {
   }
 }
 
-export interface PanelWebApi extends ControlAuthSurface {
+export interface ControlWebApi extends ControlAuthSurface {
   login(credentials: AuthLoginRequest): Promise<AuthLoginResponse>;
   logout(token: string | null): Promise<void>;
   getCurrentUser(token: string | null): Promise<AuthenticatedUserSummary>;
@@ -113,26 +113,26 @@ export interface PanelWebApi extends ControlAuthSurface {
   ): Promise<void>;
 }
 
-export interface PanelWebApiRequestOptions {
+export interface ControlWebApiRequestOptions {
   method?: string;
   token?: string | null;
   body?: unknown;
   responseType?: "json" | "text";
 }
 
-export type PanelWebApiRequest = <T>(
+export type ControlWebApiRequest = <T>(
   pathname: string,
-  options?: PanelWebApiRequestOptions
+  options?: ControlWebApiRequestOptions
 ) => Promise<T>;
 
-function createApiBaseUrl(config: Pick<PanelRuntimeConfig, "api">): string {
+function createApiBaseUrl(config: Pick<ControlRuntimeConfig, "api">): string {
   return `http://${config.api.host}:${config.api.port}`;
 }
 
 async function requestWithBaseUrl<T>(
   baseUrl: string,
   pathname: string,
-  options: PanelWebApiRequestOptions = {}
+  options: ControlWebApiRequestOptions = {}
 ): Promise<T> {
   const response = await fetch(new URL(pathname, baseUrl), {
     method: options.method ?? "GET",
@@ -171,7 +171,7 @@ async function requestWithBaseUrl<T>(
   return (responseText ? JSON.parse(responseText) : null) as T;
 }
 
-export function createPanelWebApiFromRequest(request: PanelWebApiRequest): PanelWebApi {
+export function createControlWebApiFromRequest(request: ControlWebApiRequest): ControlWebApi {
   const createDashboardLoaders = () => ({
     getOverview: (token: string) =>
       request<OperationsOverview>("/v1/operations/overview", { token }),
@@ -197,7 +197,7 @@ export function createPanelWebApiFromRequest(request: PanelWebApiRequest): Panel
       request<PackageInventorySnapshot>("/v1/packages/summary", { token })
   });
 
-  const api: PanelWebApi = {
+  const api: ControlWebApi = {
     login(credentials: AuthLoginRequest): Promise<AuthLoginResponse> {
       return request<AuthLoginResponse>("/v1/auth/login", {
         method: "POST",
@@ -430,48 +430,48 @@ export function createPanelWebApiFromRequest(request: PanelWebApiRequest): Panel
   return api;
 }
 
-export function createHttpPanelWebApi(
-  config: Pick<PanelRuntimeConfig, "api"> = createPanelRuntimeConfig()
-): PanelWebApi {
+export function createHttpControlWebApi(
+  config: Pick<ControlRuntimeConfig, "api"> = createControlRuntimeConfig()
+): ControlWebApi {
   const baseUrl = createApiBaseUrl(config);
-  return createPanelWebApiFromRequest((pathname, options = {}) =>
+  return createControlWebApiFromRequest((pathname, options = {}) =>
     requestWithBaseUrl(baseUrl, pathname, options)
   );
 }
 
-export const defaultPanelWebApi = createHttpPanelWebApi();
+export const defaultControlWebApi = createHttpControlWebApi();
 
 export function apiRequest<T>(
   pathname: string,
-  options: PanelWebApiRequestOptions = {}
+  options: ControlWebApiRequestOptions = {}
 ): Promise<T> {
-  return requestWithBaseUrl(createApiBaseUrl(createPanelRuntimeConfig()), pathname, options);
+  return requestWithBaseUrl(createApiBaseUrl(createControlRuntimeConfig()), pathname, options);
 }
 
 export function loadDashboardData(token: string): Promise<DashboardData> {
-  return defaultPanelWebApi.loadDashboardData(token);
+  return defaultControlWebApi.loadDashboardData(token);
 }
 
 export function loadDashboardBootstrap(token: string): Promise<DashboardBootstrap> {
-  return defaultPanelWebApi.loadDashboardBootstrap(token);
+  return defaultControlWebApi.loadDashboardBootstrap(token);
 }
 
 export function resolveSession(token: string | null): Promise<ControlResolvedSession> {
-  return defaultPanelWebApi.resolveSession(token);
+  return defaultControlWebApi.resolveSession(token);
 }
 
 export function loadAuthenticatedDashboard(
   token: string | null
 ): Promise<ControlAuthenticatedDashboardBootstrap> {
-  return defaultPanelWebApi.loadAuthenticatedDashboard(token);
+  return defaultControlWebApi.loadAuthenticatedDashboard(token);
 }
 
 export function loadRustDeskPublicConnection(): Promise<RustDeskPublicConnectionInfo> {
-  return defaultPanelWebApi.loadRustDeskPublicConnection();
+  return defaultControlWebApi.loadRustDeskPublicConnection();
 }
 
 export function loadDesiredStateSpec(token: string): Promise<DesiredStateSpec> {
-  return defaultPanelWebApi.loadDesiredStateSpec(token);
+  return defaultControlWebApi.loadDesiredStateSpec(token);
 }
 
 export function applyDesiredStateSpec(
@@ -479,7 +479,7 @@ export function applyDesiredStateSpec(
   spec: DesiredStateSpec,
   reason: string
 ): Promise<void> {
-  return defaultPanelWebApi.applyDesiredStateSpec(token, spec, reason);
+  return defaultControlWebApi.applyDesiredStateSpec(token, spec, reason);
 }
 
 export function mutateDesiredState(
@@ -487,7 +487,7 @@ export function mutateDesiredState(
   reason: string,
   action: (spec: DesiredStateSpec) => DesiredStateSpec
 ): Promise<void> {
-  return defaultPanelWebApi.mutateDesiredState(token, reason, action);
+  return defaultControlWebApi.mutateDesiredState(token, reason, action);
 }
 
 export function getNoticeFromUrl(url: URL): PanelNotice | undefined {

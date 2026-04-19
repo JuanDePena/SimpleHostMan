@@ -11,8 +11,8 @@ import {
   type ControlDashboardBootstrap,
   type ControlProcessContext
 } from "@simplehost/control-shared";
-import type { PanelApiSurface } from "@simplehost/control-api";
-import type { PanelWebSurface } from "@simplehost/control-web";
+import type { ControlApiSurface } from "@simplehost/control-api";
+import type { ControlWebSurface } from "@simplehost/control-web";
 
 import { createControlBootstrapSurface } from "./bootstrap-surface.js";
 
@@ -65,11 +65,11 @@ test("control bootstrap surface delegates auth and dashboard bootstrap", async (
       }
     },
     requestHandler: async () => {}
-  } satisfies Pick<PanelApiSurface, "auth" | "requestHandler">;
+  } satisfies Pick<ControlApiSurface, "auth" | "requestHandler">;
 
   const webSurface = {
     requestListener: async () => {}
-  } satisfies Pick<PanelWebSurface, "requestListener">;
+  } satisfies Pick<ControlWebSurface, "requestListener">;
 
   const surface = createControlBootstrapSurface({
     context,

@@ -1,6 +1,6 @@
 # Adudoc Runtime Migration
 
-This document captures the live discovery work for migrating `adudoc` from the legacy cPanel host into the `SHP + SHM` app-service model.
+This document captures the live discovery work for migrating `adudoc` from the legacy cPanel host into the `SimpleHost Control + SimpleHost Agent` app-service model.
 
 ## Discovery Summary
 
@@ -93,7 +93,7 @@ Completed outcomes:
 - Apache vhost switched to reverse proxy `adudoc.com -> 127.0.0.1:10301`
 - `app-adudoc.service` started successfully under Podman + systemd
 - local end-to-end proxy validation returned `200 OK` for `Host: adudoc.com`
-- desired database credential for `adudoc` persisted into `SHP`
+- desired database credential for `adudoc` persisted into `SimpleHost Control`
 
 ## Implementation Notes From The Pilot
 

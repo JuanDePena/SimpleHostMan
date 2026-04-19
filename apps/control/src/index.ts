@@ -1,11 +1,11 @@
-import { createPanelApiRuntime } from "@simplehost/control-api";
+import { createControlApiRuntime } from "@simplehost/control-api";
 import {
   createControlProcessContext,
   isMainModule,
   registerGracefulShutdown,
   type ControlProcessContext
 } from "@simplehost/control-shared";
-import { createPanelWebRuntime } from "@simplehost/control-web";
+import { createControlWebRuntime } from "@simplehost/control-web";
 import { startCombinedControlServer } from "./server.js";
 
 export type ControlRuntimeMode = "combined" | "split";
@@ -19,8 +19,8 @@ export function resolveControlRuntimeMode(
 export async function createSplitControlRuntime(
   context: ControlProcessContext = createControlProcessContext()
 ) {
-  const apiRuntime = await createPanelApiRuntime(context);
-  const webRuntime = createPanelWebRuntime(context);
+  const apiRuntime = await createControlApiRuntime(context);
+  const webRuntime = createControlWebRuntime(context);
 
   return {
     context,
@@ -40,7 +40,7 @@ export async function createCombinedControlRuntime(
 ) {
   const runtime = await startCombinedControlServer({ context });
 
-  console.log(`SHP Control listening on ${runtime.origin}`);
+  console.log(`SimpleHost Control listening on ${runtime.origin}`);
 
   return runtime;
 }

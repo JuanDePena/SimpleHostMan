@@ -39,7 +39,7 @@ test("combined candidate serves authenticated flow over a real HTTP server", asy
 
     assert.equal(dashboardResponse.status, 200);
     const dashboardHtml = await dashboardResponse.text();
-    assert.match(dashboardHtml, /SimpleHostPanel/);
+    assert.match(dashboardHtml, /SimpleHost/);
 
     const vhostResponse = await fetch(
       new URL("/proxy-vhost?slug=adudoc&format=json", runtime.origin),

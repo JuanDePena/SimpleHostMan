@@ -15,7 +15,7 @@ It defines the intended split of responsibilities for:
 - Authoritative DNS with API, replacing legacy cPanel-hosted DNS
 - Application delivery through Apache and Podman-managed web workloads
 - PostgreSQL application primary and standby service
-- PostgreSQL control-plane primary and standby service for `SHP`
+- PostgreSQL control-plane primary and standby service for `SimpleHost Control`
 - Optional MariaDB primary and replica service for MySQL-compatible workloads
 - Host firewalling, private inter-node transport, backups, and failover boundaries
 
@@ -48,8 +48,8 @@ Product design references:
 - Current system hostnames still remain the legacy OVH names `vps-3dbbfb0b.vps.ovh.ca` and `vps-16535090.vps.ovh.ca`.
 - `wg0` is live between the nodes on `10.89.0.1` and `10.89.0.2`.
 - `postgresql-apps` and `postgresql-control` are already deployed as host-native primary/standby clusters.
-- `SHP` now runs as the combined `simplehost-control` runtime on the primary node; the secondary keeps `simplehost-control` and `simplehost-worker` stopped until promotion.
-- `SHM` is active on both nodes and desired state already lives in `SHP` PostgreSQL.
+- `SimpleHost Control` now runs as the combined `simplehost-control` runtime on the primary node; the secondary keeps `simplehost-control` and `simplehost-worker` stopped until promotion.
+- `SimpleHost Agent` is active on both nodes and desired state already lives in `SimpleHost Control` PostgreSQL.
 - Bootstrap YAML remains for import/export and disaster recovery only.
 - Public operator ingress is normalized on both nodes through the `public` zone for `80/tcp`, `443/tcp`, `51820/udp`, `3200/tcp`, and `8080/tcp`.
 - The combined control plane now serves operator UI and `/v1/*` over `3200/tcp`.
@@ -76,7 +76,7 @@ Target responsibilities:
 - Apache reverse proxy and TLS termination
 - Podman application containers
 - PostgreSQL applications primary
-- PostgreSQL `SHP` primary
+- PostgreSQL `SimpleHost Control` primary
 - Optional MariaDB primary
 - ACME automation endpoint
 - Backup job runner
@@ -92,7 +92,7 @@ Target responsibilities:
 - Apache reverse proxy and TLS termination
 - Podman application containers
 - PostgreSQL applications physical standby
-- PostgreSQL `SHP` physical standby
+- PostgreSQL `SimpleHost Control` physical standby
 - Optional MariaDB replica
 - Backup job runner
 - WireGuard peer
@@ -106,7 +106,7 @@ Current normalized public ingress to both nodes:
 - `80/tcp`
 - `443/tcp`
 - `51820/udp`
-- `3200/tcp` for `SHP` web
+- `3200/tcp` for `SimpleHost Control` web
 - `8080/tcp` for `code-server`
 
 Future DNS cutover, when activated publicly:
@@ -140,7 +140,7 @@ The two VPS nodes should maintain a dedicated WireGuard tunnel for all stateful 
 Private traffic allowed only across the tunnel:
 
 - PostgreSQL application replication and administrative traffic on `5432/tcp`
-- PostgreSQL `SHP` replication and administrative traffic on `5433/tcp`
+- PostgreSQL `SimpleHost Control` replication and administrative traffic on `5433/tcp`
 - MariaDB replication and administrative traffic on `3306/tcp`
 - Optional restricted DNS API access on `8081/tcp`
 - Backup replication or restore traffic as needed
@@ -189,7 +189,7 @@ State that must be externalized before active/active:
 Two separate PostgreSQL clusters are recommended:
 
 - `postgresql-apps`: customer application databases on `5432/tcp`
-- `postgresql-control`: the `SHP` control-plane database on `5433/tcp`
+- `postgresql-control`: the `SimpleHost Control` control-plane database on `5433/tcp`
 
 For both clusters:
 
@@ -219,7 +219,7 @@ Minimum backup scope:
 
 - PowerDNS configuration, LMDB data, TSIG keys, and DNSSEC keys
 - PostgreSQL physical backups plus WAL archive
-- PostgreSQL `SHP` physical backups plus WAL archive
+- PostgreSQL `SimpleHost Control` physical backups plus WAL archive
 - MariaDB physical backups plus logical schema exports when required
 - Apache virtual host configuration and ACME material
 - Container unit files, environment files, and bind-mounted application data
@@ -231,7 +231,7 @@ The current hardening baseline in [`/opt/simplehostman/src/docs/HARDENING.md`](/
 - HTTP: `80/tcp`
 - HTTPS: `443/tcp`
 - WireGuard: `51820/udp`
-- `SHP` web: `3200/tcp`
+- `SimpleHost Control` web: `3200/tcp`
 - `code-server`: `8080/tcp`
 
 If authoritative DNS is cut over to these nodes publicly, add:
@@ -259,7 +259,7 @@ Recommended rollout order:
 5. Deploy Apache and ACME automation on both nodes.
 6. Deploy Podman and baseline application container units.
 7. Deploy PostgreSQL application primary and standby.
-8. Deploy PostgreSQL `SHP` primary and standby.
+8. Deploy PostgreSQL `SimpleHost Control` primary and standby.
 9. Deploy MariaDB only if a specific workload needs it.
 10. Add backups, monitoring, and failover validation.
 
@@ -269,4 +269,4 @@ Recommended rollout order:
 - Automatic database failover with only two nodes
 - Public recursive DNS
 - Shared-write application storage across both nodes
-- Using the same PostgreSQL cluster for both tenant application data and `SHP` control-plane data
+- Using the same PostgreSQL cluster for both tenant application data and `SimpleHost Control` control-plane data

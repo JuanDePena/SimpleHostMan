@@ -9,7 +9,7 @@ This runbook documents the shared Bash helper setup stored in [`/home/shell/bash
 
 ## Status on 2026-03-14
 
-- This runbook is auxiliary host-operations documentation and is not a primary `SHP` or `SHM` product backlog driver.
+- This runbook is auxiliary host-operations documentation and is not a primary `SimpleHost Control` or `SimpleHost Agent` product backlog driver.
 - Open product and platform work is tracked in [`/opt/simplehostman/src/docs/TODO.md`](/opt/simplehostman/src/docs/TODO.md).
 
 ## Shared shell profile

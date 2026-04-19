@@ -3,11 +3,11 @@ import type {
   DnsSyncPayload,
   MailSyncPayload,
   ProxyRenderPayload,
-  ShmJobResult,
-  ShmNodeSnapshot
+  AgentJobResult,
+  AgentNodeSnapshot
 } from "@simplehost/manager-contracts";
 
-export function renderNodeSnapshot(snapshot: ShmNodeSnapshot): string {
+export function renderNodeSnapshot(snapshot: AgentNodeSnapshot): string {
   return [
     `Node: ${snapshot.nodeId}`,
     `Host: ${snapshot.hostname}`,
@@ -18,7 +18,7 @@ export function renderNodeSnapshot(snapshot: ShmNodeSnapshot): string {
   ].join("\n");
 }
 
-export function renderJobResult(result: ShmJobResult): string {
+export function renderJobResult(result: AgentJobResult): string {
   return [
     `Job: ${result.jobId}`,
     `Kind: ${result.kind}`,
@@ -320,7 +320,7 @@ export function renderWebmailPlaceholder(
     "  <main>",
     `    <h1>${domainName} webmail scaffold</h1>`,
     `    <p>The Apache vhost for <code>${webmailHostname}</code> is ready.</p>`,
-    "    <p>Roundcube content has not been deployed yet, so this placeholder confirms the document root exists and is under SHM control.</p>",
+    "    <p>Roundcube content has not been deployed yet, so this placeholder confirms the document root exists and is under SimpleHost Agent control.</p>",
     "  </main>",
     "</body>",
     "</html>"

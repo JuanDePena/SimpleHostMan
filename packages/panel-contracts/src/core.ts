@@ -1,8 +1,8 @@
-export type PanelServiceName = "api" | "web" | "worker";
-export type PanelHealthStatus = "ok" | "degraded";
+export type ControlServiceName = "api" | "web" | "worker";
+export type ControlHealthStatus = "ok" | "degraded";
 
-export const panelGlobalRoles = ["platform_admin", "platform_operator"] as const;
-export type PanelGlobalRole = (typeof panelGlobalRoles)[number];
+export const controlGlobalRoles = ["platform_admin", "platform_operator"] as const;
+export type ControlGlobalRole = (typeof controlGlobalRoles)[number];
 
 export const tenantMembershipRoles = [
   "tenant_owner",

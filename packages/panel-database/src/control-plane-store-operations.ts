@@ -306,7 +306,7 @@ export async function buildZoneDnsPayload(
   const zone = zoneResult.rows[0];
 
   if (!zone) {
-    throw new Error(`Zone ${zoneName} does not exist in SHP inventory.`);
+    throw new Error(`Zone ${zoneName} does not exist in SimpleHost Control inventory.`);
   }
 
   const recordResult = await client.query<InventoryRecordRow>(
@@ -420,7 +420,7 @@ export async function buildProxyPayload(
   const app = result.rows[0];
 
   if (!app) {
-    throw new Error(`Application ${appSlug} does not exist in SHP inventory.`);
+    throw new Error(`Application ${appSlug} does not exist in SimpleHost Control inventory.`);
   }
 
   const payload: ProxyRenderPayload = {
@@ -496,7 +496,7 @@ export async function buildAppContainerPlans(
   const app = result.rows[0];
 
   if (!app) {
-    throw new Error(`Application ${appSlug} does not exist in SHP inventory.`);
+    throw new Error(`Application ${appSlug} does not exist in SimpleHost Control inventory.`);
   }
 
   const desiredPassword = decodeDesiredPassword(app.desired_password, payloadKey);
@@ -618,7 +618,7 @@ export async function buildDatabasePayload(
   const database = result.rows[0];
 
   if (!database) {
-    throw new Error(`Database for application ${appSlug} does not exist in SHP inventory.`);
+    throw new Error(`Database for application ${appSlug} does not exist in SimpleHost Control inventory.`);
   }
 
   const desiredPassword =
@@ -626,7 +626,7 @@ export async function buildDatabasePayload(
 
   if (!desiredPassword) {
     throw new Error(
-      `Database ${database.database_name} does not have a desired password stored in SHP.`
+      `Database ${database.database_name} does not have a desired password stored in SimpleHost Control.`
     );
   }
 
@@ -669,7 +669,7 @@ export async function ensureControlPlaneTargetNode(
   const node = nodeResult.rows[0];
 
   if (!node) {
-    throw new Error(`Managed node ${nodeId} does not exist in SHP inventory.`);
+    throw new Error(`Managed node ${nodeId} does not exist in SimpleHost Control inventory.`);
   }
 
   await client.query(
@@ -1010,7 +1010,7 @@ export async function buildReconciliationCandidates(
     } catch (error) {
       if (
         error instanceof Error &&
-        error.message.includes("does not have a desired password stored in SHP")
+        error.message.includes("does not have a desired password stored in SimpleHost Control")
       ) {
         missingCredentialCount += 1;
         continue;

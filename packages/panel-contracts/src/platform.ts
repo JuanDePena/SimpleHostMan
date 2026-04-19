@@ -1,7 +1,7 @@
 import type {
   DispatchedJobStatus,
-  PanelHealthStatus,
-  PanelServiceName
+  ControlHealthStatus,
+  ControlServiceName
 } from "./core.js";
 
 export interface CodeServerServiceSnapshot {
@@ -86,9 +86,9 @@ export interface NodeRuntimeSnapshot {
   mail?: MailServiceSnapshot;
 }
 
-export interface PanelHealthSnapshot {
-  service: PanelServiceName;
-  status: PanelHealthStatus;
+export interface ControlHealthSnapshot {
+  service: ControlServiceName;
+  status: ControlHealthStatus;
   version: string;
   environment: string;
   timestamp: string;
@@ -144,19 +144,19 @@ export interface RustDeskPublicConnectionInfo {
   status: "ready" | "incomplete";
 }
 
-export interface PanelApiMetadata {
-  product: "SHP";
-  service: PanelServiceName;
+export interface ControlApiMetadata {
+  product: "SimpleHost";
+  service: ControlServiceName;
   runtime: "nodejs";
   version: string;
 }
 
-export function createPanelApiMetadata(
-  service: PanelServiceName,
+export function createControlApiMetadata(
+  service: ControlServiceName,
   version: string
-): PanelApiMetadata {
+): ControlApiMetadata {
   return {
-    product: "SHP",
+    product: "SimpleHost",
     service,
     runtime: "nodejs",
     version

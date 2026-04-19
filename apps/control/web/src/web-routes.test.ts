@@ -3,14 +3,14 @@ import test from "node:test";
 
 import { invokeRequestHandler } from "@simplehost/control-shared";
 
-import type { PanelWebApi } from "./api-client.js";
+import type { ControlWebApi } from "./api-client.js";
 import { WebApiError } from "./api-client.js";
-import { createPanelWebSurface } from "./index.js";
-import { type PanelWebRuntimeConfig } from "./web-routes.js";
+import { createControlWebSurface } from "./index.js";
+import { type ControlWebRuntimeConfig } from "./web-routes.js";
 
 function createStubApi(
-  overrides: Partial<PanelWebApi> = {}
-): PanelWebApi {
+  overrides: Partial<ControlWebApi> = {}
+): ControlWebApi {
   return {
     login: async () => {
       throw new Error("Unexpected login request in test");
@@ -110,7 +110,7 @@ function createStubApi(
   };
 }
 
-function createConfig(): PanelWebRuntimeConfig {
+function createConfig(): ControlWebRuntimeConfig {
   return {
     api: { host: "127.0.0.1", port: 4100 },
     env: "test",
@@ -121,7 +121,7 @@ function createConfig(): PanelWebRuntimeConfig {
 }
 
 test("web healthz reports web runtime metadata", async () => {
-  const handler = createPanelWebSurface(
+  const handler = createControlWebSurface(
     {
       config: createConfig(),
       startedAt: Date.now() - 12_000
@@ -146,7 +146,7 @@ test("web healthz reports web runtime metadata", async () => {
 });
 
 test("locale preferences route redirects and sets locale cookie", async () => {
-  const handler = createPanelWebSurface(
+  const handler = createControlWebSurface(
     {
       config: createConfig(),
       startedAt: Date.now()
@@ -169,7 +169,7 @@ test("locale preferences route redirects and sets locale cookie", async () => {
 });
 
 test("unknown routes still return a structured 404 payload", async () => {
-  const handler = createPanelWebSurface(
+  const handler = createControlWebSurface(
     {
       config: createConfig(),
       startedAt: Date.now()
@@ -191,7 +191,7 @@ test("unknown routes still return a structured 404 payload", async () => {
 });
 
 test("missing session on protected routes redirects to login", async () => {
-  const handler = createPanelWebSurface(
+  const handler = createControlWebSurface(
     {
       config: createConfig(),
       startedAt: Date.now()
@@ -214,7 +214,7 @@ test("missing session on protected routes redirects to login", async () => {
 });
 
 test("login failures render the login page with the API error message", async () => {
-  const handler = createPanelWebSurface(
+  const handler = createControlWebSurface(
     {
       config: createConfig(),
       startedAt: Date.now()

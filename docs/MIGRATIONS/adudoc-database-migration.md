@@ -1,6 +1,6 @@
 # Adudoc Database Migration
 
-This document tracks the closure of the `adudoc` database migration inside `SHP`.
+This document tracks the closure of the `adudoc` database migration inside `SimpleHost Control`.
 
 ## Repo-declared state
 
@@ -53,11 +53,11 @@ database:
 
 3. Confirm there is no remaining `database:adudoc` drift and that the last relevant reconcile job applied cleanly.
 4. Confirm backup policy coverage and at least one successful recent backup run for selectors covering `app:adudoc` or `database:adudoc`.
-5. Retire any legacy MariaDB leftovers outside `SHP`: database, user, backup jobs, scripts, secrets, or manual runbooks still pointing at the old engine.
+5. Retire any legacy MariaDB leftovers outside `SimpleHost Control`: database, user, backup jobs, scripts, secrets, or manual runbooks still pointing at the old engine.
 
 ## Notes
 
-- `SHP` now models two different migration states for databases:
+- `SimpleHost Control` now models two different migration states for databases:
   - `pendingMigrationTo`: migration planned but not completed
   - `migrationCompletedFrom` plus `migrationCompletedAt`: migration completed and explicitly recorded
 - If neither field is set but desired and inventory both match the target engine, the audit script reports `model-complete-without-metadata` so we can backfill history instead of guessing.

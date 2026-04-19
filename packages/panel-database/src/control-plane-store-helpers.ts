@@ -127,7 +127,7 @@ export function decodeStoredJobPayload(
   }
 
   if (!key) {
-    throw new Error("SHP job payload secret is required to decrypt queued jobs.");
+    throw new Error("SimpleHost Control job payload secret is required to decrypt queued jobs.");
   }
 
   const decipher = createDecipheriv(
@@ -144,7 +144,7 @@ export function decodeStoredJobPayload(
   const decoded = JSON.parse(plaintext) as unknown;
 
   if (!decoded || typeof decoded !== "object" || Array.isArray(decoded)) {
-    throw new Error("Stored SHP job payload did not decode to an object.");
+    throw new Error("Stored SimpleHost Control job payload did not decode to an object.");
   }
 
   return decoded as Record<string, unknown>;

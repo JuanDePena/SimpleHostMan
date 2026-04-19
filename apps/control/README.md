@@ -247,16 +247,16 @@ From this directory:
 - `apps/control/tsconfig.json` is the current ownership boundary for the transitional `control-shared`, `control-api`, `control-web`, and combined entrypoint candidate.
 - `apps/control/src/index.ts` now represents a real one-process candidate that can serve UI and `/v1/*` on one request surface without changing the live runtime.
 - `apps/control/src/index.ts` also supports explicit runtime mode selection through `SIMPLEHOST_CONTROL_RUNTIME_MODE=combined|split`.
-- the web layer can now consume the API boundary either through HTTP or through an in-process `PanelWebApi` implementation.
+- the web layer can now consume the API boundary either through HTTP or through an in-process `ControlWebApi` implementation.
 - `apps/control/src/router.test.ts` now locks in the combined routing split between control health, `/v1/*`, and UI routes.
 - `control-web` now mirrors the API boundary pattern with `WebRouteContext` plus route slices for core pages, session routes, and action routes.
-- `control-web` now also exposes `createPanelWebSurface`, which plays the same role for UI routing that `PanelApiSurface` already plays for the API boundary.
+- `control-web` now also exposes `createControlWebSurface`, which plays the same role for UI routing that `ControlApiSurface` already plays for the API boundary.
 - `WebRouteContext` now carries `sessionToken`, aligning the web auth/session seam more closely with `ApiRouteContext.bearerToken`.
 - web-side login redirects, unauthorized handling, and login error rendering now flow through a shared auth/session helper layer and route-context factory.
-- `PanelWebApi` now exposes semantic auth methods, reducing the remaining raw `/v1/auth/*` coupling inside `control-web`.
-- `PanelWebApi` now also exposes `loadDashboardBootstrap()`, making the initial authenticated dashboard load an explicit surface instead of a route-local bundle of fetches.
-- `PanelWebApi` now also exposes `resolveSession()` and `loadAuthenticatedDashboard()`, so the web boundary and the combined candidate can share the same session/bootstrap seam.
-- `PanelWebApi` now also exposes semantic operational methods such as inventory export/import, reconcile dispatches, package actions, and proxy-preview loading, shrinking the remaining direct dependency on raw route strings inside `control-web`.
+- `ControlWebApi` now exposes semantic auth methods, reducing the remaining raw `/v1/auth/*` coupling inside `control-web`.
+- `ControlWebApi` now also exposes `loadDashboardBootstrap()`, making the initial authenticated dashboard load an explicit surface instead of a route-local bundle of fetches.
+- `ControlWebApi` now also exposes `resolveSession()` and `loadAuthenticatedDashboard()`, so the web boundary and the combined candidate can share the same session/bootstrap seam.
+- `ControlWebApi` now also exposes semantic operational methods such as inventory export/import, reconcile dispatches, package actions, and proxy-preview loading, shrinking the remaining direct dependency on raw route strings inside `control-web`.
 - `control-api` now exposes an auth surface, so the combined candidate can reuse semantic `login/logout/current user` operations without routing those paths back through HTTP in-process.
 - `apps/control/src/bootstrap-surface.ts` now concentrates auth, dashboard bootstrap, runtime health, and the high-level API/web surfaces used by the combined candidate.
 - `apps/control/src/combined-surface.ts` now acts as the central high-level primitive for the combined candidate, tying together the bootstrap surface, route surface, request-context factory, and request handler.
@@ -298,18 +298,18 @@ From this directory:
 - the release-shadow now keeps multi-version inventory plus `shared/meta` activation/promotion/deploy state of its own, making it behave more like a real release root rehearsal instead of a single packed copy.
 - `apps/control/src/release-rehearsal.ts`, `release-rehearsal-cli.ts`, and `release-rehearsal.test.ts` now validate that the promoted release-shadow stays aligned with the release-sandbox it came from, both in metadata and in representative HTTP behavior.
 - `apps/control/src/request-context.test.ts` now locks the per-request caching behavior for session resolution, authenticated dashboard bootstrap, and health snapshot reuse.
-- the combined request handler now routes over `PanelApiSurface` and `PanelWebSurface` directly instead of wiring raw request listeners by hand.
+- the combined request handler now routes over `ControlApiSurface` and `ControlWebSurface` directly instead of wiring raw request listeners by hand.
 - `apps/control/src/router.test.ts` now locks parity for key split-vs-combined routes such as `/`, `/login`, `/v1/auth/me`, and `/v1/resources/spec`.
 - `apps/control/src/request-context.ts` now defines a combined per-request context with shared session resolution and authenticated dashboard loading.
 - `apps/control/src/runtime-parity.test.ts` now compares split and combined candidates over real HTTP servers for protected routes such as packages, desired-state mutations, mail mutations, proxy preview, and logout.
-- `apps/control/src/combined-smoke.test.ts` now exercises the combined candidate against real `PanelWebSurface` routing with a stubbed in-process API boundary.
+- `apps/control/src/combined-smoke.test.ts` now exercises the combined candidate against real `ControlWebSurface` routing with a stubbed in-process API boundary.
 - `apps/control/src/combined-server.test.ts` now starts the combined candidate on a real ephemeral HTTP port and validates an authenticated flow end-to-end.
 - `apps/control/src/auth-gate.ts` now provides a cached combined auth/bootstrap gate, so the candidate can reuse resolved session and authenticated dashboard state inside one request.
 - `apps/control/src/request-context.ts` now exposes an explicit per-request cache object for auth/bootstrap memoization and health snapshot reuse.
 - `apps/control/src/route-surface.ts` now gives the combined candidate a more semantic routing surface over health, API, and web requests.
 - `apps/control/src/runtime-contract.ts` now makes the one-process candidate explicit as a source-level runtime contract before any deploy/runtime promotion.
 - `apps/control/src/preflight-cli.ts` now prints a legible preflight report and exits non-zero on failure.
-- `control-web` now routes semantic mail/domain/mailbox/quota mutations through `PanelWebApi`, further shrinking direct transport-shaped coupling.
+- `control-web` now routes semantic mail/domain/mailbox/quota mutations through `ControlWebApi`, further shrinking direct transport-shaped coupling.
 - The remaining work is runtime unification and release normalization, not source ownership.
 
 ## Combined pre-promotion checklist

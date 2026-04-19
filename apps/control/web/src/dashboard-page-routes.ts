@@ -6,7 +6,7 @@ import {
 
 import {
   getNoticeFromUrl,
-  type PanelWebApi
+  type ControlWebApi
 } from "./api-client.js";
 import {
   buildDashboardViewUrl,
@@ -26,7 +26,7 @@ import { redirectToLogin, renderLoginError } from "./web-auth-helpers.js";
 import type { WebRouteHandler } from "./web-route-context.js";
 
 export function createDashboardHandler(args: {
-  api: PanelWebApi;
+  api: ControlWebApi;
   defaultImportPath: string;
   renderLoginPage: (locale: WebLocale, notice?: PanelNotice) => string;
   version: string;

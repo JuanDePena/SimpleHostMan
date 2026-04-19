@@ -39,7 +39,7 @@ export interface PlatformInventoryDocument {
       standby_node: string;
       primary_port: number;
     };
-    postgresql_shp: {
+    postgresql_control: {
       primary_node: string;
       standby_node: string;
       primary_port: number;
@@ -98,9 +98,9 @@ export async function readPlatformInventory(
     platformRecord.postgresql_apps,
     "platform.postgresql_apps"
   );
-  const postgresqlShpRecord = expectRecord(
-    platformRecord.postgresql_shp,
-    "platform.postgresql_shp"
+  const postgresqlControlRecord = expectRecord(
+    platformRecord.postgresql_control,
+    "platform.postgresql_control"
   );
   const mariadbAppsRecord = expectRecord(
     platformRecord.mariadb_apps,
@@ -190,24 +190,27 @@ export async function readPlatformInventory(
           "platform.postgresql_apps.primary_port"
         )
       },
-      postgresql_shp: {
+      postgresql_control: {
         primary_node: expectString(
-          postgresqlShpRecord.primary_node,
-          "platform.postgresql_shp.primary_node"
+          postgresqlControlRecord.primary_node,
+          "platform.postgresql_control.primary_node"
         ),
         standby_node: expectString(
-          postgresqlShpRecord.standby_node,
-          "platform.postgresql_shp.standby_node"
+          postgresqlControlRecord.standby_node,
+          "platform.postgresql_control.standby_node"
         ),
         primary_port: expectNumber(
-          postgresqlShpRecord.primary_port,
-          "platform.postgresql_shp.primary_port"
+          postgresqlControlRecord.primary_port,
+          "platform.postgresql_control.primary_port"
         ),
         database: expectString(
-          postgresqlShpRecord.database,
-          "platform.postgresql_shp.database"
+          postgresqlControlRecord.database,
+          "platform.postgresql_control.database"
         ),
-        user: expectString(postgresqlShpRecord.user, "platform.postgresql_shp.user")
+        user: expectString(
+          postgresqlControlRecord.user,
+          "platform.postgresql_control.user"
+        )
       },
       mariadb_apps: {
         primary_node: expectString(

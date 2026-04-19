@@ -29,9 +29,9 @@ import {
   type PackageInventoryCollectPayload,
   type PostgresReconcilePayload,
   type ProxyRenderPayload,
-  type ShmJobEnvelope,
-  type ShmJobKind,
-  type ShmJobResult
+  type AgentJobEnvelope,
+  type AgentJobKind,
+  type AgentJobResult
 } from "@simplehost/manager-contracts";
 import {
   renderEnvironmentFile,
@@ -104,12 +104,12 @@ export interface DriverExecutionContext {
 }
 
 function createCompletedResult(
-  job: ShmJobEnvelope,
+  job: AgentJobEnvelope,
   context: DriverExecutionContext,
-  status: ShmJobResult["status"],
+  status: AgentJobResult["status"],
   summary: string,
   details?: Record<string, unknown>
-): ShmJobResult {
+): AgentJobResult {
   return {
     jobId: job.id,
     kind: job.kind,
@@ -122,11 +122,11 @@ function createCompletedResult(
 }
 
 function createFailedResult(
-  job: ShmJobEnvelope,
+  job: AgentJobEnvelope,
   context: DriverExecutionContext,
   summary: string,
   details?: Record<string, unknown>
-): ShmJobResult {
+): AgentJobResult {
   return createCompletedResult(job, context, "failed", summary, details);
 }
 
@@ -988,10 +988,10 @@ function validateMailPayload(payload: MailSyncPayload): void {
 }
 
 async function executeMailSyncJob(
-  job: ShmJobEnvelope,
+  job: AgentJobEnvelope,
   context: DriverExecutionContext,
   payload: MailSyncPayload
-): Promise<ShmJobResult> {
+): Promise<AgentJobResult> {
   try {
     validateMailPayload(payload);
 
@@ -1277,10 +1277,10 @@ async function executeMailSyncJob(
 }
 
 async function executeContainerReconcileJob(
-  job: ShmJobEnvelope,
+  job: AgentJobEnvelope,
   context: DriverExecutionContext,
   payload: ContainerReconcilePayload
-): Promise<ShmJobResult> {
+): Promise<AgentJobResult> {
   try {
     validateContainerPayload(payload);
 
@@ -1472,10 +1472,10 @@ async function executeContainerReconcileJob(
 }
 
 async function executeProxyRenderJob(
-  job: ShmJobEnvelope,
+  job: AgentJobEnvelope,
   context: DriverExecutionContext,
   payload: ProxyRenderPayload
-): Promise<ShmJobResult> {
+): Promise<AgentJobResult> {
   try {
     const fileName = `${payload.vhostName}.conf`;
     const rendered = renderApacheVhost(payload);
@@ -1557,10 +1557,10 @@ async function executeProxyRenderJob(
 }
 
 async function executeDnsSyncJob(
-  job: ShmJobEnvelope,
+  job: AgentJobEnvelope,
   context: DriverExecutionContext,
   payload: DnsSyncPayload
-): Promise<ShmJobResult> {
+): Promise<AgentJobResult> {
   try {
     validateDnsPayload(payload);
     const zoneFileName = `${payload.zoneName.replace(/[^a-zA-Z0-9.-]/g, "_")}.zone`;
@@ -1599,10 +1599,10 @@ async function executeDnsSyncJob(
 }
 
 async function executePostgresReconcileJob(
-  job: ShmJobEnvelope,
+  job: AgentJobEnvelope,
   context: DriverExecutionContext,
   payload: PostgresReconcilePayload
-): Promise<ShmJobResult> {
+): Promise<AgentJobResult> {
   if (!context.services.postgresql.adminUrl) {
     return createCompletedResult(
       job,
@@ -1789,10 +1789,10 @@ async function executePostgresReconcileJob(
 }
 
 async function executeMariadbReconcileJob(
-  job: ShmJobEnvelope,
+  job: AgentJobEnvelope,
   context: DriverExecutionContext,
   payload: MariadbReconcilePayload
-): Promise<ShmJobResult> {
+): Promise<AgentJobResult> {
   if (!context.services.mariadb.adminUrl) {
     return createCompletedResult(
       job,
@@ -1917,10 +1917,10 @@ async function executeMariadbReconcileJob(
 }
 
 async function executeCodeServerUpdateJob(
-  job: ShmJobEnvelope,
+  job: AgentJobEnvelope,
   context: DriverExecutionContext,
   payload: CodeServerUpdatePayload
-): Promise<ShmJobResult> {
+): Promise<AgentJobResult> {
   const rpmUrl = assertSafeRpmUrl(payload.rpmUrl).toString();
   const fileName =
     path.basename(new URL(rpmUrl).pathname) || `code-server-${Date.now()}.rpm`;
@@ -2056,10 +2056,10 @@ async function collectInstalledPackages(): Promise<InstalledPackageSummary[]> {
 }
 
 async function executePackageInventoryCollectJob(
-  job: ShmJobEnvelope,
+  job: AgentJobEnvelope,
   context: DriverExecutionContext,
   _payload: PackageInventoryCollectPayload
-): Promise<ShmJobResult> {
+): Promise<AgentJobResult> {
   try {
     const packages = await collectInstalledPackages();
     return createCompletedResult(
@@ -2082,10 +2082,10 @@ async function executePackageInventoryCollectJob(
 }
 
 async function executePackageInstallJob(
-  job: ShmJobEnvelope,
+  job: AgentJobEnvelope,
   context: DriverExecutionContext,
   payload: PackageInstallPayload
-): Promise<ShmJobResult> {
+): Promise<AgentJobResult> {
   const packageNames = (payload.packageNames ?? []).map((value) => value.trim()).filter(Boolean);
   const rpmUrl = payload.rpmUrl?.trim();
   let downloadedArtifactPath: string | undefined;
@@ -2159,9 +2159,9 @@ async function executePackageInstallJob(
 }
 
 export async function executeAllowlistedJob(
-  job: ShmJobEnvelope,
+  job: AgentJobEnvelope,
   context: DriverExecutionContext
-): Promise<ShmJobResult> {
+): Promise<AgentJobResult> {
   if (!isSupportedJobKind(job.kind)) {
     return createCompletedResult(
       job,
@@ -2301,8 +2301,8 @@ export async function executeAllowlistedJob(
 
 export function createDemoJob(
   nodeId: string,
-  kind: ShmJobKind = "proxy.render"
-): ShmJobEnvelope {
+  kind: AgentJobKind = "proxy.render"
+): AgentJobEnvelope {
   const createdAt = new Date().toISOString();
 
   if (kind === "proxy.render") {

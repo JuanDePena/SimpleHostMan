@@ -1,12 +1,12 @@
 {
   "name": "@simplehost/manager-cli",
-  "version": "2604.19.09",
+  "version": "2604.19.11",
   "private": true,
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "shm": "dist/index.js"
+    "simplehost-agent": "dist/index.js"
   },
   "files": [
     "dist"

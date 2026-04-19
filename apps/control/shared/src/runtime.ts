@@ -1,8 +1,8 @@
 import { type Server } from "node:http";
 
 import {
-  createPanelRuntimeConfig,
-  type PanelRuntimeConfig
+  createControlRuntimeConfig,
+  type ControlRuntimeConfig
 } from "@simplehost/panel-config";
 
 export interface RuntimeHealthSnapshot {
@@ -15,7 +15,7 @@ export interface RuntimeHealthSnapshot {
 }
 
 export interface ControlProcessContext {
-  config: PanelRuntimeConfig;
+  config: ControlRuntimeConfig;
   startedAt: number;
 }
 
@@ -23,7 +23,7 @@ export function createControlProcessContext(
   env: NodeJS.ProcessEnv = process.env
 ): ControlProcessContext {
   return {
-    config: createPanelRuntimeConfig(env),
+    config: createControlRuntimeConfig(env),
     startedAt: Date.now()
   };
 }
@@ -34,7 +34,7 @@ export function createRuntimeHealthSnapshot<TExtra extends Record<string, unknow
   startedAt,
   extra
 }: {
-  config: Pick<PanelRuntimeConfig, "env" | "version">;
+  config: Pick<ControlRuntimeConfig, "env" | "version">;
   service: string;
   startedAt: number;
   extra?: TExtra;

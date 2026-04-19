@@ -5,13 +5,13 @@ import { fileURLToPath } from "node:url";
 
 import { Pool, type PoolClient } from "pg";
 
-export interface PanelDatabaseMigrationRecord {
+export interface ControlDatabaseMigrationRecord {
   version: string;
   checksum: string;
   appliedAt: string;
 }
 
-export interface PanelDatabaseMigrationPlan {
+export interface ControlDatabaseMigrationPlan {
   version: string;
   filename: string;
   checksum: string;
@@ -28,7 +28,7 @@ function getPackageRoot(): string {
   return path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 }
 
-async function readMigrationPlans(): Promise<PanelDatabaseMigrationPlan[]> {
+async function readMigrationPlans(): Promise<ControlDatabaseMigrationPlan[]> {
   const migrationsDirectory = path.join(getPackageRoot(), "migrations");
   const entries = await readdir(migrationsDirectory, { withFileTypes: true });
   const files = entries
@@ -36,7 +36,7 @@ async function readMigrationPlans(): Promise<PanelDatabaseMigrationPlan[]> {
     .map((entry) => entry.name)
     .sort();
 
-  const plans: PanelDatabaseMigrationPlan[] = [];
+  const plans: ControlDatabaseMigrationPlan[] = [];
 
   for (const filename of files) {
     const sql = await readFile(path.join(migrationsDirectory, filename), "utf8");
@@ -70,9 +70,9 @@ async function withTransaction<T>(
   }
 }
 
-export async function getAppliedPanelMigrations(
+export async function getAppliedControlMigrations(
   pool: Pool
-): Promise<PanelDatabaseMigrationRecord[]> {
+): Promise<ControlDatabaseMigrationRecord[]> {
   await pool.query(migrationsTableStatement);
 
   const result = await pool.query<{
@@ -95,13 +95,13 @@ export async function getAppliedPanelMigrations(
   }));
 }
 
-export async function runPanelDatabaseMigrations(
+export async function runControlDatabaseMigrations(
   pool: Pool
-): Promise<PanelDatabaseMigrationRecord[]> {
+): Promise<ControlDatabaseMigrationRecord[]> {
   await pool.query(migrationsTableStatement);
 
   const appliedMigrations = new Map(
-    (await getAppliedPanelMigrations(pool)).map((migration) => [
+    (await getAppliedControlMigrations(pool)).map((migration) => [
       migration.version,
       migration
     ])
@@ -137,5 +137,5 @@ export async function runPanelDatabaseMigrations(
     }
   }
 
-  return getAppliedPanelMigrations(pool);
+  return getAppliedControlMigrations(pool);
 }

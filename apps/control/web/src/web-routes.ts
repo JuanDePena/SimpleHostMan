@@ -3,7 +3,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { type PanelNotice } from "@simplehost/panel-ui";
 import { isUnauthorizedError } from "@simplehost/control-shared";
 
-import { type PanelWebApi } from "./api-client.js";
+import { type ControlWebApi } from "./api-client.js";
 import { handleDesiredStateResourceRoute } from "./desired-state-resource-routes.js";
 import { handleMailRoute } from "./mail-routes.js";
 import {
@@ -20,7 +20,7 @@ import { handleActionWebRoutes } from "./web-action-routes.js";
 import { handleCoreWebRoutes } from "./web-core-routes.js";
 import { handleSessionWebRoutes } from "./web-session-routes.js";
 
-export interface PanelWebRuntimeConfig {
+export interface ControlWebRuntimeConfig {
   api: {
     host: string;
     port: number;
@@ -36,15 +36,15 @@ export interface PanelWebRuntimeConfig {
   };
 }
 
-export interface StartPanelWebServerArgs {
-  api: PanelWebApi;
-  config: PanelWebRuntimeConfig;
+export interface StartControlWebServerArgs {
+  api: ControlWebApi;
+  config: ControlWebRuntimeConfig;
   handleDashboard: (context: WebRouteContext) => Promise<boolean>;
   renderLoginPage: (locale: WebLocale, notice?: PanelNotice) => string;
   startedAt: number;
 }
 
-export function createRequestHandler(args: StartPanelWebServerArgs) {
+export function createRequestHandler(args: StartControlWebServerArgs) {
   return async function requestHandler(
     request: IncomingMessage,
     response: ServerResponse
@@ -80,7 +80,7 @@ export function createRequestHandler(args: StartPanelWebServerArgs) {
 }
 
 export function createServerRequestListener(
-  args: StartPanelWebServerArgs
+  args: StartControlWebServerArgs
 ): (request: IncomingMessage, response: ServerResponse) => Promise<void> {
   const requestHandler = createRequestHandler(args);
 
@@ -108,13 +108,13 @@ export function createServerRequestListener(
   };
 }
 
-export function startPanelWebServer(
-  args: StartPanelWebServerArgs
+export function startControlWebServer(
+  args: StartControlWebServerArgs
 ): ReturnType<typeof createServer> {
   const server = createServer(createServerRequestListener(args));
 
   server.listen(args.config.web.port, args.config.web.host, () => {
-    console.log(`SHP Web listening on http://${args.config.web.host}:${args.config.web.port}`);
+    console.log(`SimpleHost Control Web listening on http://${args.config.web.host}:${args.config.web.port}`);
   });
 
   return server;

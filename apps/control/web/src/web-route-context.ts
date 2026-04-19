@@ -8,9 +8,9 @@ import type {
 } from "@simplehost/control-shared";
 import { ControlSessionRequiredError } from "@simplehost/control-shared";
 
-import type { PanelWebApi } from "./api-client.js";
+import type { ControlWebApi } from "./api-client.js";
 import { readLocale, readSessionToken } from "./request.js";
-import type { PanelWebRuntimeConfig } from "./web-routes.js";
+import type { ControlWebRuntimeConfig } from "./web-routes.js";
 import type { WebLocale } from "./request.js";
 
 export interface WebRouteContext {
@@ -22,8 +22,8 @@ export interface WebRouteContext {
   resolveSession: () => Promise<ControlResolvedSession>;
   requireSession: () => Promise<ControlAuthenticatedSession>;
   loadAuthenticatedDashboard: () => Promise<ControlAuthenticatedDashboardBootstrap>;
-  api: PanelWebApi;
-  config: PanelWebRuntimeConfig;
+  api: ControlWebApi;
+  config: ControlWebRuntimeConfig;
   startedAt: number;
   handleDashboard: (context: WebRouteContext) => Promise<boolean>;
   renderLoginPage: (locale: WebLocale, notice?: PanelNotice) => string;
@@ -34,8 +34,8 @@ export type WebRouteHandler = (context: WebRouteContext) => Promise<boolean>;
 export function createWebRouteContext(args: {
   request: IncomingMessage;
   response: ServerResponse;
-  api: PanelWebApi;
-  config: PanelWebRuntimeConfig;
+  api: ControlWebApi;
+  config: ControlWebRuntimeConfig;
   startedAt: number;
   handleDashboard: WebRouteContext["handleDashboard"];
   renderLoginPage: WebRouteContext["renderLoginPage"];

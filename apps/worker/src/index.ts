@@ -2,16 +2,16 @@ import { realpathSync } from "node:fs";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 
-import { createPanelRuntimeConfig } from "@simplehost/panel-config";
-import { createPanelApiMetadata } from "@simplehost/panel-contracts";
+import { createControlRuntimeConfig } from "@simplehost/panel-config";
+import { createControlApiMetadata } from "@simplehost/panel-contracts";
 import {
-  createPanelDatabaseHealthSummary,
+  createControlDatabaseHealthSummary,
   createPostgresControlPlaneStore
 } from "@simplehost/panel-database";
 
 export async function runWorkerIteration(): Promise<void> {
-  const config = createPanelRuntimeConfig();
-  const metadata = createPanelApiMetadata("worker", config.version);
+  const config = createControlRuntimeConfig();
+  const metadata = createControlApiMetadata("worker", config.version);
   const controlPlaneStore = await createPostgresControlPlaneStore(config.database.url, {
     pollIntervalMs: config.worker.pollIntervalMs,
     bootstrapEnrollmentToken: config.auth.bootstrapEnrollmentToken,
@@ -31,7 +31,7 @@ export async function runWorkerIteration(): Promise<void> {
       JSON.stringify(
         {
           metadata,
-          database: createPanelDatabaseHealthSummary(config.database.url),
+          database: createControlDatabaseHealthSummary(config.database.url),
           controlPlane: {
             registeredNodes: stateSnapshot.nodes.length,
             pendingJobCount: Object.values(stateSnapshot.pendingJobs).reduce(
@@ -53,7 +53,7 @@ export async function runWorkerIteration(): Promise<void> {
 }
 
 export async function startPanelWorker(): Promise<void> {
-  const config = createPanelRuntimeConfig();
+  const config = createControlRuntimeConfig();
   const runOnce = process.env.SIMPLEHOST_WORKER_RUN_ONCE === "true";
 
   do {

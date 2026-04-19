@@ -18,12 +18,12 @@ platform:
     primary_port: 5432
     primary_node: primary
     standby_node: secondary
-  postgresql_shp:
+  postgresql_control:
     primary_port: 5433
     primary_node: primary
     standby_node: secondary
-    database: simplehost_panel
-    user: simplehost_panel
+    database: simplehost_control
+    user: simplehost_control
   mariadb_apps:
     primary_port: 3306
     primary_node: primary

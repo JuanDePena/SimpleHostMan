@@ -6,7 +6,7 @@ export function getMailSectionCopy(locale: WebLocale): LocalizedMailCopy {
     ? {
         title: "Mail",
         description:
-          "Dominios de correo, buzones, aliases y quotas definidos en SHP para el stack mail de la plataforma.",
+          "Dominios de correo, buzones, aliases y quotas definidos en SimpleHost Control para el stack mail de la plataforma.",
         domainsTitle: "Dominios mail",
         mailboxesTitle: "Buzones",
         aliasesTitle: "Aliases",
@@ -29,7 +29,7 @@ export function getMailSectionCopy(locale: WebLocale): LocalizedMailCopy {
         aliasCountLabel: "Aliases",
         runtimeTitle: "Runtime por nodo",
         runtimeDescription:
-          "Estado reportado por SHM para postfix, dovecot, rspamd, redis y los dominios gestionados por nodo.",
+          "Estado reportado por SimpleHost Agent para postfix, dovecot, rspamd, redis y los dominios gestionados por nodo.",
         runtimeNodesLabel: "Nodos runtime",
         runtimeHealthyLabel: "Nodos sanos",
         postfixLabel: "Postfix",
@@ -73,7 +73,7 @@ export function getMailSectionCopy(locale: WebLocale): LocalizedMailCopy {
     : {
         title: "Mail",
         description:
-          "Mail domains, mailboxes, aliases and quotas defined in SHP for the platform mail stack.",
+          "Mail domains, mailboxes, aliases and quotas defined in SimpleHost Control for the platform mail stack.",
         domainsTitle: "Mail domains",
         mailboxesTitle: "Mailboxes",
         aliasesTitle: "Aliases",
@@ -96,7 +96,7 @@ export function getMailSectionCopy(locale: WebLocale): LocalizedMailCopy {
         aliasCountLabel: "Aliases",
         runtimeTitle: "Node runtime",
         runtimeDescription:
-          "Per-node mail service status reported by SHM for postfix, dovecot, rspamd, redis and managed domains.",
+          "Per-node mail service status reported by SimpleHost Agent for postfix, dovecot, rspamd, redis and managed domains.",
         runtimeNodesLabel: "Runtime nodes",
         runtimeHealthyLabel: "Healthy nodes",
         postfixLabel: "Postfix",

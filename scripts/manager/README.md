@@ -1,6 +1,7 @@
-# Manager Scripts
+# Agent Scripts
 
-This subtree contains imported `SHM` operational scripts.
+This subtree contains the legacy agent operational scripts that still back the
+unified release workflow.
 
 Path:
 

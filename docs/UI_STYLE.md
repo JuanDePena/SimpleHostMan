@@ -1,11 +1,11 @@
-# SHP UI Style and Layout Guide
+# SimpleHost Control UI Style and Layout Guide
 
 Date drafted: 2026-04-14
-Scope: `SHP` (`SimpleHostPanel`) operator UI and shared UI primitives
+Scope: `SimpleHost Control` (`SimpleHost`) operator UI and shared UI primitives
 
 ## Purpose
 
-This document captures the current visual system and layout conventions that are now considered the working baseline for `SHP`.
+This document captures the current visual system and layout conventions that are now considered the working baseline for `SimpleHost Control`.
 
 It is intended to prevent future UI work from drifting back into:
 
@@ -26,7 +26,7 @@ The current implementation lives primarily in:
 - `/opt/simplehostman/src/packages/panel-ui/src/panel-shell.ts`
 - `/opt/simplehostman/src/packages/panel-ui/src/data-table.ts`
 
-The most visible `SHP` workspace wiring currently lives in:
+The most visible `SimpleHost Control` workspace wiring currently lives in:
 
 - `/opt/simplehostman/src/apps/control/web/src/dashboard-shell.ts`
 - `/opt/simplehostman/src/apps/control/web/src/dashboard-page.ts`
@@ -39,7 +39,7 @@ The most visible `SHP` workspace wiring currently lives in:
 
 ## Shells
 
-Two shells define the current `SHP` UI structure.
+Two shells define the current `SimpleHost Control` UI structure.
 
 ### `AdminShell`
 
@@ -364,7 +364,7 @@ Current interaction rules worth preserving:
 
 ## Change-management guidance
 
-When changing `SHP` UI:
+When changing `SimpleHost Control` UI:
 
 - prefer updating shared primitives in `packages/ui` before patching individual screens
 - keep color and radius decisions centralized in the shared style files

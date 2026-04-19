@@ -45,7 +45,7 @@ import type {
   MailDomainRow,
   MailboxQuotaRow,
   MailboxRow,
-  PanelControlPlaneStoreOptions
+  ControlPlaneStoreOptions
 } from "./control-plane-store-types.js";
 
 export async function getLatestInventoryImport(
@@ -1059,7 +1059,7 @@ export function buildMailZoneRecords(
 }
 
 function resolveDefaultPrimaryNodeId(inventory: PlatformInventoryDocument): string {
-  return inventory.platform.postgresql_shp.primary_node;
+  return inventory.platform.postgresql_control.primary_node;
 }
 
 function resolveAppPrimaryNodeId(
@@ -1607,7 +1607,7 @@ export async function buildMailOverview(client: PoolClient): Promise<MailOvervie
 
 interface ControlPlaneSpecContext {
   pool: Pool;
-  options: PanelControlPlaneStoreOptions;
+  options: ControlPlaneStoreOptions;
   jobPayloadKey: Buffer | null;
 }
 

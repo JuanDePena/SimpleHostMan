@@ -36,24 +36,24 @@ Current checkpoint on 2026-04-14:
 - root workspace build slices now exist for `panel-runtime` and `manager-runtime` through `tsconfig.panel.json`, `tsconfig.manager.json`, and matching root scripts
 - imported panel and manager release scripts now share a canonical path helper in `src/scripts/lib/workspace-paths.sh`
 - `apps/control/src/index.ts` now exists as a transitory one-process candidate that can serve UI routes and `/v1/*` from one combined request surface without changing the current runtime model
-- the web layer now depends on an injected `PanelWebApi` interface instead of a hard-wired module-global HTTP client, and the combined candidate already uses an in-process implementation backed by the API request handler
+- the web layer now depends on an injected `ControlWebApi` interface instead of a hard-wired module-global HTTP client, and the combined candidate already uses an in-process implementation backed by the API request handler
 - the combined control candidate now has a pure router layer, source-level routing tests, and explicit `combined|split` mode selection through `SIMPLEHOST_CONTROL_RUNTIME_MODE`
 - `control-web` now mirrors the API route-handler style through `WebRouteContext` plus dedicated route slices for core pages, session flows, and action handlers
-- `control-web` also now exposes a reusable `PanelWebSurface`, and health payload construction is shared across `api`, `web`, and `control` through `control-shared`
+- `control-web` also now exposes a reusable `ControlWebSurface`, and health payload construction is shared across `api`, `web`, and `control` through `control-shared`
 - `WebRouteContext` now owns the per-request `sessionToken`, so dashboard rendering, desired-state mutations, mail actions, and operational actions all reuse the same web-side auth/session seam
 - web-side auth/session UX now has a shared helper layer for route-context creation, login redirects, cookie clearing, and login-error rendering, reducing duplication before full runtime convergence
-- `PanelWebApi` now exposes semantic auth methods for `login`, `logout`, and `current user`, shrinking the remaining direct dependency on raw auth route strings inside `control-web`
-- `PanelWebApi` now also exposes `loadDashboardBootstrap()`, making the initial authenticated dashboard load a first-class surface instead of a route-local bundle of fetches
-- the combined control candidate now routes over `PanelApiSurface` and `PanelWebSurface` directly, and source tests now lock basic split-vs-combined parity for key routes (`/`, `/login`, `/v1/auth/me`, `/v1/resources/spec`)
+- `ControlWebApi` now exposes semantic auth methods for `login`, `logout`, and `current user`, shrinking the remaining direct dependency on raw auth route strings inside `control-web`
+- `ControlWebApi` now also exposes `loadDashboardBootstrap()`, making the initial authenticated dashboard load a first-class surface instead of a route-local bundle of fetches
+- the combined control candidate now routes over `ControlApiSurface` and `ControlWebSurface` directly, and source tests now lock basic split-vs-combined parity for key routes (`/`, `/login`, `/v1/auth/me`, `/v1/resources/spec`)
 - `control-api` now exposes a semantic auth surface, `control-shared` owns reusable auth/dashboard-bootstrap helpers, and the combined candidate now concentrates auth/bootstrap/runtime concerns in `apps/control/src/bootstrap-surface.ts`
 - `control-shared` now also owns shared session resolution (`resolveControlSession`, `requireControlSession`) and authenticated dashboard bootstrap helpers that both `control-web` and the combined candidate consume
 - `apps/control/src/request-context.ts` now represents the per-request combined runtime context, including session resolution and authenticated dashboard loading
 - explicit source-level combined-runtime aliases now exist (`pnpm start:control:combined:dev`, `pnpm test:control:parity`) while packaging and scripts still document split mode as the operational default
-- an additional smoke layer now exists for the combined candidate through `pnpm start:control:combined:smoke` and `pnpm test:control:combined-smoke`, using the real `PanelWebSurface` against a stubbed in-process API boundary
+- an additional smoke layer now exists for the combined candidate through `pnpm start:control:combined:smoke` and `pnpm test:control:combined-smoke`, using the real `ControlWebSurface` against a stubbed in-process API boundary
 - `apps/control/src/auth-gate.ts`, `apps/control/src/route-surface.ts`, and `apps/control/src/runtime-contract.ts` now make the combined candidate more explicit: cached auth/bootstrap per request, semantic routing over health/API/web, and a named runtime contract for future one-process promotion
 - `control-web` now caches `resolveSession()`, `requireSession()`, and `loadAuthenticatedDashboard()` per request, and several protected routes now consume `requireSession()` rather than the older raw session-token seam
 - `control-shared` now exposes a reusable `createControlSessionSurface()` seam, and both the combined candidate and `control-web` use that direction to keep session resolution more uniform
-- `PanelWebApi` now also exposes semantic operational methods for inventory export/import, reconcile dispatches, package actions, and proxy-preview loading, reducing transport-shaped coupling inside `control-web`
+- `ControlWebApi` now also exposes semantic operational methods for inventory export/import, reconcile dispatches, package actions, and proxy-preview loading, reducing transport-shaped coupling inside `control-web`
 - `apps/control/src/combined-surface.ts` now acts as the central high-level primitive for the one-process candidate, wiring together bootstrap, route surface, request-context creation, and the combined request handler
 - `apps/control/src/server.ts` now exposes a reusable combined server candidate that can be booted on an ephemeral port for workspace-level smoke validation
 - `apps/control/src/combined-server.test.ts` now exercises that real HTTP candidate with an authenticated end-to-end flow, complementing the split-vs-combined parity smoke tests
@@ -61,8 +61,8 @@ Current checkpoint on 2026-04-14:
 - `apps/control/src/runtime-parity-harness.ts` now boots split and combined candidate servers behind one reusable HTTP comparison harness
 - `apps/control/src/request-context.test.ts` now locks the request-level caching contract for resolved session state, authenticated dashboard bootstrap, and health snapshot memoization
 - `apps/control/src/runtime-parity.test.ts` now compares split and combined candidate servers across representative protected routes such as packages, desired-state mutations, mail mutations, proxy preview, and logout
-- `control-web` now routes semantic mail/domain/mailbox/quota mutations through `PanelWebApi`, shrinking another slice of direct transport-shaped coupling
-- the generic `request()` primitive is now internal to `control-web`'s API-client implementation rather than part of the public `PanelWebApi` seam
+- `control-web` now routes semantic mail/domain/mailbox/quota mutations through `ControlWebApi`, shrinking another slice of direct transport-shaped coupling
+- the generic `request()` primitive is now internal to `control-web`'s API-client implementation rather than part of the public `ControlWebApi` seam
 - `apps/control/src/runtime-surface.ts` now formalizes the combined candidate runtime surface independently from the HTTP server wrapper
 - `apps/control/src/preflight-surface.ts`, `preflight-runner.ts`, and `preflight-cli.ts` now define a source-level pre-promotion flow for the combined candidate
 - `apps/control/src/preflight-runner.test.ts` now validates both passing and degraded preflight scenarios using harness-driven auth/bootstrap failures
@@ -201,9 +201,9 @@ The target source tree is:
 
 Expected ownership:
 
-- `apps/control`: unified `SHP` control-plane app serving UI and API from one process and one port
+- `apps/control`: unified `SimpleHost Control` control-plane app serving UI and API from one process and one port
 - `apps/worker`: background jobs and async control-plane work
-- `apps/agent`: long-running node agent currently provided by `SHM`
+- `apps/agent`: long-running node agent currently provided by `SimpleHost Agent`
 - `apps/cli`: break-glass and local operator CLI
 - `packages/*`: shared contracts, UI primitives, persistence, renderers, drivers, config, and test helpers
 - `platform`: host-level templates and managed artifacts currently owned by `simplehost-manager/platform`

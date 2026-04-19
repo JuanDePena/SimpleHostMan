@@ -6,9 +6,9 @@ import {
   type InvokedHttpResponse
 } from "@simplehost/control-shared";
 import {
-  createPanelWebApiFromRequest,
-  type PanelWebApi,
-  type PanelWebApiRequestOptions,
+  createControlWebApiFromRequest,
+  type ControlWebApi,
+  type ControlWebApiRequestOptions,
   WebApiError
 } from "@simplehost/control-web";
 
@@ -30,16 +30,16 @@ function parseWebApiError(response: InvokedHttpResponse): never {
   throw new WebApiError(response.statusCode, message);
 }
 
-export function createInProcessPanelWebApi(
+export function createInProcessControlWebApi(
   requestHandler: (
     request: IncomingMessage,
     response: ServerResponse
   ) => Promise<void> | void,
   auth?: ControlAuthSurface
-): PanelWebApi {
+): ControlWebApi {
   const request = async <T>(
     pathname: string,
-    options: PanelWebApiRequestOptions = {}
+    options: ControlWebApiRequestOptions = {}
   ): Promise<T> => {
     const response = await invokeRequestHandler(requestHandler, {
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
@@ -64,7 +64,7 @@ export function createInProcessPanelWebApi(
     return (response.bodyText ? JSON.parse(response.bodyText) : null) as T;
   };
 
-  const api = createPanelWebApiFromRequest(request);
+  const api = createControlWebApiFromRequest(request);
 
   if (!auth) {
     return api;

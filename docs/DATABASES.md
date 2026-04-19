@@ -8,7 +8,7 @@ Target OS: AlmaLinux 10.1
 This runbook documents the target database platform for the two-node design:
 
 - PostgreSQL as the default application database
-- PostgreSQL as the dedicated control-plane database for `SHP`
+- PostgreSQL as the dedicated control-plane database for `SimpleHost Control`
 - MariaDB as the optional compatibility database for workloads that require MySQL or MariaDB semantics
 - PostgreSQL deployed host-native through packaged `systemd` units
 - MariaDB deployed as a dedicated Podman service managed by Quadlet only when required
@@ -24,8 +24,8 @@ Secondary node: `vps-16535090.vps.ovh.ca`
 - The currently deployed host-native PostgreSQL runtime on these nodes is `16.13`.
 - The target policy in this runbook still points at PostgreSQL `18.x`; upgrading to that track remains a planned follow-up, not a completed step.
 - `postgresql-apps` and `postgresql-control` are already live over WireGuard.
-- `SHP` API and workers use `127.0.0.1:5433` locally on the active node.
-- `SHM` already executes real `postgres.reconcile` and `mariadb.reconcile` jobs against the live engines.
+- `SimpleHost Control` API and workers use `127.0.0.1:5433` locally on the active node.
+- `SimpleHost Agent` already executes real `postgres.reconcile` and `mariadb.reconcile` jobs against the live engines.
 
 ## Version policy
 
@@ -72,7 +72,7 @@ Rationale:
 - Bind database listeners only to loopback and WireGuard addresses as required.
 - Do not use the same database engine for unrelated control-plane duties unless there is a clear reason.
 - Do not use the application PostgreSQL cluster as the backend for PowerDNS.
-- Do not use the application PostgreSQL cluster as the backend for `SHP`.
+- Do not use the application PostgreSQL cluster as the backend for `SimpleHost Control`.
 - Only run both PostgreSQL and MariaDB at the same time when workloads actually require both.
 - Do not deploy one database engine instance per application unless a tenant isolation requirement justifies the extra operational cost.
 
@@ -155,11 +155,11 @@ Preferred tooling:
 - Do not pretend that DNS provides safe database failover.
 - Add a connection proxy later only if application connection behavior requires it.
 
-## PostgreSQL `SHP` design
+## PostgreSQL `SimpleHost Control` design
 
 ### Role
 
-`postgresql-control` is the dedicated control-plane PostgreSQL cluster for `SHP`.
+`postgresql-control` is the dedicated control-plane PostgreSQL cluster for `SimpleHost Control`.
 
 Do not mix tenant application databases into this cluster.
 
@@ -197,8 +197,8 @@ Preferred tooling:
 
 ### Client connectivity
 
-- `SHP` API and workers connect to the current `postgresql-control` primary only.
-- Keep `SHP` database credentials separate from tenant application credentials.
+- `SimpleHost Control` API and workers connect to the current `postgresql-control` primary only.
+- Keep `SimpleHost Control` database credentials separate from tenant application credentials.
 - Do not use this cluster for tenant application data.
 
 ### 8 GB memory profile
@@ -242,7 +242,7 @@ Primary node bootstrap:
 6. Reload SELinux policy if needed and start the service:
    - `semodule -B`
    - `systemctl enable --now postgresql@control`
-7. Create the `SHP` database and role from [`/opt/simplehostman/src/packaging/postgresql/control/sql/create-control-database.sql.template`](/opt/simplehostman/src/packaging/postgresql/control/sql/create-control-database.sql.template).
+7. Create the `SimpleHost Control` database and role from [`/opt/simplehostman/src/packaging/postgresql/control/sql/create-control-database.sql.template`](/opt/simplehostman/src/packaging/postgresql/control/sql/create-control-database.sql.template).
 
 Secondary node bootstrap:
 
@@ -265,8 +265,8 @@ Minimum validation:
 
 ```bash
 ss -tulpn | grep ':5433 '
-psql 'postgresql://simplehost_panel:***@127.0.0.1:5433/simplehost_panel' -c 'select current_database();'
-psql 'postgresql://simplehost_panel:***@127.0.0.1:5433/simplehost_panel' -c 'select now();'
+psql 'postgresql://simplehost_control:***@127.0.0.1:5433/simplehost_control' -c 'select current_database();'
+psql 'postgresql://simplehost_control:***@127.0.0.1:5433/simplehost_control' -c 'select now();'
 ```
 
 Expected state:
@@ -274,7 +274,7 @@ Expected state:
 - the primary accepts local connections on `127.0.0.1:5433`
 - the secondary reports `pg_is_in_recovery() = true`
 - `SIMPLEHOST_DATABASE_URL` points to the current primary, for example:
-  - `postgresql://simplehost_panel:***@127.0.0.1:5433/simplehost_panel`
+  - `postgresql://simplehost_control:***@127.0.0.1:5433/simplehost_control`
 
 ## MariaDB design
 

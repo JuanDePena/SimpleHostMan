@@ -7,22 +7,22 @@ import { createControlPlaneSpecMethods } from "./control-plane-store-spec.js";
 import {
   NodeAuthorizationError,
   UserAuthorizationError,
-  type PanelControlPlaneStore,
-  type PanelControlPlaneStoreOptions
+  type ControlPlaneStore,
+  type ControlPlaneStoreOptions
 } from "./control-plane-store-types.js";
-import { runPanelDatabaseMigrations } from "./migrations.js";
+import { runControlDatabaseMigrations } from "./migrations.js";
 
 export {
   NodeAuthorizationError,
   UserAuthorizationError,
-  type PanelControlPlaneStore,
-  type PanelControlPlaneStoreOptions
+  type ControlPlaneStore,
+  type ControlPlaneStoreOptions
 };
 
 export async function createPostgresControlPlaneStore(
   databaseUrl: string,
-  options: PanelControlPlaneStoreOptions
-): Promise<PanelControlPlaneStore> {
+  options: ControlPlaneStoreOptions
+): Promise<ControlPlaneStore> {
   const pollIntervalMs = options.pollIntervalMs ?? 5000;
   const jobPayloadKey = deriveJobPayloadKey(options.jobPayloadSecret);
   const pool = new Pool({
@@ -30,7 +30,7 @@ export async function createPostgresControlPlaneStore(
     application_name: "simplehost-panel-api"
   });
 
-  await runPanelDatabaseMigrations(pool);
+  await runControlDatabaseMigrations(pool);
   await ensureBootstrapAdmin(pool, options);
 
   return {

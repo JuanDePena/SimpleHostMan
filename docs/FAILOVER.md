@@ -1,6 +1,6 @@
-# SHP Failover Runbook
+# SimpleHost Control Failover Runbook
 
-This runbook documents the current manual failover path for `SHP` in the
+This runbook documents the current manual failover path for `SimpleHost Control` in the
 two-node layout.
 
 ## Current runtime model
@@ -26,7 +26,7 @@ Before promoting the secondary:
 
 ## Passive runtime refresh
 
-Keep the standby node updated with the same installed `SHP` release as the
+Keep the standby node updated with the same installed `SimpleHost Control` release as the
 primary, but leave `simplehost-control` and `simplehost-worker` disabled until
 promotion.
 
@@ -94,7 +94,7 @@ While `postgresql-control` is still in recovery mode, `simplehost-control` and
    systemctl stop simplehost-worker.service simplehost-control.service
    ```
 
-4. Enable and start `SHP` on the promoted secondary:
+4. Enable and start `SimpleHost Control` on the promoted secondary:
 
    ```bash
    systemctl enable --now simplehost-control.service simplehost-worker.service
@@ -126,7 +126,7 @@ Rebuild the old primary as a fresh standby:
 Use this checklist only after the failed node has been rebuilt cleanly as a
 standby from the currently active primary.
 
-- Confirm the current primary is healthy and serving `SHP` traffic correctly.
+- Confirm the current primary is healthy and serving `SimpleHost Control` traffic correctly.
 - Confirm the node you want to fail back to reports `pg_is_in_recovery() = true`.
 - Confirm `pg_stat_wal_receiver.status = streaming` on that standby.
 - Confirm `/opt/simplehostman/release/current` on the standby points to the same
@@ -155,4 +155,4 @@ standby from the currently active primary.
 
 - This is a manual failover design by intent.
 - Do not run `simplehost-worker` active on both nodes at the same time.
-- Keep `SHP` write traffic pointed only at the promoted PostgreSQL primary.
+- Keep `SimpleHost Control` write traffic pointed only at the promoted PostgreSQL primary.

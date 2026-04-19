@@ -1,5 +1,5 @@
 import type {
-  PanelGlobalRole,
+  ControlGlobalRole,
   TenantMembershipRole
 } from "./core.js";
 
@@ -15,7 +15,7 @@ export interface AuthenticatedUserSummary {
   email: string;
   displayName: string;
   status: string;
-  globalRoles: PanelGlobalRole[];
+  globalRoles: ControlGlobalRole[];
   tenantMemberships: TenantMembershipSummary[];
 }
 
@@ -43,7 +43,7 @@ export interface CreateUserRequest {
   email: string;
   displayName: string;
   password: string;
-  globalRoles?: PanelGlobalRole[];
+  globalRoles?: ControlGlobalRole[];
   tenantMemberships?: CreateUserTenantMembershipInput[];
 }
 

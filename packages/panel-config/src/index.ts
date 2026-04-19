@@ -1,20 +1,20 @@
 import { readFileSync } from "node:fs";
 
-export interface PanelListenerConfig {
+export interface ControlListenerConfig {
   host: string;
   port: number;
 }
 
-export interface PanelWorkerConfig {
+export interface ControlWorkerConfig {
   pollIntervalMs: number;
   logLevel: "debug" | "info" | "warn" | "error";
 }
 
-export interface PanelDatabaseRuntimeConfig {
+export interface ControlDatabaseRuntimeConfig {
   url: string;
 }
 
-export interface PanelAuthRuntimeConfig {
+export interface ControlAuthRuntimeConfig {
   bootstrapEnrollmentToken: string | null;
   bootstrapAdminEmail: string | null;
   bootstrapAdminPassword: string | null;
@@ -22,15 +22,15 @@ export interface PanelAuthRuntimeConfig {
   sessionTtlSeconds: number;
 }
 
-export interface PanelInventoryRuntimeConfig {
+export interface ControlInventoryRuntimeConfig {
   importPath: string;
 }
 
-export interface PanelJobRuntimeConfig {
+export interface ControlJobRuntimeConfig {
   payloadSecret: string | null;
 }
 
-export interface PanelRustDeskRuntimeConfig {
+export interface ControlRustDeskRuntimeConfig {
   publicHostname: string | null;
   txtRecordFqdn: string | null;
   primaryNodeId: string | null;
@@ -39,17 +39,17 @@ export interface PanelRustDeskRuntimeConfig {
   secondaryDnsTarget: string | null;
 }
 
-export interface PanelRuntimeConfig {
+export interface ControlRuntimeConfig {
   env: string;
   version: string;
-  api: PanelListenerConfig;
-  web: PanelListenerConfig;
-  worker: PanelWorkerConfig;
-  database: PanelDatabaseRuntimeConfig;
-  auth: PanelAuthRuntimeConfig;
-  inventory: PanelInventoryRuntimeConfig;
-  jobs: PanelJobRuntimeConfig;
-  rustdesk: PanelRustDeskRuntimeConfig;
+  api: ControlListenerConfig;
+  web: ControlListenerConfig;
+  worker: ControlWorkerConfig;
+  database: ControlDatabaseRuntimeConfig;
+  auth: ControlAuthRuntimeConfig;
+  inventory: ControlInventoryRuntimeConfig;
+  jobs: ControlJobRuntimeConfig;
+  rustdesk: ControlRustDeskRuntimeConfig;
 }
 
 function readPackageVersion(fallback: string): string {
@@ -93,9 +93,9 @@ function readOptionalString(value: string | undefined): string | null {
   return value && value.trim().length > 0 ? value.trim() : null;
 }
 
-export function createPanelRuntimeConfig(
+export function createControlRuntimeConfig(
   env: NodeJS.ProcessEnv = process.env
-): PanelRuntimeConfig {
+): ControlRuntimeConfig {
   const defaultVersion = readPackageVersion("0000.00.00");
 
   return {
@@ -111,12 +111,12 @@ export function createPanelRuntimeConfig(
     },
     worker: {
       pollIntervalMs: readPositiveInt(env.SIMPLEHOST_WORKER_POLL_INTERVAL_MS, 5000),
-      logLevel: readString(env.SIMPLEHOST_LOG_LEVEL, "info") as PanelWorkerConfig["logLevel"]
+      logLevel: readString(env.SIMPLEHOST_LOG_LEVEL, "info") as ControlWorkerConfig["logLevel"]
     },
     database: {
       url: readString(
         env.SIMPLEHOST_DATABASE_URL,
-        "postgresql://simplehost_panel:change-me@127.0.0.1:5433/simplehost_panel"
+        "postgresql://simplehost_control:change-me@127.0.0.1:5433/simplehost_control"
       )
     },
     auth: {

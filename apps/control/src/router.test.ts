@@ -7,15 +7,15 @@ import type {
   AuthenticatedUserSummary
 } from "@simplehost/panel-contracts";
 import {
-  createPanelApiHttpHandler,
-  type PanelApiSurface
+  createControlApiHttpHandler,
+  type ControlApiSurface
 } from "@simplehost/control-api";
 import {
   createRuntimeHealthSnapshot,
   invokeRequestHandler,
   type ControlProcessContext
 } from "@simplehost/control-shared";
-import type { PanelWebSurface } from "@simplehost/control-web";
+import type { ControlWebSurface } from "@simplehost/control-web";
 
 import { createControlBootstrapSurface, type ControlBootstrapSurface } from "./bootstrap-surface.js";
 import { createCombinedControlRequestHandler } from "./router.js";
@@ -51,7 +51,7 @@ function createTestContext(): ControlProcessContext {
 
 function createStubApiSurface(
   requestHandler: (request: IncomingMessage, response: ServerResponse) => Promise<void>
-): Pick<PanelApiSurface, "auth" | "requestHandler"> {
+): Pick<ControlApiSurface, "auth" | "requestHandler"> {
   return {
     auth: {
       login: async () => createAuthLoginResponse(),
@@ -64,17 +64,17 @@ function createStubApiSurface(
 
 function createStubWebSurface(
   requestListener: (request: IncomingMessage, response: ServerResponse) => Promise<void>
-): Pick<PanelWebSurface, "requestListener"> {
+): Pick<ControlWebSurface, "requestListener"> {
   return {
     requestListener
   };
 }
 
 function createSplitRequestHandler(args: {
-  apiSurface: Pick<PanelApiSurface, "requestHandler">;
-  webSurface: Pick<PanelWebSurface, "requestListener">;
+  apiSurface: Pick<ControlApiSurface, "requestHandler">;
+  webSurface: Pick<ControlWebSurface, "requestListener">;
 }): (request: IncomingMessage, response: ServerResponse) => Promise<void> {
-  const apiRequestHandler = createPanelApiHttpHandler(args.apiSurface.requestHandler);
+  const apiRequestHandler = createControlApiHttpHandler(args.apiSurface.requestHandler);
 
   return async (request, response) => {
     const url = new URL(request.url ?? "/", "http://127.0.0.1");
@@ -89,8 +89,8 @@ function createSplitRequestHandler(args: {
 }
 
 function createStubBootstrapSurface(args: {
-  apiSurface: Pick<PanelApiSurface, "auth" | "requestHandler">;
-  webSurface: Pick<PanelWebSurface, "requestListener">;
+  apiSurface: Pick<ControlApiSurface, "auth" | "requestHandler">;
+  webSurface: Pick<ControlWebSurface, "requestListener">;
   context?: ControlProcessContext;
 }): ControlBootstrapSurface {
   const context = args.context ?? createTestContext();

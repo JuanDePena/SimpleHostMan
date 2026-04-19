@@ -32,7 +32,7 @@ import type {
   PackageInventoryRefreshRequest,
   PackageInventorySnapshot,
   PackageInstallRequest,
-  PanelGlobalRole,
+  ControlGlobalRole,
   ReconciliationRunSummary,
   ResourceDriftSummary,
   TenantMembershipRole,
@@ -385,7 +385,7 @@ export interface AuditEventInput {
   occurredAt?: string;
 }
 
-export interface PanelControlPlaneStoreOptions {
+export interface ControlPlaneStoreOptions {
   pollIntervalMs?: number;
   bootstrapEnrollmentToken: string | null;
   sessionTtlSeconds: number;
@@ -396,7 +396,7 @@ export interface PanelControlPlaneStoreOptions {
   jobPayloadSecret: string | null;
 }
 
-export interface PanelControlPlaneStore {
+export interface ControlPlaneStore {
   registerNode(
     request: NodeRegistrationRequest,
     presentedToken: string | null
@@ -516,7 +516,7 @@ export interface PanelControlPlaneStore {
 }
 
 export type ControlPlaneAuthMethods = Pick<
-  PanelControlPlaneStore,
+  ControlPlaneStore,
   | "registerNode"
   | "claimJobs"
   | "reportJob"
@@ -528,7 +528,7 @@ export type ControlPlaneAuthMethods = Pick<
 >;
 
 export type ControlPlaneSpecMethods = Pick<
-  PanelControlPlaneStore,
+  ControlPlaneStore,
   | "importInventory"
   | "getInventorySnapshot"
   | "applyDesiredState"
@@ -545,7 +545,7 @@ export type ControlPlaneSpecMethods = Pick<
 >;
 
 export type ControlPlaneOperationsMethods = Pick<
-  PanelControlPlaneStore,
+  ControlPlaneStore,
   | "dispatchZoneSync"
   | "dispatchAppReconcile"
   | "getAppProxyPayload"
@@ -590,7 +590,7 @@ export class UserAuthorizationError extends Error {
 export type {
   DnsRecordPayload,
   MailSyncPayload,
-  PanelGlobalRole,
+  ControlGlobalRole,
   ProxyRenderPayload,
   RegisteredNodeState,
   ReportedJobResult,

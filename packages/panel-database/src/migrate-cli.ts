@@ -1,6 +1,6 @@
 import { Pool } from "pg";
 
-import { runPanelDatabaseMigrations } from "./migrations.js";
+import { runControlDatabaseMigrations } from "./migrations.js";
 
 function readDatabaseUrl(): string {
   const url = process.env.SIMPLEHOST_DATABASE_URL ?? process.env.DATABASE_URL;
@@ -19,7 +19,7 @@ async function main(): Promise<void> {
   });
 
   try {
-    const applied = await runPanelDatabaseMigrations(pool);
+    const applied = await runControlDatabaseMigrations(pool);
     console.log(
       JSON.stringify(
         {

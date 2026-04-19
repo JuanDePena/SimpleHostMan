@@ -130,7 +130,7 @@ function createAppServiceCopy(locale: WebLocale): NodeHealthAppServiceCopy {
     ? {
         title: "Servicios de apps",
         description:
-          "Servicios `app-<slug>.service` gestionados por SHM y visibles en el snapshot de runtime del nodo.",
+          "Servicios `app-<slug>.service` gestionados por SimpleHost Agent y visibles en el snapshot de runtime del nodo.",
         servicesLabel: "Servicios app",
         serviceColumn: "Apps",
         imageLabel: "Imagen runtime",
@@ -140,7 +140,7 @@ function createAppServiceCopy(locale: WebLocale): NodeHealthAppServiceCopy {
     : {
         title: "App services",
         description:
-          "Managed `app-<slug>.service` runtimes reported by SHM as part of the node snapshot.",
+          "Managed `app-<slug>.service` runtimes reported by SimpleHost Agent as part of the node snapshot.",
         servicesLabel: "App services",
         serviceColumn: "Apps",
         imageLabel: "Runtime image",

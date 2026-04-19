@@ -8,7 +8,7 @@ This document captures the recommended way to run a self-hosted RustDesk OSS ser
 
 The intended fit is:
 
-- `SHM` owns the node-local execution through `container.reconcile`
+- `SimpleHost Agent` owns the node-local execution through `container.reconcile`
 - RustDesk runs as two Quadlet-managed containers: `hbbs` and `hbbr`
 - the service starts on the primary node first
 - the secondary can receive the same artifacts later for controlled failover

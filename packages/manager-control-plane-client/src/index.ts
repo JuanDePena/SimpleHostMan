@@ -1,9 +1,9 @@
 import type {
-  ShmJobClaimRequest,
-  ShmJobClaimResponse,
-  ShmJobReportRequest,
-  ShmNodeRegistrationRequest,
-  ShmNodeRegistrationResponse
+  AgentJobClaimRequest,
+  AgentJobClaimResponse,
+  AgentJobReportRequest,
+  AgentNodeRegistrationRequest,
+  AgentNodeRegistrationResponse
 } from "@simplehost/manager-contracts";
 
 async function readJsonResponse<T>(response: Response): Promise<T> {
@@ -42,23 +42,23 @@ async function postJson<TRequest, TResponse>(
 
 export function registerNode(
   baseUrl: string,
-  payload: ShmNodeRegistrationRequest,
+  payload: AgentNodeRegistrationRequest,
   authToken?: string
-): Promise<ShmNodeRegistrationResponse> {
+): Promise<AgentNodeRegistrationResponse> {
   return postJson(baseUrl, "/v1/nodes/register", payload, authToken);
 }
 
 export function claimJobs(
   baseUrl: string,
-  payload: ShmJobClaimRequest,
+  payload: AgentJobClaimRequest,
   authToken?: string
-): Promise<ShmJobClaimResponse> {
+): Promise<AgentJobClaimResponse> {
   return postJson(baseUrl, "/v1/jobs/claim", payload, authToken);
 }
 
 export function reportJob(
   baseUrl: string,
-  payload: ShmJobReportRequest,
+  payload: AgentJobReportRequest,
   authToken?: string
 ): Promise<{ accepted: true }> {
   return postJson(baseUrl, "/v1/jobs/report", payload, authToken);

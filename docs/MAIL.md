@@ -15,7 +15,7 @@ It defines the intended split of responsibilities for:
 - per-tenant webmail through `Roundcube`
 - spam filtering and DKIM signing
 - mailbox failover boundaries
-- the future control-plane split between `SHP` and `SHM`
+- the future control-plane split between `SimpleHost Control` and `SimpleHost Agent`
 
 This document is a design and operational target.
 It does not imply that mail execution is already deployed in phase 1.
@@ -31,9 +31,9 @@ Related references:
 ## Status on 2026-04-11
 
 - Mail execution is not yet deployed as a complete live runtime on the nodes.
-- `SHP` already implements desired-state objects and operator CRUD for mail domains, mailboxes, aliases, and quotas.
-- `SHP` reconciliation now derives baseline mail DNS and `webmail.<domain>` proxy scaffolding.
-- `SHM` already accepts `mail.sync`, persists node-local desired state, prepares mail storage paths, generates DKIM material, renders node-local `Postfix`, `Dovecot`, and `Rspamd` artifacts, and reports mail runtime health back to `SHP`.
+- `SimpleHost Control` already implements desired-state objects and operator CRUD for mail domains, mailboxes, aliases, and quotas.
+- `SimpleHost Control` reconciliation now derives baseline mail DNS and `webmail.<domain>` proxy scaffolding.
+- `SimpleHost Agent` already accepts `mail.sync`, persists node-local desired state, prepares mail storage paths, generates DKIM material, renders node-local `Postfix`, `Dovecot`, and `Rspamd` artifacts, and reports mail runtime health back to `SimpleHost Control`.
 - The currently implemented runtime is still incomplete operationally: mail services are not yet installed and activated by the platform, and `Roundcube` content is still a placeholder rather than a live webmail deployment.
 - The chosen direction is self-hosted mail on the two VPS nodes, not a third-party hosted mail backend.
 - The selected persistence model is filesystem-backed mailbox storage, not message storage inside `PostgreSQL`.
@@ -41,7 +41,7 @@ Related references:
 
 ## Design goals
 
-- Keep `SHP` as the authoritative source of truth for mail domains, mailboxes, aliases, quotas, policies, and audit intent.
+- Keep `SimpleHost Control` as the authoritative source of truth for mail domains, mailboxes, aliases, quotas, policies, and audit intent.
 - Keep runtime mail delivery on the nodes simple, explicit, and recoverable.
 - Support initial low-volume migrations such as `adudoc.com` without painting the platform into a corner for larger domains later.
 - Avoid storing message bodies in `PostgreSQL`.
@@ -66,13 +66,13 @@ Why this stack was selected:
 - It keeps message persistence in files instead of inventing a custom SQL mail store.
 - It scales better operationally than a `PostgreSQL`-backed message design for large message volume.
 - It preserves compatibility with `IMAP` migration tools and standard mailbox inspection workflows.
-- It lets `SHP` own the desired-state model without forcing mail daemons to query `SHP` directly at runtime.
+- It lets `SimpleHost Control` own the desired-state model without forcing mail daemons to query `SimpleHost Control` directly at runtime.
 
 ## Persistence model
 
 ### Source of truth
 
-`SHP PostgreSQL` should store the desired-state model for mail:
+`SimpleHost Control PostgreSQL` should store the desired-state model for mail:
 
 - `MailDomain`
 - `Mailbox`
@@ -82,7 +82,7 @@ Why this stack was selected:
 - policy toggles such as suspend or unsuspend, catch-all policy, and deliverability posture
 - audit events for mailbox lifecycle changes
 
-`SHP PostgreSQL` should not store:
+`SimpleHost Control PostgreSQL` should not store:
 
 - message bodies
 - MIME attachments
@@ -122,7 +122,7 @@ Do not switch to a SQL message store to solve that problem.
 
 ### Roundcube persistence
 
-`Roundcube` should use its own application database, separate from `SHP`.
+`Roundcube` should use its own application database, separate from `SimpleHost Control`.
 
 Recommended engine:
 
@@ -141,11 +141,11 @@ That database stores only webmail metadata such as:
 
 It must not be treated as the authoritative message store.
 
-## Runtime split between `SHP` and `SHM`
+## Runtime split between `SimpleHost Control` and `SimpleHost Agent`
 
-### `SHP`
+### `SimpleHost Control`
 
-`SHP` owns:
+`SimpleHost Control` owns:
 
 - mail-domain and mailbox desired-state objects
 - mailbox aliases and quota policy
@@ -154,26 +154,26 @@ It must not be treated as the authoritative message store.
 - audit trail
 - delivery and trace visibility when that feature is added
 
-`SHP` should not be queried directly by `Postfix` or `Dovecot` for each live auth or lookup.
+`SimpleHost Control` should not be queried directly by `Postfix` or `Dovecot` for each live auth or lookup.
 
-### `SHM`
+### `SimpleHost Agent`
 
-`SHM` owns:
+`SimpleHost Agent` owns:
 
 - rendering runtime config files for `Postfix`, `Dovecot`, `Rspamd`, and related helpers
 - placing local keys, maps, and passwd files on the node
 - installing or restarting mail services
-- collecting local runtime health and exposing it back to `SHP`
+- collecting local runtime health and exposing it back to `SimpleHost Control`
 
 Preferred runtime pattern:
 
-- `SHP` desired state
-- `SHM` renders node-local artifacts
+- `SimpleHost Control` desired state
+- `SimpleHost Agent` renders node-local artifacts
 - mail daemons read local generated files
 
 Avoid:
 
-- direct runtime coupling from mail daemons to `SHP PostgreSQL`
+- direct runtime coupling from mail daemons to `SimpleHost Control PostgreSQL`
 
 ## Runtime service placement
 
@@ -213,8 +213,8 @@ Recommended public hostname model:
 
 Current scaffolding direction:
 
-- `SHP` derives `proxy.render` jobs for `webmail.<domain>`
-- `SHM` prepares the corresponding document roots under `/srv/www/roundcube`
+- `SimpleHost Control` derives `proxy.render` jobs for `webmail.<domain>`
+- `SimpleHost Agent` prepares the corresponding document roots under `/srv/www/roundcube`
 - until real `Roundcube` content is deployed, those roots may contain a placeholder page proving that the vhost path exists
 
 Current rendered runtime artifacts:
@@ -233,7 +233,7 @@ Current rendered runtime artifacts:
 
 Current credential behavior:
 
-- when a mailbox is created without a desired password, `SHM` renders it locally in locked/reset-required form
+- when a mailbox is created without a desired password, `SimpleHost Agent` renders it locally in locked/reset-required form
 - the current pilot intentionally uses that mode so the first credential establishment remains manual
 
 ## Mail routing model
@@ -272,19 +272,19 @@ Do not prioritize:
 
 ## Credential model
 
-Mailbox credentials should be managed by `SHP`, but runtime auth should use rendered local artifacts.
+Mailbox credentials should be managed by `SimpleHost Control`, but runtime auth should use rendered local artifacts.
 
 Recommended pattern:
 
-- `SHP` stores password-hash metadata or secret references
-- `SHM` renders a local `Dovecot` passwd file or equivalent auth map
+- `SimpleHost Control` stores password-hash metadata or secret references
+- `SimpleHost Agent` renders a local `Dovecot` passwd file or equivalent auth map
 - `Postfix` uses local lookup tables for domains, aliases, and mailbox routing
 
 Hard rules:
 
 - do not keep plaintext mailbox passwords in git
 - do not expose mailbox passwords back through the UI after creation or reset
-- avoid making `Dovecot` depend on live database queries to `SHP`
+- avoid making `Dovecot` depend on live database queries to `SimpleHost Control`
 
 ## Recommended generated runtime artifacts
 
@@ -340,9 +340,9 @@ Optional later:
 
 Current scaffolding state:
 
-- `SHP` now derives `MX`, `mail.<domain>`, `webmail.<domain>`, SPF, and `_dmarc` for the active mail node
+- `SimpleHost Control` now derives `MX`, `mail.<domain>`, `webmail.<domain>`, SPF, and `_dmarc` for the active mail node
 - operator-managed explicit zone records remain authoritative when they intentionally override those derived records
-- `SHM` now generates DKIM private/public material and a DNS TXT payload per domain selector under `/srv/mail/dkim/<domain>/`
+- `SimpleHost Agent` now generates DKIM private/public material and a DNS TXT payload per domain selector under `/srv/mail/dkim/<domain>/`
 
 ### DKIM
 
@@ -447,9 +447,9 @@ Backups must allow:
 
 The passive node is not a backup substitute.
 
-## Logging, traceability, and future `SHP` visibility
+## Logging, traceability, and future `SimpleHost Control` visibility
 
-Future `SHP` mail operations should expose:
+Future `SimpleHost Control` mail operations should expose:
 
 - queue visibility
 - recent delivery attempts
@@ -465,7 +465,7 @@ Recommended raw sources:
 - `Rspamd` history and metrics
 - mailbox quota usage data
 
-`SHP` should ingest summarized operational state.
+`SimpleHost Control` should ingest summarized operational state.
 It should not become the primary raw message-log store.
 
 ## Security boundaries
@@ -480,7 +480,7 @@ It should not become the primary raw message-log store.
 
 Preferred migration sequence per domain:
 
-1. create the mail domain and mailboxes in `SHP`
+1. create the mail domain and mailboxes in `SimpleHost Control`
 2. render and deploy runtime config on the active node
 3. create `mail.<domain>` and move `MX` away from the apex if needed
 4. copy mailbox contents from the legacy host
@@ -496,12 +496,12 @@ For larger-volume domains, keep the overlap window longer and validate queue beh
 Recommended rollout order:
 
 1. finalize this architecture and desired-state model
-2. add `MailDomain`, `Mailbox`, `MailAlias`, and quota objects to `SHP`
+2. add `MailDomain`, `Mailbox`, `MailAlias`, and quota objects to `SimpleHost Control`
 3. add `mail.sync`, node runtime reporting, baseline DNS derivation, and `webmail.<domain>` proxy scaffolding
-4. add `SHM` renderers and drivers for `Postfix`, `Dovecot`, `Rspamd`, `Redis`, and mail firewall policy
+4. add `SimpleHost Agent` renderers and drivers for `Postfix`, `Dovecot`, `Rspamd`, `Redis`, and mail firewall policy
 5. deploy per-tenant `Roundcube` content on the prepared `webmail.<domain>` roots
 6. validate one low-volume domain migration end-to-end
-7. add richer deliverability, traceability, and audit views in `SHP`
+7. add richer deliverability, traceability, and audit views in `SimpleHost Control`
 
 ## Non-goals for the first mail execution phase
 

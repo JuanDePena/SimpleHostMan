@@ -3,10 +3,10 @@ import { type WebCopyDictionary } from "./web-copy-types.js";
 
 export const authCopyByLocale = {
   en: {
-    appName: "SimpleHostPanel",
-    eyebrow: "SimpleHostPanel admin",
-    loginTitle: "SimpleHostPanel Login",
-    loginHeading: "SHP Login",
+    appName: "SimpleHost",
+    eyebrow: "SimpleHost admin",
+    loginTitle: "SimpleHost Login",
+    loginHeading: "SimpleHost Login",
     loginAccess: "Operator access",
     emailLabel: "Email",
     passwordLabel: "Password",
@@ -17,10 +17,10 @@ export const authCopyByLocale = {
     sidebarSearchPlaceholder: "Search navigation"
   },
   es: {
-    appName: "SimpleHostPanel",
-    eyebrow: "Administración SHP",
-    loginTitle: "Acceso a SimpleHostPanel",
-    loginHeading: "SHP Login",
+    appName: "SimpleHost",
+    eyebrow: "Administración SimpleHost",
+    loginTitle: "Acceso a SimpleHost",
+    loginHeading: "SimpleHost Login",
     loginAccess: "Acceso de operador",
     emailLabel: "Correo",
     passwordLabel: "Contraseña",

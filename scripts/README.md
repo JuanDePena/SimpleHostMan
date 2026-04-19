@@ -14,8 +14,8 @@ Use:
 
 ## Current transitional split
 
-- `panel/`: scripts imported from the former `SHP` repository
-- `manager/`: scripts imported from the former `SHM` repository
+- `panel/`: legacy control-plane scripts kept under their historical subtree
+- `manager/`: legacy agent scripts kept under their historical subtree
 - `lib/`: shared shell helpers used by both sides while the release flows are still transitional
 
 These scripts now resolve the unified source root under `/opt/simplehostman/src`, even when some ownership boundaries are still grouped under `panel/` and `manager/`.

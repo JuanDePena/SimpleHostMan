@@ -9,7 +9,7 @@ import {
   type ControlProcessContext
 } from "@simplehost/control-shared";
 import {
-  type PanelControlPlaneStore,
+  type ControlPlaneStore,
   createPostgresControlPlaneStore,
   NodeAuthorizationError,
   UserAuthorizationError
@@ -20,14 +20,14 @@ import { createApiRequestHandler } from "./api-routes.js";
 
 export { writeJson } from "./api-http.js";
 
-export interface PanelApiSurface {
+export interface ControlApiSurface {
   auth: ControlAuthSurface;
-  controlPlaneStore: PanelControlPlaneStore;
+  controlPlaneStore: ControlPlaneStore;
   requestHandler: ReturnType<typeof createApiRequestHandler>;
   close: () => Promise<void>;
 }
 
-export function createPanelApiHttpHandler(
+export function createControlApiHttpHandler(
   requestHandler: ReturnType<typeof createApiRequestHandler>
 ): ReturnType<typeof createApiRequestHandler> {
   return async (request, response) => {
@@ -62,9 +62,9 @@ export function createPanelApiHttpHandler(
   };
 }
 
-export async function createPanelApiSurface(
+export async function createControlApiSurface(
   context: ControlProcessContext = createControlProcessContext()
-): Promise<PanelApiSurface> {
+): Promise<ControlApiSurface> {
   const controlPlaneStore = await createPostgresControlPlaneStore(
     context.config.database.url,
     {
@@ -101,17 +101,17 @@ export async function createPanelApiSurface(
   };
 }
 
-export async function createPanelApiRuntime(
+export async function createControlApiRuntime(
   context: ControlProcessContext = createControlProcessContext()
 ): Promise<{
   server: ReturnType<typeof createServer>;
   close: () => Promise<void>;
 }> {
-  const surface = await createPanelApiSurface(context);
-  const server = createServer(createPanelApiHttpHandler(surface.requestHandler));
+  const surface = await createControlApiSurface(context);
+  const server = createServer(createControlApiHttpHandler(surface.requestHandler));
 
   server.listen(context.config.api.port, context.config.api.host, () => {
-    console.log(`SHP API listening on http://${context.config.api.host}:${context.config.api.port}`);
+    console.log(`SimpleHost Control API listening on http://${context.config.api.host}:${context.config.api.port}`);
   });
 
   return {
@@ -123,15 +123,15 @@ export async function createPanelApiRuntime(
   };
 }
 
-export async function startPanelApi(
+export async function startControlApi(
   context: ControlProcessContext = createControlProcessContext()
 ): Promise<ReturnType<typeof createServer>> {
-  const runtime = await createPanelApiRuntime(context);
+  const runtime = await createControlApiRuntime(context);
   return runtime.server;
 }
 
 if (isMainModule(import.meta.url)) {
-  createPanelApiRuntime()
+  createControlApiRuntime()
     .then(({ close, server }) => {
       registerGracefulShutdown(close, {
         onBeforeExit: () => {

@@ -11,7 +11,7 @@ Closed work should stay in the docs as implemented state, not linger here.
 - The documented target policy is PostgreSQL `18.x`.
 - Plan and document the safe upgrade path for both `postgresql-apps` and `postgresql-control`.
 
-## 2. Finish real per-action diffs in `SHP`
+## 2. Finish real per-action diffs in `SimpleHost Control`
 
 - Move from comparison summaries to field-accurate diffs before `dns.sync`, `proxy.render`, `database reconcile`, and destructive operations.
 - Keep those previews tied to the actual last applied or effective runtime state, not only to desired state.
@@ -31,6 +31,6 @@ Closed work should stay in the docs as implemented state, not linger here.
 ## 5. Implement the mail execution backend from the documented design
 
 - The target mail architecture is now documented in [`/opt/simplehostman/src/docs/MAIL.md`](/opt/simplehostman/src/docs/MAIL.md).
-- `SHP` desired-state objects, operator CRUD, `mail.sync` dispatching, baseline DNS derivation, and `webmail.<domain>` proxy scaffolding are now in place.
-- `SHM` now renders node-local `Postfix`, `Dovecot`, and `Rspamd` artifacts, prepares mailbox and webmail roots, generates DKIM material, and `adudoc.com` is seeded as the first pilot mail domain.
+- `SimpleHost Control` desired-state objects, operator CRUD, `mail.sync` dispatching, baseline DNS derivation, and `webmail.<domain>` proxy scaffolding are now in place.
+- `SimpleHost Agent` now renders node-local `Postfix`, `Dovecot`, and `Rspamd` artifacts, prepares mailbox and webmail roots, generates DKIM material, and `adudoc.com` is seeded as the first pilot mail domain.
 - Remaining work is now operational productization: install and enable `Postfix`, `Dovecot`, `Rspamd`, and `Redis` through the platform, replace the `Roundcube` placeholder with a real deployment, add firewall policy, credential reset and set flows, mailbox migration runbooks, deliverability diagnostics, and deeper operator-facing tracing.

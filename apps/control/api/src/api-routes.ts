@@ -1,11 +1,11 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import { type PanelRuntimeConfig } from "@simplehost/panel-config";
+import { type ControlRuntimeConfig } from "@simplehost/panel-config";
 import { createRuntimeHealthSnapshot } from "@simplehost/control-shared";
-import { createPanelApiMetadata } from "@simplehost/panel-contracts";
+import { createControlApiMetadata } from "@simplehost/panel-contracts";
 import {
-  createPanelDatabaseHealthSummary,
-  type PanelControlPlaneStore
+  createControlDatabaseHealthSummary,
+  type ControlPlaneStore
 } from "@simplehost/panel-database";
 
 import { handleAuthRoutes } from "./api-auth-routes.js";
@@ -64,9 +64,9 @@ const rootEndpoints = [
 ];
 
 interface CreateApiRequestHandlerOptions {
-  config: PanelRuntimeConfig;
+  config: ControlRuntimeConfig;
   startedAt: number;
-  controlPlaneStore: PanelControlPlaneStore;
+  controlPlaneStore: ControlPlaneStore;
 }
 
 export function createApiRequestHandler({
@@ -106,8 +106,8 @@ export function createApiRequestHandler({
       const stateSnapshot = await controlPlaneStore.getStateSnapshot();
 
       writeJson(response, 200, {
-        metadata: createPanelApiMetadata("api", config.version),
-        database: createPanelDatabaseHealthSummary(config.database.url),
+        metadata: createControlApiMetadata("api", config.version),
+        database: createControlDatabaseHealthSummary(config.database.url),
         controlPlane: {
           registeredNodes: stateSnapshot.nodes.length
         }
@@ -135,7 +135,7 @@ export function createApiRequestHandler({
 
     if (request.method === "GET" && url.pathname === "/") {
       writeJson(response, 200, {
-        message: "SimpleHostPanel API bootstrap is running.",
+        message: "SimpleHost API bootstrap is running.",
         endpoints: rootEndpoints
       });
       return;

@@ -20,19 +20,19 @@ import {
   type MailSyncPayload,
   type RustDeskListenerSnapshot,
   type RustDeskServiceSnapshot,
-  type ShmBufferedReport,
-  type ShmJobEnvelope,
-  type ShmJobReportRequest,
-  type ShmNodeRegistrationRequest,
-  type ShmNodeRuntimeSnapshot,
-  type ShmNodeSnapshot,
-  type ShmSpoolEntry
+  type AgentBufferedReport,
+  type AgentJobEnvelope,
+  type AgentJobReportRequest,
+  type AgentNodeRegistrationRequest,
+  type AgentNodeRuntimeSnapshot,
+  type AgentNodeSnapshot,
+  type AgentSpoolEntry
 } from "@simplehost/manager-contracts";
 import { executeAllowlistedJob } from "@simplehost/manager-drivers";
 import {
-  createShmRuntimeConfig,
-  ensureShmStateDirectories,
-  getShmStatePaths,
+  createAgentRuntimeConfig,
+  ensureAgentStateDirectories,
+  getAgentStatePaths,
   listJsonFiles,
   readJsonFile,
   removeFileIfExists,
@@ -47,10 +47,10 @@ async function writeLastAppliedState(
   desiredStateVersion: string,
   lastCompletedJobId?: string
 ): Promise<void> {
-  const config = createShmRuntimeConfig();
+  const config = createAgentRuntimeConfig();
   const timestamp = new Date().toISOString();
 
-  await writeJsonFileAtomic(getShmStatePaths(config).lastAppliedStateFile, {
+  await writeJsonFileAtomic(getAgentStatePaths(config).lastAppliedStateFile, {
     schemaVersion: 1,
     desiredStateVersion,
     lastCompletedJobId,
@@ -59,8 +59,8 @@ async function writeLastAppliedState(
 }
 
 async function readStoredNodeToken(): Promise<string | undefined> {
-  const config = createShmRuntimeConfig();
-  const statePaths = getShmStatePaths(config);
+  const config = createAgentRuntimeConfig();
+  const statePaths = getAgentStatePaths(config);
   const existingIdentity = await readJsonFile<{
     schemaVersion: 1;
     nodeId: string;
@@ -74,11 +74,11 @@ async function readStoredNodeToken(): Promise<string | undefined> {
   return existingIdentity.nodeToken;
 }
 
-export async function createNodeSnapshot(): Promise<ShmNodeSnapshot> {
-  const config = createShmRuntimeConfig();
-  const statePaths = getShmStatePaths(config);
+export async function createNodeSnapshot(): Promise<AgentNodeSnapshot> {
+  const config = createAgentRuntimeConfig();
+  const statePaths = getAgentStatePaths(config);
 
-  await ensureShmStateDirectories(config);
+  await ensureAgentStateDirectories(config);
   const existingIdentity = await readJsonFile<{
     schemaVersion: 1;
     nodeId: string;
@@ -91,7 +91,7 @@ export async function createNodeSnapshot(): Promise<ShmNodeSnapshot> {
   const existingNodeToken =
     existingIdentity?.nodeId === config.nodeId ? existingIdentity.nodeToken : undefined;
 
-  const snapshot: ShmNodeSnapshot = {
+  const snapshot: AgentNodeSnapshot = {
     nodeId: config.nodeId,
     hostname: config.hostname,
     status: "ready",
@@ -117,10 +117,10 @@ export async function createNodeSnapshot(): Promise<ShmNodeSnapshot> {
 }
 
 function createRegistrationRequest(
-  snapshot: ShmNodeSnapshot,
-  runtimeSnapshot?: ShmNodeRuntimeSnapshot
-): ShmNodeRegistrationRequest {
-  const config = createShmRuntimeConfig();
+  snapshot: AgentNodeSnapshot,
+  runtimeSnapshot?: AgentNodeRuntimeSnapshot
+): AgentNodeRegistrationRequest {
+  const config = createAgentRuntimeConfig();
 
   return {
     nodeId: snapshot.nodeId,
@@ -156,7 +156,7 @@ function extractCodeServerVersion(value?: string): string | undefined {
 }
 
 async function inspectCodeServer(): Promise<CodeServerServiceSnapshot> {
-  const config = createShmRuntimeConfig();
+  const config = createAgentRuntimeConfig();
   const checkedAt = new Date().toISOString();
   const serviceName = config.services.codeServer.serviceName;
   const enabledState = await commandOutput("systemctl", ["is-enabled", serviceName]);
@@ -266,7 +266,7 @@ async function inspectRustDeskListeners(): Promise<RustDeskListenerSnapshot[]> {
 }
 
 async function inspectRustDesk(): Promise<RustDeskServiceSnapshot> {
-  const config = createShmRuntimeConfig();
+  const config = createAgentRuntimeConfig();
   const checkedAt = new Date().toISOString();
   const { hbbsServiceName, hbbrServiceName, publicKeyPath } = config.services.rustdesk;
   const [
@@ -302,7 +302,7 @@ async function inspectRustDesk(): Promise<RustDeskServiceSnapshot> {
 }
 
 async function inspectMail(): Promise<MailServiceSnapshot> {
-  const config = createShmRuntimeConfig();
+  const config = createAgentRuntimeConfig();
   const checkedAt = new Date().toISOString();
   const {
     postfixServiceName,
@@ -407,7 +407,7 @@ function parsePublishedBackendPort(value: string | undefined): number | undefine
 }
 
 async function inspectAppServices(): Promise<AppServiceSnapshot[]> {
-  const config = createShmRuntimeConfig();
+  const config = createAgentRuntimeConfig();
   const checkedAt = new Date().toISOString();
   const rootDir = config.services.apps.rootDir;
   const servicePrefix = config.services.apps.servicePrefix;
@@ -457,7 +457,7 @@ async function inspectAppServices(): Promise<AppServiceSnapshot[]> {
   return snapshots;
 }
 
-async function collectRuntimeSnapshot(): Promise<ShmNodeRuntimeSnapshot> {
+async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
   const [appServices, codeServer, rustdesk, mail] = await Promise.all([
     inspectAppServices(),
     inspectCodeServer(),
@@ -475,11 +475,11 @@ async function collectRuntimeSnapshot(): Promise<ShmNodeRuntimeSnapshot> {
 
 async function deliverBufferedReport(
   reportFile: string,
-  reportPayload: ShmBufferedReport,
+  reportPayload: AgentBufferedReport,
   nodeToken: string
 ): Promise<boolean> {
-  const config = createShmRuntimeConfig();
-  const request: ShmJobReportRequest = {
+  const config = createAgentRuntimeConfig();
+  const request: AgentJobReportRequest = {
     nodeId: config.nodeId,
     result: reportPayload.result
   };
@@ -493,14 +493,14 @@ async function deliverBufferedReport(
       ...reportPayload,
       deliveryAttempts: reportPayload.deliveryAttempts + 1,
       lastDeliveryError: error instanceof Error ? error.message : String(error)
-    } satisfies ShmBufferedReport);
+    } satisfies AgentBufferedReport);
     return false;
   }
 }
 
 async function flushBufferedReports(): Promise<number> {
-  const config = createShmRuntimeConfig();
-  const reportFiles = await listJsonFiles(getShmStatePaths(config).reportBufferDir);
+  const config = createAgentRuntimeConfig();
+  const reportFiles = await listJsonFiles(getAgentStatePaths(config).reportBufferDir);
   let delivered = 0;
   const nodeToken = await readStoredNodeToken();
 
@@ -509,7 +509,7 @@ async function flushBufferedReports(): Promise<number> {
   }
 
   for (const reportFile of reportFiles) {
-    const payload = await readJsonFile<ShmBufferedReport>(reportFile);
+    const payload = await readJsonFile<AgentBufferedReport>(reportFile);
 
     if (!payload) {
       await removeFileIfExists(reportFile);
@@ -524,9 +524,9 @@ async function flushBufferedReports(): Promise<number> {
   return delivered;
 }
 
-async function executeClaimedJob(job: ShmJobEnvelope): Promise<void> {
-  const config = createShmRuntimeConfig();
-  const statePaths = getShmStatePaths(config);
+async function executeClaimedJob(job: AgentJobEnvelope): Promise<void> {
+  const config = createAgentRuntimeConfig();
+  const statePaths = getAgentStatePaths(config);
   const claimedAt = new Date().toISOString();
   const spoolPath = `${statePaths.jobSpoolDir}/${job.id}.json`;
   const reportPath = `${statePaths.reportBufferDir}/${job.id}.json`;
@@ -537,7 +537,7 @@ async function executeClaimedJob(job: ShmJobEnvelope): Promise<void> {
     job,
     state: "claimed",
     claimedAt
-  } satisfies ShmSpoolEntry);
+  } satisfies AgentSpoolEntry);
 
   const result = await (async () => {
     try {
@@ -568,7 +568,7 @@ async function executeClaimedJob(job: ShmJobEnvelope): Promise<void> {
     result,
     bufferedAt,
     deliveryAttempts: 0
-  } satisfies ShmBufferedReport);
+  } satisfies AgentBufferedReport);
 
   await writeJsonFileAtomic(spoolPath, {
     schemaVersion: 1,
@@ -577,7 +577,7 @@ async function executeClaimedJob(job: ShmJobEnvelope): Promise<void> {
     claimedAt,
     executedAt: bufferedAt,
     resultStatus: result.status
-  } satisfies ShmSpoolEntry);
+  } satisfies AgentSpoolEntry);
 
   await writeLastAppliedState(job.desiredStateVersion, job.id);
   console.log(renderJobResult(result));
@@ -600,14 +600,14 @@ async function executeClaimedJob(job: ShmJobEnvelope): Promise<void> {
 }
 
 export async function runManagerAgentCycle(): Promise<void> {
-  const config = createShmRuntimeConfig();
+  const config = createAgentRuntimeConfig();
   const snapshot = await createNodeSnapshot();
   const runtimeSnapshot = await collectRuntimeSnapshot();
   const registrationToken = snapshot.nodeToken ?? config.enrollmentToken;
 
   if (!registrationToken) {
     throw new Error(
-      "SIMPLEHOST_ENROLLMENT_TOKEN is required until SHP issues a node bearer token."
+      "SIMPLEHOST_ENROLLMENT_TOKEN is required until SimpleHost Control issues a node bearer token."
     );
   }
 
@@ -619,10 +619,10 @@ export async function runManagerAgentCycle(): Promise<void> {
   const nodeToken = registration.nodeToken ?? snapshot.nodeToken;
 
   if (!nodeToken) {
-    throw new Error(`SHP did not issue a node token for ${config.nodeId}.`);
+    throw new Error(`SimpleHost Control did not issue a node token for ${config.nodeId}.`);
   }
 
-  await writeJsonFileAtomic(getShmStatePaths(config).nodeIdentityFile, {
+  await writeJsonFileAtomic(getAgentStatePaths(config).nodeIdentityFile, {
     schemaVersion: 1,
     nodeId: config.nodeId,
     hostname: config.hostname,
@@ -662,7 +662,7 @@ export async function runManagerAgentCycle(): Promise<void> {
 }
 
 export async function startManagerAgent(): Promise<void> {
-  const config = createShmRuntimeConfig();
+  const config = createAgentRuntimeConfig();
   const runOnce = process.env.SIMPLEHOST_RUN_ONCE === "true";
 
   do {

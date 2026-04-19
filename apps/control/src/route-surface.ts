@@ -1,4 +1,4 @@
-import { createPanelApiHttpHandler, writeJson } from "@simplehost/control-api";
+import { createControlApiHttpHandler, writeJson } from "@simplehost/control-api";
 
 import type { ControlBootstrapSurface } from "./bootstrap-surface.js";
 import type { CombinedControlRequestContext } from "./request-context.js";
@@ -14,7 +14,7 @@ export interface CombinedControlRouteSurface {
 export function createCombinedControlRouteSurface(
   surface: ControlBootstrapSurface
 ): CombinedControlRouteSurface {
-  const apiRequestHandler = createPanelApiHttpHandler(surface.apiSurface.requestHandler);
+  const apiRequestHandler = createControlApiHttpHandler(surface.apiSurface.requestHandler);
   const webRequestHandler = surface.webSurface.requestListener;
 
   const isHealthRequest = (context: CombinedControlRequestContext) =>

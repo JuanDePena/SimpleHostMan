@@ -3,7 +3,7 @@ import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promise
 import os from "node:os";
 import path from "node:path";
 
-export interface ShmRuntimeConfig {
+export interface AgentRuntimeConfig {
   nodeId: string;
   hostname: string;
   controlPlaneUrl: string;
@@ -68,7 +68,7 @@ export interface ShmRuntimeConfig {
   };
 }
 
-export interface ShmStatePaths {
+export interface AgentStatePaths {
   nodeIdentityFile: string;
   lastAppliedStateFile: string;
   jobSpoolDir: string;
@@ -106,9 +106,9 @@ function readOptionalString(value: string | undefined): string | null {
   return value && value.trim().length > 0 ? value.trim() : null;
 }
 
-export function createShmRuntimeConfig(
+export function createAgentRuntimeConfig(
   env: NodeJS.ProcessEnv = process.env
-): ShmRuntimeConfig {
+): AgentRuntimeConfig {
   const hostname = readString(env.SIMPLEHOST_HOSTNAME, os.hostname());
   const stateDir = readString(env.SIMPLEHOST_STATE_DIR, "/var/lib/simplehost");
   const defaultVersion = readPackageVersion("0000.00.00");
@@ -257,7 +257,7 @@ export function createShmRuntimeConfig(
   };
 }
 
-export function getShmStatePaths(config: ShmRuntimeConfig): ShmStatePaths {
+export function getAgentStatePaths(config: AgentRuntimeConfig): AgentStatePaths {
   return {
     nodeIdentityFile: path.join(config.stateDir, "node-identity.json"),
     lastAppliedStateFile: path.join(config.stateDir, "last-applied-state.json"),
@@ -266,8 +266,8 @@ export function getShmStatePaths(config: ShmRuntimeConfig): ShmStatePaths {
   };
 }
 
-export async function ensureShmStateDirectories(config: ShmRuntimeConfig): Promise<void> {
-  const paths = getShmStatePaths(config);
+export async function ensureAgentStateDirectories(config: AgentRuntimeConfig): Promise<void> {
+  const paths = getAgentStatePaths(config);
 
   await mkdir(config.stateDir, { recursive: true });
   await mkdir(config.logDir, { recursive: true });

@@ -7,24 +7,24 @@ import type {
   ProxyRenderPayload
 } from "@simplehost/panel-contracts";
 import {
-  createPanelApiHttpHandler,
+  createControlApiHttpHandler,
   writeJson,
-  type PanelApiSurface
+  type ControlApiSurface
 } from "@simplehost/control-api";
 import type {
   ControlDashboardBootstrap,
   ControlProcessContext
 } from "@simplehost/control-shared";
 import {
-  createPanelWebSurface,
-  type PanelWebApi,
-  type PanelWebProcessContext,
-  type PanelWebSurface
+  createControlWebSurface,
+  type ControlWebApi,
+  type ControlWebProcessContext,
+  type ControlWebSurface
 } from "@simplehost/control-web";
 
 import { createControlBootstrapSurface } from "./bootstrap-surface.js";
 import type { ControlCombinedSurface } from "./combined-surface.js";
-import { createInProcessPanelWebApi } from "./in-process-web-api.js";
+import { createInProcessControlWebApi } from "./in-process-web-api.js";
 import { createCombinedControlRequestContext } from "./request-context.js";
 import { createCombinedControlRequestHandler } from "./request-handler.js";
 import { createCombinedControlRouteSurface } from "./route-surface.js";
@@ -159,7 +159,7 @@ export function createDashboardBootstrap(
 
 export function createTestContext(args: {
   webPort?: number;
-} = {}): ControlProcessContext & PanelWebProcessContext {
+} = {}): ControlProcessContext & ControlWebProcessContext {
   return {
     config: {
       api: { host: "127.0.0.1", port: 4100 },
@@ -171,7 +171,7 @@ export function createTestContext(args: {
         sessionTtlSeconds: 43200
       },
       database: {
-        url: "postgresql://simplehost_panel:test@127.0.0.1:5433/simplehost_panel"
+        url: "postgresql://simplehost_control:test@127.0.0.1:5433/simplehost_control"
       },
       env: "test",
       inventory: { importPath: "/tmp/inventory.yaml" },
@@ -192,7 +192,7 @@ export function createTestContext(args: {
         pollIntervalMs: 5000,
         logLevel: "info"
       }
-    } as ControlProcessContext["config"] & PanelWebProcessContext["config"],
+    } as ControlProcessContext["config"] & ControlWebProcessContext["config"],
     startedAt: Date.now() - 10_000
   };
 }
@@ -216,7 +216,7 @@ export function createStubApiSurface(args: {
   desiredStateApplyError?: StubApiErrorConfig;
   mailDomainUpsertError?: StubApiErrorConfig;
   proxyPreviewError?: StubApiErrorConfig;
-}): Pick<PanelApiSurface, "auth" | "requestHandler"> {
+}): Pick<ControlApiSurface, "auth" | "requestHandler"> {
   const isAuthorized = (request: IncomingMessage) =>
     readBearerToken(request.headers.authorization) === args.loginResponse.sessionToken;
 
@@ -243,7 +243,7 @@ export function createStubApiSurface(args: {
 
       return args.currentUser;
     }
-  } satisfies PanelApiSurface["auth"];
+  } satisfies ControlApiSurface["auth"];
 
   const requestHandler = async (
     request: IncomingMessage,
@@ -414,10 +414,10 @@ export function createStubApiSurface(args: {
 }
 
 export function createSplitRequestHandler(args: {
-  apiSurface: Pick<PanelApiSurface, "requestHandler">;
-  webSurface: Pick<PanelWebSurface, "requestListener">;
+  apiSurface: Pick<ControlApiSurface, "requestHandler">;
+  webSurface: Pick<ControlWebSurface, "requestListener">;
 }): (request: IncomingMessage, response: ServerResponse) => Promise<void> {
-  const apiRequestHandler = createPanelApiHttpHandler(args.apiSurface.requestHandler);
+  const apiRequestHandler = createControlApiHttpHandler(args.apiSurface.requestHandler);
 
   return async (request, response) => {
     const url = new URL(request.url ?? "/", "http://127.0.0.1");
@@ -450,9 +450,9 @@ export async function createControlTestHarness(args: ControlTestHarnessOptions =
     mailDomainUpsertError: args.mailDomainUpsertError,
     proxyPreviewError: args.proxyPreviewError
   });
-  const apiHttpHandler = createPanelApiHttpHandler(apiSurface.requestHandler);
-  const webApi: PanelWebApi = createInProcessPanelWebApi(apiHttpHandler, apiSurface.auth);
-  const webSurface = createPanelWebSurface(context, webApi);
+  const apiHttpHandler = createControlApiHttpHandler(apiSurface.requestHandler);
+  const webApi: ControlWebApi = createInProcessControlWebApi(apiHttpHandler, apiSurface.auth);
+  const webSurface = createControlWebSurface(context, webApi);
   const bootstrapSurface = createControlBootstrapSurface({
     context,
     apiSurface,
@@ -471,7 +471,7 @@ export async function createControlTestHarness(args: ControlTestHarnessOptions =
     });
   const combinedSurface: ControlCombinedSurface = {
     context,
-    apiSurface: apiSurface as PanelApiSurface,
+    apiSurface: apiSurface as ControlApiSurface,
     bootstrapSurface,
     routeSurface,
     webSurface,

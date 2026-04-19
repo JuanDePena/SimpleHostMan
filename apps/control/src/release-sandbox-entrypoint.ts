@@ -30,7 +30,7 @@ export async function startReleaseSandboxEntrypoint() {
   });
 
   console.log(formatCombinedControlStartupManifest(packed.startupManifest));
-  console.log(`SHP Control release-sandbox listening on ${runtime.origin}`);
+  console.log(`SimpleHost Control release-sandbox listening on ${runtime.origin}`);
 
   return {
     runtime,

@@ -12,29 +12,29 @@ export const supportedJobKinds = [
   "mail.sync"
 ] as const;
 
-export type ShmJobKind = (typeof supportedJobKinds)[number];
-export type ShmJobStatus = "applied" | "skipped" | "failed";
+export type AgentJobKind = (typeof supportedJobKinds)[number];
+export type AgentJobStatus = "applied" | "skipped" | "failed";
 
-export interface ShmJobEnvelope {
+export interface AgentJobEnvelope {
   id: string;
   desiredStateVersion: string;
-  kind: ShmJobKind;
+  kind: AgentJobKind;
   nodeId: string;
   createdAt: string;
   payload: Record<string, unknown>;
 }
 
-export interface ShmJobResult {
+export interface AgentJobResult {
   jobId: string;
-  kind: ShmJobKind;
+  kind: AgentJobKind;
   nodeId: string;
-  status: ShmJobStatus;
+  status: AgentJobStatus;
   summary: string;
   details?: Record<string, unknown>;
   completedAt: string;
 }
 
-export interface ShmNodeSnapshot {
+export interface AgentNodeSnapshot {
   nodeId: string;
   hostname: string;
   status: "ready";
@@ -44,60 +44,60 @@ export interface ShmNodeSnapshot {
   nodeToken?: string;
 }
 
-export interface ShmNodeRegistrationRequest {
+export interface AgentNodeRegistrationRequest {
   nodeId: string;
   hostname: string;
   version: string;
-  supportedJobKinds: ShmJobKind[];
+  supportedJobKinds: AgentJobKind[];
   generatedAt: string;
-  runtimeSnapshot?: ShmNodeRuntimeSnapshot;
+  runtimeSnapshot?: AgentNodeRuntimeSnapshot;
 }
 
-export interface ShmNodeRegistrationResponse {
+export interface AgentNodeRegistrationResponse {
   nodeId: string;
   acceptedAt: string;
   pollIntervalMs: number;
   nodeToken?: string;
 }
 
-export interface ShmJobClaimRequest {
+export interface AgentJobClaimRequest {
   nodeId: string;
   hostname: string;
   version: string;
   maxJobs: number;
-  runtimeSnapshot?: ShmNodeRuntimeSnapshot;
+  runtimeSnapshot?: AgentNodeRuntimeSnapshot;
 }
 
-export interface ShmJobClaimResponse {
+export interface AgentJobClaimResponse {
   nodeId: string;
   claimedAt: string;
-  jobs: ShmJobEnvelope[];
+  jobs: AgentJobEnvelope[];
 }
 
-export interface ShmJobReportRequest {
+export interface AgentJobReportRequest {
   nodeId: string;
-  result: ShmJobResult;
+  result: AgentJobResult;
 }
 
-export interface ShmSpoolEntry {
+export interface AgentSpoolEntry {
   schemaVersion: 1;
-  job: ShmJobEnvelope;
+  job: AgentJobEnvelope;
   state: "claimed" | "executed";
   claimedAt: string;
   executedAt?: string;
-  resultStatus?: ShmJobStatus;
+  resultStatus?: AgentJobStatus;
 }
 
-export interface ShmBufferedReport {
+export interface AgentBufferedReport {
   schemaVersion: 1;
-  result: ShmJobResult;
+  result: AgentJobResult;
   bufferedAt: string;
   deliveryAttempts: number;
   lastDeliveryError?: string;
 }
 
-export function isSupportedJobKind(value: string): value is ShmJobKind {
-  return supportedJobKinds.includes(value as ShmJobKind);
+export function isSupportedJobKind(value: string): value is AgentJobKind {
+  return supportedJobKinds.includes(value as AgentJobKind);
 }
 
 export interface ProxyRenderPayload {
@@ -284,7 +284,7 @@ export interface AppServiceSnapshot {
   checkedAt: string;
 }
 
-export interface ShmNodeRuntimeSnapshot {
+export interface AgentNodeRuntimeSnapshot {
   appServices?: AppServiceSnapshot[];
   codeServer?: CodeServerServiceSnapshot;
   rustdesk?: RustDeskServiceSnapshot;
