@@ -86,6 +86,9 @@ importers:
       '@simplehost/panel-config':
         specifier: workspace:*
         version: link:../../../packages/panel-config
+      '@simplehost/panel-contracts':
+        specifier: workspace:*
+        version: link:../../../packages/panel-contracts
 
   apps/control/web:
     dependencies:
