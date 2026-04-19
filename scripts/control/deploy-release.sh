@@ -39,7 +39,7 @@ normalize_api_env() {
   local target_path="$1"
 
   if [[ -f "${target_path}" ]]; then
-    bash "${release_dir}/scripts/normalize-api-env.sh" "${target_path}"
+    bash "${release_dir}/scripts/control/normalize-api-env.sh" "${target_path}"
   fi
 }
 
@@ -100,8 +100,8 @@ activate_remote() {
      if [ ! -f /etc/simplehost/worker.env ]; then install -m 0640 '${remote_release_dir}/packaging/env/simplehost-worker.env.example' /etc/simplehost/worker.env; fi && \
      if grep -q '^SIMPLEHOST_VERSION=' /etc/simplehost/control.env; then sed -i 's/^SIMPLEHOST_VERSION=.*/SIMPLEHOST_VERSION=${version}/' /etc/simplehost/control.env; else printf '\nSIMPLEHOST_VERSION=${version}\n' >> /etc/simplehost/control.env; fi && \
      if grep -q '^SIMPLEHOST_VERSION=' /etc/simplehost/worker.env; then sed -i 's/^SIMPLEHOST_VERSION=.*/SIMPLEHOST_VERSION=${version}/' /etc/simplehost/worker.env; else printf '\nSIMPLEHOST_VERSION=${version}\n' >> /etc/simplehost/worker.env; fi && \
-     bash '${remote_release_dir}/scripts/normalize-api-env.sh' /etc/simplehost/control.env.example && \
-     bash '${remote_release_dir}/scripts/normalize-api-env.sh' /etc/simplehost/control.env && \
+     bash '${remote_release_dir}/scripts/control/normalize-api-env.sh' /etc/simplehost/control.env.example && \
+     bash '${remote_release_dir}/scripts/control/normalize-api-env.sh' /etc/simplehost/control.env && \
      if ! grep -q '^SIMPLEHOST_JOB_SECRET_KEY=' /etc/simplehost/worker.env; then worker_secret_line=\$(grep -E '^SIMPLEHOST_JOB_SECRET_KEY=' /etc/simplehost/control.env | tail -n 1 || true); if [ -n \"\${worker_secret_line}\" ]; then printf '\n%s\n' \"\${worker_secret_line}\" >> /etc/simplehost/worker.env; fi; fi && \
      systemctl daemon-reload"
 

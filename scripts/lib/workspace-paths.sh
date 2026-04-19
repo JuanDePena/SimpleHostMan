@@ -2,7 +2,7 @@
 
 simplehost_workspace_root() {
   local script_dir
-  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
   printf '%s\n' "${script_dir}"
 }
 

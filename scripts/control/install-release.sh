@@ -33,10 +33,10 @@ install -m 0644 "${repo_root}/packaging/systemd/simplehost-control.service" /etc
 install -m 0644 "${repo_root}/packaging/systemd/simplehost-worker.service" /etc/systemd/system/simplehost-worker.service
 install -m 0644 "${repo_root}/packaging/env/simplehost-control.env.example" /etc/simplehost/control.env.example
 install -m 0644 "${repo_root}/packaging/env/simplehost-worker.env.example" /etc/simplehost/worker.env.example
-bash "${release_dir}/scripts/normalize-api-env.sh" /etc/simplehost/control.env.example
+bash "${release_dir}/scripts/control/normalize-api-env.sh" /etc/simplehost/control.env.example
 
 if [[ -f /etc/simplehost/control.env ]]; then
-  bash "${release_dir}/scripts/normalize-api-env.sh" /etc/simplehost/control.env
+  bash "${release_dir}/scripts/control/normalize-api-env.sh" /etc/simplehost/control.env
 fi
 
 systemctl daemon-reload
