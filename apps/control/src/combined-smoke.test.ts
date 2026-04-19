@@ -13,7 +13,7 @@ function pickComparableHeaders(headers: Record<string, string | string[] | undef
   };
 }
 
-test("combined candidate matches split behavior with real web/api surfaces", async () => {
+test("combined runtime matches split behavior with real web/api surfaces", async () => {
   const harness = await createControlTestHarness();
   const requests = [
     {

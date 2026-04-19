@@ -88,9 +88,9 @@ Path:
 Responsibility:
 
 - unified source ownership for UI and API
-- transitional internal separation between `shared/`, `web/`, `api/`, and a combined entrypoint candidate under `src/`
-- current combined candidate already supports one-process routing for UI and `/v1/*` at the source level
-- current combined candidate is also exercised by source-level routing tests before any runtime cutover
+- transitional internal separation between `shared/`, `web/`, `api/`, and the canonical combined runtime subtree under `src/`
+- the current combined runtime already serves UI and `/v1/*` from one process
+- that same runtime is exercised by source-level routing and release-validation tests
 - eventual target is one control-plane runtime and one port
 
 ### `apps/worker`

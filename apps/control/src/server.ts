@@ -11,10 +11,10 @@ import {
   type CombinedControlRuntimeContract
 } from "./runtime-contract.js";
 import type { ControlCombinedSurface } from "./combined-surface.js";
-import type { ControlCandidateRuntimeSurface } from "./runtime-surface.js";
+import type { ControlRuntimeSurface } from "./runtime-surface.js";
 
-export interface ControlCandidateServerRuntime<
-  TMode extends "combined-candidate" | "split-candidate"
+export interface ControlServerRuntime<
+  TMode extends "combined" | "split"
 > {
   readonly context: ControlProcessContext;
   readonly mode: TMode;
@@ -24,7 +24,7 @@ export interface ControlCandidateServerRuntime<
 }
 
 export interface CombinedControlServerRuntime
-  extends ControlCandidateServerRuntime<"combined-candidate"> {
+  extends ControlServerRuntime<"combined"> {
   readonly contract: CombinedControlRuntimeContract;
 }
 
@@ -39,14 +39,14 @@ function resolveOrigin(server: Server): string {
   return `http://${host}:${address.port}`;
 }
 
-export async function startControlCandidateServer<TMode extends "combined-candidate" | "split-candidate">(
+export async function startControlServer<TMode extends "combined" | "split">(
   args: {
     context: ControlProcessContext;
-    surface: ControlCandidateRuntimeSurface<TMode>;
+    surface: ControlRuntimeSurface<TMode>;
     host?: string;
     port?: number;
   }
-): Promise<ControlCandidateServerRuntime<TMode>> {
+): Promise<ControlServerRuntime<TMode>> {
   const server = createServer(args.surface.requestHandler);
 
   await new Promise<void>((resolve, reject) => {
@@ -82,14 +82,14 @@ export async function startCombinedControlServer(args: {
   const context = args.context ?? createControlProcessContext();
   const contract = args.surface
     ? {
-        mode: "combined-candidate" as const,
+        mode: "combined" as const,
         context,
         requestHandler: args.surface.requestHandler,
         surface: args.surface,
         close: args.surface.close
       }
     : await createCombinedControlRuntimeContract(context);
-  const runtime = await startControlCandidateServer({
+  const runtime = await startControlServer({
     context,
     surface: {
       mode: contract.mode,

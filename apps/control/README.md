@@ -13,7 +13,7 @@ The source tree still keeps internal subtrees while ownership is unified:
 - `shared/`: common runtime and process helpers for the control-plane boundary
 - `api/`: transitional `control-api` entrypoint
 - `web/`: transitional `control-web` entrypoint
-- `src/`: transitional combined entrypoint candidate for future runtime unification
+- `src/`: canonical combined control runtime plus source-level release validation and rehearsal tooling
 
 Subtree docs:
 
@@ -35,6 +35,7 @@ This separation is temporary. The migration target is one control-plane app that
 - authentication and sessions
 - desired-state CRUD
 - jobs, audit, drift, backups, packages, and operational views
+- canonical combined runtime served from one process on one port
 
 ## Commands
 
@@ -43,7 +44,6 @@ From `/opt/simplehostman/src`:
 - `pnpm build:control`
 - `pnpm typecheck:control`
 - `pnpm start:control`
-- `pnpm start:control:candidate`
 - `pnpm start:control:combined`
 - `pnpm start:control:combined:dev`
 - `pnpm start:control:combined:smoke`
@@ -74,12 +74,10 @@ From `/opt/simplehostman/src`:
 - `pnpm test:control:release-handoff`
 - `pnpm test:control:release-shadow:promotion-ready`
 - `pnpm test:control:release-rehearsal`
-- `pnpm test:control:candidate`
 - `pnpm test:control:runtime-parity`
 - `pnpm test:control:combined-smoke`
 - `pnpm test:control:combined:e2e`
 - `pnpm test:control:parity`
-- `pnpm check:control:candidate`
 - `pnpm check:control:release-candidate`
 - `pnpm check:control:preflight`
 - `pnpm check:control:promotion-ready`
@@ -139,7 +137,6 @@ From this directory:
 - `pnpm build`
 - `pnpm typecheck:local`
 - `pnpm start:combined`
-- `pnpm start:candidate`
 - `pnpm start:combined:dev`
 - `pnpm start:combined:smoke`
 - `pnpm dev:combined`
@@ -178,12 +175,10 @@ From this directory:
 - `pnpm test:release-handoff`
 - `pnpm test:release-shadow:promotion-ready`
 - `pnpm test:release-rehearsal`
-- `pnpm test:candidate`
 - `pnpm test:runtime-parity`
 - `pnpm test:combined-smoke`
 - `pnpm test:combined:e2e`
 - `pnpm test:parity`
-- `pnpm check:candidate`
 - `pnpm check:preflight`
 - `pnpm check:release-candidate`
 - `pnpm check:release-sandbox:promotion-ready`
@@ -244,8 +239,8 @@ From this directory:
 ## Migration notes
 
 - `apps/control` is already the canonical source location for control-plane UI and API code.
-- `apps/control/tsconfig.json` is the current ownership boundary for the transitional `control-shared`, `control-api`, `control-web`, and combined entrypoint candidate.
-- `apps/control/src/index.ts` now represents a real one-process candidate that can serve UI and `/v1/*` on one request surface without changing the live runtime.
+- `apps/control/tsconfig.json` is the current ownership boundary for the transitional `control-shared`, `control-api`, `control-web`, and canonical combined runtime subtree.
+- `apps/control/src/index.ts` now represents the real one-process control runtime that serves UI and `/v1/*` on one request surface.
 - `apps/control/src/index.ts` also supports explicit runtime mode selection through `SIMPLEHOST_CONTROL_RUNTIME_MODE=combined|split`.
 - the web layer can now consume the API boundary either through HTTP or through an in-process `ControlWebApi` implementation.
 - `apps/control/src/router.test.ts` now locks in the combined routing split between control health, `/v1/*`, and UI routes.
@@ -255,32 +250,32 @@ From this directory:
 - web-side login redirects, unauthorized handling, and login error rendering now flow through a shared auth/session helper layer and route-context factory.
 - `ControlWebApi` now exposes semantic auth methods, reducing the remaining raw `/v1/auth/*` coupling inside `control-web`.
 - `ControlWebApi` now also exposes `loadDashboardBootstrap()`, making the initial authenticated dashboard load an explicit surface instead of a route-local bundle of fetches.
-- `ControlWebApi` now also exposes `resolveSession()` and `loadAuthenticatedDashboard()`, so the web boundary and the combined candidate can share the same session/bootstrap seam.
+- `ControlWebApi` now also exposes `resolveSession()` and `loadAuthenticatedDashboard()`, so the web boundary and the combined runtime can share the same session/bootstrap seam.
 - `ControlWebApi` now also exposes semantic operational methods such as inventory export/import, reconcile dispatches, package actions, and proxy-preview loading, shrinking the remaining direct dependency on raw route strings inside `control-web`.
-- `control-api` now exposes an auth surface, so the combined candidate can reuse semantic `login/logout/current user` operations without routing those paths back through HTTP in-process.
-- `apps/control/src/bootstrap-surface.ts` now concentrates auth, dashboard bootstrap, runtime health, and the high-level API/web surfaces used by the combined candidate.
-- `apps/control/src/combined-surface.ts` now acts as the central high-level primitive for the combined candidate, tying together the bootstrap surface, route surface, request-context factory, and request handler.
-- `apps/control/src/server.ts` now exposes a reusable combined server candidate that can be started on an ephemeral port for smoke/e2e validation before any deploy/runtime promotion.
-- `apps/control/src/runtime-surface.ts` now formalizes the combined candidate as a reusable runtime surface instead of leaving that shape implicit in server/bootstrap wiring.
-- `apps/control/src/test-harness.ts` now centralizes split/combined fixtures, stubbed API surfaces, and request-handler wiring for candidate validation.
-- `apps/control/src/runtime-parity-harness.ts` now boots split and combined candidate servers behind one reusable HTTP comparison harness.
-- `apps/control/src/preflight-surface.ts` now defines the source-level preflight surface for the combined candidate.
-- `apps/control/src/preflight-runner.ts` now executes a human-readable pre-promotion check sequence over a real ephemeral combined candidate server.
+- `control-api` now exposes an auth surface, so the combined runtime can reuse semantic `login/logout/current user` operations without routing those paths back through HTTP in-process.
+- `apps/control/src/bootstrap-surface.ts` now concentrates auth, dashboard bootstrap, runtime health, and the high-level API/web surfaces used by the combined runtime.
+- `apps/control/src/combined-surface.ts` now acts as the central high-level primitive for the combined runtime, tying together the bootstrap surface, route surface, request-context factory, and request handler.
+- `apps/control/src/server.ts` now exposes a reusable combined server that can be started on an ephemeral port for smoke/e2e validation before any deploy/runtime promotion.
+- `apps/control/src/runtime-surface.ts` now formalizes the combined runtime as a reusable runtime surface instead of leaving that shape implicit in server/bootstrap wiring.
+- `apps/control/src/test-harness.ts` now centralizes split/combined fixtures, stubbed API surfaces, and request-handler wiring for runtime validation.
+- `apps/control/src/runtime-parity-harness.ts` now boots split and combined runtime servers behind one reusable HTTP comparison harness.
+- `apps/control/src/preflight-surface.ts` now defines the source-level preflight surface for the combined runtime.
+- `apps/control/src/preflight-runner.ts` now executes a human-readable pre-promotion check sequence over a real ephemeral combined runtime server.
 - `apps/control/src/preflight-runner.test.ts` now validates both passing and degraded preflight outcomes.
-- `apps/control/src/release-candidate-config.ts`, `startup-manifest.ts`, and `release-candidate-surface.ts` now define a release-like config and startup manifest for the combined candidate without touching deploy/runtime.
-- `apps/control/src/release-candidate-runner.ts` and `release-candidate-cli.ts` now execute a more release-like combined candidate smoke pass with a structured startup manifest and human-readable report.
+- `apps/control/src/release-candidate-config.ts`, `startup-manifest.ts`, and `release-candidate-surface.ts` now define a release-like config and startup manifest for the combined runtime without touching deploy/runtime.
+- `apps/control/src/release-candidate-runner.ts` and `release-candidate-cli.ts` now execute a more release-like combined runtime smoke pass with a structured startup manifest and human-readable report.
 - `apps/control/src/release-candidate-runner.test.ts` now validates passing and degraded release-candidate scenarios, including mutation and proxy-preview failures.
 - `apps/control/src/release-sandbox-layout.ts` now defines a workspace-local sandbox layout that simulates a release-shaped filesystem tree without touching `/opt/simplehostman/release`.
 - `apps/control/src/release-sandbox-bundle.ts` now defines the persistent bundle contract and human-readable bundle summary for that sandbox.
 - `apps/control/src/release-sandbox-activation.ts`, `release-sandbox-activate-cli.ts`, and `release-sandbox-inspect-cli.ts` now expose release inventory plus version switching inside that sandbox.
 - `apps/control/src/release-sandbox-promotion.ts` and `release-sandbox-promote-cli.ts` now expose promotion metadata and history inside that sandbox.
 - `apps/control/src/release-sandbox-deployment.ts` and `release-sandbox-promotion-ready.ts` now expose deploy/rollback manifests plus a promotion-ready report for the promoted sandbox state.
-- `apps/control/src/release-sandbox-pack.ts`, `release-sandbox-pack-cli.ts`, `release-sandbox-entrypoint.ts`, `release-sandbox-runner.ts`, and `release-sandbox-start-cli.ts` now materialize and boot the combined candidate from that sandbox using copied artifacts plus workspace `node_modules` links.
-- `apps/control/src/release-sandbox-smoke.test.ts` and `release-sandbox-parity.test.ts` now validate both HTTP behavior and parity between the direct combined candidate and the sandbox-started candidate.
-- `apps/control/src/release-sandbox-bundle-parity.test.ts` now validates that the packed sandbox bundle stays aligned with the direct combined candidate metadata.
+- `apps/control/src/release-sandbox-pack.ts`, `release-sandbox-pack-cli.ts`, `release-sandbox-entrypoint.ts`, `release-sandbox-runner.ts`, and `release-sandbox-start-cli.ts` now materialize and boot the combined runtime from that sandbox using copied artifacts plus workspace `node_modules` links.
+- `apps/control/src/release-sandbox-smoke.test.ts` and `release-sandbox-parity.test.ts` now validate both HTTP behavior and parity between the direct combined runtime and the sandbox-started runtime.
+- `apps/control/src/release-sandbox-bundle-parity.test.ts` now validates that the packed sandbox bundle stays aligned with the direct combined runtime metadata.
 - `apps/control/src/release-sandbox-activation.test.ts` now validates switching and rollback between packed versions within one sandbox.
 - `apps/control/src/release-sandbox-promotion.test.ts` now validates promotion metadata and rollback history for those sandboxed releases.
-- `apps/control/src/release-sandbox-promotion-ready.test.ts` now validates deploy/rollback manifests and the promotion-ready report for the promoted sandbox candidate.
+- `apps/control/src/release-sandbox-promotion-ready.test.ts` now validates deploy/rollback manifests and the promotion-ready report for the promoted sandbox runtime.
 - the release-sandbox now simulates a more realistic layout with `releases/<version>`, `current` as a symlink, persistent promotion metadata in `shared/meta`, and `shared/{tmp,logs,run}` while remaining fully workspace-local.
 - the release-sandbox now also materializes `deploy.json`, `deploy-summary.txt`, `rollback.json`, and `rollback-summary.txt` inside `shared/meta`, making sandbox promotion closer to a future release rehearsal.
 - `apps/control/src/release-shadow-activation.ts`, `release-shadow-promotion.ts`, `release-shadow-deployment.ts`, `release-shadow-inspect-cli.ts`, and `release-shadow-promotion-ready.ts` now give the release-root shadow its own inventory, activation/promote metadata, deploy/rollback manifests, inspection output, and promotion-ready report.
@@ -301,13 +296,13 @@ From this directory:
 - the combined request handler now routes over `ControlApiSurface` and `ControlWebSurface` directly instead of wiring raw request listeners by hand.
 - `apps/control/src/router.test.ts` now locks parity for key split-vs-combined routes such as `/`, `/login`, `/v1/auth/me`, and `/v1/resources/spec`.
 - `apps/control/src/request-context.ts` now defines a combined per-request context with shared session resolution and authenticated dashboard loading.
-- `apps/control/src/runtime-parity.test.ts` now compares split and combined candidates over real HTTP servers for protected routes such as packages, desired-state mutations, mail mutations, proxy preview, and logout.
-- `apps/control/src/combined-smoke.test.ts` now exercises the combined candidate against real `ControlWebSurface` routing with a stubbed in-process API boundary.
-- `apps/control/src/combined-server.test.ts` now starts the combined candidate on a real ephemeral HTTP port and validates an authenticated flow end-to-end.
-- `apps/control/src/auth-gate.ts` now provides a cached combined auth/bootstrap gate, so the candidate can reuse resolved session and authenticated dashboard state inside one request.
+- `apps/control/src/runtime-parity.test.ts` now compares split and combined runtimes over real HTTP servers for protected routes such as packages, desired-state mutations, mail mutations, proxy preview, and logout.
+- `apps/control/src/combined-smoke.test.ts` now exercises the combined runtime against real `ControlWebSurface` routing with a stubbed in-process API boundary.
+- `apps/control/src/combined-server.test.ts` now starts the combined runtime on a real ephemeral HTTP port and validates an authenticated flow end-to-end.
+- `apps/control/src/auth-gate.ts` now provides a cached combined auth/bootstrap gate, so the runtime can reuse resolved session and authenticated dashboard state inside one request.
 - `apps/control/src/request-context.ts` now exposes an explicit per-request cache object for auth/bootstrap memoization and health snapshot reuse.
-- `apps/control/src/route-surface.ts` now gives the combined candidate a more semantic routing surface over health, API, and web requests.
-- `apps/control/src/runtime-contract.ts` now makes the one-process candidate explicit as a source-level runtime contract before any deploy/runtime promotion.
+- `apps/control/src/route-surface.ts` now gives the combined runtime a more semantic routing surface over health, API, and web requests.
+- `apps/control/src/runtime-contract.ts` now makes the one-process runtime explicit as a source-level runtime contract before any deploy/runtime promotion.
 - `apps/control/src/preflight-cli.ts` now prints a legible preflight report and exits non-zero on failure.
 - `control-web` now routes semantic mail/domain/mailbox/quota mutations through `ControlWebApi`, further shrinking direct transport-shaped coupling.
 - The remaining work is runtime unification and release normalization, not source ownership.
@@ -318,11 +313,11 @@ Before `combined` can move beyond source-only validation, all of these still nee
 
 - `pnpm test:runtime-parity` passes for representative protected routes
 - `pnpm test:combined-smoke` passes against the real web surface and stubbed in-process API boundary
-- `pnpm test:combined:e2e` passes against a real ephemeral combined candidate server
+- `pnpm test:combined:e2e` passes against a real ephemeral combined runtime server
 - `pnpm test:preflight` passes for both successful and degraded source-level preflight scenarios
-- `pnpm preflight` prints a passing human-readable report for the current candidate
-- `pnpm test:release-candidate` passes for both successful and degraded release-like candidate scenarios
-- `pnpm release-candidate` prints a passing startup manifest plus release-like smoke report for the current candidate
+- `pnpm preflight` prints a passing human-readable report for the current combined runtime
+- `pnpm test:release-candidate` passes for both successful and degraded release-like runtime scenarios
+- `pnpm release-candidate` prints a passing startup manifest plus release-like smoke report for the current combined runtime
 - `pnpm check:release-candidate` stays green from `apps/control`
 - `pnpm test:release-sandbox` passes for the workspace-local release-sandbox smoke and parity scenarios
 - `pnpm test:release-sandbox:bundle-parity` passes for the persistent bundle contract and sandbox metadata
@@ -332,7 +327,7 @@ Before `combined` can move beyond source-only validation, all of these still nee
 - `pnpm promote:release-sandbox -- <version> [sandboxId]` records a release-like promotion manifest and promotion history for the active sandboxed version
 - `pnpm promotion-ready` now prints a release-like promotion-ready report after validating promotion, deploy/rollback manifests, health, login, and active version state inside the sandbox
 - `pnpm inspect:release-sandbox -- [sandboxId]` prints the inventory plus active release metadata for that sandbox
-- `pnpm start:release-sandbox` boots the sandboxed candidate successfully from copied artifacts and linked dependencies
+- `pnpm start:release-sandbox` boots the sandboxed runtime successfully from copied artifacts and linked dependencies
 - `pnpm check:release-sandbox:promotion-ready` stays green from `apps/control`
 - `pnpm check:release-sandbox:bundle-parity` stays green from `apps/control`
 - `pnpm check:release-sandbox` stays green from `apps/control`
@@ -341,7 +336,6 @@ Before `combined` can move beyond source-only validation, all of these still nee
 - `pnpm check:release-target` stays green from `apps/control`
 - `pnpm check:release-root-staging` stays green from `apps/control`
 - `pnpm check:release-rehearsal` stays green from `apps/control`
-- `pnpm check:candidate` stays green from `apps/control`
 - source-level `release-root staging` is now the highest promoted state of `combined`
 - the release rehearsal now reaches `/opt/simplehostman/release/.staging/control` while keeping `/opt/simplehostman/release/current` untouched
 - split mode remains the documented and packaged runtime default under `scripts/` and `packaging/`

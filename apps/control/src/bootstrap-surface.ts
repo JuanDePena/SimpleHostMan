@@ -48,7 +48,7 @@ export function createControlBootstrapSurface(args: {
           service: "control",
           startedAt: args.context.startedAt,
           extra: {
-            mode: "combined-candidate"
+            mode: "combined"
           }
         })
     },

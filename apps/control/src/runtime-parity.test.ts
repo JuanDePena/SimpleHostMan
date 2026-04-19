@@ -11,7 +11,7 @@ function pickComparableHeaders(headers: Record<string, string>) {
   };
 }
 
-test("split and combined candidates match over real HTTP servers for protected routes", async () => {
+test("split and combined runtimes match over real HTTP servers for protected routes", async () => {
   const runtime = await createControlRuntimeParityHarness();
   const requests = [
     {

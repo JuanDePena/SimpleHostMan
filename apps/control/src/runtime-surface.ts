@@ -8,8 +8,8 @@ import {
   type ControlCombinedSurface
 } from "./combined-surface.js";
 
-export interface ControlCandidateRuntimeSurface<
-  TMode extends "combined-candidate" | "split-candidate"
+export interface ControlRuntimeSurface<
+  TMode extends "combined" | "split"
 > {
   readonly mode: TMode;
   readonly context: ControlProcessContext;
@@ -18,7 +18,7 @@ export interface ControlCandidateRuntimeSurface<
 }
 
 export interface CombinedControlRuntimeSurface
-  extends ControlCandidateRuntimeSurface<"combined-candidate"> {
+  extends ControlRuntimeSurface<"combined"> {
   readonly surface: ControlCombinedSurface;
 }
 
@@ -28,7 +28,7 @@ export async function createCombinedControlRuntimeSurface(
   const surface = await createControlCombinedSurface(context);
 
   return {
-    mode: "combined-candidate",
+    mode: "combined",
     context,
     surface,
     requestHandler: surface.requestHandler,

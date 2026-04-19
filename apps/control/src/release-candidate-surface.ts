@@ -15,7 +15,7 @@ import {
 } from "./test-harness.js";
 
 export interface CombinedControlReleaseCandidateRuntime {
-  readonly mode: "combined-candidate";
+  readonly mode: "combined";
   readonly origin: string;
   readonly manifest: CombinedControlStartupManifest;
   close(): Promise<void>;
@@ -132,7 +132,7 @@ export async function createCombinedControlReleaseCandidateSurface(
       const resolvedPort = Number.parseInt(runtimeUrl.port || "80", 10);
 
       return {
-        mode: "combined-candidate",
+        mode: "combined",
         origin: runtime.origin,
         manifest: createStartupManifest({
           host: resolvedHost,

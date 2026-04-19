@@ -1,6 +1,6 @@
-# Control Combined Entrypoint Candidate
+# Control Combined Runtime And Release Tooling
 
-This subtree contains the transitional one-process entrypoint candidate for `apps/control`.
+This subtree contains the canonical combined runtime for `apps/control` together with the source-level validation and release-rehearsal tooling that still lives next to it.
 
 Path:
 
@@ -8,7 +8,7 @@ Path:
 
 Current role:
 
-- expose a one-process control-plane candidate that serves UI routes and `/v1/*` from one combined request surface
+- expose the one-process control-plane runtime that serves UI routes and `/v1/*` from one combined request surface
 - reuse a shared `ControlProcessContext` so both entrypoints see the same config and startup timestamp
 - sit on top of the injected `ControlWebApi` seam now used by the web layer
 - drive the web layer through an in-process `ControlWebApi` backed by the API request handler instead of a local HTTP hop
@@ -18,11 +18,11 @@ Current role:
 - centralize cached auth/session/dashboard lookups in `auth-gate.ts`
 - expose an explicit per-request cache shape through `request-context.ts`
 - expose a semantic route boundary in `route-surface.ts`
-- expose a single high-level candidate primitive in `combined-surface.ts`
+- expose a single high-level combined runtime primitive in `combined-surface.ts`
 - expose a formal runtime surface in `runtime-surface.ts`
-- expose a reusable combined HTTP server candidate in `server.ts`
+- expose a reusable combined HTTP server in `server.ts`
 - expose a shared validation harness in `test-harness.ts` so split and combined flows can reuse the same fixtures and stubbed API surface
-- expose a reusable runtime parity harness in `runtime-parity-harness.ts` so split and combined candidates can be compared over real HTTP servers
+- expose a reusable runtime parity harness in `runtime-parity-harness.ts` so split and combined runtimes can be compared over real HTTP servers
 - expose a source-level preflight surface in `preflight-surface.ts`
 - expose a human-readable preflight runner in `preflight-runner.ts`
 - expose a CLI entrypoint for the preflight runner in `preflight-cli.ts`
@@ -83,15 +83,15 @@ Current role:
 - expose a CLI entrypoint for that cutover parity runner in `release-root-cutover-target-parity-cli.ts`
 - expose a cutover handoff runner that consolidates target-ready, actual-cutover-ready, rehearsal, and parity into one auditable artifact in `release-root-cutover-target-handoff.ts`
 - expose a CLI entrypoint for that cutover handoff runner in `release-root-cutover-target-handoff-cli.ts`
-- define the candidate runtime shape in `runtime-contract.ts`
+- define the canonical combined runtime shape in `runtime-contract.ts`
 - keep an end-to-endish smoke test in `combined-smoke.test.ts` that compares split and combined behavior over the real web surface
-- keep a real HTTP e2e smoke in `combined-server.test.ts` that boots the candidate on an ephemeral port
-- keep a runtime parity test in `runtime-parity.test.ts` for representative protected routes over split and combined candidate servers
-- keep a preflight runner test in `preflight-runner.test.ts` for both passing and degraded candidate scenarios
+- keep a real HTTP e2e smoke in `combined-server.test.ts` that boots the combined runtime on an ephemeral port
+- keep a runtime parity test in `runtime-parity.test.ts` for representative protected routes over split and combined runtime servers
+- keep a preflight runner test in `preflight-runner.test.ts` for both passing and degraded combined-runtime scenarios
 - keep a release-candidate runner test in `release-candidate-runner.test.ts` for passing and degraded release-like scenarios
 - keep a release-sandbox smoke test in `release-sandbox-smoke.test.ts` for the packed sandbox runtime
-- keep a release-sandbox parity test in `release-sandbox-parity.test.ts` to compare direct and sandbox-started combined candidates
-- keep a release-sandbox bundle parity test in `release-sandbox-bundle-parity.test.ts` to lock bundle metadata against the direct combined candidate
+- keep a release-sandbox parity test in `release-sandbox-parity.test.ts` to compare direct and sandbox-started combined runtimes
+- keep a release-sandbox bundle parity test in `release-sandbox-bundle-parity.test.ts` to lock bundle metadata against the direct combined runtime
 - keep a release-sandbox activation test in `release-sandbox-activation.test.ts` to lock switching and rollback behavior inside the sandbox
 - keep a release-sandbox promotion test in `release-sandbox-promotion.test.ts` to lock promotion metadata and history inside the sandbox
 - keep a release-sandbox promotion-ready test in `release-sandbox-promotion-ready.test.ts` to lock deploy/rollback manifests and the promotion-ready report inside the sandbox
@@ -121,7 +121,7 @@ Current role:
 
 The current checkpoint now distinguishes:
 
-- candidate source validation (`combined-smoke`, `runtime-parity`, `combined:e2e`)
+- canonical combined-runtime validation (`combined-smoke`, `runtime-parity`, `combined:e2e`)
 - source-level preflight (`preflight-cli`, `preflight-runner`)
 - source-level release-candidate (`release-candidate-cli`, `release-candidate-runner`)
 - source-level release-sandbox (`release-sandbox-layout`, `release-sandbox-pack`, `release-sandbox-runner`)
@@ -186,7 +186,7 @@ The next rehearsal layer after that now models a cutover plan toward the real re
 - readiness checks that block unsafe `current` shapes before any real cutover attempt
 
 That still stops short of any packaging or release promotion against `/opt/simplehostman/release`.
-- concentrate semantic auth, dashboard bootstrap, and runtime health in `bootstrap-surface.ts` so the combined candidate depends on higher-level surfaces instead of raw request wiring
-- provide a safe source-level checkpoint before the runtime model is actually unified
+- concentrate semantic auth, dashboard bootstrap, and runtime health in `bootstrap-surface.ts` so the combined runtime depends on higher-level surfaces instead of raw request wiring
+- provide a safe source-level checkpoint around the canonical runtime and the remaining release rehearsal stack
 
-This entrypoint is not yet the deployed runtime. It exists to prepare the convergence from two control-plane processes to one.
+This entrypoint is the deployed control runtime. The release-like layers that sit beside it still exist to validate packaging, promotion, cutover, and rollback flows before or alongside runtime changes.

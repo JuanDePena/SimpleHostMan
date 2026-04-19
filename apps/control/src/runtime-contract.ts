@@ -9,7 +9,7 @@ import {
 } from "./runtime-surface.js";
 
 export interface CombinedControlRuntimeContract {
-  readonly mode: "combined-candidate";
+  readonly mode: "combined";
   readonly context: ControlProcessContext;
   readonly requestHandler: CombinedControlRuntimeSurface["requestHandler"];
   readonly surface: CombinedControlRuntimeSurface["surface"];

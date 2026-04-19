@@ -120,7 +120,7 @@ test("control bootstrap surface delegates auth and dashboard bootstrap", async (
     service: "control",
     startedAt: context.startedAt,
     extra: {
-      mode: "combined-candidate"
+      mode: "combined"
     }
   });
 

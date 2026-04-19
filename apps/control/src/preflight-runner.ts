@@ -14,7 +14,7 @@ export interface ControlPreflightCheckResult {
 
 export interface ControlPreflightResult {
   readonly kind: "source-preflight";
-  readonly mode: "combined-candidate";
+  readonly mode: "combined";
   readonly origin: string;
   readonly ok: boolean;
   readonly passed: number;

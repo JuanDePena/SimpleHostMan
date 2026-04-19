@@ -312,7 +312,7 @@ test("serves control health directly without delegating", async () => {
     service: "control",
     startedAt: context.startedAt,
     extra: {
-      mode: "combined-candidate"
+      mode: "combined"
     }
   });
 

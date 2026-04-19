@@ -6,7 +6,7 @@ import {
   startCombinedControlTestRuntime
 } from "./test-harness.js";
 
-test("combined candidate serves authenticated flow over a real HTTP server", async () => {
+test("combined runtime serves authenticated flow over a real HTTP server", async () => {
   const harness = await createControlTestHarness({ webPort: 0 });
   const runtime = await startCombinedControlTestRuntime(harness, {
     host: "127.0.0.1",

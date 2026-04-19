@@ -4,7 +4,7 @@ import test from "node:test";
 
 import { startCombinedControlReleaseSandbox } from "./release-sandbox-runner.js";
 
-test("release-sandbox bundle reflects the combined candidate metadata faithfully", async () => {
+test("release-sandbox bundle reflects the combined runtime metadata faithfully", async () => {
   const runtime = await startCombinedControlReleaseSandbox({
     host: "127.0.0.1",
     port: 0,

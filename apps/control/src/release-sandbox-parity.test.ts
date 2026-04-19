@@ -33,7 +33,7 @@ function normalizeHealthBody(bodyText: string): string {
   return JSON.stringify(parsed, null, 2);
 }
 
-test("release-sandbox candidate matches the direct combined candidate for representative routes", async () => {
+test("release-sandbox runtime matches the direct combined runtime for representative routes", async () => {
   const parity = await createControlRuntimeParityHarness();
   const sandbox = await startCombinedControlReleaseSandbox({
     host: "127.0.0.1",

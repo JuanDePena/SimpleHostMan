@@ -103,8 +103,8 @@ export function createCombinedControlReleaseSandboxBundle(args: {
         "deploy and rollback manifests can describe the next release action without touching the real release root"
       ],
       parity: [
-        "representative routes match direct combined candidate",
-        "startup metadata remains aligned with workspace candidate",
+        "representative routes match the direct combined runtime",
+        "startup metadata remains aligned with the workspace runtime",
         "active release metadata remains aligned after version switching",
         "promotion metadata remains aligned with the active release after deploy/rollback rehearsal"
       ]

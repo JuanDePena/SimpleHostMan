@@ -28,8 +28,8 @@ import { createInProcessControlWebApi } from "./in-process-web-api.js";
 import { createCombinedControlRequestContext } from "./request-context.js";
 import { createCombinedControlRequestHandler } from "./request-handler.js";
 import { createCombinedControlRouteSurface } from "./route-surface.js";
-import { startCombinedControlServer, startControlCandidateServer } from "./server.js";
-import type { ControlCandidateRuntimeSurface } from "./runtime-surface.js";
+import { startCombinedControlServer, startControlServer } from "./server.js";
+import type { ControlRuntimeSurface } from "./runtime-surface.js";
 
 export interface StubApiErrorConfig {
   statusCode?: number;
@@ -486,8 +486,8 @@ export async function createControlTestHarness(args: ControlTestHarnessOptions =
       // Stub surfaces do not own external resources.
     }
   };
-  const splitSurface: ControlCandidateRuntimeSurface<"split-candidate"> = {
-    mode: "split-candidate",
+  const splitSurface: ControlRuntimeSurface<"split"> = {
+    mode: "split",
     context,
     requestHandler: createSplitRequestHandler({
       apiSurface,
@@ -521,7 +521,7 @@ export async function startSplitControlTestRuntime(
     port?: number;
   } = {}
 ) {
-  return startControlCandidateServer({
+  return startControlServer({
     context: harness.context,
     surface: harness.splitSurface,
     host: args.host,

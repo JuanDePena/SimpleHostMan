@@ -15,7 +15,7 @@ export interface ControlReleaseCandidateCheckResult {
 
 export interface ControlReleaseCandidateResult {
   readonly kind: "source-release-candidate";
-  readonly mode: "combined-candidate";
+  readonly mode: "combined";
   readonly origin: string;
   readonly manifest: CombinedControlStartupManifest;
   readonly ok: boolean;

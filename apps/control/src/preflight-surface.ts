@@ -7,7 +7,7 @@ import {
 } from "./test-harness.js";
 
 export interface ControlPreflightRuntime {
-  readonly mode: "combined-candidate";
+  readonly mode: "combined";
   readonly origin: string;
   close(): Promise<void>;
 }
@@ -85,7 +85,7 @@ export async function createCombinedControlPreflightSurface(
       const runtime = await startCombinedControlTestRuntime(harness, args);
 
       return {
-        mode: "combined-candidate",
+        mode: "combined",
         origin: runtime.origin,
         close: runtime.close
       };
