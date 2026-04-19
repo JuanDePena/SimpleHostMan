@@ -144,11 +144,11 @@ Workspace and release versioning use the UTC format:
 
 Example:
 
-- `2604.19.03`
+- `2604.19.04`
 
 Helper commands:
 
-- `pnpm version:set -- 2604.19.03`
+- `pnpm version:set 2604.19.04`
 - `pnpm version:set:now`
 - `pnpm version:print-now`
 

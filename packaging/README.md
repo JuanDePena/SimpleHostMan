@@ -9,7 +9,7 @@ Path:
 Canonical workspace versioning uses the UTC format `YYMM.DD.HH`.
 Use:
 
-- `pnpm version:set -- <YYMM.DD.HH>`
+- `pnpm version:set <YYMM.DD.HH>`
 - `pnpm version:set:now`
 
 ## Current transitional split

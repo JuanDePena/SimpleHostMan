@@ -4,7 +4,7 @@ import {
   isMainModule,
   registerGracefulShutdown,
   type ControlProcessContext
-} from "../shared/src/index.js";
+} from "@simplehost/control-shared";
 import { createPanelWebRuntime } from "@simplehost/control-web";
 import { startCombinedControlServer } from "./server.js";
 
