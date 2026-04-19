@@ -14,6 +14,6 @@ if [[ ! -d "${release_dir}" ]]; then
 fi
 
 ln -sfn "${release_dir}" "${runtime_root}/current"
-systemctl try-restart spanel-api.service spanel-web.service spanel-worker.service || true
+systemctl try-restart simplehost-control.service simplehost-worker.service || true
 
-echo "Rolled SHP current symlink back to ${release_dir}"
+echo "Rolled control runtime current symlink back to ${release_dir}"

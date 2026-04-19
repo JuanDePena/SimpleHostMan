@@ -17,7 +17,7 @@ if [[ "${mode}" != "active" && "${mode}" != "disabled" ]]; then
 fi
 
 if [[ "${target_host}" == "local" || ! -d "${release_dir}" ]]; then
-  bash "${repo_root}/scripts/install-release.sh" "${version}"
+  bash "${repo_root}/scripts/manager/install-release.sh" "${version}"
 fi
 
 ensure_env_version() {
@@ -36,20 +36,20 @@ ensure_env_version() {
 }
 
 activate_local() {
-  ensure_env_version /etc/shm/agent.env "${release_dir}/packaging/env/shm-agent.env.example"
+  ensure_env_version /etc/simplehost/agent.env "${release_dir}/packaging/env/simplehost-agent.env.example"
   systemctl daemon-reload
 
   if [[ "${mode}" == "disabled" ]]; then
-    systemctl disable shm-agent.service || true
-    systemctl stop shm-agent.service || true
-    echo "Installed SHM ${version} locally in disabled mode"
+    systemctl disable simplehost-agent.service || true
+    systemctl stop simplehost-agent.service || true
+    echo "Installed agent runtime ${version} locally in disabled mode"
     return
   fi
 
-  systemctl enable shm-agent.service
-  systemctl restart shm-agent.service
-  systemctl is-active shm-agent.service
-  echo "Installed SHM ${version} locally in active mode"
+  systemctl enable simplehost-agent.service
+  systemctl restart simplehost-agent.service
+  systemctl is-active simplehost-agent.service
+  echo "Installed agent runtime ${version} locally in active mode"
 }
 
 activate_remote() {
@@ -58,27 +58,27 @@ activate_remote() {
   rsync -a "${release_dir}/" "${target_host}:${remote_release_dir}/"
 
   ssh "${target_host}" \
-    "install -d '${runtime_root}/releases' /etc/shm /var/log/shm && \
+    "install -d '${runtime_root}/releases' /etc/simplehost /var/log/simplehost && \
      ln -sfn '${remote_release_dir}' '${runtime_root}/current' && \
-     install -m 0644 '${remote_release_dir}/packaging/systemd/shm-agent.service' /etc/systemd/system/shm-agent.service && \
-     install -m 0644 '${remote_release_dir}/packaging/env/shm-agent.env.example' /etc/shm/agent.env.example && \
-     if [ ! -f /etc/shm/agent.env ]; then install -m 0640 '${remote_release_dir}/packaging/env/shm-agent.env.example' /etc/shm/agent.env; fi && \
-     if grep -q '^SHM_VERSION=' /etc/shm/agent.env; then sed -i 's/^SHM_VERSION=.*/SHM_VERSION=${version}/' /etc/shm/agent.env; else printf '\nSHM_VERSION=${version}\n' >> /etc/shm/agent.env; fi && \
+     install -m 0644 '${remote_release_dir}/packaging/systemd/simplehost-agent.service' /etc/systemd/system/simplehost-agent.service && \
+     install -m 0644 '${remote_release_dir}/packaging/env/simplehost-agent.env.example' /etc/simplehost/agent.env.example && \
+     if [ ! -f /etc/simplehost/agent.env ]; then install -m 0640 '${remote_release_dir}/packaging/env/simplehost-agent.env.example' /etc/simplehost/agent.env; fi && \
+     if grep -q '^SHM_VERSION=' /etc/simplehost/agent.env; then sed -i 's/^SHM_VERSION=.*/SHM_VERSION=${version}/' /etc/simplehost/agent.env; else printf '\nSHM_VERSION=${version}\n' >> /etc/simplehost/agent.env; fi && \
      systemctl daemon-reload"
 
   if [[ "${mode}" == "disabled" ]]; then
     ssh "${target_host}" \
-      "systemctl disable shm-agent.service || true && \
-       systemctl stop shm-agent.service || true"
-    echo "Installed SHM ${version} on ${target_host} in disabled mode"
+      "systemctl disable simplehost-agent.service || true && \
+       systemctl stop simplehost-agent.service || true"
+    echo "Installed agent runtime ${version} on ${target_host} in disabled mode"
     return
   fi
 
   ssh "${target_host}" \
-    "systemctl enable shm-agent.service && \
-     systemctl restart shm-agent.service && \
-     systemctl is-active shm-agent.service"
-  echo "Installed SHM ${version} on ${target_host} in active mode"
+    "systemctl enable simplehost-agent.service && \
+     systemctl restart simplehost-agent.service && \
+     systemctl is-active simplehost-agent.service"
+  echo "Installed agent runtime ${version} on ${target_host} in active mode"
 }
 
 if [[ "${target_host}" == "local" ]]; then

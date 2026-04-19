@@ -14,6 +14,6 @@ if [[ ! -d "${release_dir}" ]]; then
 fi
 
 ln -sfn "${release_dir}" "${runtime_root}/current"
-systemctl try-restart shm-agent.service || true
+systemctl try-restart simplehost-agent.service || true
 
-echo "Rolled SHM current symlink back to ${release_dir}"
+echo "Rolled agent runtime current symlink back to ${release_dir}"

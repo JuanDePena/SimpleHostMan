@@ -6,9 +6,9 @@ source "${script_dir}/../lib/workspace-paths.sh"
 repo_root="$(simplehost_workspace_root)"
 version="${1:-$(simplehost_read_workspace_version "${repo_root}")}"
 work_dir="$(mktemp -d)"
-staging_dir="${work_dir}/simplehost-manager-${version}"
+staging_dir="${work_dir}/simplehost-agent-${version}"
 bundle_dir="${repo_root}/dist/releases"
-bundle_path="${bundle_dir}/simplehost-manager-${version}.tar.gz"
+bundle_path="${bundle_dir}/simplehost-agent-${version}.tar.gz"
 
 cleanup() {
   rm -rf "${work_dir}"
@@ -30,5 +30,5 @@ rm -rf "${staging_dir}/.git" "${staging_dir}/node_modules" "${staging_dir}/dist"
   pnpm build:manager-runtime
 )
 
-tar -C "${work_dir}" -czf "${bundle_path}" "simplehost-manager-${version}"
+tar -C "${work_dir}" -czf "${bundle_path}" "simplehost-agent-${version}"
 echo "Created ${bundle_path}"

@@ -15,7 +15,7 @@ if ! command -v pnpm >/dev/null 2>&1; then
 fi
 
 rm -rf "${temp_dir}"
-install -d "${runtime_root}/releases" "${runtime_root}/shared" /etc/shm /var/log/shm
+install -d "${runtime_root}/releases" "${runtime_root}/shared" /etc/simplehost /var/log/simplehost
 cp -a "${repo_root}/." "${temp_dir}"
 rm -rf "${temp_dir}/.git" "${temp_dir}/node_modules"
 
@@ -29,8 +29,8 @@ rm -rf "${release_dir}"
 mv "${temp_dir}" "${release_dir}"
 ln -sfn "${release_dir}" "${runtime_root}/current"
 
-install -m 0644 "${repo_root}/packaging/systemd/shm-agent.service" /etc/systemd/system/shm-agent.service
-install -m 0644 "${repo_root}/packaging/env/shm-agent.env.example" /etc/shm/agent.env.example
+install -m 0644 "${repo_root}/packaging/systemd/simplehost-agent.service" /etc/systemd/system/simplehost-agent.service
+install -m 0644 "${repo_root}/packaging/env/simplehost-agent.env.example" /etc/simplehost/agent.env.example
 systemctl daemon-reload
 
-echo "Installed SHM release ${version} into ${release_dir}"
+echo "Installed agent release ${version} into ${release_dir}"
