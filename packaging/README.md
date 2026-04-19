@@ -32,15 +32,15 @@ Packaging is now organized by artifact type and aligned to the unified runtime n
 - `simplehost-control.spec`
 - `simplehost-agent.spec`
 
-For now, packaging should keep assuming the deployed control plane remains in split mode even though `apps/control` already has a validated combined candidate in source.
-Source-level combined-mode validation currently lives in workspace scripts and tests only; packaging should not yet promote that candidate to the default runtime.
+Packaging now targets the combined `apps/control` runtime together with `simplehost-worker` and `simplehost-agent`.
+Source-level release validation still continues through workspace scripts and tests before any future packaging redesign beyond the current runtime shape.
 That validation now explicitly includes runtime parity checks (`pnpm test:control:runtime-parity`) in addition to handler-level parity and combined-server smoke coverage.
 It also now includes a source-level preflight report (`pnpm check:control:preflight`), a release-like source smoke runner (`pnpm check:control:release-candidate`), a bundle-contract check (`pnpm check:control:bundle-parity`), a promotion-ready sandbox check (`pnpm check:control:promotion-ready`), a workspace-local release-sandbox check (`pnpm check:control:release-sandbox`), a workspace-local release-shadow check (`pnpm check:control:release-shadow`), a dry-run handoff check (`pnpm check:control:release-handoff`) that describes how the promoted shadow would map into `/opt/simplehostman/release`, a release-target check (`pnpm check:control:release-target`) that applies that handoff into a separate emulated release root, a release-root staging check (`pnpm check:control:release-root-staging`) that materializes it under `/opt/simplehostman/release/.staging/control` without touching the real `current`, a release-root promotion check (`pnpm check:control:release-root-promotion`) that promotes the staged bundle into an emulated live release root and now exercises inventory, activation, cutover history, rollback manifests, and promotion-ready behavior there, a release-root cutover check (`pnpm check:control:release-root-cutover`) that plans the eventual cutover against the actual release root and now emits a consolidated actual-root handoff artifact too, a release-root cutover target check (`pnpm check:control:release-root-cutover-target`) that applies that plan into a separate workspace-local emulated actual release root and now rehearses `ready`, rollback, a full cutover cycle, parity back to the real cutover plan, and a consolidated handoff artifact too, and a rehearsal check (`pnpm check:control:release-rehearsal`) that proves the promoted shadow still matches the sandbox it came from, but all of them still remain below any packaging or release promotion threshold.
 The new combined runtime contract, combined surface/server candidate, and candidate checks are meant to reduce packaging risk before any service/unit changes happen.
 
 Current language:
 
-- `split current`: packaged and deployed runtime model
+- `combined current`: packaged and deployed runtime model
 - `combined candidate`: source-level one-process candidate
 - `combined preflight`: source-level candidate with a human-readable pre-promotion check, still not packaging-ready
 - `combined release-candidate`: source-level candidate with a release-like startup manifest and smoke runner, still not packaging-ready

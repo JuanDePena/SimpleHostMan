@@ -48,11 +48,11 @@ Product design references:
 - Current system hostnames still remain the legacy OVH names `vps-3dbbfb0b.vps.ovh.ca` and `vps-16535090.vps.ovh.ca`.
 - `wg0` is live between the nodes on `10.89.0.1` and `10.89.0.2`.
 - `postgresql-apps` and `postgresql-shp` are already deployed as host-native primary/standby clusters.
-- `SHP` is active on the primary node; the secondary keeps a passive runtime with `spanel-web` available for smoke tests and `spanel-api` plus `spanel-worker` stopped until promotion.
+- `SHP` now runs as the combined `simplehost-control` runtime on the primary node; the secondary keeps `simplehost-control` and `simplehost-worker` stopped until promotion.
 - `SHM` is active on both nodes and desired state already lives in `SHP` PostgreSQL.
 - Bootstrap YAML remains for import/export and disaster recovery only.
 - Public operator ingress is normalized on both nodes through the `public` zone for `80/tcp`, `443/tcp`, `51820/udp`, `3200/tcp`, and `8080/tcp`.
-- `SHP` API remains private on `3100/tcp` and crosses nodes only over WireGuard.
+- The combined control plane now serves operator UI and `/v1/*` over `3200/tcp`.
 
 ## Design goals
 

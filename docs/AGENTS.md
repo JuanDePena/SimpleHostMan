@@ -80,7 +80,7 @@ Current runtime normalization target:
 Important note:
 
 - source migration is happening before runtime migration
-- legacy service names such as `spanel-*` and `shm-agent` may still appear in imported packaging or historical docs until the release phase is migrated
+- the runtime now uses `simplehost-control`, `simplehost-worker`, and `simplehost-agent` together with `/etc/simplehost/*`
 - do not assume that imported panel/manager release scripts already represent the final runtime layout
 
 ## Working rules

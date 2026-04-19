@@ -10,8 +10,7 @@ This runbook documents the hardening currently applied to this VPS:
 - SSH access is key-only.
 - `root` is still allowed over SSH, but passwords are disabled.
 - `code-server` can be reached through a local SSH tunnel to `127.0.0.1:8080` and may also be proxied over Apache HTTPS on `:8080` when operator ingress is enabled.
-- `SHP` web may also be proxied over Apache HTTPS on `:3200`.
-- `SHP` API stays private on `3100/tcp` for localhost or WireGuard use only.
+- The SimpleHost control plane may also be proxied over Apache HTTPS on `:3200`.
 - Host firewalling is active through `firewalld`.
 - `rpcbind` has been disabled.
 - Brute-force protection for `sshd` is active through `fail2ban`.
@@ -21,7 +20,7 @@ This runbook documents the hardening currently applied to this VPS:
 
 - The `public.xml` source now matches the normalized live operator-facing posture.
 - The current platform runtime exposes `http`, `https`, `51820/udp`, and operator ports `3200/tcp` and `8080/tcp` on both nodes.
-- Private platform ports `3100/tcp`, `3306/tcp`, `5432/tcp`, `5433/tcp`, and `8081/tcp` remain intended for localhost or WireGuard only.
+- Private platform ports `3306/tcp`, `5432/tcp`, `5433/tcp`, and `8081/tcp` remain intended for localhost or WireGuard only.
 - The passive secondary keeps the same public operator ingress shape as the primary for smoke tests and controlled failover.
 - `httpd` operator listeners on `3200` and `8080` stay pinned to the node public IPv4 and use a `network-online` dependency to avoid boot-time bind failures.
 

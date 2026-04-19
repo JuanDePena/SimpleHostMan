@@ -8,12 +8,11 @@ two-node layout.
 - Primary host: `vps-3dbbfb0b.vps.ovh.ca`
 - Secondary host: `vps-16535090.vps.ovh.ca`
 - `postgresql-shp` replicates over WireGuard on `10.89.0.0/24`
-- `spanel-api`, `spanel-web`, and `spanel-worker` are installed on both nodes
-- On the secondary node, `spanel-web` stays enabled for passive smoke tests
-  while `spanel-api` and `spanel-worker` remain disabled until promotion
-- `spanel-api` and `spanel-worker` must stay stopped on the standby while
-  PostgreSQL is read-only, because their startup path applies migrations and
-  other control-plane bootstrap writes
+- `simplehost-control` and `simplehost-worker` are installed on both nodes
+- On the secondary node, both services stay disabled until promotion
+- `simplehost-control` and `simplehost-worker` must stay stopped on the standby while
+  PostgreSQL is read-only, because the combined control runtime still performs
+  startup writes such as migrations and control-plane bootstrap work
 
 ## Preconditions
 
@@ -28,50 +27,45 @@ Before promoting the secondary:
 ## Passive runtime refresh
 
 Keep the standby node updated with the same installed `SHP` release as the
-primary, but leave `spanel-*` disabled until a promotion.
+primary, but leave `simplehost-control` and `simplehost-worker` disabled until
+promotion.
 
 If the standby does not have the build toolchain available, refresh it from the
-installed runtime on the primary and keep only `spanel-web` active:
+installed runtime on the primary while keeping the combined runtime disabled:
 
 ```bash
 release_version="$(basename "$(readlink -f /opt/simplehostman/release/current)")"
 
 ssh root@vps-16535090.vps.ovh.ca \
-  'install -d /opt/simplehostman/release/releases /opt/simplehostman/release/shared /etc/spanel /var/log/spanel'
+  'install -d /opt/simplehostman/release/releases /opt/simplehostman/release/shared /etc/simplehost /var/log/simplehost'
 
 rsync -a --delete "/opt/simplehostman/release/releases/${release_version}/" \
   "root@vps-16535090.vps.ovh.ca:/opt/simplehostman/release/releases/${release_version}/"
 
 rsync -a \
-  /etc/systemd/system/spanel-api.service \
-  /etc/systemd/system/spanel-web.service \
-  /etc/systemd/system/spanel-worker.service \
+  /etc/systemd/system/simplehost-control.service \
+  /etc/systemd/system/simplehost-worker.service \
   root@vps-16535090.vps.ovh.ca:/etc/systemd/system/
 
 rsync -a \
-  /etc/spanel/api.env \
-  /etc/spanel/web.env \
-  /etc/spanel/worker.env \
-  /etc/spanel/api.env.example \
-  /etc/spanel/web.env.example \
-  /etc/spanel/worker.env.example \
-  /etc/spanel/inventory.apps.yaml \
-  root@vps-16535090.vps.ovh.ca:/etc/spanel/
+  /etc/simplehost/control.env \
+  /etc/simplehost/worker.env \
+  /etc/simplehost/control.env.example \
+  /etc/simplehost/worker.env.example \
+  /etc/simplehost/inventory.apps.yaml \
+  root@vps-16535090.vps.ovh.ca:/etc/simplehost/
 
 ssh root@vps-16535090.vps.ovh.ca \
   "ln -sfn /opt/simplehostman/release/releases/${release_version} /opt/simplehostman/release/current && \
-   chown root:spanel /etc/spanel/api.env /etc/spanel/web.env /etc/spanel/worker.env && \
-   chmod 0640 /etc/spanel/api.env /etc/spanel/web.env /etc/spanel/worker.env && \
+   chown root:simplehost /etc/simplehost/control.env /etc/simplehost/worker.env && \
+   chmod 0640 /etc/simplehost/control.env /etc/simplehost/worker.env && \
    systemctl daemon-reload && \
-   systemctl disable spanel-api.service spanel-worker.service && \
-   systemctl stop spanel-api.service spanel-worker.service && \
-   systemctl enable spanel-web.service && \
-   systemctl restart spanel-web.service"
+   systemctl disable simplehost-control.service simplehost-worker.service && \
+   systemctl stop simplehost-control.service simplehost-worker.service"
 ```
 
-For a passive smoke test on the secondary, validate `spanel-web` only.
-`spanel-api` and `spanel-worker` are expected to stay down while
-`postgresql-shp` is still in recovery mode.
+While `postgresql-shp` is still in recovery mode, `simplehost-control` and
+`simplehost-worker` are expected to stay down on the standby.
 
 ## Manual promotion sequence
 
@@ -93,23 +87,23 @@ For a passive smoke test on the secondary, validate `spanel-web` only.
    f
    ```
 
-3. If the old primary is still reachable, stop `SHP` services there to avoid
+3. If the old primary is still reachable, stop `SimpleHost` control services there to avoid
    split-brain at the application layer:
 
    ```bash
-   systemctl stop spanel-worker.service spanel-api.service spanel-web.service
+   systemctl stop simplehost-worker.service simplehost-control.service
    ```
 
 4. Enable and start `SHP` on the promoted secondary:
 
    ```bash
-   systemctl enable --now spanel-api.service spanel-web.service spanel-worker.service
+   systemctl enable --now simplehost-control.service simplehost-worker.service
    ```
 
 5. Validate local service health on the promoted secondary:
 
    ```bash
-   curl -fsS http://127.0.0.1:3100/healthz
+   curl -fsS http://127.0.0.1:3200/healthz
    curl -fsS http://127.0.0.1:3200/
    ```
 
@@ -125,7 +119,7 @@ Rebuild the old primary as a fresh standby:
 
 1. re-bootstrap `postgresql-shp` from the new primary
 2. verify streaming replication is back
-3. keep `spanel-*` disabled on the rebuilt standby unless you are failing back
+3. keep `simplehost-control` and `simplehost-worker` disabled on the rebuilt standby unless you are failing back
 
 ## Manual failback checklist
 
@@ -137,10 +131,9 @@ standby from the currently active primary.
 - Confirm `pg_stat_wal_receiver.status = streaming` on that standby.
 - Confirm `/opt/simplehostman/release/current` on the standby points to the same
   installed release generation you expect to promote.
-- Confirm `spanel-api` and `spanel-worker` are still disabled on the standby
-  before promotion, and that `spanel-web` is only being used for passive smoke
-  tests.
-- Stop `spanel-worker`, `spanel-api`, and `spanel-web` on the current primary.
+- Confirm `simplehost-control` and `simplehost-worker` are still disabled on the standby
+  before promotion.
+- Stop `simplehost-worker` and `simplehost-control` on the current primary.
 - Promote the standby that will become the new primary:
 
   ```bash
@@ -148,18 +141,18 @@ standby from the currently active primary.
   ```
 
 - Wait until `pg_is_in_recovery()` returns `f` on the promoted node.
-- Enable and start `spanel-api`, `spanel-web`, and `spanel-worker` on the
+- Enable and start `simplehost-control` and `simplehost-worker` on the
   promoted node.
-- Validate `http://127.0.0.1:3100/healthz` and `http://127.0.0.1:3200/` on the
+- Validate `http://127.0.0.1:3200/healthz` and `http://127.0.0.1:3200/` on the
   promoted node.
 - Repoint any front-facing proxy or traffic entrypoint back to the promoted
   node.
 - Rebuild the old primary as a fresh standby from the new primary.
-- Keep `spanel-api` and `spanel-worker` disabled on the rebuilt standby after
-  failback. `spanel-web` may stay enabled for passive validation only.
+- Keep `simplehost-control` and `simplehost-worker` disabled on the rebuilt standby after
+  failback.
 
 ## Notes
 
 - This is a manual failover design by intent.
-- Do not run `spanel-worker` active on both nodes at the same time.
+- Do not run `simplehost-worker` active on both nodes at the same time.
 - Keep `SHP` write traffic pointed only at the promoted PostgreSQL primary.

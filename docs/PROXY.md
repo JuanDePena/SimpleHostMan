@@ -23,12 +23,12 @@ Ingress platform:
 - `SHP` public-web tooling is now owned by [`/opt/simplehostman/src/packaging/httpd`](/opt/simplehostman/src/packaging/httpd) and [`/opt/simplehostman/src/scripts/panel/configure-public-web.sh`](/opt/simplehostman/src/scripts/panel/configure-public-web.sh).
 - The primary operator hostname `vps-prd.pyrosa.com.do` currently maps:
   - `https://vps-prd.pyrosa.com.do/` to the reserved default document root `/var/www/html`
-  - `https://vps-prd.pyrosa.com.do:3200/` to `SHP` web on `127.0.0.1:3200`
+  - `https://vps-prd.pyrosa.com.do:3200/` to the SimpleHost control plane on `127.0.0.1:3200`
   - `https://vps-prd.pyrosa.com.do:8080/` to local `code-server` on `127.0.0.1:8080`
 - The passive secondary `vps-des.pyrosa.com.do` keeps the same public operator ingress shape for smoke tests and controlled promotion.
 - The Apache operator listeners on `3200` and `8080` stay bound to the node public IPv4 so they do not collide with the local loopback services on `127.0.0.1`.
 - `httpd` must start after `network-online.target` so those public-IP listeners come up reliably on reboot.
-- `SHP` API remains private on `3100/tcp` and is intended for localhost or WireGuard-only access.
+- The combined control plane listens locally on `127.0.0.1:3200` and is exposed publicly only through Apache when operator ingress is enabled.
 
 ## Selected platform
 
@@ -55,7 +55,7 @@ Expose on both nodes:
 
 Optional operator-convenience exposure, when enabled on a node:
 
-- `3200/tcp` for `SHP` web over Apache TLS proxy
+- `3200/tcp` for the SimpleHost control plane over Apache TLS proxy
 - `8080/tcp` for `code-server` over Apache TLS proxy
 
 Port `80/tcp` is kept for:
@@ -88,9 +88,9 @@ Source-controlled proxy artifacts:
 - [`/opt/simplehostman/src/platform/httpd/conf.d/20-proxy-defaults.conf`](/opt/simplehostman/src/platform/httpd/conf.d/20-proxy-defaults.conf)
 - [`/opt/simplehostman/src/platform/httpd/vhosts/app-vhost.conf.template`](/opt/simplehostman/src/platform/httpd/vhosts/app-vhost.conf.template)
 - [`/opt/simplehostman/src/platform/httpd/vhosts/redirect-vhost.conf.template`](/opt/simplehostman/src/platform/httpd/vhosts/redirect-vhost.conf.template)
-- [`/opt/simplehostman/src/packaging/httpd/spanel-web-http.conf.template`](/opt/simplehostman/src/packaging/httpd/spanel-web-http.conf.template)
-- [`/opt/simplehostman/src/packaging/httpd/spanel-web-https.conf.template`](/opt/simplehostman/src/packaging/httpd/spanel-web-https.conf.template)
-- [`/opt/simplehostman/src/packaging/httpd/spanel-ssl-listen.conf`](/opt/simplehostman/src/packaging/httpd/spanel-ssl-listen.conf)
+- [`/opt/simplehostman/src/packaging/httpd/simplehost-control-http.conf.template`](/opt/simplehostman/src/packaging/httpd/simplehost-control-http.conf.template)
+- [`/opt/simplehostman/src/packaging/httpd/simplehost-control-https.conf.template`](/opt/simplehostman/src/packaging/httpd/simplehost-control-https.conf.template)
+- [`/opt/simplehostman/src/packaging/httpd/simplehost-ssl-listen.conf`](/opt/simplehostman/src/packaging/httpd/simplehost-ssl-listen.conf)
 - [`/opt/simplehostman/src/scripts/panel/configure-public-web.sh`](/opt/simplehostman/src/scripts/panel/configure-public-web.sh)
 
 ## Recommended Apache modules

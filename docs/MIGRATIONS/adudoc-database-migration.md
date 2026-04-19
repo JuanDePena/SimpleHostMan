@@ -15,7 +15,7 @@ That means the repo currently reflects `adudoc` as already cut over in desired t
 Use the migration audit script against a live control plane:
 
 ```bash
-export SHP_API_BASE_URL=http://127.0.0.1:3100
+export SHP_API_BASE_URL=http://127.0.0.1:3200
 export SHP_API_TOKEN=replace-with-session-token
 pnpm audit:migration -- --app adudoc
 ```

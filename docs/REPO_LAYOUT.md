@@ -190,7 +190,7 @@ Current structure:
 - `/opt/simplehostman/src/packaging/postgresql`
 - `/opt/simplehostman/src/packaging/rpm`
 
-Legacy product-facing names such as `spanel-*`, `shm-agent`, `simplehost-panel.spec`, and `simplehost-manager.spec` are still preserved where runtime compatibility depends on them, but the directory layout is now unified by artifact type.
+Runtime-facing packaging now uses `simplehost-control`, `simplehost-worker`, `simplehost-agent`, `simplehost-control.spec`, and `simplehost-agent.spec`, while the directory layout stays unified by artifact type.
 
 ### `scripts`
 
@@ -247,7 +247,7 @@ Notes:
 - Keep canonical source in `/opt/simplehostman/src`.
 - Keep shared docs in `/opt/simplehostman/src/docs`.
 - Do not reintroduce repo-era source roots as active inputs.
-- Do not reintroduce `/opt/simplehostman/spanel` or `/opt/simplehostman/shm` as canonical paths.
+- Do not reintroduce old split runtime roots as canonical paths.
 - Keep mutable runtime state outside the source tree.
 - Keep runtime migration separate from source migration.
 

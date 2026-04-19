@@ -18,7 +18,7 @@ The model is designed so more domains can be added without changing the baseline
 ## Status on 2026-03-14
 
 - `apps.yaml` remains the bootstrap inventory, but day-to-day desired state now lives in `SHP` PostgreSQL.
-- Runtime imports normally read `/etc/spanel/inventory.apps.yaml`, and YAML export remains for audit and disaster recovery.
+- Runtime imports normally read `/etc/simplehost/inventory.apps.yaml`, and YAML export remains for audit and disaster recovery.
 - Canonical node IDs in the control plane are `primary` and `secondary`; public operator aliases are `vps-prd.pyrosa.com.do` and `vps-des.pyrosa.com.do`.
 
 ## Isolation model

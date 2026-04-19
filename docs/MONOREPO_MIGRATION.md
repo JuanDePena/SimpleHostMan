@@ -113,7 +113,7 @@ The following areas are still transitional even though `src` is now canonical:
 
 - imported product packaging under `src/packaging/{panel,manager}` still carries legacy product boundaries
 - imported release scripts under `src/scripts/{panel,manager}` now build from the unified source tree, but still preserve legacy product-specific release flows that must be normalized later
-- imported service names such as `spanel-*` and `shm-agent` remain transitional until release/runtime convergence
+- runtime-facing service names are now normalized as `simplehost-control`, `simplehost-worker`, and `simplehost-agent`
 - imported packaging is now source-aligned with `/opt/simplehostman/release`, but product boundaries inside `packaging/{panel,manager}` are still transitional
 
 ## Combined candidate pre-promotion checklist
@@ -373,7 +373,7 @@ Work:
   - `agent`
 - keep `cli` as tooling rather than a daemon
 - update systemd units, RPM specs, environment examples, deploy scripts, install scripts, and rollback scripts
-- remove assumptions tied to `/opt/simplehostman/spanel` and `/opt/simplehostman/shm`
+- remove assumptions tied to the former split runtime roots and keep `/opt/simplehostman/release` as the only runtime root
 
 Acceptance criteria:
 - build artifacts come from the unified source tree
