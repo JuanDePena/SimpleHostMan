@@ -18,36 +18,9 @@ export function renderPanelShellStyleBlock(): string {
       }
 
       .page-login {
-        position: relative;
+        --login-column-width: 39rem;
         width: min(112rem, calc(100vw - 1.2rem));
         padding-top: 1rem;
-        isolation: isolate;
-      }
-
-      .page-login::before,
-      .page-login::after {
-        content: "";
-        position: fixed;
-        inset: 0;
-        pointer-events: none;
-        z-index: -2;
-      }
-
-      .page-login::before {
-        background:
-          radial-gradient(circle at 16% 14%, rgba(0, 142, 255, 0.34), transparent 22rem),
-          radial-gradient(circle at 84% 10%, rgba(67, 217, 255, 0.32), transparent 20rem),
-          radial-gradient(circle at 22% 86%, rgba(42, 114, 255, 0.24), transparent 20rem),
-          radial-gradient(circle at 86% 82%, rgba(78, 225, 232, 0.28), transparent 24rem),
-          linear-gradient(140deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0));
-        filter: saturate(118%);
-      }
-
-      .page-login::after {
-        background:
-          linear-gradient(120deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0) 42%),
-          linear-gradient(160deg, rgba(15, 82, 186, 0.12), rgba(39, 174, 255, 0.08) 42%, rgba(144, 227, 255, 0.12) 100%);
-        z-index: -3;
       }
 
       .hero-row {
@@ -74,7 +47,7 @@ export function renderPanelShellStyleBlock(): string {
       .hero-subheading {
         max-width: 52rem;
         margin: 0;
-        color: var(--muted);
+        color: var(--text-subtle);
         font-size: 0.98rem;
         line-height: 1.55;
       }
@@ -127,8 +100,14 @@ export function renderPanelShellStyleBlock(): string {
         justify-items: center;
       }
 
+      .page-login .hero-center,
+      .page-login .login-card,
+      .page-login .notice {
+        width: min(100%, var(--login-column-width));
+        max-width: var(--login-column-width);
+      }
+
       .login-card {
-        width: min(100%, 37rem);
         margin: 0 auto;
         padding: 1.2rem 1.1rem 1.05rem;
         border-radius: 1.25rem;
@@ -153,12 +132,16 @@ export function renderPanelShellStyleBlock(): string {
       }
 
       .login-card-header p {
-        color: var(--muted);
+        color: var(--text-subtle);
         font-size: 0.92rem;
       }
 
       .login-card .stack {
         gap: 0.72rem;
+      }
+
+      .login-card .stack > label:first-child {
+        margin-top: 0.34rem;
       }
 
       .login-card input {
@@ -175,7 +158,6 @@ export function renderPanelShellStyleBlock(): string {
       }
 
       .page-login .notice {
-        max-width: 38rem;
         margin-left: auto;
         margin-right: auto;
       }

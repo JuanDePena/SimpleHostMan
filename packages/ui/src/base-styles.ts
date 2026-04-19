@@ -9,6 +9,8 @@ export function renderBaseStyleBlock(): string {
         --surface-strong: rgba(255, 255, 255, 0.96);
         --ink: #0d2038;
         --muted: #4c6481;
+        --label-ink: #4b5563;
+        --text-subtle: #7e8899;
         --line: rgba(13, 32, 56, 0.14);
         --line-strong: rgba(13, 32, 56, 0.22);
         --accent: #f28c28;
@@ -68,11 +70,12 @@ export function renderBaseStyleBlock(): string {
         margin: 0;
         min-height: 100vh;
         background:
-          radial-gradient(circle at top left, rgba(15, 82, 186, 0.24), transparent 21rem),
-          radial-gradient(circle at 82% 12%, rgba(128, 214, 205, 0.32), transparent 18rem),
-          radial-gradient(circle at 18% 78%, rgba(183, 243, 77, 0.24), transparent 18rem),
-          radial-gradient(circle at 92% 78%, rgba(120, 169, 192, 0.26), transparent 24rem),
-          linear-gradient(148deg, #f4f8fc 0%, #dce7f2 34%, #d4e4e8 62%, #d7ecdb 82%, #edf7da 100%);
+          radial-gradient(circle at 12% 10%, rgba(0, 142, 255, 0.34), transparent 24rem),
+          radial-gradient(circle at 84% 8%, rgba(67, 217, 255, 0.3), transparent 22rem),
+          radial-gradient(circle at 20% 84%, rgba(42, 114, 255, 0.24), transparent 22rem),
+          radial-gradient(circle at 86% 82%, rgba(78, 225, 232, 0.26), transparent 26rem),
+          linear-gradient(125deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0) 38%),
+          linear-gradient(150deg, #eef6ff 0%, #d9ebff 32%, #d3e8f1 58%, #d8f0ef 78%, #e7f9e6 100%);
       }
 
       body.modal-open {
@@ -513,7 +516,7 @@ export function renderBaseStyleBlock(): string {
       label {
         display: grid;
         gap: 0.3rem;
-        color: var(--muted);
+        color: var(--label-ink);
         font-size: var(--font-size-label);
       }
 

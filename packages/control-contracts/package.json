@@ -1,6 +1,6 @@
 {
   "name": "@simplehost/control-contracts",
-  "version": "2604.19.15",
+  "version": "2604.19.19",
   "private": true,
   "type": "module",
   "main": "dist/index.js",
