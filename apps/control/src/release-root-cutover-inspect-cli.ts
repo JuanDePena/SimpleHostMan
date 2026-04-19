@@ -69,6 +69,14 @@ try {
 
 try {
   console.log(readFileSync(layout.rehearsalSummaryFile, "utf8").trim());
+  console.log("");
 } catch {
   console.log(`Rehearsal summary unavailable: ${layout.rehearsalSummaryFile}`);
+  console.log("");
+}
+
+try {
+  console.log(readFileSync(layout.paritySummaryFile, "utf8").trim());
+} catch {
+  console.log(`Parity summary unavailable: ${layout.paritySummaryFile}`);
 }
