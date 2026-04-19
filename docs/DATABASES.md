@@ -273,7 +273,7 @@ Expected state:
 
 - the primary accepts local connections on `127.0.0.1:5433`
 - the secondary reports `pg_is_in_recovery() = true`
-- `SHP_DATABASE_URL` points to the current primary, for example:
+- `SIMPLEHOST_DATABASE_URL` points to the current primary, for example:
   - `postgresql://simplehost_panel:***@127.0.0.1:5433/simplehost_panel`
 
 ## MariaDB design

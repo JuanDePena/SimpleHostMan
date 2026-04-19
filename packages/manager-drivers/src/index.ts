@@ -674,7 +674,7 @@ async function readPowerDnsZone(
   const { apiUrl, apiKey, serverId } = context.services.pdns;
 
   if (!apiUrl || !apiKey) {
-    throw new Error("SHM_PDNS_API_URL and SHM_PDNS_API_KEY are required.");
+    throw new Error("SIMPLEHOST_PDNS_API_URL and SIMPLEHOST_PDNS_API_KEY are required.");
   }
 
   const zoneId = `${payload.zoneName.replace(/\.$/, "")}.`;
@@ -713,7 +713,7 @@ async function ensurePowerDnsZone(
   const { apiUrl, apiKey, serverId } = context.services.pdns;
 
   if (!apiUrl || !apiKey) {
-    throw new Error("SHM_PDNS_API_URL and SHM_PDNS_API_KEY are required.");
+    throw new Error("SIMPLEHOST_PDNS_API_URL and SIMPLEHOST_PDNS_API_KEY are required.");
   }
 
   const zoneId = `${payload.zoneName.replace(/\.$/, "")}.`;
@@ -760,7 +760,7 @@ async function upsertPowerDnsRecords(
   const { apiUrl, apiKey, serverId } = context.services.pdns;
 
   if (!apiUrl || !apiKey) {
-    throw new Error("SHM_PDNS_API_URL and SHM_PDNS_API_KEY are required.");
+    throw new Error("SIMPLEHOST_PDNS_API_URL and SIMPLEHOST_PDNS_API_KEY are required.");
   }
 
   const zoneState = await ensurePowerDnsZone(payload, context);
@@ -1608,7 +1608,7 @@ async function executePostgresReconcileJob(
       job,
       context,
       "failed",
-      "SHM_POSTGRES_ADMIN_URL is not configured."
+      "SIMPLEHOST_POSTGRES_ADMIN_URL is not configured."
     );
   }
 
@@ -1798,7 +1798,7 @@ async function executeMariadbReconcileJob(
       job,
       context,
       "failed",
-      "SHM_MARIADB_ADMIN_URL is not configured."
+      "SIMPLEHOST_MARIADB_ADMIN_URL is not configured."
     );
   }
 

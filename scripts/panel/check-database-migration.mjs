@@ -31,12 +31,12 @@ function parseArgs(argv) {
 }
 
 function createApiBaseUrl() {
-  if (process.env.SHP_API_BASE_URL) {
-    return process.env.SHP_API_BASE_URL;
+  if (process.env.SIMPLEHOST_API_BASE_URL) {
+    return process.env.SIMPLEHOST_API_BASE_URL;
   }
 
-  const host = process.env.SHP_API_HOST ?? "127.0.0.1";
-  const port = process.env.SHP_API_PORT ?? "3100";
+  const host = process.env.SIMPLEHOST_API_HOST ?? "127.0.0.1";
+  const port = process.env.SIMPLEHOST_API_PORT ?? "3100";
   return `http://${host}:${port}`;
 }
 
@@ -62,16 +62,16 @@ async function apiRequest(pathname, token, options = {}) {
 }
 
 async function resolveSessionToken() {
-  if (process.env.SHP_API_TOKEN) {
-    return process.env.SHP_API_TOKEN;
+  if (process.env.SIMPLEHOST_API_TOKEN) {
+    return process.env.SIMPLEHOST_API_TOKEN;
   }
 
-  const email = process.env.SHP_BOOTSTRAP_ADMIN_EMAIL;
-  const password = process.env.SHP_BOOTSTRAP_ADMIN_PASSWORD;
+  const email = process.env.SIMPLEHOST_BOOTSTRAP_ADMIN_EMAIL;
+  const password = process.env.SIMPLEHOST_BOOTSTRAP_ADMIN_PASSWORD;
 
   if (!email || !password) {
     throw new Error(
-      "Set SHP_API_TOKEN or provide SHP_BOOTSTRAP_ADMIN_EMAIL and SHP_BOOTSTRAP_ADMIN_PASSWORD."
+      "Set SIMPLEHOST_API_TOKEN or provide SIMPLEHOST_BOOTSTRAP_ADMIN_EMAIL and SIMPLEHOST_BOOTSTRAP_ADMIN_PASSWORD."
     );
   }
 

@@ -109,147 +109,147 @@ function readOptionalString(value: string | undefined): string | null {
 export function createShmRuntimeConfig(
   env: NodeJS.ProcessEnv = process.env
 ): ShmRuntimeConfig {
-  const hostname = readString(env.SHM_HOSTNAME, os.hostname());
-  const stateDir = readString(env.SHM_STATE_DIR, "/var/lib/simplehost");
+  const hostname = readString(env.SIMPLEHOST_HOSTNAME, os.hostname());
+  const stateDir = readString(env.SIMPLEHOST_STATE_DIR, "/var/lib/simplehost");
   const defaultVersion = readPackageVersion("0000.00.00");
 
   return {
-    nodeId: readString(env.SHM_NODE_ID, hostname),
+    nodeId: readString(env.SIMPLEHOST_NODE_ID, hostname),
     hostname,
     controlPlaneUrl: readString(
-      env.SHM_CONTROL_PLANE_URL,
-      "http://127.0.0.1:3100"
+      env.SIMPLEHOST_CONTROL_PLANE_URL,
+      "http://127.0.0.1:3200"
     ),
-    enrollmentToken: readOptionalString(env.SHM_ENROLLMENT_TOKEN),
-    configPath: readString(env.SHM_CONFIG_PATH, "/etc/simplehost/agent.config.yaml"),
+    enrollmentToken: readOptionalString(env.SIMPLEHOST_ENROLLMENT_TOKEN),
+    configPath: readString(env.SIMPLEHOST_CONFIG_PATH, "/etc/simplehost/agent.config.yaml"),
     stateDir,
-    logDir: readString(env.SHM_LOG_DIR, "/var/log/simplehost"),
-    heartbeatMs: readPositiveInt(env.SHM_HEARTBEAT_MS, 10000),
-    version: readString(env.SHM_VERSION, defaultVersion),
+    logDir: readString(env.SIMPLEHOST_LOG_DIR, "/var/log/simplehost"),
+    heartbeatMs: readPositiveInt(env.SIMPLEHOST_HEARTBEAT_MS, 10000),
+    version: readString(env.SIMPLEHOST_VERSION, defaultVersion),
     services: {
       containers: {
         quadletDir: readString(
-          env.SHM_CONTAINERS_QUADLET_DIR,
+          env.SIMPLEHOST_CONTAINERS_QUADLET_DIR,
           "/etc/containers/systemd"
         ),
         envDir: readString(
-          env.SHM_CONTAINERS_ENV_DIR,
+          env.SIMPLEHOST_CONTAINERS_ENV_DIR,
           "/etc/containers/systemd/env"
         ),
         stagingDir: readString(
-          env.SHM_CONTAINERS_STAGING_DIR,
+          env.SIMPLEHOST_CONTAINERS_STAGING_DIR,
           path.join(stateDir, "staging", "containers")
         )
       },
       httpd: {
-        sitesDir: readString(env.SHM_HTTPD_SITES_DIR, "/etc/httpd/conf.d"),
+        sitesDir: readString(env.SIMPLEHOST_HTTPD_SITES_DIR, "/etc/httpd/conf.d"),
         stagingDir: readString(
-          env.SHM_HTTPD_STAGING_DIR,
+          env.SIMPLEHOST_HTTPD_STAGING_DIR,
           path.join(stateDir, "staging", "httpd")
         )
       },
       pdns: {
-        apiUrl: readOptionalString(env.SHM_PDNS_API_URL),
-        apiKey: readOptionalString(env.SHM_PDNS_API_KEY),
-        serverId: readString(env.SHM_PDNS_SERVER_ID, "localhost"),
+        apiUrl: readOptionalString(env.SIMPLEHOST_PDNS_API_URL),
+        apiKey: readOptionalString(env.SIMPLEHOST_PDNS_API_KEY),
+        serverId: readString(env.SIMPLEHOST_PDNS_SERVER_ID, "localhost"),
         stagingDir: readString(
-          env.SHM_PDNS_STAGING_DIR,
+          env.SIMPLEHOST_PDNS_STAGING_DIR,
           path.join(stateDir, "staging", "pdns")
         )
       },
       postgresql: {
-        adminUrl: readOptionalString(env.SHM_POSTGRES_ADMIN_URL)
+        adminUrl: readOptionalString(env.SIMPLEHOST_POSTGRES_ADMIN_URL)
       },
       mariadb: {
-        adminUrl: readOptionalString(env.SHM_MARIADB_ADMIN_URL)
+        adminUrl: readOptionalString(env.SIMPLEHOST_MARIADB_ADMIN_URL)
       },
       codeServer: {
         serviceName: readString(
-          env.SHM_CODE_SERVER_SERVICE_NAME,
+          env.SIMPLEHOST_CODE_SERVER_SERVICE_NAME,
           "code-server@root.service"
         ),
         configPath: readString(
-          env.SHM_CODE_SERVER_CONFIG_PATH,
+          env.SIMPLEHOST_CODE_SERVER_CONFIG_PATH,
           "/root/.config/code-server/config.yaml"
         ),
         settingsPath: readString(
-          env.SHM_CODE_SERVER_SETTINGS_PATH,
+          env.SIMPLEHOST_CODE_SERVER_SETTINGS_PATH,
           "/root/.local/share/code-server/User/settings.json"
         ),
         stagingDir: readString(
-          env.SHM_CODE_SERVER_STAGING_DIR,
+          env.SIMPLEHOST_CODE_SERVER_STAGING_DIR,
           path.join(stateDir, "staging", "code-server")
         )
       },
       packages: {
         stagingDir: readString(
-          env.SHM_PACKAGES_STAGING_DIR,
+          env.SIMPLEHOST_PACKAGES_STAGING_DIR,
           path.join(stateDir, "staging", "packages")
         )
       },
       rustdesk: {
         hbbsServiceName: readString(
-          env.SHM_RUSTDESK_HBBS_SERVICE_NAME,
+          env.SIMPLEHOST_RUSTDESK_HBBS_SERVICE_NAME,
           "rustdesk-hbbs.service"
         ),
         hbbrServiceName: readString(
-          env.SHM_RUSTDESK_HBBR_SERVICE_NAME,
+          env.SIMPLEHOST_RUSTDESK_HBBR_SERVICE_NAME,
           "rustdesk-hbbr.service"
         ),
         publicKeyPath: readString(
-          env.SHM_RUSTDESK_PUBLIC_KEY_PATH,
+          env.SIMPLEHOST_RUSTDESK_PUBLIC_KEY_PATH,
           "/srv/containers/rustdesk/data/id_ed25519.pub"
         )
       },
       mail: {
         stagingDir: readString(
-          env.SHM_MAIL_STAGING_DIR,
+          env.SIMPLEHOST_MAIL_STAGING_DIR,
           path.join(stateDir, "staging", "mail")
         ),
         statePath: readString(
-          env.SHM_MAIL_STATE_PATH,
+          env.SIMPLEHOST_MAIL_STATE_PATH,
           "/srv/mail/config/desired-state.json"
         ),
         configRoot: readString(
-          env.SHM_MAIL_CONFIG_ROOT,
+          env.SIMPLEHOST_MAIL_CONFIG_ROOT,
           "/srv/mail/config"
         ),
         vmailRoot: readString(
-          env.SHM_MAIL_VMAIL_ROOT,
+          env.SIMPLEHOST_MAIL_VMAIL_ROOT,
           "/srv/mail/vmail"
         ),
         dkimRoot: readString(
-          env.SHM_MAIL_DKIM_ROOT,
+          env.SIMPLEHOST_MAIL_DKIM_ROOT,
           "/srv/mail/dkim"
         ),
         roundcubeRoot: readString(
-          env.SHM_MAIL_ROUNDCUBE_ROOT,
+          env.SIMPLEHOST_MAIL_ROUNDCUBE_ROOT,
           "/srv/www/roundcube"
         ),
         postfixServiceName: readString(
-          env.SHM_MAIL_POSTFIX_SERVICE_NAME,
+          env.SIMPLEHOST_MAIL_POSTFIX_SERVICE_NAME,
           "postfix.service"
         ),
         dovecotServiceName: readString(
-          env.SHM_MAIL_DOVECOT_SERVICE_NAME,
+          env.SIMPLEHOST_MAIL_DOVECOT_SERVICE_NAME,
           "dovecot.service"
         ),
         rspamdServiceName: readString(
-          env.SHM_MAIL_RSPAMD_SERVICE_NAME,
+          env.SIMPLEHOST_MAIL_RSPAMD_SERVICE_NAME,
           "rspamd.service"
         ),
         redisServiceName: readString(
-          env.SHM_MAIL_REDIS_SERVICE_NAME,
+          env.SIMPLEHOST_MAIL_REDIS_SERVICE_NAME,
           "redis.service"
         )
       },
       apps: {
         rootDir: readString(
-          env.SHM_APPS_ROOT_DIR,
+          env.SIMPLEHOST_APPS_ROOT_DIR,
           "/srv/containers/apps"
         ),
         servicePrefix: readString(
-          env.SHM_APPS_SERVICE_PREFIX,
+          env.SIMPLEHOST_APPS_SERVICE_PREFIX,
           "app-"
         )
       }

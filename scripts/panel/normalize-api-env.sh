@@ -39,16 +39,16 @@ write_env_value() {
   fi
 }
 
-current_email="$(read_env_value "SHP_BOOTSTRAP_ADMIN_EMAIL")"
+current_email="$(read_env_value "SIMPLEHOST_BOOTSTRAP_ADMIN_EMAIL")"
 
 if [[ -n "${current_email}" && "${current_email}" != "admin@example.com" ]]; then
   exit 0
 fi
 
-default_domain="$(read_env_value "SHP_DEFAULT_DOMAIN")"
+default_domain="$(read_env_value "SIMPLEHOST_DEFAULT_DOMAIN")"
 
 if [[ -z "${default_domain}" ]]; then
-  public_hostname="$(read_env_value "SHP_PUBLIC_HOSTNAME")"
+  public_hostname="$(read_env_value "SIMPLEHOST_PUBLIC_HOSTNAME")"
 
   if [[ -n "${public_hostname}" && "${public_hostname}" == *.* ]]; then
     default_domain="${public_hostname#*.}"
@@ -59,4 +59,4 @@ if [[ -z "${default_domain}" ]]; then
   exit 0
 fi
 
-write_env_value "SHP_BOOTSTRAP_ADMIN_EMAIL" "webmaster@${default_domain}"
+write_env_value "SIMPLEHOST_BOOTSTRAP_ADMIN_EMAIL" "webmaster@${default_domain}"

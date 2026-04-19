@@ -8,7 +8,7 @@ mode="${3:-active}"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${script_dir}/../lib/workspace-paths.sh"
 repo_root="$(simplehost_workspace_root)"
-runtime_root="$(simplehost_resolve_runtime_root SHM_RUNTIME_ROOT)"
+runtime_root="$(simplehost_resolve_runtime_root SIMPLEHOST_RUNTIME_ROOT)"
 release_dir="${runtime_root}/releases/${version}"
 
 if [[ "${mode}" != "active" && "${mode}" != "disabled" ]]; then
@@ -28,10 +28,10 @@ ensure_env_version() {
     install -m 0640 "${example_path}" "${target_path}"
   fi
 
-  if grep -q '^SHM_VERSION=' "${target_path}"; then
-    sed -i "s/^SHM_VERSION=.*/SHM_VERSION=${version}/" "${target_path}"
+  if grep -q '^SIMPLEHOST_VERSION=' "${target_path}"; then
+    sed -i "s/^SIMPLEHOST_VERSION=.*/SIMPLEHOST_VERSION=${version}/" "${target_path}"
   else
-    printf '\nSHM_VERSION=%s\n' "${version}" >>"${target_path}"
+    printf '\nSIMPLEHOST_VERSION=%s\n' "${version}" >>"${target_path}"
   fi
 }
 
@@ -63,7 +63,7 @@ activate_remote() {
      install -m 0644 '${remote_release_dir}/packaging/systemd/simplehost-agent.service' /etc/systemd/system/simplehost-agent.service && \
      install -m 0644 '${remote_release_dir}/packaging/env/simplehost-agent.env.example' /etc/simplehost/agent.env.example && \
      if [ ! -f /etc/simplehost/agent.env ]; then install -m 0640 '${remote_release_dir}/packaging/env/simplehost-agent.env.example' /etc/simplehost/agent.env; fi && \
-     if grep -q '^SHM_VERSION=' /etc/simplehost/agent.env; then sed -i 's/^SHM_VERSION=.*/SHM_VERSION=${version}/' /etc/simplehost/agent.env; else printf '\nSHM_VERSION=${version}\n' >> /etc/simplehost/agent.env; fi && \
+     if grep -q '^SIMPLEHOST_VERSION=' /etc/simplehost/agent.env; then sed -i 's/^SIMPLEHOST_VERSION=.*/SIMPLEHOST_VERSION=${version}/' /etc/simplehost/agent.env; else printf '\nSIMPLEHOST_VERSION=${version}\n' >> /etc/simplehost/agent.env; fi && \
      systemctl daemon-reload"
 
   if [[ "${mode}" == "disabled" ]]; then

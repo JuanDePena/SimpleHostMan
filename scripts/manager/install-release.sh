@@ -4,7 +4,7 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${script_dir}/../lib/workspace-paths.sh"
 repo_root="$(simplehost_workspace_root)"
-runtime_root="$(simplehost_resolve_runtime_root SHM_RUNTIME_ROOT)"
+runtime_root="$(simplehost_resolve_runtime_root SIMPLEHOST_RUNTIME_ROOT)"
 version="${1:-$(simplehost_read_workspace_version "${repo_root}")}"
 release_dir="${runtime_root}/releases/${version}"
 temp_dir="${release_dir}.tmp.$$"

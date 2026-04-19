@@ -8,7 +8,7 @@ mode="${3:-active}"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${script_dir}/../lib/workspace-paths.sh"
 repo_root="$(simplehost_workspace_root)"
-runtime_root="$(simplehost_resolve_runtime_root SHP_RUNTIME_ROOT)"
+runtime_root="$(simplehost_resolve_runtime_root SIMPLEHOST_RUNTIME_ROOT)"
 release_dir="${runtime_root}/releases/${version}"
 
 if [[ "${mode}" != "active" && "${mode}" != "disabled" ]]; then
@@ -28,10 +28,10 @@ ensure_env_version() {
     install -m 0640 "${example_path}" "${target_path}"
   fi
 
-  if grep -q '^SHP_VERSION=' "${target_path}"; then
-    sed -i "s/^SHP_VERSION=.*/SHP_VERSION=${version}/" "${target_path}"
+  if grep -q '^SIMPLEHOST_VERSION=' "${target_path}"; then
+    sed -i "s/^SIMPLEHOST_VERSION=.*/SIMPLEHOST_VERSION=${version}/" "${target_path}"
   else
-    printf '\nSHP_VERSION=%s\n' "${version}" >>"${target_path}"
+    printf '\nSIMPLEHOST_VERSION=%s\n' "${version}" >>"${target_path}"
   fi
 }
 
@@ -52,11 +52,11 @@ sync_worker_job_secret() {
     return
   fi
 
-  if grep -q '^SHP_JOB_SECRET_KEY=' "${worker_env_path}"; then
+  if grep -q '^SIMPLEHOST_JOB_SECRET_KEY=' "${worker_env_path}"; then
     return
   fi
 
-  job_secret_line="$(grep -E '^SHP_JOB_SECRET_KEY=' "${api_env_path}" | tail -n 1 || true)"
+  job_secret_line="$(grep -E '^SIMPLEHOST_JOB_SECRET_KEY=' "${api_env_path}" | tail -n 1 || true)"
 
   if [[ -n "${job_secret_line}" ]]; then
     printf '\n%s\n' "${job_secret_line}" >>"${worker_env_path}"
@@ -98,11 +98,11 @@ activate_remote() {
      install -m 0644 '${remote_release_dir}/packaging/env/simplehost-worker.env.example' /etc/simplehost/worker.env.example && \
      if [ ! -f /etc/simplehost/control.env ]; then install -m 0640 '${remote_release_dir}/packaging/env/simplehost-control.env.example' /etc/simplehost/control.env; fi && \
      if [ ! -f /etc/simplehost/worker.env ]; then install -m 0640 '${remote_release_dir}/packaging/env/simplehost-worker.env.example' /etc/simplehost/worker.env; fi && \
-     if grep -q '^SHP_VERSION=' /etc/simplehost/control.env; then sed -i 's/^SHP_VERSION=.*/SHP_VERSION=${version}/' /etc/simplehost/control.env; else printf '\nSHP_VERSION=${version}\n' >> /etc/simplehost/control.env; fi && \
-     if grep -q '^SHP_VERSION=' /etc/simplehost/worker.env; then sed -i 's/^SHP_VERSION=.*/SHP_VERSION=${version}/' /etc/simplehost/worker.env; else printf '\nSHP_VERSION=${version}\n' >> /etc/simplehost/worker.env; fi && \
+     if grep -q '^SIMPLEHOST_VERSION=' /etc/simplehost/control.env; then sed -i 's/^SIMPLEHOST_VERSION=.*/SIMPLEHOST_VERSION=${version}/' /etc/simplehost/control.env; else printf '\nSIMPLEHOST_VERSION=${version}\n' >> /etc/simplehost/control.env; fi && \
+     if grep -q '^SIMPLEHOST_VERSION=' /etc/simplehost/worker.env; then sed -i 's/^SIMPLEHOST_VERSION=.*/SIMPLEHOST_VERSION=${version}/' /etc/simplehost/worker.env; else printf '\nSIMPLEHOST_VERSION=${version}\n' >> /etc/simplehost/worker.env; fi && \
      bash '${remote_release_dir}/scripts/normalize-api-env.sh' /etc/simplehost/control.env.example && \
      bash '${remote_release_dir}/scripts/normalize-api-env.sh' /etc/simplehost/control.env && \
-     if ! grep -q '^SHP_JOB_SECRET_KEY=' /etc/simplehost/worker.env; then worker_secret_line=\$(grep -E '^SHP_JOB_SECRET_KEY=' /etc/simplehost/control.env | tail -n 1 || true); if [ -n \"\${worker_secret_line}\" ]; then printf '\n%s\n' \"\${worker_secret_line}\" >> /etc/simplehost/worker.env; fi; fi && \
+     if ! grep -q '^SIMPLEHOST_JOB_SECRET_KEY=' /etc/simplehost/worker.env; then worker_secret_line=\$(grep -E '^SIMPLEHOST_JOB_SECRET_KEY=' /etc/simplehost/control.env | tail -n 1 || true); if [ -n \"\${worker_secret_line}\" ]; then printf '\n%s\n' \"\${worker_secret_line}\" >> /etc/simplehost/worker.env; fi; fi && \
      systemctl daemon-reload"
 
   if [[ "${mode}" == "disabled" ]]; then

@@ -16,8 +16,8 @@ function readPort(value: string | undefined): number {
 }
 
 export async function startReleaseSandboxEntrypoint() {
-  const host = process.env.SHP_WEB_HOST ?? "127.0.0.1";
-  const port = readPort(process.env.SHP_WEB_PORT);
+  const host = process.env.SIMPLEHOST_WEB_HOST ?? "127.0.0.1";
+  const port = readPort(process.env.SIMPLEHOST_WEB_PORT);
   const packed = await packCombinedControlReleaseSandbox({
     host,
     port,

@@ -15,16 +15,16 @@ That means the repo currently reflects `adudoc` as already cut over in desired t
 Use the migration audit script against a live control plane:
 
 ```bash
-export SHP_API_BASE_URL=http://127.0.0.1:3200
-export SHP_API_TOKEN=replace-with-session-token
+export SIMPLEHOST_API_BASE_URL=http://127.0.0.1:3200
+export SIMPLEHOST_API_TOKEN=replace-with-session-token
 pnpm audit:migration -- --app adudoc
 ```
 
 If you do not have a token, the script can also log in with:
 
 ```bash
-export SHP_BOOTSTRAP_ADMIN_EMAIL=webmaster@example.com
-export SHP_BOOTSTRAP_ADMIN_PASSWORD=replace-with-password
+export SIMPLEHOST_BOOTSTRAP_ADMIN_EMAIL=webmaster@example.com
+export SIMPLEHOST_BOOTSTRAP_ADMIN_PASSWORD=replace-with-password
 pnpm audit:migration -- --app adudoc
 ```
 

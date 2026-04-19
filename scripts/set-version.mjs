@@ -80,7 +80,7 @@ function updatePackageJson(filePath, version) {
 function updateEnvExample(filePath, version) {
   const absolutePath = path.join(repoRoot, filePath);
   const current = readFileSync(absolutePath, "utf8");
-  const updated = current.replace(/^(SHP_VERSION|SHM_VERSION)=.*$/m, `$1=${version}`);
+  const updated = current.replace(/^SIMPLEHOST_VERSION=.*$/m, `SIMPLEHOST_VERSION=${version}`);
 
   if (updated === current) {
     return false;

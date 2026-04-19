@@ -73,7 +73,7 @@ async function main(): Promise<void> {
 
   if (command === "register") {
     if (!config.enrollmentToken) {
-      throw new Error("SHM_ENROLLMENT_TOKEN is required for register.");
+      throw new Error("SIMPLEHOST_ENROLLMENT_TOKEN is required for register.");
     }
 
     const snapshot = await createSnapshotForCli();
@@ -89,7 +89,7 @@ async function main(): Promise<void> {
 
   if (command === "claim") {
     if (!config.enrollmentToken) {
-      throw new Error("SHM_ENROLLMENT_TOKEN is required for claim.");
+      throw new Error("SIMPLEHOST_ENROLLMENT_TOKEN is required for claim.");
     }
 
     const snapshot = await createSnapshotForCli();

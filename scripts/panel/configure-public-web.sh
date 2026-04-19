@@ -11,8 +11,8 @@ else
   default_cert_email="webmaster@${server_domain}"
 fi
 cert_email="${4:-${CERTBOT_EMAIL:-${default_cert_email}}}"
-public_ip="${SHP_PUBLIC_BIND_IP:-$(getent ahostsv4 "${server_name}" | awk 'NR==1{print $1}')}"
-document_root="${SHP_DOCUMENT_ROOT:-/var/www/html}"
+public_ip="${SIMPLEHOST_PUBLIC_BIND_IP:-$(getent ahostsv4 "${server_name}" | awk 'NR==1{print $1}')}"
+document_root="${SIMPLEHOST_DOCUMENT_ROOT:-/var/www/html}"
 code_backend_host="${CODE_SERVER_BACKEND_HOST:-127.0.0.1}"
 code_backend_port="${CODE_SERVER_BACKEND_PORT:-8080}"
 

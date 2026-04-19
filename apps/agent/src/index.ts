@@ -607,7 +607,7 @@ export async function runManagerAgentCycle(): Promise<void> {
 
   if (!registrationToken) {
     throw new Error(
-      "SHM_ENROLLMENT_TOKEN is required until SHP issues a node bearer token."
+      "SIMPLEHOST_ENROLLMENT_TOKEN is required until SHP issues a node bearer token."
     );
   }
 
@@ -663,7 +663,7 @@ export async function runManagerAgentCycle(): Promise<void> {
 
 export async function startManagerAgent(): Promise<void> {
   const config = createShmRuntimeConfig();
-  const runOnce = process.env.SHM_RUN_ONCE === "true";
+  const runOnce = process.env.SIMPLEHOST_RUN_ONCE === "true";
 
   do {
     try {

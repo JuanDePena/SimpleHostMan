@@ -54,7 +54,7 @@ export async function runWorkerIteration(): Promise<void> {
 
 export async function startPanelWorker(): Promise<void> {
   const config = createPanelRuntimeConfig();
-  const runOnce = process.env.SHP_WORKER_RUN_ONCE === "true";
+  const runOnce = process.env.SIMPLEHOST_WORKER_RUN_ONCE === "true";
 
   do {
     await runWorkerIteration();

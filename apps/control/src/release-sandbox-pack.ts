@@ -48,10 +48,10 @@ function resolveSourceCommitish(workspaceRoot: string): string {
 function toEnvFileContent(config: CombinedControlReleaseCandidateConfig): string {
   return [
     `NODE_ENV=${config.environment}`,
-    `SHP_VERSION=${config.version}`,
-    `SHP_WEB_HOST=${config.host}`,
-    `SHP_WEB_PORT=${config.port}`,
-    `SHP_INVENTORY_PATH=${config.inventoryImportPath}`,
+    `SIMPLEHOST_VERSION=${config.version}`,
+    `SIMPLEHOST_WEB_HOST=${config.host}`,
+    `SIMPLEHOST_WEB_PORT=${config.port}`,
+    `SIMPLEHOST_INVENTORY_PATH=${config.inventoryImportPath}`,
     "SIMPLEHOST_CONTROL_RUNTIME_MODE=combined",
     "SIMPLEHOST_CONTROL_SANDBOX_MODE=release-sandbox",
     `SIMPLEHOST_CONTROL_SANDBOX_ORIGIN=${config.origin}`
@@ -73,8 +73,8 @@ export async function packCombinedControlReleaseSandbox(args: {
   });
   const context = createControlProcessContext({
     ...process.env,
-    SHP_WEB_HOST: args.host ?? process.env.SHP_WEB_HOST ?? "127.0.0.1",
-    SHP_WEB_PORT: String(args.port ?? process.env.SHP_WEB_PORT ?? "3200")
+    SIMPLEHOST_WEB_HOST: args.host ?? process.env.SIMPLEHOST_WEB_HOST ?? "127.0.0.1",
+    SIMPLEHOST_WEB_PORT: String(args.port ?? process.env.SIMPLEHOST_WEB_PORT ?? "3200")
   });
   const config = createCombinedControlReleaseCandidateConfig({
     context,
