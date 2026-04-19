@@ -911,9 +911,15 @@ export function renderBaseStyleBlock(): string {
       }
 
       .node-health-code-server-cell {
-        display: grid;
-        gap: 0.18rem;
-        min-width: 14.8rem;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.32rem;
+        min-width: 0;
+      }
+
+      .node-health-code-server-cell > div {
+        display: inline-flex;
       }
 
       .node-health-summary-cell {

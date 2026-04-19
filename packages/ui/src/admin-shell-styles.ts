@@ -460,6 +460,17 @@ export function renderAdminShellStyleBlock(): string {
 
       .section-panel {
         scroll-margin-top: 2rem;
+        display: grid;
+        gap: 0.72rem;
+        align-content: start;
+      }
+
+      .section-panel > .section-head {
+        margin-bottom: 0;
+      }
+
+      .section-panel > .signal-strip + * {
+        margin-top: -0.12rem;
       }
 
       .section-head {

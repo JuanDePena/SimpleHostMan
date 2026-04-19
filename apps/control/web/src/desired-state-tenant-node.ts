@@ -991,10 +991,10 @@ export function renderNodeDesiredStatePanels(args: {
           <button type="submit">Save node</button>
         </div>
       </form>
-      <article class="panel panel-nested detail-shell">
+      <article class="panel panel-nested detail-shell danger-shell">
         <div>
-          <h3>${escapeHtml(copy.impactPreviewTitle)}</h3>
-          <p class="muted section-description">${escapeHtml(copy.nodeDiagnosticsDescription)}</p>
+          <h3>${escapeHtml(copy.dangerZoneTitle)}</h3>
+          <p class="muted section-description">${escapeHtml(copy.selectedResourceDescription)}</p>
         </div>
         ${renderers.renderDetailGrid([
           { label: copy.navApps, value: escapeHtml(String(nodeCounts.apps)) },
@@ -1035,28 +1035,14 @@ export function renderNodeDesiredStatePanels(args: {
           selectedNodeActionPreviewItems,
           copy.noRelatedRecords
         )}
+        <form method="post" action="/resources/nodes/delete" class="toolbar">
+          <input type="hidden" name="nodeId" value="${escapeHtml(selectedNode.nodeId)}" />
+          <button class="danger" type="submit" data-confirm="${escapeHtml(
+            `Delete node ${selectedNode.nodeId}? Review apps, zones and backup policies that still target this node before continuing.`
+          )}">Delete node</button>
+        </form>
       </article>
     </div>
-    <article class="panel panel-nested detail-shell danger-shell">
-      <div>
-        <h3>${escapeHtml(copy.dangerZoneTitle)}</h3>
-        <p class="muted section-description">${escapeHtml(copy.selectedResourceDescription)}</p>
-      </div>
-      ${renderers.renderDetailGrid([
-        { label: copy.navApps, value: escapeHtml(String(nodeCounts.apps)) },
-        { label: copy.navZones, value: escapeHtml(String(nodeCounts.zones)) },
-        {
-          label: copy.navBackupPolicies,
-          value: escapeHtml(String(nodeCounts.backupPolicies))
-        }
-      ])}
-      <form method="post" action="/resources/nodes/delete" class="toolbar">
-        <input type="hidden" name="nodeId" value="${escapeHtml(selectedNode.nodeId)}" />
-        <button class="danger" type="submit" data-confirm="${escapeHtml(
-          `Delete node ${selectedNode.nodeId}? Review apps, zones and backup policies that still target this node before continuing.`
-        )}">Delete node</button>
-      </form>
-    </article>
   </article>`;
 
   const workspacePanel = renderNodeWorkspacePanel({
