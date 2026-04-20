@@ -1,6 +1,7 @@
 # Mail Service Architecture
 
 Date drafted: 2026-04-11
+Last updated: 2026-04-20
 Target OS: AlmaLinux 10.1
 
 ## Scope
@@ -17,27 +18,28 @@ It defines the intended split of responsibilities for:
 - mailbox failover boundaries
 - the future control-plane split between `SimpleHost Control` and `SimpleHost Agent`
 
-This document is a design and operational target.
-It does not imply that mail execution is already deployed in phase 1.
+This document now describes the implemented phase-1 mail runtime baseline plus the intended
+operational boundaries for later refinement.
 
 Related references:
 
 - [`/opt/simplehostman/src/docs/ARQUITECTURE.md`](/opt/simplehostman/src/docs/ARQUITECTURE.md)
 - [`/opt/simplehostman/src/docs/DNS.md`](/opt/simplehostman/src/docs/DNS.md)
 - [`/opt/simplehostman/src/docs/HARDENING.md`](/opt/simplehostman/src/docs/HARDENING.md)
+- [`/opt/simplehostman/src/docs/MAIL_MIGRATION.md`](/opt/simplehostman/src/docs/MAIL_MIGRATION.md)
 - [`/opt/simplehostman/src/docs/REPO_LAYOUT.md`](/opt/simplehostman/src/docs/REPO_LAYOUT.md)
 - [`/opt/simplehostman/src/apps/control/README.md`](/opt/simplehostman/src/apps/control/README.md)
 
-## Status on 2026-04-11
+## Status on 2026-04-20
 
-- Mail execution is not yet deployed as a complete live runtime on the nodes.
-- `SimpleHost Control` already implements desired-state objects and operator CRUD for mail domains, mailboxes, aliases, and quotas.
-- `SimpleHost Control` reconciliation now derives baseline mail DNS and `webmail.<domain>` proxy scaffolding.
-- `SimpleHost Agent` already accepts `mail.sync`, persists node-local desired state, prepares mail storage paths, generates DKIM material, renders node-local `Postfix`, `Dovecot`, and `Rspamd` artifacts, and reports mail runtime health back to `SimpleHost Control`.
-- The currently implemented runtime is still incomplete operationally: mail services are not yet installed and activated by the platform, and `Roundcube` content is still a placeholder rather than a live webmail deployment.
-- The chosen direction is self-hosted mail on the two VPS nodes, not a third-party hosted mail backend.
-- The selected persistence model is filesystem-backed mailbox storage, not message storage inside `PostgreSQL`.
-- `adudoc.com` is seeded as the first pilot mail domain, with `webmaster@adudoc.com` and `notificaciones@adudoc.com` rendered on both nodes in `reset_required` credential state until passwords are set manually.
+- `SimpleHost Control` now implements desired-state objects and operator CRUD for mail domains, mailboxes, aliases, quotas, and mailbox credential reset.
+- `SimpleHost Control` reconciliation derives baseline mail DNS and `webmail.<domain>` proxy scaffolding.
+- `SimpleHost Agent` now executes `mail.sync` end-to-end: it installs and restarts `Postfix`, `Dovecot`, `Roundcube`, `Redis`-compatible cache (`valkey` by default), creates the `vmail` runtime user, generates DKIM material, writes node-local runtime artifacts, deploys `Roundcube`, and applies a generated `firewalld` service policy.
+- Mail desired state persisted on the nodes is sanitized: mailbox plaintext passwords are not written to `/srv/mail/config/desired-state.json`.
+- Node runtime reporting now includes service installation state, firewall state, `Roundcube` deployment state, and configured vs reset-required mailbox counts.
+- The chosen direction remains self-hosted mail on the two VPS nodes, not a third-party hosted mail backend.
+- The selected persistence model remains filesystem-backed mailbox storage, not message storage inside `PostgreSQL`.
+- `adudoc.com` remains the first pilot mail domain, with `webmaster@adudoc.com` and `notificaciones@adudoc.com` as the initial mailbox set.
 
 ## Design goals
 
@@ -122,15 +124,13 @@ Do not switch to a SQL message store to solve that problem.
 
 ### Roundcube persistence
 
-`Roundcube` should use its own application database, separate from `SimpleHost Control`.
+`Roundcube` should keep its own metadata store, separate from `SimpleHost Control`.
 
-Recommended engine:
+Implemented phase-1 baseline:
 
-- `PostgreSQL` on the `postgresql-apps` cluster
-
-Recommended database:
-
-- `platform_roundcube`
+- node-local `SQLite`
+- shared state root under `/srv/www/roundcube/_shared`
+- database path `/srv/www/roundcube/_shared/roundcube.sqlite`
 
 That database stores only webmail metadata such as:
 
@@ -140,6 +140,10 @@ That database stores only webmail metadata such as:
 - session-like or cache-like webmail state as required by the application
 
 It must not be treated as the authoritative message store.
+
+If the platform later needs higher `Roundcube` metadata scale or shared-node access, move this
+metadata to a dedicated `PostgreSQL` database on `postgresql-apps`. That is a scale-up path, not
+the phase-1 execution baseline.
 
 ## Runtime split between `SimpleHost Control` and `SimpleHost Agent`
 
@@ -163,6 +167,9 @@ It must not be treated as the authoritative message store.
 - rendering runtime config files for `Postfix`, `Dovecot`, `Rspamd`, and related helpers
 - placing local keys, maps, and passwd files on the node
 - installing or restarting mail services
+- creating the `vmail` runtime account and local `Maildir` ownership
+- deploying `Roundcube` package content and runtime config
+- applying the node-local mail firewall service definition
 - collecting local runtime health and exposing it back to `SimpleHost Control`
 
 Preferred runtime pattern:
@@ -228,13 +235,18 @@ Current rendered runtime artifacts:
 - `/srv/mail/config/rspamd/dkim_selectors.map`
 - `/srv/mail/config/rspamd/local.d/redis.conf`
 - `/srv/mail/config/rspamd/local.d/dkim_signing.conf`
+- `/srv/mail/config/desired-state.json`
 - `/srv/mail/dkim/<domain>/<selector>.key`
 - `/srv/mail/dkim/<domain>/<selector>.dns.txt`
+- `/etc/roundcubemail/config.inc.php`
+- `/srv/www/roundcube/_shared/roundcube.sqlite`
+- `/etc/firewalld/services/simplehost-mail.xml`
 
 Current credential behavior:
 
-- when a mailbox is created without a desired password, `SimpleHost Agent` renders it locally in locked/reset-required form
-- the current pilot intentionally uses that mode so the first credential establishment remains manual
+- when a mailbox is created or edited with a desired password, `SimpleHost Control` stores an encrypted desired secret and `SimpleHost Agent` renders a local `Dovecot` auth hash
+- when a mailbox is created without a desired password or an operator explicitly resets it, `SimpleHost Agent` renders it locally in locked `reset_required` form
+- the current pilot intentionally supports both paths so first credential establishment and later credential recovery remain operator-driven
 
 ## Mail routing model
 
@@ -362,6 +374,12 @@ Recommended public ports on the active mail node:
 - `587/tcp` submission
 - `993/tcp` IMAPS
 
+Implemented phase-1 policy:
+
+- `SimpleHost Agent` writes a generated `simplehost-mail` firewalld service definition
+- the service is installed to `/etc/firewalld/services/simplehost-mail.xml`
+- the service is added permanently to the active public zone and reloaded through `firewall-cmd`
+
 Optional later:
 
 - `465/tcp` for implicit TLS submission if required
@@ -458,6 +476,12 @@ Future `SimpleHost Control` mail operations should expose:
 - DKIM, SPF, and DMARC posture
 - audit events for account lifecycle changes
 
+Implemented baseline today:
+
+- node runtime reporting already includes service install/enable/active state for `Postfix`, `Dovecot`, `Rspamd`, and `Redis`
+- node runtime reporting now includes `Roundcube` deployment mode, shared/config/database paths, firewall policy status, and configured vs reset-required mailbox counts
+- `mail.sync` job details include deployed file paths, DKIM material paths, package installation actions, service restart state, firewall status, and `Roundcube` deployment paths
+
 Recommended raw sources:
 
 - `Postfix` logs
@@ -491,17 +515,19 @@ Preferred migration sequence per domain:
 For low-volume domains this can be a short maintenance window.
 For larger-volume domains, keep the overlap window longer and validate queue behavior before decommissioning the old host.
 
-## Implementation order
+Use the concrete operational runbook in [`/opt/simplehostman/src/docs/MAIL_MIGRATION.md`](/opt/simplehostman/src/docs/MAIL_MIGRATION.md) for the step-by-step cutover procedure.
 
-Recommended rollout order:
+## Implementation status
 
-1. finalize this architecture and desired-state model
-2. add `MailDomain`, `Mailbox`, `MailAlias`, and quota objects to `SimpleHost Control`
-3. add `mail.sync`, node runtime reporting, baseline DNS derivation, and `webmail.<domain>` proxy scaffolding
-4. add `SimpleHost Agent` renderers and drivers for `Postfix`, `Dovecot`, `Rspamd`, `Redis`, and mail firewall policy
-5. deploy per-tenant `Roundcube` content on the prepared `webmail.<domain>` roots
-6. validate one low-volume domain migration end-to-end
-7. add richer deliverability, traceability, and audit views in `SimpleHost Control`
+Implemented in the current backend:
+
+1. desired-state model for `MailDomain`, `Mailbox`, `MailAlias`, and quotas
+2. operator CRUD plus mailbox credential set and reset workflows
+3. `mail.sync`, node runtime reporting, baseline DNS derivation, and `webmail.<domain>` proxy scaffolding
+4. `SimpleHost Agent` renderers and drivers for `Postfix`, `Dovecot`, `Rspamd` config, `Redis`-compatible cache, `Roundcube`, and mail firewall policy
+5. concrete mailbox migration runbook for low-volume cutovers
+
+Follow-on product work now belongs to broader diagnostics, deliverability, audit, and backup improvements rather than the core mail execution backend.
 
 ## Non-goals for the first mail execution phase
 

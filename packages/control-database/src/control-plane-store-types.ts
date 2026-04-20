@@ -34,6 +34,7 @@ import type {
   PackageInstallRequest,
   ControlGlobalRole,
   ReconciliationRunSummary,
+  ResetMailboxCredentialRequest,
   ResourceDriftSummary,
   TenantMembershipRole,
   TenantMembershipSummary,
@@ -494,6 +495,10 @@ export interface ControlPlaneStore {
     request: UpsertMailboxQuotaRequest,
     presentedToken: string | null
   ): Promise<MailOverview>;
+  resetMailboxCredential(
+    request: ResetMailboxCredentialRequest,
+    presentedToken: string | null
+  ): Promise<MailOverview>;
   deleteMailboxQuota(
     mailboxAddress: string,
     presentedToken: string | null
@@ -541,6 +546,7 @@ export type ControlPlaneSpecMethods = Pick<
   | "upsertMailAlias"
   | "deleteMailAlias"
   | "upsertMailboxQuota"
+  | "resetMailboxCredential"
   | "deleteMailboxQuota"
 >;
 

@@ -1,6 +1,17 @@
 import { execFile, execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
-import { copyFile, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { createHash, randomBytes } from "node:crypto";
+import {
+  chmod,
+  copyFile,
+  lstat,
+  mkdir,
+  readFile,
+  readlink,
+  rename,
+  rm,
+  symlink,
+  writeFile
+} from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 
@@ -39,16 +50,17 @@ import {
   renderDnsZoneFile,
   renderDovecotMailConf,
   renderDovecotPasswd,
+  renderMailFirewalldService,
   renderMailDesiredState,
   renderPostfixMainCf,
   renderPostfixVirtualAliases,
   renderPostfixVirtualDomains,
   renderPostfixVirtualMailboxes,
   renderQuadletContainerUnit,
+  renderRoundcubeConfig,
   renderRspamdDkimSigningConf,
   renderRspamdRedisConf,
-  renderRspamdSelectorsMap,
-  renderWebmailPlaceholder
+  renderRspamdSelectorsMap
 } from "@simplehost/agent-renderers";
 
 const execFileAsync = promisify(execFile);
@@ -93,12 +105,28 @@ export interface DriverExecutionContext {
       statePath: string;
       configRoot: string;
       vmailRoot: string;
+      vmailUser: string;
+      vmailGroup: string;
       dkimRoot: string;
       roundcubeRoot: string;
+      roundcubeSharedRoot: string;
+      roundcubeUser: string;
+      roundcubeGroup: string;
+      roundcubeConfigPath: string;
+      roundcubeDatabasePath: string;
+      roundcubePackageRoot: string;
+      roundcubeDefaultHttpdConfPath: string;
+      firewallServiceName: string;
+      firewallServicePath: string;
       postfixServiceName: string;
       dovecotServiceName: string;
       rspamdServiceName: string;
       redisServiceName: string;
+      postfixPackageTargets: string[];
+      dovecotPackageTargets: string[];
+      rspamdPackageTargets: string[];
+      redisPackageTargets: string[];
+      roundcubePackageTargets: string[];
     };
   };
 }
@@ -205,7 +233,7 @@ function assertAbsolutePathValue(value: string, label: string): void {
 
 async function pathExists(targetPath: string): Promise<boolean> {
   try {
-    await readFile(targetPath, "utf8");
+    await lstat(targetPath);
     return true;
   } catch {
     return false;
@@ -367,6 +395,241 @@ async function readOptionalTextFile(targetPath: string): Promise<string | undefi
   }
 }
 
+async function systemdUnitExists(serviceName: string): Promise<boolean> {
+  const loadState = await runOptionalCommand("systemctl", [
+    "show",
+    serviceName,
+    "--property=LoadState",
+    "--value"
+  ]);
+
+  return loadState.ran && loadState.stdout.trim() !== "not-found";
+}
+
+async function rpmPackageInstalled(packageName: string): Promise<boolean> {
+  const result = await runCommandAllowFailure("rpm", ["-q", packageName]);
+  return result.exitCode === 0;
+}
+
+async function commandSucceeded(command: string, args: string[]): Promise<boolean> {
+  const result = await runCommandAllowFailure(command, args);
+  return result.exitCode === 0;
+}
+
+async function ensureSystemGroup(groupName: string): Promise<boolean> {
+  if (await commandSucceeded("getent", ["group", groupName])) {
+    return false;
+  }
+
+  await execFileAsync("groupadd", ["--system", groupName], {
+    encoding: "utf8"
+  });
+  return true;
+}
+
+async function ensureSystemUser(
+  userName: string,
+  groupName: string,
+  homePath: string
+): Promise<boolean> {
+  if (await commandSucceeded("getent", ["passwd", userName])) {
+    return false;
+  }
+
+  await execFileAsync(
+    "useradd",
+    [
+      "--system",
+      "--home-dir",
+      homePath,
+      "--shell",
+      "/sbin/nologin",
+      "--gid",
+      groupName,
+      userName
+    ],
+    { encoding: "utf8" }
+  );
+  return true;
+}
+
+async function ensureOwnedPath(
+  targetPath: string,
+  userName: string,
+  groupName: string
+): Promise<void> {
+  await execFileAsync("chown", ["-R", `${userName}:${groupName}`, targetPath], {
+    encoding: "utf8"
+  });
+}
+
+async function ensurePackageTargetsInstalled(
+  targets: string[],
+  serviceName?: string
+): Promise<{
+  configuredTargets: string[];
+  installTriggered: boolean;
+  installed: boolean;
+}> {
+  const configuredTargets = targets.filter((target) => target.trim().length > 0);
+
+  if (serviceName && (await systemdUnitExists(serviceName))) {
+    return {
+      configuredTargets,
+      installTriggered: false,
+      installed: true
+    };
+  }
+
+  if (configuredTargets.length === 0) {
+    return {
+      configuredTargets,
+      installTriggered: false,
+      installed: serviceName ? await systemdUnitExists(serviceName) : false
+    };
+  }
+
+  const namedTargets = configuredTargets.filter(
+    (target) => !target.includes("/") && !/^[a-z]+:\/\//i.test(target)
+  );
+  const allNamedTargetsInstalled =
+    namedTargets.length > 0 &&
+    (await Promise.all(namedTargets.map((target) => rpmPackageInstalled(target)))).every(Boolean);
+
+  if (
+    allNamedTargetsInstalled &&
+    configuredTargets.length === namedTargets.length &&
+    (!serviceName || (await systemdUnitExists(serviceName)))
+  ) {
+    return {
+      configuredTargets,
+      installTriggered: false,
+      installed: true
+    };
+  }
+
+  await execFileAsync("dnf", ["install", "-y", ...configuredTargets], {
+    encoding: "utf8"
+  });
+
+  return {
+    configuredTargets,
+    installTriggered: true,
+    installed: serviceName ? await systemdUnitExists(serviceName) : true
+  };
+}
+
+async function ensureServiceEnabledAndRestarted(
+  serviceName: string
+): Promise<{ enabled: boolean; active: boolean }> {
+  if (!(await systemdUnitExists(serviceName))) {
+    return {
+      enabled: false,
+      active: false
+    };
+  }
+
+  await execFileAsync("systemctl", ["enable", serviceName], {
+    encoding: "utf8"
+  });
+  await execFileAsync("systemctl", ["restart", serviceName], {
+    encoding: "utf8"
+  });
+
+  const enabled = await runCommandAllowFailure("systemctl", [
+    "is-enabled",
+    serviceName
+  ]);
+  const active = await runCommandAllowFailure("systemctl", [
+    "is-active",
+    serviceName
+  ]);
+
+  return {
+    enabled: enabled.exitCode === 0,
+    active: active.exitCode === 0
+  };
+}
+
+function createRoundcubeDesKey(): string {
+  return randomBytes(24).toString("base64").replace(/[^A-Za-z0-9]/g, "").slice(0, 24);
+}
+
+async function ensureRoundcubeDesKey(targetPath: string): Promise<string> {
+  const existing = (await readOptionalTextFile(targetPath))?.trim();
+
+  if (existing && existing.length >= 24) {
+    return existing;
+  }
+
+  const generated = createRoundcubeDesKey();
+  await writeFileAtomic(targetPath, `${generated}\n`);
+  await chmod(targetPath, 0o640);
+  return generated;
+}
+
+async function ensureSymlinkPath(targetPath: string, symlinkTarget: string): Promise<void> {
+  try {
+    const current = await lstat(targetPath);
+
+    if (current.isSymbolicLink()) {
+      const currentTarget = await readlink(targetPath).catch(() => undefined);
+      if (currentTarget === symlinkTarget) {
+        return;
+      }
+      await rm(targetPath, { force: true });
+    } else {
+      await rm(targetPath, { recursive: true, force: true });
+    }
+  } catch {
+    // Fresh path.
+  }
+
+  await symlink(symlinkTarget, targetPath);
+}
+
+async function ensureMailFirewallPolicy(context: DriverExecutionContext): Promise<{
+  serviceName: string;
+  configured: boolean;
+  skippedReason?: string;
+}> {
+  const firewallCmd = await runOptionalCommand("firewall-cmd", ["--state"]);
+
+  if (!firewallCmd.ran) {
+    return {
+      serviceName: context.services.mail.firewallServiceName,
+      configured: false,
+      skippedReason: "firewall-cmd not available"
+    };
+  }
+
+  if (firewallCmd.stdout.trim() !== "running") {
+    return {
+      serviceName: context.services.mail.firewallServiceName,
+      configured: false,
+      skippedReason: "firewalld not running"
+    };
+  }
+
+  await writeFileAtomic(
+    context.services.mail.firewallServicePath,
+    renderMailFirewalldService(context.services.mail.firewallServiceName)
+  );
+  await execFileAsync(
+    "firewall-cmd",
+    ["--permanent", "--add-service", context.services.mail.firewallServiceName],
+    { encoding: "utf8" }
+  );
+  await execFileAsync("firewall-cmd", ["--reload"], {
+    encoding: "utf8"
+  });
+
+  return {
+    serviceName: context.services.mail.firewallServiceName,
+    configured: true
+  };
+}
+
 function deriveMailHomePath(
   vmailRoot: string,
   domainName: string,
@@ -491,6 +754,114 @@ async function ensureDkimMaterial(
       generated
     };
   }
+}
+
+async function initializeSqliteDatabase(
+  databasePath: string,
+  schemaPath: string
+): Promise<boolean> {
+  if (await pathExists(databasePath)) {
+    return false;
+  }
+
+  const schema = await readFile(schemaPath, "utf8");
+  await mkdir(path.dirname(databasePath), { recursive: true });
+  execFileSync("sqlite3", [databasePath], {
+    encoding: "utf8",
+    input: schema
+  });
+  await chmod(databasePath, 0o660);
+  return true;
+}
+
+async function disableRoundcubeDefaultHttpdConf(defaultConfPath: string): Promise<string | undefined> {
+  if (!(await pathExists(defaultConfPath))) {
+    return undefined;
+  }
+
+  const disabledPath = `${defaultConfPath}.simplehost-disabled`;
+
+  if (!(await pathExists(disabledPath))) {
+    await rename(defaultConfPath, disabledPath);
+  }
+
+  return disabledPath;
+}
+
+async function ensureRoundcubeDeployment(
+  context: DriverExecutionContext,
+  payload: MailSyncPayload
+): Promise<{
+  packageTargets: string[];
+  packageRoot: string;
+  configPath: string;
+  databasePath: string;
+  deploymentMode: "packaged" | "placeholder" | "absent";
+  sharedRoot: string;
+  disabledHttpdConfPath?: string;
+}> {
+  const packageResult = await ensurePackageTargetsInstalled(
+    context.services.mail.roundcubePackageTargets
+  );
+  const packageRoot = context.services.mail.roundcubePackageRoot;
+  const configPath = context.services.mail.roundcubeConfigPath;
+  const databasePath = context.services.mail.roundcubeDatabasePath;
+  const sharedRoot = context.services.mail.roundcubeSharedRoot;
+  const schemaPath = path.join(packageRoot, "SQL", "sqlite.initial.sql");
+  const tempDir = path.join(sharedRoot, "temp");
+  const logDir = path.join(sharedRoot, "logs");
+  const desKeyPath = path.join(sharedRoot, "roundcube.des.key");
+
+  if (!(await pathExists(packageRoot)) || !(await pathExists(schemaPath))) {
+    return {
+      packageTargets: packageResult.configuredTargets,
+      packageRoot,
+      configPath,
+      databasePath,
+      deploymentMode: "absent",
+      sharedRoot
+    };
+  }
+
+  await mkdir(sharedRoot, { recursive: true });
+  await mkdir(tempDir, { recursive: true });
+  await mkdir(logDir, { recursive: true });
+
+  const desKey = await ensureRoundcubeDesKey(desKeyPath);
+  await initializeSqliteDatabase(databasePath, schemaPath);
+  await writeFileAtomic(
+    configPath,
+    renderRoundcubeConfig({
+      databasePath,
+      tempDir,
+      logDir,
+      productName: "SimpleHostMan Webmail",
+      desKey
+    })
+  );
+
+  for (const domain of payload.domains) {
+    const roundcubeDomainRoot = path.join(
+      context.services.mail.roundcubeRoot,
+      domain.tenantSlug,
+      domain.domainName
+    );
+    const webmailDocumentRoot = path.join(roundcubeDomainRoot, "public");
+    await mkdir(roundcubeDomainRoot, { recursive: true });
+    await ensureSymlinkPath(webmailDocumentRoot, packageRoot);
+  }
+
+  return {
+    packageTargets: packageResult.configuredTargets,
+    packageRoot,
+    configPath,
+    databasePath,
+    deploymentMode: "packaged",
+    sharedRoot,
+    disabledHttpdConfPath: await disableRoundcubeDefaultHttpdConf(
+      context.services.mail.roundcubeDefaultHttpdConfPath
+    )
+  };
 }
 
 function extractCodeServerVersion(value?: string): string | undefined {
@@ -995,6 +1366,17 @@ async function executeMailSyncJob(
   try {
     validateMailPayload(payload);
 
+    const configuredMailboxCount = payload.domains.reduce(
+      (count, domain) =>
+        count +
+        domain.mailboxes.filter(
+          (mailbox) =>
+            typeof mailbox.desiredPassword === "string" &&
+            mailbox.desiredPassword.trim().length > 0
+        ).length,
+      0
+    );
+
     await mkdir(context.services.mail.stagingDir, { recursive: true });
     await mkdir(context.services.mail.configRoot, { recursive: true });
     await mkdir(context.services.mail.vmailRoot, { recursive: true });
@@ -1020,6 +1402,54 @@ async function executeMailSyncJob(
       DkimMaterial & { domainName: string; selector: string; webmailHostname: string }
     > = [];
     let missingMailboxCredentialCount = 0;
+    const systemGroupCreated = await ensureSystemGroup(context.services.mail.vmailGroup);
+    const systemUserCreated = await ensureSystemUser(
+      context.services.mail.vmailUser,
+      context.services.mail.vmailGroup,
+      context.services.mail.vmailRoot
+    );
+    const postfixPackages = await ensurePackageTargetsInstalled(
+      context.services.mail.postfixPackageTargets,
+      context.services.mail.postfixServiceName
+    );
+    const dovecotPackages = await ensurePackageTargetsInstalled(
+      context.services.mail.dovecotPackageTargets,
+      context.services.mail.dovecotServiceName
+    );
+    const rspamdPackages = await ensurePackageTargetsInstalled(
+      context.services.mail.rspamdPackageTargets,
+      context.services.mail.rspamdServiceName
+    );
+    const redisPackages = await ensurePackageTargetsInstalled(
+      context.services.mail.redisPackageTargets,
+      context.services.mail.redisServiceName
+    );
+    const roundcubeDeployment = await ensureRoundcubeDeployment(context, payload);
+    const firewallPolicy = await ensureMailFirewallPolicy(context);
+
+    if (!postfixPackages.installed) {
+      throw new Error(
+        `Mail runtime could not verify ${context.services.mail.postfixServiceName} after package install.`
+      );
+    }
+
+    if (!dovecotPackages.installed) {
+      throw new Error(
+        `Mail runtime could not verify ${context.services.mail.dovecotServiceName} after package install.`
+      );
+    }
+
+    if (!redisPackages.installed) {
+      throw new Error(
+        `Mail runtime could not verify ${context.services.mail.redisServiceName} after package install.`
+      );
+    }
+
+    if (roundcubeDeployment.deploymentMode !== "packaged") {
+      throw new Error(
+        `Roundcube deployment is incomplete. Package root ${roundcubeDeployment.packageRoot} is unavailable.`
+      );
+    }
 
     for (const domain of payload.domains) {
       await mkdir(path.join(context.services.mail.vmailRoot, domain.domainName), {
@@ -1036,23 +1466,6 @@ async function executeMailSyncJob(
         selector: domain.dkimSelector,
         webmailHostname: domain.webmailHostname
       });
-      const roundcubeDomainRoot = path.join(
-        context.services.mail.roundcubeRoot,
-        domain.tenantSlug,
-        domain.domainName
-      );
-      const webmailDocumentRoot = path.join(roundcubeDomainRoot, "public");
-      const placeholderIndexPath = path.join(webmailDocumentRoot, "index.html");
-
-      await mkdir(roundcubeDomainRoot, { recursive: true });
-      await mkdir(webmailDocumentRoot, { recursive: true });
-
-      if (!(await pathExists(placeholderIndexPath))) {
-        await writeFileAtomic(
-          placeholderIndexPath,
-          renderWebmailPlaceholder(domain.domainName, domain.webmailHostname)
-        );
-      }
 
       for (const mailbox of domain.mailboxes) {
         const homePath = deriveMailHomePath(
@@ -1146,10 +1559,8 @@ async function executeMailSyncJob(
       )
     );
 
-    await writeFileAtomic(
-      context.services.mail.statePath,
-      renderMailDesiredState(payload)
-    );
+    const renderedDesiredState = renderMailDesiredState(payload);
+    await writeFileAtomic(context.services.mail.statePath, renderedDesiredState);
     const deployedPostfixDomainsPath = path.join(postfixConfigDir, "vmail_domains");
     const deployedPostfixMailboxesPath = path.join(postfixConfigDir, "vmail_mailboxes");
     const deployedPostfixAliasesPath = path.join(postfixConfigDir, "vmail_aliases");
@@ -1198,11 +1609,47 @@ async function executeMailSyncJob(
       )
     );
 
+    await ensureOwnedPath(
+      context.services.mail.vmailRoot,
+      context.services.mail.vmailUser,
+      context.services.mail.vmailGroup
+    );
+
+    if (
+      (await commandSucceeded("getent", ["passwd", context.services.mail.roundcubeUser])) &&
+      (await commandSucceeded("getent", ["group", context.services.mail.roundcubeGroup]))
+    ) {
+      await ensureOwnedPath(
+        context.services.mail.roundcubeSharedRoot,
+        context.services.mail.roundcubeUser,
+        context.services.mail.roundcubeGroup
+      );
+    }
+
+    const postfixService = await ensureServiceEnabledAndRestarted(
+      context.services.mail.postfixServiceName
+    );
+    const dovecotService = await ensureServiceEnabledAndRestarted(
+      context.services.mail.dovecotServiceName
+    );
+    const rspamdService = await ensureServiceEnabledAndRestarted(
+      context.services.mail.rspamdServiceName
+    );
+    const redisService = await ensureServiceEnabledAndRestarted(
+      context.services.mail.redisServiceName
+    );
+
+    const resetRequiredMailboxCount = missingMailboxCredentialCount;
+    const summary =
+      resetRequiredMailboxCount > 0
+        ? `Applied mail runtime for ${payload.domains.length} domain(s); ${resetRequiredMailboxCount} mailbox credential(s) remain reset-required.`
+        : `Applied mail runtime for ${payload.domains.length} domain(s).`;
+
     return createCompletedResult(
       job,
       context,
       "applied",
-      `Rendered mail runtime artifacts for ${payload.domains.length} domain(s).`,
+      summary,
       {
         stagedStatePath,
         deployedStatePath: context.services.mail.statePath,
@@ -1210,6 +1657,28 @@ async function executeMailSyncJob(
         vmailRoot: context.services.mail.vmailRoot,
         dkimRoot: context.services.mail.dkimRoot,
         roundcubeRoot: context.services.mail.roundcubeRoot,
+        systemUsers: {
+          vmailUser: context.services.mail.vmailUser,
+          vmailGroup: context.services.mail.vmailGroup,
+          groupCreated: systemGroupCreated,
+          userCreated: systemUserCreated
+        },
+        packageTargets: {
+          postfix: postfixPackages,
+          dovecot: dovecotPackages,
+          rspamd: rspamdPackages,
+          redis: redisPackages,
+          roundcube: {
+            configuredTargets: roundcubeDeployment.packageTargets,
+            packageRoot: roundcubeDeployment.packageRoot,
+            configPath: roundcubeDeployment.configPath,
+            databasePath: roundcubeDeployment.databasePath,
+            deploymentMode: roundcubeDeployment.deploymentMode,
+            sharedRoot: roundcubeDeployment.sharedRoot,
+            disabledHttpdConfPath: roundcubeDeployment.disabledHttpdConfPath
+          }
+        },
+        firewall: firewallPolicy,
         postfixMapPaths: {
           stagedDomains: stagedPostfixDomainsPath,
           stagedMailboxes: stagedPostfixMailboxesPath,
@@ -1238,7 +1707,14 @@ async function executeMailSyncJob(
         dovecotServiceName: context.services.mail.dovecotServiceName,
         rspamdServiceName: context.services.mail.rspamdServiceName,
         redisServiceName: context.services.mail.redisServiceName,
-        missingMailboxCredentialCount,
+        serviceState: {
+          postfix: postfixService,
+          dovecot: dovecotService,
+          rspamd: rspamdService,
+          redis: redisService
+        },
+        configuredMailboxCount,
+        resetRequiredMailboxCount,
         domains: payload.domains.map((domain) => ({
           domainName: domain.domainName,
           deliveryRole: domain.deliveryRole,

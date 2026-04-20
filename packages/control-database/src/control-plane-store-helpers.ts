@@ -571,21 +571,47 @@ export function normalizeMailSnapshot(value: unknown): MailServiceSnapshot | und
     postfixServiceName: record.postfixServiceName,
     postfixEnabled: Boolean(record.postfixEnabled),
     postfixActive: Boolean(record.postfixActive),
+    postfixInstalled: Boolean(record.postfixInstalled),
     dovecotServiceName: record.dovecotServiceName,
     dovecotEnabled: Boolean(record.dovecotEnabled),
     dovecotActive: Boolean(record.dovecotActive),
+    dovecotInstalled: Boolean(record.dovecotInstalled),
     rspamdServiceName: record.rspamdServiceName,
     rspamdEnabled: Boolean(record.rspamdEnabled),
     rspamdActive: Boolean(record.rspamdActive),
+    rspamdInstalled: Boolean(record.rspamdInstalled),
     redisServiceName: record.redisServiceName,
     redisEnabled: Boolean(record.redisEnabled),
     redisActive: Boolean(record.redisActive),
+    redisInstalled: Boolean(record.redisInstalled),
     configRoot: typeof record.configRoot === "string" ? record.configRoot : undefined,
     statePath: typeof record.statePath === "string" ? record.statePath : undefined,
     vmailRoot: typeof record.vmailRoot === "string" ? record.vmailRoot : undefined,
     dkimRoot: typeof record.dkimRoot === "string" ? record.dkimRoot : undefined,
     roundcubeRoot:
       typeof record.roundcubeRoot === "string" ? record.roundcubeRoot : undefined,
+    roundcubeSharedRoot:
+      typeof record.roundcubeSharedRoot === "string" ? record.roundcubeSharedRoot : undefined,
+    roundcubeConfigPath:
+      typeof record.roundcubeConfigPath === "string" ? record.roundcubeConfigPath : undefined,
+    roundcubeDatabasePath:
+      typeof record.roundcubeDatabasePath === "string"
+        ? record.roundcubeDatabasePath
+        : undefined,
+    roundcubeDeployment:
+      record.roundcubeDeployment === "packaged" ||
+      record.roundcubeDeployment === "placeholder" ||
+      record.roundcubeDeployment === "absent"
+        ? record.roundcubeDeployment
+        : undefined,
+    firewallServiceName:
+      typeof record.firewallServiceName === "string" ? record.firewallServiceName : undefined,
+    firewallConfigured:
+      typeof record.firewallConfigured === "boolean"
+        ? record.firewallConfigured
+        : undefined,
+    configuredMailboxCount: Number(record.configuredMailboxCount ?? 0),
+    resetRequiredMailboxCount: Number(record.resetRequiredMailboxCount ?? 0),
     managedDomains,
     checkedAt: typeof record.checkedAt === "string" ? record.checkedAt : new Date(0).toISOString()
   };

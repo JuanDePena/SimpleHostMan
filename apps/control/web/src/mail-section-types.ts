@@ -57,6 +57,7 @@ export interface LocalizedMailCopy {
   selectedQuotaTitle: string;
   createLabel: string;
   editLabel: string;
+  resetLabel: string;
   deleteLabel: string;
   actionsLabel: string;
   openEditorLabel: string;
@@ -90,6 +91,7 @@ export interface LocalizedMailCopy {
   saveDomainLabel: string;
   deleteDomainLabel: string;
   saveMailboxLabel: string;
+  resetMailboxCredentialLabel: string;
   deleteMailboxLabel: string;
   saveAliasLabel: string;
   deleteAliasLabel: string;

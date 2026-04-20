@@ -167,7 +167,10 @@ export function renderMailSectionContent(args: {
         : escapeHtml(copy.none),
       renderRowActionButtons(
         `mail-mailbox-edit-${toModalIdSegment(mailbox.address)}`,
-        `mail-mailbox-delete-${toModalIdSegment(mailbox.address)}`
+        `mail-mailbox-delete-${toModalIdSegment(mailbox.address)}`,
+        {
+          resetModalId: `mail-mailbox-reset-${toModalIdSegment(mailbox.address)}`
+        }
       )
     ],
     searchText: [
@@ -325,11 +328,22 @@ export function renderMailSectionContent(args: {
     )}">${escapeHtml(mailCopy.createLabel)}</button>`;
   }
 
-  function renderRowActionButtons(editModalId: string, deleteModalId: string): string {
+  function renderRowActionButtons(
+    editModalId: string,
+    deleteModalId: string,
+    options?: { resetModalId?: string }
+  ): string {
     return `<div class="table-row-actions">
       <button type="button" class="secondary" data-overlay-trigger data-modal-id="${escapeHtml(
         editModalId
       )}">${escapeHtml(mailCopy.editLabel)}</button>
+      ${
+        options?.resetModalId
+          ? `<button type="button" class="secondary" data-overlay-trigger data-modal-id="${escapeHtml(
+              options.resetModalId
+            )}">${escapeHtml(mailCopy.resetLabel)}</button>`
+          : ""
+      }
       <button type="button" class="danger" data-overlay-trigger data-modal-id="${escapeHtml(
         deleteModalId
       )}">${escapeHtml(mailCopy.deleteLabel)}</button>
@@ -547,6 +561,7 @@ export function renderMailSectionContent(args: {
   const mailboxRowModals = data.mail.mailboxes
     .map((mailbox) => {
       const editModalId = `mail-mailbox-edit-${toModalIdSegment(mailbox.address)}`;
+      const resetModalId = `mail-mailbox-reset-${toModalIdSegment(mailbox.address)}`;
       const deleteModalId = `mail-mailbox-delete-${toModalIdSegment(mailbox.address)}`;
 
       return [
@@ -565,6 +580,22 @@ export function renderMailSectionContent(args: {
             },
             true
           )
+        ),
+        renderModalShell(
+          resetModalId,
+          mailCopy.resetMailboxCredentialLabel,
+          mailCopy.modalDeleteDescription,
+          `<div class="action-card-context">
+            <span class="action-card-context-title">${escapeHtml(mailCopy.selectedRecordLabel)}</span>
+            <p class="mono">${escapeHtml(mailbox.address)}</p>
+          </div>
+          <form method="post" action="/resources/mail/mailboxes/reset-credential" class="stack">
+            <input type="hidden" name="mailboxAddress" value="${escapeHtml(mailbox.address)}" />
+            <input type="hidden" name="returnTo" value="${escapeHtml(returnTo)}" />
+            <div class="toolbar">
+              <button class="secondary" type="submit">${escapeHtml(mailCopy.resetMailboxCredentialLabel)}</button>
+            </div>
+          </form>`
         ),
         renderDeleteModal(
           deleteModalId,

@@ -82,6 +82,9 @@ function createStubApi(
     upsertMailbox: async () => {
       throw new Error("Unexpected mailbox upsert in test");
     },
+    resetMailboxCredential: async () => {
+      throw new Error("Unexpected mailbox credential reset in test");
+    },
     deleteMailbox: async () => {
       throw new Error("Unexpected mailbox delete in test");
     },

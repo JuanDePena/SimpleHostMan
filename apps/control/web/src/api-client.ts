@@ -22,6 +22,7 @@ import {
   type PackageInventoryRefreshRequest,
   type PackageInventorySnapshot,
   type ProxyRenderPayload,
+  type ResetMailboxCredentialRequest,
   type ResourceDriftSummary,
   type RustDeskPublicConnectionInfo
   ,
@@ -99,6 +100,7 @@ export interface ControlWebApi extends ControlAuthSurface {
   upsertMailDomain(token: string, request: UpsertMailDomainRequest): Promise<void>;
   deleteMailDomain(token: string, domainName: string): Promise<void>;
   upsertMailbox(token: string, request: UpsertMailboxRequest): Promise<void>;
+  resetMailboxCredential(token: string, request: ResetMailboxCredentialRequest): Promise<void>;
   deleteMailbox(token: string, address: string): Promise<void>;
   upsertMailAlias(token: string, request: UpsertMailAliasRequest): Promise<void>;
   deleteMailAlias(token: string, address: string): Promise<void>;
@@ -357,6 +359,16 @@ export function createControlWebApiFromRequest(request: ControlWebApiRequest): C
         method: "POST",
         token,
         body: upsertRequest
+      });
+    },
+    async resetMailboxCredential(
+      token: string,
+      resetRequest: ResetMailboxCredentialRequest
+    ): Promise<void> {
+      await request("/v1/mail/mailboxes/reset-credential", {
+        method: "POST",
+        token,
+        body: resetRequest
       });
     },
     async deleteMailbox(token: string, address: string): Promise<void> {

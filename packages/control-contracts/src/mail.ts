@@ -37,3 +37,7 @@ export interface UpsertMailboxRequest extends DesiredStateMailboxInput {}
 export interface UpsertMailAliasRequest extends DesiredStateMailAliasInput {}
 
 export interface UpsertMailboxQuotaRequest extends DesiredStateMailboxQuotaInput {}
+
+export interface ResetMailboxCredentialRequest {
+  mailboxAddress: string;
+}

@@ -54,12 +54,28 @@ export interface AgentRuntimeConfig {
       statePath: string;
       configRoot: string;
       vmailRoot: string;
+      vmailUser: string;
+      vmailGroup: string;
       dkimRoot: string;
       roundcubeRoot: string;
+      roundcubeSharedRoot: string;
+      roundcubeUser: string;
+      roundcubeGroup: string;
+      roundcubeConfigPath: string;
+      roundcubeDatabasePath: string;
+      roundcubePackageRoot: string;
+      roundcubeDefaultHttpdConfPath: string;
+      firewallServiceName: string;
+      firewallServicePath: string;
       postfixServiceName: string;
       dovecotServiceName: string;
       rspamdServiceName: string;
       redisServiceName: string;
+      postfixPackageTargets: string[];
+      dovecotPackageTargets: string[];
+      rspamdPackageTargets: string[];
+      redisPackageTargets: string[];
+      roundcubePackageTargets: string[];
     };
     apps: {
       rootDir: string;
@@ -104,6 +120,17 @@ function readPositiveInt(value: string | undefined, fallback: number): number {
 
 function readOptionalString(value: string | undefined): string | null {
   return value && value.trim().length > 0 ? value.trim() : null;
+}
+
+function readList(value: string | undefined, fallback: string[]): string[] {
+  if (!value || value.trim().length === 0) {
+    return [...fallback];
+  }
+
+  return value
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter((entry, index, entries) => entry.length > 0 && entries.indexOf(entry) === index);
 }
 
 export function createAgentRuntimeConfig(
@@ -218,6 +245,8 @@ export function createAgentRuntimeConfig(
           env.SIMPLEHOST_MAIL_VMAIL_ROOT,
           "/srv/mail/vmail"
         ),
+        vmailUser: readString(env.SIMPLEHOST_MAIL_VMAIL_USER, "vmail"),
+        vmailGroup: readString(env.SIMPLEHOST_MAIL_VMAIL_GROUP, "vmail"),
         dkimRoot: readString(
           env.SIMPLEHOST_MAIL_DKIM_ROOT,
           "/srv/mail/dkim"
@@ -225,6 +254,42 @@ export function createAgentRuntimeConfig(
         roundcubeRoot: readString(
           env.SIMPLEHOST_MAIL_ROUNDCUBE_ROOT,
           "/srv/www/roundcube"
+        ),
+        roundcubeSharedRoot: readString(
+          env.SIMPLEHOST_MAIL_ROUNDCUBE_SHARED_ROOT,
+          "/srv/www/roundcube/_shared"
+        ),
+        roundcubeUser: readString(
+          env.SIMPLEHOST_MAIL_ROUNDCUBE_USER,
+          "apache"
+        ),
+        roundcubeGroup: readString(
+          env.SIMPLEHOST_MAIL_ROUNDCUBE_GROUP,
+          "apache"
+        ),
+        roundcubeConfigPath: readString(
+          env.SIMPLEHOST_MAIL_ROUNDCUBE_CONFIG_PATH,
+          "/etc/roundcubemail/config.inc.php"
+        ),
+        roundcubeDatabasePath: readString(
+          env.SIMPLEHOST_MAIL_ROUNDCUBE_DATABASE_PATH,
+          "/srv/www/roundcube/_shared/roundcube.sqlite"
+        ),
+        roundcubePackageRoot: readString(
+          env.SIMPLEHOST_MAIL_ROUNDCUBE_PACKAGE_ROOT,
+          "/usr/share/roundcubemail"
+        ),
+        roundcubeDefaultHttpdConfPath: readString(
+          env.SIMPLEHOST_MAIL_ROUNDCUBE_DEFAULT_HTTPD_CONF_PATH,
+          "/etc/httpd/conf.d/roundcubemail.conf"
+        ),
+        firewallServiceName: readString(
+          env.SIMPLEHOST_MAIL_FIREWALL_SERVICE_NAME,
+          "simplehost-mail"
+        ),
+        firewallServicePath: readString(
+          env.SIMPLEHOST_MAIL_FIREWALL_SERVICE_PATH,
+          "/etc/firewalld/services/simplehost-mail.xml"
         ),
         postfixServiceName: readString(
           env.SIMPLEHOST_MAIL_POSTFIX_SERVICE_NAME,
@@ -240,7 +305,27 @@ export function createAgentRuntimeConfig(
         ),
         redisServiceName: readString(
           env.SIMPLEHOST_MAIL_REDIS_SERVICE_NAME,
-          "redis.service"
+          "valkey.service"
+        ),
+        postfixPackageTargets: readList(
+          env.SIMPLEHOST_MAIL_POSTFIX_PACKAGE_TARGETS,
+          ["postfix"]
+        ),
+        dovecotPackageTargets: readList(
+          env.SIMPLEHOST_MAIL_DOVECOT_PACKAGE_TARGETS,
+          ["dovecot"]
+        ),
+        rspamdPackageTargets: readList(
+          env.SIMPLEHOST_MAIL_RSPAMD_PACKAGE_TARGETS,
+          []
+        ),
+        redisPackageTargets: readList(
+          env.SIMPLEHOST_MAIL_REDIS_PACKAGE_TARGETS,
+          ["valkey"]
+        ),
+        roundcubePackageTargets: readList(
+          env.SIMPLEHOST_MAIL_ROUNDCUBE_PACKAGE_TARGETS,
+          ["roundcubemail", "sqlite"]
         )
       },
       apps: {

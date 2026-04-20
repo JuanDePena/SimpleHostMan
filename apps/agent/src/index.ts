@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readFile, readdir } from "node:fs/promises";
+import { lstat, readFile, readdir } from "node:fs/promises";
 import { realpathSync } from "node:fs";
 import path from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -144,6 +144,34 @@ async function commandOutput(
   } catch {
     return undefined;
   }
+}
+
+async function pathExists(targetPath: string): Promise<boolean> {
+  try {
+    await lstat(targetPath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function namedPackageTargetsInstalled(targets: string[]): Promise<boolean> {
+  const namedTargets = targets.filter(
+    (target) =>
+      target.trim().length > 0 &&
+      !target.includes("/") &&
+      !/^[a-z]+:\/\//i.test(target)
+  );
+
+  if (namedTargets.length === 0) {
+    return false;
+  }
+
+  const installed = await Promise.all(
+    namedTargets.map((target) => commandOutput("rpm", ["-q", target]))
+  );
+
+  return installed.every((value) => value !== undefined && value.trim().length > 0);
 }
 
 function extractCodeServerVersion(value?: string): string | undefined {
@@ -309,12 +337,22 @@ async function inspectMail(): Promise<MailServiceSnapshot> {
     dovecotServiceName,
     rspamdServiceName,
     redisServiceName,
+    postfixPackageTargets,
+    dovecotPackageTargets,
+    rspamdPackageTargets,
+    redisPackageTargets,
     configRoot,
     statePath,
     vmailRoot,
     dkimRoot,
-    roundcubeRoot
+    roundcubeRoot,
+    roundcubeSharedRoot,
+    roundcubeConfigPath,
+    roundcubeDatabasePath,
+    roundcubePackageRoot,
+    firewallServiceName
   } = config.services.mail;
+
   const [
     postfixEnabledState,
     postfixActiveState,
@@ -324,7 +362,15 @@ async function inspectMail(): Promise<MailServiceSnapshot> {
     rspamdActiveState,
     redisEnabledState,
     redisActiveState,
-    desiredStateContent
+    desiredStateContent,
+    postfixInstalled,
+    dovecotInstalled,
+    rspamdInstalled,
+    redisInstalled,
+    roundcubePackageRootExists,
+    roundcubeConfigExists,
+    roundcubeDatabaseExists,
+    firewallConfigured
   ] = await Promise.all([
     commandOutput("systemctl", ["is-enabled", postfixServiceName]),
     commandOutput("systemctl", ["is-active", postfixServiceName]),
@@ -334,40 +380,88 @@ async function inspectMail(): Promise<MailServiceSnapshot> {
     commandOutput("systemctl", ["is-active", rspamdServiceName]),
     commandOutput("systemctl", ["is-enabled", redisServiceName]),
     commandOutput("systemctl", ["is-active", redisServiceName]),
-    readFile(statePath, "utf8").catch(() => undefined)
+    readFile(statePath, "utf8").catch(() => undefined),
+    namedPackageTargetsInstalled(postfixPackageTargets),
+    namedPackageTargetsInstalled(dovecotPackageTargets),
+    namedPackageTargetsInstalled(rspamdPackageTargets),
+    namedPackageTargetsInstalled(redisPackageTargets),
+    pathExists(roundcubePackageRoot),
+    pathExists(roundcubeConfigPath),
+    pathExists(roundcubeDatabasePath),
+    commandOutput("firewall-cmd", [
+      "--permanent",
+      "--query-service",
+      firewallServiceName
+    ]).then((value) => value === "yes")
   ]);
 
+  const postfixInstalledResolved = postfixEnabledState !== undefined || postfixInstalled;
+  const dovecotInstalledResolved = dovecotEnabledState !== undefined || dovecotInstalled;
+  const rspamdInstalledResolved = rspamdEnabledState !== undefined || rspamdInstalled;
+  const redisInstalledResolved = redisEnabledState !== undefined || redisInstalled;
+
   let managedDomains: MailServiceSnapshot["managedDomains"] = [];
+  let configuredMailboxCount = 0;
+  let resetRequiredMailboxCount = 0;
 
   if (desiredStateContent) {
     try {
-      const parsed = JSON.parse(desiredStateContent) as MailSyncPayload;
+      const parsed = JSON.parse(desiredStateContent) as {
+        domains?: Array<{
+          domainName: string;
+          mailHost: string;
+          webmailHostname: string;
+          deliveryRole: MailSyncPayload["domains"][number]["deliveryRole"];
+          aliases?: unknown[];
+          mailboxes?: Array<{ credentialState?: string }>;
+        }>;
+      };
       managedDomains = Array.isArray(parsed.domains)
         ? parsed.domains.map((domain) => ({
             domainName: domain.domainName,
             mailHost: domain.mailHost,
             webmailHostname: domain.webmailHostname,
             deliveryRole: domain.deliveryRole,
-            mailboxCount: domain.mailboxes.length,
-            aliasCount: domain.aliases.length
+            mailboxCount: Array.isArray(domain.mailboxes) ? domain.mailboxes.length : 0,
+            aliasCount: Array.isArray(domain.aliases) ? domain.aliases.length : 0
           }))
         : [];
+      for (const domain of parsed.domains ?? []) {
+        for (const mailbox of domain.mailboxes ?? []) {
+          if (mailbox.credentialState === "configured") {
+            configuredMailboxCount += 1;
+          } else {
+            resetRequiredMailboxCount += 1;
+          }
+        }
+      }
     } catch {
       managedDomains = [];
     }
   }
 
+  const roundcubeDeployment: MailServiceSnapshot["roundcubeDeployment"] =
+    roundcubePackageRootExists && roundcubeConfigExists && roundcubeDatabaseExists
+      ? "packaged"
+      : managedDomains.length > 0
+        ? "placeholder"
+        : "absent";
+
   return {
     postfixServiceName,
+    postfixInstalled: postfixInstalledResolved,
     postfixEnabled: postfixEnabledState !== undefined && postfixEnabledState !== "disabled",
     postfixActive: postfixActiveState === "active",
     dovecotServiceName,
+    dovecotInstalled: dovecotInstalledResolved,
     dovecotEnabled: dovecotEnabledState !== undefined && dovecotEnabledState !== "disabled",
     dovecotActive: dovecotActiveState === "active",
     rspamdServiceName,
+    rspamdInstalled: rspamdInstalledResolved,
     rspamdEnabled: rspamdEnabledState !== undefined && rspamdEnabledState !== "disabled",
     rspamdActive: rspamdActiveState === "active",
     redisServiceName,
+    redisInstalled: redisInstalledResolved,
     redisEnabled: redisEnabledState !== undefined && redisEnabledState !== "disabled",
     redisActive: redisActiveState === "active",
     configRoot,
@@ -375,6 +469,14 @@ async function inspectMail(): Promise<MailServiceSnapshot> {
     vmailRoot,
     dkimRoot,
     roundcubeRoot,
+    roundcubeSharedRoot,
+    roundcubeConfigPath,
+    roundcubeDatabasePath,
+    roundcubeDeployment,
+    firewallServiceName,
+    firewallConfigured,
+    configuredMailboxCount,
+    resetRequiredMailboxCount,
     managedDomains,
     checkedAt
   };

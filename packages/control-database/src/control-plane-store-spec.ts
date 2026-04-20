@@ -399,6 +399,9 @@ export async function applyDesiredStateSpec(
     (mailDomain) => `mail-domain-${mailDomain.domainName}`
   );
   const desiredMailboxIds = spec.mailboxes.map((mailbox) => `mailbox-${mailbox.address}`);
+  const desiredMailboxCredentialIds = spec.mailboxes
+    .filter((mailbox) => typeof mailbox.desiredPassword === "string" && mailbox.desiredPassword.length > 0)
+    .map((mailbox) => `mailbox-${mailbox.address}`);
   const desiredMailAliasIds = spec.mailAliases.map((mailAlias) => `mail-alias-${mailAlias.address}`);
 
   for (const tenant of spec.tenants) {
@@ -805,7 +808,7 @@ export async function applyDesiredStateSpec(
   await client.query(
     `DELETE FROM shp_mailbox_credentials
      WHERE NOT (mailbox_id = ANY($1::text[]))`,
-    [desiredMailboxIds]
+    [desiredMailboxCredentialIds]
   );
   await client.query(
     `DELETE FROM shp_mail_aliases
@@ -1827,6 +1830,30 @@ export function createControlPlaneSpecMethods(
         (spec) => ({
           ...spec,
           mailboxes: upsertSpecItem(spec.mailboxes, request, (item) => item.address)
+        })
+      );
+    },
+
+    async resetMailboxCredential(request, presentedToken) {
+      return mutateDesiredStateAsUser(
+        presentedToken,
+        `mailbox-credential.reset:${request.mailboxAddress}`,
+        "mail.mailbox_credential.reset",
+        "mailbox",
+        request.mailboxAddress,
+        (spec) => ({
+          ...spec,
+          mailboxes: spec.mailboxes.map((mailbox) =>
+            mailbox.address === request.mailboxAddress
+              ? {
+                  address: mailbox.address,
+                  domainName: mailbox.domainName,
+                  localPart: mailbox.localPart,
+                  primaryNodeId: mailbox.primaryNodeId,
+                  standbyNodeId: mailbox.standbyNodeId
+                }
+              : mailbox
+          )
         })
       );
     },

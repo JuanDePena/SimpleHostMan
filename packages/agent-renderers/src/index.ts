@@ -130,7 +130,67 @@ export function renderQuadletContainerUnit(
 }
 
 export function renderMailDesiredState(payload: MailSyncPayload): string {
-  return JSON.stringify(payload, null, 2);
+  return JSON.stringify(
+    {
+      generatedAt: payload.generatedAt,
+      domains: payload.domains.map((domain) => ({
+        ...domain,
+        mailboxes: domain.mailboxes.map(({ desiredPassword, ...mailbox }) => ({
+          ...mailbox,
+          credentialState: desiredPassword ? "configured" : "reset_required"
+        }))
+      }))
+    },
+    null,
+    2
+  );
+}
+
+function escapePhpString(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+}
+
+export function renderRoundcubeConfig(options: {
+  databasePath: string;
+  tempDir: string;
+  logDir: string;
+  productName: string;
+  desKey: string;
+}): string {
+  return [
+    "<?php",
+    "",
+    "$config = [];",
+    `$config['db_dsnw'] = 'sqlite:${escapePhpString(options.databasePath)}';`,
+    `$config['default_host'] = 'ssl://127.0.0.1';`,
+    "$config['default_port'] = 993;",
+    `$config['smtp_server'] = 'tls://127.0.0.1';`,
+    "$config['smtp_port'] = 587;",
+    "$config['smtp_user'] = '%u';",
+    "$config['smtp_pass'] = '%p';",
+    "$config['support_url'] = '';",
+    `$config['product_name'] = '${escapePhpString(options.productName)}';`,
+    `$config['des_key'] = '${escapePhpString(options.desKey)}';`,
+    "$config['plugins'] = ['archive', 'zipdownload'];",
+    "$config['skin'] = 'elastic';",
+    `$config['temp_dir'] = '${escapePhpString(options.tempDir)}';`,
+    `$config['log_dir'] = '${escapePhpString(options.logDir)}';`,
+    "$config['enable_installer'] = false;",
+    ""
+  ].join("\n");
+}
+
+export function renderMailFirewalldService(serviceName: string): string {
+  return [
+    '<?xml version="1.0" encoding="utf-8"?>',
+    "<service>",
+    `  <short>${serviceName}</short>`,
+    "  <description>SimpleHostMan mail ingress</description>",
+    '  <port protocol="tcp" port="25"/>',
+    '  <port protocol="tcp" port="587"/>',
+    '  <port protocol="tcp" port="993"/>',
+    "</service>"
+  ].join("\n");
 }
 
 interface MailboxPasswordEntry {

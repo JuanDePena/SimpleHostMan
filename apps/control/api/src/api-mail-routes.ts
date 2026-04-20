@@ -1,4 +1,5 @@
 import type {
+  ResetMailboxCredentialRequest,
   UpsertMailAliasRequest,
   UpsertMailboxQuotaRequest,
   UpsertMailboxRequest,
@@ -63,6 +64,18 @@ export const handleMailRoutes: ApiRouteHandler = async ({
       200,
       await controlPlaneStore.upsertMailbox(
         await readJsonBody<UpsertMailboxRequest>(request),
+        bearerToken
+      )
+    );
+    return true;
+  }
+
+  if (request.method === "POST" && url.pathname === "/v1/mail/mailboxes/reset-credential") {
+    writeJson(
+      response,
+      200,
+      await controlPlaneStore.resetMailboxCredential(
+        await readJsonBody<ResetMailboxCredentialRequest>(request),
         bearerToken
       )
     );

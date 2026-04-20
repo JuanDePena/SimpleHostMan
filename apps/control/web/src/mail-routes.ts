@@ -95,6 +95,22 @@ export const handleMailRoute: WebRouteHandler = async ({
     return true;
   }
 
+  if (request.method === "POST" && url.pathname === "/resources/mail/mailboxes/reset-credential") {
+    const token = await requireSessionToken({ requireSession });
+    const form = await readFormBody(request);
+    const mailboxAddress = form.get("mailboxAddress")?.trim() ?? "";
+    await api.resetMailboxCredential(token, { mailboxAddress });
+    redirect(
+      response,
+      noticeReturnTo(
+        form.get("returnTo") ?? buildDashboardViewUrl("mail"),
+        `Reset mailbox credential for ${mailboxAddress}.`,
+        "success"
+      )
+    );
+    return true;
+  }
+
   if (request.method === "POST" && url.pathname === "/resources/mail/aliases/upsert") {
     const token = await requireSessionToken({ requireSession });
     const form = await readFormBody(request);
