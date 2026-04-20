@@ -307,10 +307,7 @@ export function renderDovecotPasswd(entries: MailboxPasswordEntry[]): string {
     .join("\n");
 }
 
-export function renderDovecotMailConf(
-  configRoot: string,
-  postmasterAddress: string
-): string {
+export function renderDovecotMailConf(passwdPath: string, postmasterAddress: string): string {
   return [
     "# SimpleHost generated dovecot mail snippet",
     "protocols = imap pop3 lmtp",
@@ -321,11 +318,11 @@ export function renderDovecotMailConf(
     "last_valid_uid = 0",
     "passdb {",
     "  driver = passwd-file",
-    `  args = scheme=SHA512-CRYPT username_format=%u ${configRoot}/dovecot/passwd`,
+    `  args = scheme=SHA512-CRYPT username_format=%u ${passwdPath}`,
     "}",
     "userdb {",
     "  driver = passwd-file",
-    `  args = username_format=%u ${configRoot}/dovecot/passwd`,
+    `  args = username_format=%u ${passwdPath}`,
     "}",
     "service imap-login {",
     "  inet_listener imap {",

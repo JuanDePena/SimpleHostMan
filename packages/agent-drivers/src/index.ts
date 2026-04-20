@@ -660,6 +660,9 @@ async function ensureMailFirewallPolicy(context: DriverExecutionContext): Promis
     context.services.mail.firewallServicePath,
     renderMailFirewalldService(context.services.mail.firewallServiceName)
   );
+  await execFileAsync("firewall-cmd", ["--reload"], {
+    encoding: "utf8"
+  });
   await execFileAsync(
     "firewall-cmd",
     ["--permanent", "--add-service", context.services.mail.firewallServiceName],
@@ -696,7 +699,14 @@ async function applyPostfixMasterCfConfiguration(content: string): Promise<void>
 }
 
 async function ensureDovecotLiveConfiguration(sourcePath: string): Promise<void> {
-  await ensureSymlinkPath("/etc/dovecot/conf.d/90-simplehost-mail.conf", sourcePath);
+  const content = await readFile(sourcePath, "utf8");
+  await writeFileAtomic("/etc/dovecot/conf.d/90-simplehost-mail.conf", content);
+}
+
+async function ensureDovecotPasswdFile(sourcePath: string): Promise<void> {
+  const content = await readFile(sourcePath, "utf8");
+  await writeFileAtomic("/etc/dovecot/passwd", content);
+  await chmod("/etc/dovecot/passwd", 0o640);
 }
 
 function deriveMailHomePath(
@@ -1611,7 +1621,7 @@ async function executeMailSyncJob(
     const stagedDovecotConfPath = await writeRenderedFile(
       context.services.mail.stagingDir,
       "dovecot-90-simplehost-mail.conf",
-      renderDovecotMailConf(context.services.mail.configRoot, postmasterAddress)
+      renderDovecotMailConf("/etc/dovecot/passwd", postmasterAddress)
     );
     const stagedRspamdSelectorsPath = await writeRenderedFile(
       context.services.mail.stagingDir,
@@ -1669,7 +1679,7 @@ async function executeMailSyncJob(
     );
     await writeFileAtomic(
       deployedDovecotConfPath,
-      renderDovecotMailConf(context.services.mail.configRoot, postmasterAddress)
+      renderDovecotMailConf("/etc/dovecot/passwd", postmasterAddress)
     );
     await writeFileAtomic(
       deployedRspamdSelectorsPath,
@@ -1706,6 +1716,7 @@ async function executeMailSyncJob(
       renderPostfixMainCf(context.services.mail.configRoot, postmasterAddress)
     );
     await applyPostfixMasterCfConfiguration(renderPostfixMasterCf());
+    await ensureDovecotPasswdFile(deployedDovecotPasswdPath);
     await ensureDovecotLiveConfiguration(deployedDovecotConfPath);
     await execFileAsync("postfix", ["check"], {
       encoding: "utf8"
