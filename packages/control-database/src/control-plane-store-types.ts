@@ -273,6 +273,7 @@ export interface MailDnsDomainRow {
   domain_name: string;
   tenant_slug: string;
   mail_host: string;
+  dkim_selector: string;
   primary_node_id: string;
   public_ipv4: string;
 }

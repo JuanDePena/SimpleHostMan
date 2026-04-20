@@ -52,6 +52,7 @@ import {
   renderDovecotPasswd,
   renderMailFirewalldService,
   renderMailDesiredState,
+  renderMtaStsPolicy,
   renderPostfixMainCf,
   renderPostfixMasterCf,
   renderPostfixVirtualAliases,
@@ -59,7 +60,9 @@ import {
   renderPostfixVirtualMailboxes,
   renderQuadletContainerUnit,
   renderRoundcubeConfig,
+  renderRspamdActionsConf,
   renderRspamdDkimSigningConf,
+  renderRspamdMilterHeadersConf,
   renderRspamdRedisConf,
   renderRspamdSelectorsMap
 } from "@simplehost/agent-renderers";
@@ -106,6 +109,7 @@ export interface DriverExecutionContext {
       statePath: string;
       configRoot: string;
       vmailRoot: string;
+      policyRoot: string;
       vmailUser: string;
       vmailGroup: string;
       dkimRoot: string;
@@ -709,6 +713,14 @@ async function ensureDovecotPasswdFile(sourcePath: string): Promise<void> {
   await chmod("/etc/dovecot/passwd", 0o640);
 }
 
+async function ensureRspamdLiveConfiguration(
+  targetFileName: string,
+  sourcePath: string
+): Promise<void> {
+  const content = await readFile(sourcePath, "utf8");
+  await writeFileAtomic(path.join("/etc/rspamd/local.d", targetFileName), content);
+}
+
 function deriveMailHomePath(
   vmailRoot: string,
   domainName: string,
@@ -941,6 +953,48 @@ async function ensureRoundcubeDeployment(
       context.services.mail.roundcubeDefaultHttpdConfPath
     )
   };
+}
+
+async function ensureMailPolicyDocuments(
+  context: DriverExecutionContext,
+  payload: MailSyncPayload
+): Promise<
+  Array<{
+    domainName: string;
+    documentRoot: string;
+    policyPath: string;
+    mtaStsHostname: string;
+  }>
+> {
+  const results: Array<{
+    domainName: string;
+    documentRoot: string;
+    policyPath: string;
+    mtaStsHostname: string;
+  }> = [];
+
+  for (const domain of payload.domains) {
+    const documentRoot = path.join(
+      context.services.mail.policyRoot,
+      domain.tenantSlug,
+      domain.domainName,
+      "public"
+    );
+    const wellKnownRoot = path.join(documentRoot, ".well-known");
+    const policyPath = path.join(wellKnownRoot, "mta-sts.txt");
+
+    await mkdir(wellKnownRoot, { recursive: true });
+    await writeFileAtomic(policyPath, renderMtaStsPolicy(domain));
+
+    results.push({
+      domainName: domain.domainName,
+      documentRoot,
+      policyPath,
+      mtaStsHostname: domain.mtaStsHostname
+    });
+  }
+
+  return results;
 }
 
 function extractCodeServerVersion(value?: string): string | undefined {
@@ -1400,7 +1454,14 @@ function validateMailPayload(payload: MailSyncPayload): void {
     assertSingleLineValue(domain.zoneName, "Mail zone");
     assertSingleLineValue(domain.mailHost, "Mail host");
     assertSingleLineValue(domain.webmailHostname, "Mail webmail hostname");
+    assertSingleLineValue(domain.mtaStsHostname, "Mail MTA-STS hostname");
     assertSingleLineValue(domain.dkimSelector, "Mail DKIM selector");
+    assertSingleLineValue(domain.dmarcReportAddress, "Mail DMARC report address");
+    assertSingleLineValue(domain.tlsReportAddress, "Mail TLS report address");
+
+    if (!Number.isInteger(domain.mtaStsMaxAgeSeconds) || domain.mtaStsMaxAgeSeconds <= 0) {
+      throw new Error(`Mail MTA-STS max age must be positive for ${domain.domainName}.`);
+    }
 
     if (seenDomains.has(`${domain.domainName}:${domain.deliveryRole}`)) {
       throw new Error(
@@ -1504,6 +1565,7 @@ async function executeMailSyncJob(
       context.services.mail.redisServiceName
     );
     const roundcubeDeployment = await ensureRoundcubeDeployment(context, payload);
+    const mailPolicyDocuments = await ensureMailPolicyDocuments(context, payload);
     const firewallPolicy = await ensureMailFirewallPolicy(context);
 
     if (!postfixPackages.installed) {
@@ -1633,6 +1695,16 @@ async function executeMailSyncJob(
       "rspamd-redis.conf",
       renderRspamdRedisConf()
     );
+    const stagedRspamdActionsPath = await writeRenderedFile(
+      context.services.mail.stagingDir,
+      "rspamd-actions.conf",
+      renderRspamdActionsConf()
+    );
+    const stagedRspamdMilterHeadersPath = await writeRenderedFile(
+      context.services.mail.stagingDir,
+      "rspamd-milter_headers.conf",
+      renderRspamdMilterHeadersConf()
+    );
     const stagedRspamdDkimPath = await writeRenderedFile(
       context.services.mail.stagingDir,
       "rspamd-dkim_signing.conf",
@@ -1654,6 +1726,11 @@ async function executeMailSyncJob(
     const deployedDovecotConfPath = path.join(dovecotConfDir, "90-simplehost-mail.conf");
     const deployedRspamdSelectorsPath = path.join(rspamdConfigDir, "dkim_selectors.map");
     const deployedRspamdRedisPath = path.join(rspamdLocalDir, "redis.conf");
+    const deployedRspamdActionsPath = path.join(rspamdLocalDir, "actions.conf");
+    const deployedRspamdMilterHeadersPath = path.join(
+      rspamdLocalDir,
+      "milter_headers.conf"
+    );
     const deployedRspamdDkimPath = path.join(rspamdLocalDir, "dkim_signing.conf");
 
     await writeFileAtomic(
@@ -1686,6 +1763,11 @@ async function executeMailSyncJob(
       renderRspamdSelectorsMap(payload)
     );
     await writeFileAtomic(deployedRspamdRedisPath, renderRspamdRedisConf());
+    await writeFileAtomic(deployedRspamdActionsPath, renderRspamdActionsConf());
+    await writeFileAtomic(
+      deployedRspamdMilterHeadersPath,
+      renderRspamdMilterHeadersConf()
+    );
     await writeFileAtomic(
       deployedRspamdDkimPath,
       renderRspamdDkimSigningConf(
@@ -1718,6 +1800,13 @@ async function executeMailSyncJob(
     await applyPostfixMasterCfConfiguration(renderPostfixMasterCf());
     await ensureDovecotPasswdFile(deployedDovecotPasswdPath);
     await ensureDovecotLiveConfiguration(deployedDovecotConfPath);
+    await ensureRspamdLiveConfiguration("redis.conf", deployedRspamdRedisPath);
+    await ensureRspamdLiveConfiguration("actions.conf", deployedRspamdActionsPath);
+    await ensureRspamdLiveConfiguration(
+      "milter_headers.conf",
+      deployedRspamdMilterHeadersPath
+    );
+    await ensureRspamdLiveConfiguration("dkim_signing.conf", deployedRspamdDkimPath);
     await execFileAsync("postfix", ["check"], {
       encoding: "utf8"
     });
@@ -1754,6 +1843,7 @@ async function executeMailSyncJob(
         deployedStatePath: context.services.mail.statePath,
         configRoot: context.services.mail.configRoot,
         vmailRoot: context.services.mail.vmailRoot,
+        policyRoot: context.services.mail.policyRoot,
         dkimRoot: context.services.mail.dkimRoot,
         roundcubeRoot: context.services.mail.roundcubeRoot,
         systemUsers: {
@@ -1801,9 +1891,14 @@ async function executeMailSyncJob(
           deployedSelectors: deployedRspamdSelectorsPath,
           stagedRedis: stagedRspamdRedisPath,
           deployedRedis: deployedRspamdRedisPath,
+          stagedActions: stagedRspamdActionsPath,
+          deployedActions: deployedRspamdActionsPath,
+          stagedMilterHeaders: stagedRspamdMilterHeadersPath,
+          deployedMilterHeaders: deployedRspamdMilterHeadersPath,
           stagedDkim: stagedRspamdDkimPath,
           deployedDkim: deployedRspamdDkimPath
         },
+        policyDocuments: mailPolicyDocuments,
         postfixServiceName: context.services.mail.postfixServiceName,
         dovecotServiceName: context.services.mail.dovecotServiceName,
         rspamdServiceName: context.services.mail.rspamdServiceName,
@@ -1822,8 +1917,15 @@ async function executeMailSyncJob(
           mailboxCount: domain.mailboxes.length,
           aliasCount: domain.aliases.length,
           webmailHostname: domain.webmailHostname,
+          mtaStsHostname: domain.mtaStsHostname,
           webmailDocumentRoot: path.join(
             context.services.mail.roundcubeRoot,
+            domain.tenantSlug,
+            domain.domainName,
+            "public"
+          ),
+          mtaStsDocumentRoot: path.join(
+            context.services.mail.policyRoot,
             domain.tenantSlug,
             domain.domainName,
             "public"
@@ -1832,8 +1934,14 @@ async function executeMailSyncJob(
             dkimMaterials.find((material) => material.domainName === domain.domainName)?.privateKeyPath,
           dkimDnsTxtPath:
             dkimMaterials.find((material) => material.domainName === domain.domainName)?.dnsTxtPath,
+          dkimDnsTxtValue:
+            dkimMaterials.find((material) => material.domainName === domain.domainName)?.dnsTxtValue,
           dkimAvailable:
-            dkimMaterials.find((material) => material.domainName === domain.domainName)?.available ?? false
+            dkimMaterials.find((material) => material.domainName === domain.domainName)?.available ?? false,
+          dmarcReportAddress: domain.dmarcReportAddress,
+          tlsReportAddress: domain.tlsReportAddress,
+          mtaStsMode: domain.mtaStsMode,
+          mtaStsMaxAgeSeconds: domain.mtaStsMaxAgeSeconds
         })),
         mailboxes: dovecotPasswdEntries.map((entry) => ({
           address: entry.address,

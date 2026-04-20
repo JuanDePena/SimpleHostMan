@@ -253,6 +253,10 @@ export function renderPostfixMainCf(
     "smtpd_sasl_path = private/auth",
     "smtpd_sasl_auth_enable = yes",
     "smtpd_tls_auth_only = yes",
+    "smtpd_milters = inet:127.0.0.1:11332",
+    "non_smtpd_milters = inet:127.0.0.1:11332",
+    "milter_default_action = accept",
+    "milter_protocol = 6",
     "smtpd_recipient_restrictions = permit_mynetworks, permit_sasl_authenticated, reject_unauth_destination",
     `smtpd_banner = $myhostname ESMTP ${postmasterAddress}`,
     `mydestination = localhost, localhost.localdomain`
@@ -390,6 +394,22 @@ export function renderRspamdRedisConf(): string {
   ].join("\n");
 }
 
+export function renderRspamdActionsConf(): string {
+  return [
+    "# SimpleHost generated rspamd actions snippet",
+    "reject = 15;",
+    "add_header = 6;",
+    "greylist = 4;"
+  ].join("\n");
+}
+
+export function renderRspamdMilterHeadersConf(): string {
+  return [
+    "# SimpleHost generated rspamd milter_headers snippet",
+    'use = ["authentication-results", "x-spam-status", "x-spam-level", "x-spamd-bar"];'
+  ].join("\n");
+}
+
 export function renderRspamdSelectorsMap(payload: MailSyncPayload): string {
   return payload.domains
     .map((domain) => `${domain.domainName} ${domain.dkimSelector}`)
@@ -411,6 +431,15 @@ export function renderRspamdDkimSigningConf(
     'allow_envfrom_empty = true;',
     `selector_map = "${configRoot}/rspamd/dkim_selectors.map";`,
     `path = "${dkimRoot}/$domain/$selector.key";`
+  ].join("\n");
+}
+
+export function renderMtaStsPolicy(domain: Pick<MailSyncPayload["domains"][number], "mailHost" | "mtaStsMode" | "mtaStsMaxAgeSeconds">): string {
+  return [
+    "version: STSv1",
+    `mode: ${domain.mtaStsMode}`,
+    `mx: ${domain.mailHost}`,
+    `max_age: ${domain.mtaStsMaxAgeSeconds}`
   ].join("\n");
 }
 

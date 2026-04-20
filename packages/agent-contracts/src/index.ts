@@ -233,7 +233,12 @@ export interface MailSyncDomainPayload {
   zoneName: string;
   mailHost: string;
   webmailHostname: string;
+  mtaStsHostname: string;
   dkimSelector: string;
+  dmarcReportAddress: string;
+  tlsReportAddress: string;
+  mtaStsMode: "enforce" | "testing" | "none";
+  mtaStsMaxAgeSeconds: number;
   deliveryRole: "primary" | "standby";
   mailboxes: MailSyncMailboxPayload[];
   aliases: MailSyncAliasPayload[];
@@ -243,9 +248,15 @@ export interface MailManagedDomainSnapshot {
   domainName: string;
   mailHost: string;
   webmailHostname: string;
+  mtaStsHostname: string;
   deliveryRole: "primary" | "standby";
   mailboxCount: number;
   aliasCount: number;
+  dkimDnsTxtValue?: string;
+  dmarcReportAddress?: string;
+  tlsReportAddress?: string;
+  mtaStsMode?: "enforce" | "testing" | "none";
+  mtaStsMaxAgeSeconds?: number;
 }
 
 export interface MailServiceSnapshot {
@@ -268,6 +279,7 @@ export interface MailServiceSnapshot {
   configRoot?: string;
   statePath?: string;
   vmailRoot?: string;
+  policyRoot?: string;
   dkimRoot?: string;
   roundcubeRoot?: string;
   roundcubeSharedRoot?: string;
@@ -512,7 +524,14 @@ export function isMailSyncPayload(value: unknown): value is MailSyncPayload {
         typeof candidate.zoneName === "string" &&
         typeof candidate.mailHost === "string" &&
         typeof candidate.webmailHostname === "string" &&
+        typeof candidate.mtaStsHostname === "string" &&
         typeof candidate.dkimSelector === "string" &&
+        typeof candidate.dmarcReportAddress === "string" &&
+        typeof candidate.tlsReportAddress === "string" &&
+        (candidate.mtaStsMode === "enforce" ||
+          candidate.mtaStsMode === "testing" ||
+          candidate.mtaStsMode === "none") &&
+        typeof candidate.mtaStsMaxAgeSeconds === "number" &&
         (candidate.deliveryRole === "primary" || candidate.deliveryRole === "standby") &&
         Array.isArray(candidate.mailboxes) &&
         candidate.mailboxes.every((mailbox) => {

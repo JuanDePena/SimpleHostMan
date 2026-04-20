@@ -36,6 +36,9 @@ import {
   toReportedJobResult
 } from "./control-plane-store-helpers.js";
 import {
+  buildMailMtaStsHostname,
+  buildMailPolicyDocumentRoot,
+  buildMailReportAddress,
   buildMailWebDocumentRoot,
   buildMailZoneRecords,
   buildZoneRecords,
@@ -193,7 +196,12 @@ export async function buildMailSyncPlans(
         zoneName: domain.zone_name,
         mailHost: domain.mail_host,
         webmailHostname: `webmail.${domain.domain_name}`,
+        mtaStsHostname: buildMailMtaStsHostname(domain.domain_name),
         dkimSelector: domain.dkim_selector,
+        dmarcReportAddress: buildMailReportAddress(domain.domain_name),
+        tlsReportAddress: buildMailReportAddress(domain.domain_name),
+        mtaStsMode: "enforce",
+        mtaStsMaxAgeSeconds: 86400,
         deliveryRole: target.deliveryRole,
         mailboxes: domainMailboxes,
         aliases: domainAliases
@@ -240,6 +248,12 @@ export async function buildMailProxyPlans(
       documentRoot: buildMailWebDocumentRoot(domain.tenant_slug, domain.domain_name),
       tls: true
     };
+    const policyPayload: ProxyRenderPayload = {
+      vhostName: `mta-sts-${domain.domain_name.replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase()}`,
+      serverName: buildMailMtaStsHostname(domain.domain_name),
+      documentRoot: buildMailPolicyDocumentRoot(domain.tenant_slug, domain.domain_name),
+      tls: true
+    };
     const targets = [domain.primary_node_id];
 
     if (
@@ -254,6 +268,11 @@ export async function buildMailProxyPlans(
         nodeId,
         resourceKey: `mail:${domain.domain_name}:webmail:${nodeId}`,
         payload
+      });
+      plans.push({
+        nodeId,
+        resourceKey: `mail:${domain.domain_name}:mta-sts:${nodeId}`,
+        payload: policyPayload
       });
     }
   }
@@ -342,6 +361,7 @@ export async function buildZoneDnsPayload(
        domains.domain_name,
        tenants.slug AS tenant_slug,
        domains.mail_host,
+       domains.dkim_selector,
        domains.primary_node_id,
        nodes.public_ipv4
      FROM shp_mail_domains domains
@@ -355,6 +375,26 @@ export async function buildZoneDnsPayload(
      ORDER BY domains.domain_name ASC`,
     [zoneName]
   );
+  const mailRuntimeRows =
+    mailDomainResult.rows.length > 0
+      ? (
+          await client.query<ResultRow>(
+          `SELECT results.job_id,
+                  results.kind,
+                  results.node_id,
+                  results.status,
+                  results.summary,
+                  results.details,
+                  results.completed_at
+             FROM control_plane_job_results results
+            WHERE results.kind = 'mail.sync'
+              AND results.status = 'applied'
+              AND results.node_id = ANY($1::text[])
+            ORDER BY results.completed_at DESC`,
+          [mailDomainResult.rows.map((row) => row.primary_node_id)]
+        )
+        ).rows
+      : [];
   const explicitRecords = recordResult.rows.map((row) => ({
     name: row.name,
     type: row.type,
@@ -362,9 +402,54 @@ export async function buildZoneDnsPayload(
     ttl: row.ttl
   }));
   const derivedSiteRecords = zone.public_ipv4
-    ? buildZoneRecords(zoneName, zone.public_ipv4, siteResult.rows)
-    : [];
-  const derivedMailRecords = buildMailZoneRecords(zoneName, mailDomainResult.rows);
+      ? buildZoneRecords(zoneName, zone.public_ipv4, siteResult.rows)
+      : [];
+  const latestMailRuntimeByNode = new Map<string, ResultRow>();
+
+  for (const row of mailRuntimeRows) {
+    if (!latestMailRuntimeByNode.has(row.node_id)) {
+      latestMailRuntimeByNode.set(row.node_id, row);
+    }
+  }
+
+  const dkimRuntimeRecords = mailDomainResult.rows.flatMap((domain) => {
+    const latestResult = latestMailRuntimeByNode.get(domain.primary_node_id);
+    const details = latestResult?.details;
+
+    if (!details || Array.isArray(details)) {
+      return [];
+    }
+
+    const domains = (details as Record<string, unknown>).domains;
+
+    if (!Array.isArray(domains)) {
+      return [];
+    }
+
+    const match = domains.find((entry) => {
+      if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+        return false;
+      }
+
+      return (entry as Record<string, unknown>).domainName === domain.domain_name;
+    }) as Record<string, unknown> | undefined;
+
+    if (!match || typeof match.dkimDnsTxtValue !== "string") {
+      return [];
+    }
+
+    return [
+      {
+        domainName: domain.domain_name,
+        dkimDnsTxtValue: match.dkimDnsTxtValue
+      }
+    ];
+  });
+  const derivedMailRecords = buildMailZoneRecords(
+    zoneName,
+    mailDomainResult.rows,
+    dkimRuntimeRecords
+  );
 
   return {
     nodeId: zone.primary_node_id,

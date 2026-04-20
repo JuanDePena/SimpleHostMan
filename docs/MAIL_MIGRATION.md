@@ -3,7 +3,7 @@
 Updated on `2026-04-20`.
 
 This runbook describes the recommended low-risk migration flow for moving a customer domain from a
-legacy cPanel-style mail host into the phase-1 `SimpleHostMan` mail runtime.
+legacy cPanel-style mail host into the phase-2 `SimpleHostMan` mail runtime.
 
 Related references:
 
@@ -41,9 +41,13 @@ Before touching DNS or copying mailboxes:
 6. Confirm the derived DNS payload for:
    - `MX`
    - `mail.<domain>`
+   - `mta-sts.<domain>`
    - `webmail.<domain>`
    - SPF
+   - `TLS-RPT`
    - `_dmarc`
+   - `_mta-sts`
+   - DKIM selector TXT
 7. Confirm DKIM material exists on the active node under `/srv/mail/dkim/<domain>/`.
 
 Do not start mailbox copy until those checks pass.
@@ -108,7 +112,8 @@ Also validate:
 
 - `Roundcube` login on `webmail.<domain>`
 - DKIM TXT published in DNS
-- SPF and `_dmarc` records present
+- SPF, `_dmarc`, `_smtp._tls`, and `_mta-sts` records present
+- `mta-sts.<domain>/.well-known/mta-sts.txt` responds over HTTPS
 
 ### 5. Cut DNS and SMTP delivery
 

@@ -54,6 +54,7 @@ export interface AgentRuntimeConfig {
       statePath: string;
       configRoot: string;
       vmailRoot: string;
+      policyRoot: string;
       vmailUser: string;
       vmailGroup: string;
       dkimRoot: string;
@@ -244,6 +245,10 @@ export function createAgentRuntimeConfig(
         vmailRoot: readString(
           env.SIMPLEHOST_MAIL_VMAIL_ROOT,
           "/srv/mail/vmail"
+        ),
+        policyRoot: readString(
+          env.SIMPLEHOST_MAIL_POLICY_ROOT,
+          "/srv/www/mail-policies"
         ),
         vmailUser: readString(env.SIMPLEHOST_MAIL_VMAIL_USER, "vmail"),
         vmailGroup: readString(env.SIMPLEHOST_MAIL_VMAIL_GROUP, "vmail"),

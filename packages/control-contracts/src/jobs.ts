@@ -117,7 +117,12 @@ export interface MailSyncDomainPayload {
   zoneName: string;
   mailHost: string;
   webmailHostname: string;
+  mtaStsHostname: string;
   dkimSelector: string;
+  dmarcReportAddress: string;
+  tlsReportAddress: string;
+  mtaStsMode: "enforce" | "testing" | "none";
+  mtaStsMaxAgeSeconds: number;
   deliveryRole: "primary" | "standby";
   mailboxes: MailSyncMailboxPayload[];
   aliases: MailSyncAliasPayload[];

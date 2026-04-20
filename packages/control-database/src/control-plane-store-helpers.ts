@@ -539,9 +539,29 @@ function normalizeMailManagedDomainSnapshot(
     domainName: record.domainName,
     mailHost: record.mailHost,
     webmailHostname: record.webmailHostname,
+    mtaStsHostname:
+      typeof record.mtaStsHostname === "string"
+        ? record.mtaStsHostname
+        : `mta-sts.${record.domainName}`,
     deliveryRole: record.deliveryRole,
     mailboxCount: Number(record.mailboxCount ?? 0),
-    aliasCount: Number(record.aliasCount ?? 0)
+    aliasCount: Number(record.aliasCount ?? 0),
+    dkimDnsTxtValue:
+      typeof record.dkimDnsTxtValue === "string" ? record.dkimDnsTxtValue : undefined,
+    dmarcReportAddress:
+      typeof record.dmarcReportAddress === "string" ? record.dmarcReportAddress : undefined,
+    tlsReportAddress:
+      typeof record.tlsReportAddress === "string" ? record.tlsReportAddress : undefined,
+    mtaStsMode:
+      record.mtaStsMode === "enforce" ||
+      record.mtaStsMode === "testing" ||
+      record.mtaStsMode === "none"
+        ? record.mtaStsMode
+        : undefined,
+    mtaStsMaxAgeSeconds:
+      typeof record.mtaStsMaxAgeSeconds === "number"
+        ? Number(record.mtaStsMaxAgeSeconds)
+        : undefined
   };
 }
 
@@ -587,6 +607,7 @@ export function normalizeMailSnapshot(value: unknown): MailServiceSnapshot | und
     configRoot: typeof record.configRoot === "string" ? record.configRoot : undefined,
     statePath: typeof record.statePath === "string" ? record.statePath : undefined,
     vmailRoot: typeof record.vmailRoot === "string" ? record.vmailRoot : undefined,
+    policyRoot: typeof record.policyRoot === "string" ? record.policyRoot : undefined,
     dkimRoot: typeof record.dkimRoot === "string" ? record.dkimRoot : undefined,
     roundcubeRoot:
       typeof record.roundcubeRoot === "string" ? record.roundcubeRoot : undefined,

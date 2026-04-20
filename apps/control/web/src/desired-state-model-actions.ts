@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { escapeHtml } from "@simplehost/ui";
 
 import { type DnsRecordPayload } from "@simplehost/control-contracts";
@@ -202,6 +204,55 @@ function isDmarcTxtRecord(value: string): boolean {
   return normalizeTxtRecordValue(value).startsWith("v=dmarc1");
 }
 
+function isDkimTxtRecord(value: string): boolean {
+  return normalizeTxtRecordValue(value).startsWith("v=dkim1");
+}
+
+function isMtaStsTxtRecord(value: string): boolean {
+  return normalizeTxtRecordValue(value).startsWith("v=stsv1");
+}
+
+function isTlsRptTxtRecord(value: string): boolean {
+  return normalizeTxtRecordValue(value).startsWith("v=tlsrptv1");
+}
+
+function buildMailReportAddress(domainName: string): string {
+  return `postmaster@${domainName}`.toLowerCase();
+}
+
+function buildMailMtaStsHostname(domainName: string): string {
+  return `mta-sts.${domainName}`;
+}
+
+function buildMailSpfRecordValue(): string {
+  return '"v=spf1 mx -all"';
+}
+
+function buildMailDmarcRecordValue(domainName: string): string {
+  const reportAddress = buildMailReportAddress(domainName);
+  return `"v=DMARC1; p=quarantine; adkim=s; aspf=s; fo=1; pct=100; rua=mailto:${reportAddress}; ruf=mailto:${reportAddress}"`;
+}
+
+function buildMailTlsRptRecordValue(domainName: string): string {
+  const reportAddress = buildMailReportAddress(domainName);
+  return `"v=TLSRPTv1; rua=mailto:${reportAddress}"`;
+}
+
+function buildMailMtaStsPolicyId(domain: Pick<DashboardMailDomainRecord, "domainName" | "mailHost" | "dkimSelector">): string {
+  return createHash("sha256")
+    .update(
+      JSON.stringify({
+        domainName: domain.domainName,
+        mailHost: domain.mailHost,
+        dkimSelector: domain.dkimSelector,
+        mode: "enforce",
+        maxAgeSeconds: 86400
+      })
+    )
+    .digest("hex")
+    .slice(0, 12);
+}
+
 function resolveZoneRecordName(hostname: string, zoneName: string): string | null {
   try {
     return relativeRecordNameForZone(hostname, zoneName);
@@ -275,6 +326,8 @@ function buildMailZoneRecords(
     const mailRecordName = resolveZoneRecordName(domain.mailHost, zoneName);
     const webmailHostname = `webmail.${domain.domainName}`;
     const webmailRecordName = resolveZoneRecordName(webmailHostname, zoneName);
+    const mtaStsHostname = buildMailMtaStsHostname(domain.domainName);
+    const mtaStsRecordName = resolveZoneRecordName(mtaStsHostname, zoneName);
 
     if (mailRecordName) {
       const key = `${mailRecordName}:A:${domain.primaryIpv4}`;
@@ -302,6 +355,19 @@ function buildMailZoneRecords(
       }
     }
 
+    if (mtaStsRecordName) {
+      const key = `${mtaStsRecordName}:A:${domain.primaryIpv4}`;
+
+      if (!recordMap.has(key)) {
+        recordMap.set(key, {
+          name: mtaStsRecordName,
+          type: "A",
+          value: domain.primaryIpv4,
+          ttl: 300
+        });
+      }
+    }
+
     const mxKey = `@:MX:${domain.mailHost}`;
 
     if (!recordMap.has(mxKey)) {
@@ -313,24 +379,50 @@ function buildMailZoneRecords(
       });
     }
 
-    const spfKey = '@:TXT:"v=spf1 mx ~all"';
+    const spfValue = buildMailSpfRecordValue();
+    const spfKey = `@:TXT:${spfValue}`;
 
     if (!recordMap.has(spfKey)) {
       recordMap.set(spfKey, {
         name: "@",
         type: "TXT",
-        value: '"v=spf1 mx ~all"',
+        value: spfValue,
         ttl: 300
       });
     }
 
-    const dmarcKey = '_dmarc:TXT:"v=DMARC1; p=none"';
+    const dmarcValue = buildMailDmarcRecordValue(domain.domainName);
+    const dmarcKey = `_dmarc:TXT:${dmarcValue}`;
 
     if (!recordMap.has(dmarcKey)) {
       recordMap.set(dmarcKey, {
         name: "_dmarc",
         type: "TXT",
-        value: '"v=DMARC1; p=none"',
+        value: dmarcValue,
+        ttl: 300
+      });
+    }
+
+    const tlsRptValue = buildMailTlsRptRecordValue(domain.domainName);
+    const tlsRptKey = `_smtp._tls:TXT:${tlsRptValue}`;
+
+    if (!recordMap.has(tlsRptKey)) {
+      recordMap.set(tlsRptKey, {
+        name: "_smtp._tls",
+        type: "TXT",
+        value: tlsRptValue,
+        ttl: 300
+      });
+    }
+
+    const mtaStsValue = `"v=STSv1; id=${buildMailMtaStsPolicyId(domain)}"`;
+    const mtaStsKey = `_mta-sts:TXT:${mtaStsValue}`;
+
+    if (!recordMap.has(mtaStsKey)) {
+      recordMap.set(mtaStsKey, {
+        name: "_mta-sts",
+        type: "TXT",
+        value: mtaStsValue,
         ttl: 300
       });
     }
@@ -370,6 +462,21 @@ function mergeDerivedDnsRecords(
       .filter((record) => record.type === "TXT" && isDmarcTxtRecord(record.value))
       .map((record) => record.name.toLowerCase())
   );
+  const explicitMtaStsNames = new Set(
+    explicitRecords
+      .filter((record) => record.type === "TXT" && isMtaStsTxtRecord(record.value))
+      .map((record) => record.name.toLowerCase())
+  );
+  const explicitTlsRptNames = new Set(
+    explicitRecords
+      .filter((record) => record.type === "TXT" && isTlsRptTxtRecord(record.value))
+      .map((record) => record.name.toLowerCase())
+  );
+  const explicitDkimNames = new Set(
+    explicitRecords
+      .filter((record) => record.type === "TXT" && isDkimTxtRecord(record.value))
+      .map((record) => record.name.toLowerCase())
+  );
 
   const filteredDerivedRecords = derivedRecords.filter((record) => {
     const normalizedName = record.name.toLowerCase();
@@ -397,6 +504,30 @@ function mergeDerivedDnsRecords(
       return false;
     }
 
+    if (
+      record.type === "TXT" &&
+      isMtaStsTxtRecord(record.value) &&
+      explicitMtaStsNames.has(normalizedName)
+    ) {
+      return false;
+    }
+
+    if (
+      record.type === "TXT" &&
+      isTlsRptTxtRecord(record.value) &&
+      explicitTlsRptNames.has(normalizedName)
+    ) {
+      return false;
+    }
+
+    if (
+      record.type === "TXT" &&
+      isDkimTxtRecord(record.value) &&
+      explicitDkimNames.has(normalizedName)
+    ) {
+      return false;
+    }
+
     return true;
   });
 
@@ -408,6 +539,7 @@ type DashboardMailDomainRecord = {
   zoneName: string;
   primaryNodeId: string;
   mailHost: string;
+  dkimSelector: string;
   primaryIpv4: string;
 };
 
@@ -420,6 +552,7 @@ function buildDesiredDnsPayload(args: {
     zoneName: string;
     primaryNodeId: string;
     mailHost: string;
+    dkimSelector: string;
   }>;
 }): {
   nodeId: string;

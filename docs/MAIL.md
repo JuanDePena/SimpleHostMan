@@ -18,7 +18,7 @@ It defines the intended split of responsibilities for:
 - mailbox failover boundaries
 - the future control-plane split between `SimpleHost Control` and `SimpleHost Agent`
 
-This document now describes the implemented phase-1 mail runtime baseline plus the intended
+This document now describes the implemented phase-2 mail runtime baseline plus the intended
 operational boundaries for later refinement.
 
 Related references:
@@ -33,8 +33,9 @@ Related references:
 ## Status on 2026-04-20
 
 - `SimpleHost Control` now implements desired-state objects and operator CRUD for mail domains, mailboxes, aliases, quotas, and mailbox credential reset.
-- `SimpleHost Control` reconciliation derives baseline mail DNS and `webmail.<domain>` proxy scaffolding.
+- `SimpleHost Control` reconciliation derives baseline mail DNS, `webmail.<domain>`, and `mta-sts.<domain>` proxy scaffolding.
 - `SimpleHost Agent` now executes `mail.sync` end-to-end: it installs and restarts `Postfix`, `Dovecot`, `Roundcube`, `Redis`-compatible cache (`valkey` by default), creates the `vmail` runtime user, generates DKIM material, writes node-local runtime artifacts, deploys `Roundcube`, and applies a generated `firewalld` service policy.
+- Phase-2 deliverability scaffolding is now wired end-to-end: `SimpleHost Control` derives `MTA-STS`, `TLS-RPT`, strict `SPF`, strengthened `DMARC`, and node-reported `DKIM` TXT records; `SimpleHost Agent` publishes the `mta-sts.txt` policy document and injects `Rspamd` into the live `Postfix` path through milters.
 - Mail desired state persisted on the nodes is sanitized: mailbox plaintext passwords are not written to `/srv/mail/config/desired-state.json`.
 - Node runtime reporting now includes service installation state, firewall state, `Roundcube` deployment state, and configured vs reset-required mailbox counts.
 - The chosen direction remains self-hosted mail on the two VPS nodes, not a third-party hosted mail backend.
@@ -126,7 +127,7 @@ Do not switch to a SQL message store to solve that problem.
 
 `Roundcube` should keep its own metadata store, separate from `SimpleHost Control`.
 
-Implemented phase-1 baseline:
+Implemented runtime baseline:
 
 - node-local `SQLite`
 - shared state root under `/srv/www/roundcube/_shared`
@@ -143,7 +144,7 @@ It must not be treated as the authoritative message store.
 
 If the platform later needs higher `Roundcube` metadata scale or shared-node access, move this
 metadata to a dedicated `PostgreSQL` database on `postgresql-apps`. That is a scale-up path, not
-the phase-1 execution baseline.
+the current runtime baseline.
 
 ## Runtime split between `SimpleHost Control` and `SimpleHost Agent`
 
@@ -220,8 +221,8 @@ Recommended public hostname model:
 
 Current scaffolding direction:
 
-- `SimpleHost Control` derives `proxy.render` jobs for `webmail.<domain>`
-- `SimpleHost Agent` prepares the corresponding document roots under `/srv/www/roundcube`
+- `SimpleHost Control` derives `proxy.render` jobs for `webmail.<domain>` and `mta-sts.<domain>`
+- `SimpleHost Agent` prepares the corresponding document roots under `/srv/www/roundcube` and `/srv/www/mail-policies`
 - until real `Roundcube` content is deployed, those roots may contain a placeholder page proving that the vhost path exists
 
 Current rendered runtime artifacts:
@@ -234,10 +235,13 @@ Current rendered runtime artifacts:
 - `/srv/mail/config/dovecot/conf.d/90-simplehost-mail.conf`
 - `/srv/mail/config/rspamd/dkim_selectors.map`
 - `/srv/mail/config/rspamd/local.d/redis.conf`
+- `/srv/mail/config/rspamd/local.d/actions.conf`
+- `/srv/mail/config/rspamd/local.d/milter_headers.conf`
 - `/srv/mail/config/rspamd/local.d/dkim_signing.conf`
 - `/srv/mail/config/desired-state.json`
 - `/srv/mail/dkim/<domain>/<selector>.key`
 - `/srv/mail/dkim/<domain>/<selector>.dns.txt`
+- `/srv/www/mail-policies/<tenant>/<domain>/public/.well-known/mta-sts.txt`
 - `/etc/roundcubemail/config.inc.php`
 - `/srv/www/roundcube/_shared/roundcube.sqlite`
 - `/etc/firewalld/services/simplehost-mail.xml`
@@ -340,23 +344,27 @@ Per domain, the baseline should include:
 
 - `MX`
 - `A` or `AAAA` for `mail.<domain>`
+- `A` or `AAAA` for `mta-sts.<domain>`
 - `A` or `AAAA` for `webmail.<domain>`
 - `TXT` SPF
 - `TXT` `_dmarc`
+- `TXT` `_mta-sts`
+- `TXT` `_smtp._tls`
+- `TXT` DKIM selector records
 
 Optional later:
 
 - `autoconfig.<domain>`
 - `autodiscover.<domain>`
-- `TXT` DKIM selector records once key generation is wired end-to-end
 - SRV records if a chosen client profile needs them
-- `MTA-STS`, `TLS-RPT`, or `DANE` once the rest of the stack is mature enough
+- `DANE` once DNSSEC and operator workflows are mature enough
 
 Current scaffolding state:
 
-- `SimpleHost Control` now derives `MX`, `mail.<domain>`, `webmail.<domain>`, SPF, and `_dmarc` for the active mail node
+- `SimpleHost Control` now derives `MX`, `mail.<domain>`, `mta-sts.<domain>`, `webmail.<domain>`, strict `SPF`, `_dmarc`, `_mta-sts`, `_smtp._tls`, and DKIM selector TXT records for the active mail node
 - operator-managed explicit zone records remain authoritative when they intentionally override those derived records
 - `SimpleHost Agent` now generates DKIM private/public material and a DNS TXT payload per domain selector under `/srv/mail/dkim/<domain>/`
+- `SimpleHost Agent` now publishes `/.well-known/mta-sts.txt` under a dedicated `mta-sts.<domain>` Apache docroot on both active and standby mail nodes
 
 ### DKIM
 
@@ -368,6 +376,23 @@ Recommended key path model:
 
 The public key must be surfaced into the zone through desired state and DNS sync.
 
+### MTA-STS and TLS-RPT
+
+Phase-2 baseline:
+
+- `_mta-sts.<domain>` TXT publishes the current policy id
+- `mta-sts.<domain>` serves `/.well-known/mta-sts.txt` over HTTPS
+- `_smtp._tls.<domain>` TXT publishes the TLS report mailbox
+
+Initial baseline policy:
+
+- `mode: enforce`
+- `mx: mail.<domain>`
+- `max_age: 86400`
+
+Report addresses currently default to `postmaster@<domain>`. Operators should ensure that
+address exists as a mailbox or alias if they want delivery and report loops to stay clean.
+
 ## Firewall and exposure policy
 
 Recommended public ports on the active mail node:
@@ -378,7 +403,7 @@ Recommended public ports on the active mail node:
 - `993/tcp` IMAPS
 - `995/tcp` POP3S
 
-Implemented phase-1 policy:
+Implemented phase-2 policy:
 
 - `SimpleHost Agent` writes a generated `simplehost-mail` firewalld service definition
 - the service is installed to `/etc/firewalld/services/simplehost-mail.xml`
@@ -392,8 +417,6 @@ Do not expose publicly unless there is a clear reason:
 
 - `143/tcp`
 - `110/tcp`
-- `110/tcp`
-- `995/tcp`
 - admin protocols on public addresses
 
 Webmail remains on the existing Apache public plane:
@@ -484,7 +507,7 @@ Implemented baseline today:
 
 - node runtime reporting already includes service install/enable/active state for `Postfix`, `Dovecot`, `Rspamd`, and `Redis`
 - node runtime reporting now includes `Roundcube` deployment mode, shared/config/database paths, firewall policy status, and configured vs reset-required mailbox counts
-- `mail.sync` job details include deployed file paths, DKIM material paths, package installation actions, service restart state, firewall status, and `Roundcube` deployment paths
+- `mail.sync` job details include deployed file paths, DKIM material paths, `mta-sts` policy files, package installation actions, service restart state, firewall status, and `Roundcube` deployment paths
 
 Recommended raw sources:
 

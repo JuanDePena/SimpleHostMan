@@ -9,7 +9,7 @@ Current baseline:
 
 - canonical source tree: `/opt/simplehostman/src`
 - canonical runtime root: `/opt/simplehostman/release`
-- active release: `2604.20.03`
+- active release: `2604.20.12`
 - active services: `simplehost-control`, `simplehost-worker`, `simplehost-agent`
 
 ## 1. Deepen diagnostics, jobs, audit, and backups
@@ -17,7 +17,7 @@ Current baseline:
 - Keep improving cross-links between resources, jobs, drift, audit, nodes, and backup runs.
 - Make backup policies and failures more operational from the UI, not only visible.
 - Keep pushing resource detail views toward one-place operational diagnosis.
-- Continue deepening mail deliverability, queue visibility, and post-cutover operator tracing now that the phase-1 mail execution backend is in place.
+- Continue deepening mail queue visibility, report surfacing, and post-cutover operator tracing now that the phase-2 deliverability baseline is in place.
 
 ## 2. Keep shrinking transitional bootstrap state
 

@@ -38,9 +38,15 @@ export interface MailManagedDomainSnapshot {
   domainName: string;
   mailHost: string;
   webmailHostname: string;
+  mtaStsHostname: string;
   deliveryRole: "primary" | "standby";
   mailboxCount: number;
   aliasCount: number;
+  dkimDnsTxtValue?: string;
+  dmarcReportAddress?: string;
+  tlsReportAddress?: string;
+  mtaStsMode?: "enforce" | "testing" | "none";
+  mtaStsMaxAgeSeconds?: number;
 }
 
 export interface MailServiceSnapshot {
@@ -63,6 +69,7 @@ export interface MailServiceSnapshot {
   configRoot?: string;
   statePath?: string;
   vmailRoot?: string;
+  policyRoot?: string;
   dkimRoot?: string;
   roundcubeRoot?: string;
   roundcubeSharedRoot?: string;

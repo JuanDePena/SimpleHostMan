@@ -345,6 +345,7 @@ async function inspectMail(): Promise<MailServiceSnapshot> {
     statePath,
     vmailRoot,
     dkimRoot,
+    policyRoot,
     roundcubeRoot,
     roundcubeSharedRoot,
     roundcubeConfigPath,
@@ -411,20 +412,42 @@ async function inspectMail(): Promise<MailServiceSnapshot> {
           domainName: string;
           mailHost: string;
           webmailHostname: string;
+          mtaStsHostname?: string;
           deliveryRole: MailSyncPayload["domains"][number]["deliveryRole"];
+          dmarcReportAddress?: string;
+          tlsReportAddress?: string;
+          mtaStsMode?: MailSyncPayload["domains"][number]["mtaStsMode"];
+          mtaStsMaxAgeSeconds?: number;
+          dkimSelector?: string;
           aliases?: unknown[];
           mailboxes?: Array<{ credentialState?: string }>;
         }>;
       };
       managedDomains = Array.isArray(parsed.domains)
-        ? parsed.domains.map((domain) => ({
-            domainName: domain.domainName,
-            mailHost: domain.mailHost,
-            webmailHostname: domain.webmailHostname,
-            deliveryRole: domain.deliveryRole,
-            mailboxCount: Array.isArray(domain.mailboxes) ? domain.mailboxes.length : 0,
-            aliasCount: Array.isArray(domain.aliases) ? domain.aliases.length : 0
-          }))
+        ? await Promise.all(
+            parsed.domains.map(async (domain) => ({
+              domainName: domain.domainName,
+              mailHost: domain.mailHost,
+              webmailHostname: domain.webmailHostname,
+              mtaStsHostname: domain.mtaStsHostname ?? `mta-sts.${domain.domainName}`,
+              deliveryRole: domain.deliveryRole,
+              mailboxCount: Array.isArray(domain.mailboxes) ? domain.mailboxes.length : 0,
+              aliasCount: Array.isArray(domain.aliases) ? domain.aliases.length : 0,
+              dkimDnsTxtValue:
+                typeof domain.dkimSelector === "string"
+                  ? await readFile(
+                      path.join(dkimRoot, domain.domainName, `${domain.dkimSelector}.dns.txt`),
+                      "utf8"
+                    )
+                      .then((content) => content.trim())
+                      .catch(() => undefined)
+                  : undefined,
+              dmarcReportAddress: domain.dmarcReportAddress,
+              tlsReportAddress: domain.tlsReportAddress,
+              mtaStsMode: domain.mtaStsMode,
+              mtaStsMaxAgeSeconds: domain.mtaStsMaxAgeSeconds
+            }))
+          )
         : [];
       for (const domain of parsed.domains ?? []) {
         for (const mailbox of domain.mailboxes ?? []) {
@@ -467,6 +490,7 @@ async function inspectMail(): Promise<MailServiceSnapshot> {
     configRoot,
     statePath,
     vmailRoot,
+    policyRoot,
     dkimRoot,
     roundcubeRoot,
     roundcubeSharedRoot,
