@@ -1090,6 +1090,18 @@ interface PowerDnsZoneSnapshot {
 function normalizePowerDnsRecordContent(value: string, type: string): string {
   const trimmed = value.trim();
 
+  if (type === "TXT") {
+    const quotedSegments = [...trimmed.matchAll(/"((?:\\.|[^"])*)"/g)];
+
+    if (quotedSegments.length > 0) {
+      return quotedSegments
+        .map((segment) => (segment[1] ?? "").replace(/\\(.)/g, "$1"))
+        .join("");
+    }
+
+    return trimmed.replace(/^"(.*)"$/s, "$1");
+  }
+
   if (type === "NS" || type === "CNAME") {
     return trimmed.replace(/\.$/, "").toLowerCase();
   }
