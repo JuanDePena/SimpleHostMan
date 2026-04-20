@@ -174,7 +174,16 @@ function assertSafeDnsLabel(value: string, label: string): void {
     return;
   }
 
-  if (!/^[A-Za-z0-9_*]([A-Za-z0-9_-]{0,61}[A-Za-z0-9_])?$/.test(value)) {
+  const labels = value.split(".");
+
+  if (
+    labels.length === 0 ||
+    labels.some(
+      (entry) =>
+        entry.length === 0 ||
+        !/^[A-Za-z0-9_*]([A-Za-z0-9_-]{0,61}[A-Za-z0-9_])?$/.test(entry)
+    )
+  ) {
     throw new Error(`${label} ${value} is not a safe DNS label.`);
   }
 }
