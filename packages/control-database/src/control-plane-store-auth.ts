@@ -79,7 +79,54 @@ function normalizeReportedInstalledPackage(value: unknown): ReportedInstalledPac
   };
 }
 
-function extractReportedInstalledPackages(
+function compareReportedPackageFreshness(
+  left: ReportedInstalledPackage,
+  right: ReportedInstalledPackage
+): number {
+  const leftInstalledAt = left.installedAt ? Date.parse(left.installedAt) : Number.NaN;
+  const rightInstalledAt = right.installedAt ? Date.parse(right.installedAt) : Number.NaN;
+
+  if (Number.isFinite(leftInstalledAt) && Number.isFinite(rightInstalledAt)) {
+    return leftInstalledAt - rightInstalledAt;
+  }
+
+  if (Number.isFinite(leftInstalledAt)) {
+    return -1;
+  }
+
+  if (Number.isFinite(rightInstalledAt)) {
+    return 1;
+  }
+
+  return 0;
+}
+
+function dedupeReportedInstalledPackages(
+  packages: ReportedInstalledPackage[]
+): ReportedInstalledPackage[] {
+  const deduped = new Map<string, ReportedInstalledPackage>();
+
+  for (const pkg of packages) {
+    const key = `${pkg.packageName}\u0000${pkg.arch}`;
+    const existing = deduped.get(key);
+
+    if (!existing) {
+      deduped.set(key, pkg);
+      continue;
+    }
+
+    // Package inventory is keyed by node/package/arch in PostgreSQL. Some RPMs
+    // such as gpg-pubkey can be reported more than once per node, so keep the
+    // freshest observation and discard older duplicates before inserting.
+    if (compareReportedPackageFreshness(pkg, existing) >= 0) {
+      deduped.set(key, pkg);
+    }
+  }
+
+  return [...deduped.values()];
+}
+
+export function extractReportedInstalledPackages(
   details: Record<string, unknown> | undefined
 ): ReportedInstalledPackage[] | undefined {
   if (!details || !Array.isArray(details.packages)) {
@@ -90,7 +137,7 @@ function extractReportedInstalledPackages(
     .map(normalizeReportedInstalledPackage)
     .filter((entry): entry is ReportedInstalledPackage => Boolean(entry));
 
-  return packages;
+  return dedupeReportedInstalledPackages(packages);
 }
 
 async function replaceNodeInstalledPackages(

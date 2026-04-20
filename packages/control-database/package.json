@@ -1,6 +1,6 @@
 {
   "name": "@simplehost/control-database",
-  "version": "2604.20.01",
+  "version": "2604.20.03",
   "private": true,
   "type": "module",
   "main": "dist/index.js",
@@ -13,6 +13,7 @@
     "build": "tsc -p tsconfig.json",
     "migrate": "node dist/migrate-cli.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "pnpm build && node --test dist/**/*.test.js",
     "clean": "rm -rf dist"
   },
   "dependencies": {
