@@ -1,6 +1,6 @@
 # SimpleHost TODO
 
-Updated on `2026-04-20`.
+Updated on `2026-04-21`.
 
 This file tracks work that is still open after the current monorepo, naming, and runtime cutover work.
 Closed work should stay documented as implemented state elsewhere, not linger here.
@@ -23,14 +23,12 @@ The phase-2 deliverability baseline is now in place:
 - reinforced `DMARC`
 - `Rspamd` wired as milter
 
-The next mail work should happen as a deliberate 7-phase roadmap.
+The next mail work should continue as a deliberate roadmap. Phase 1 is now complete:
 
-### Phase 1. Mailbox credentials UX
-
-- Add first-class flows for generating, resetting, and rotating mailbox credentials.
-- Show newly generated credentials only once and audit every reset or rotation.
-- Make `reset_required` operationally clear in UI, API responses, and job history.
-- Add guards so operators can distinguish “missing”, “reset required”, and “configured”.
+- operators can generate, rotate, reset, or intentionally leave mailbox credentials missing
+- generated credentials are revealed only once and consumed server-side
+- mailbox credential state is explicit across UI, API, desired state, and job payloads
+- reset and rotation actions are audited
 
 ### Phase 2. Mail observability
 

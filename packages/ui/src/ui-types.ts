@@ -45,6 +45,7 @@ export interface AdminShellProps {
   sidebarSearchPlaceholder: string;
   sidebarGroups: AdminNavGroup[];
   notice?: PanelNotice;
+  historyReplaceUrl?: string;
 }
 
 export interface TabItem {

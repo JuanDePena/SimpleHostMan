@@ -1,7 +1,7 @@
 # Mail Service Architecture
 
 Date drafted: 2026-04-11
-Last updated: 2026-04-20
+Last updated: 2026-04-21
 Target OS: AlmaLinux 10.1
 
 ## Scope
@@ -32,7 +32,7 @@ Related references:
 
 ## Status on 2026-04-20
 
-- `SimpleHost Control` now implements desired-state objects and operator CRUD for mail domains, mailboxes, aliases, quotas, and mailbox credential reset.
+- `SimpleHost Control` now implements desired-state objects and operator CRUD for mail domains, mailboxes, aliases, quotas, plus mailbox credential generate / rotate / reset flows.
 - `SimpleHost Control` reconciliation derives baseline mail DNS, `webmail.<domain>`, and `mta-sts.<domain>` proxy scaffolding.
 - `SimpleHost Agent` now executes `mail.sync` end-to-end: it installs and restarts `Postfix`, `Dovecot`, `Roundcube`, `Redis`-compatible cache (`valkey` by default), creates the `vmail` runtime user, generates DKIM material, writes node-local runtime artifacts, deploys `Roundcube`, and applies a generated `firewalld` service policy.
 - Phase-2 deliverability scaffolding is now wired end-to-end: `SimpleHost Control` derives `MTA-STS`, `TLS-RPT`, strict `SPF`, strengthened `DMARC`, and node-reported `DKIM` TXT records; `SimpleHost Agent` publishes the `mta-sts.txt` policy document and injects `Rspamd` into the live `Postfix` path through milters.
@@ -248,9 +248,11 @@ Current rendered runtime artifacts:
 
 Current credential behavior:
 
-- when a mailbox is created or edited with a desired password, `SimpleHost Control` stores an encrypted desired secret and `SimpleHost Agent` renders a local `Dovecot` auth hash
-- when a mailbox is created without a desired password or an operator explicitly resets it, `SimpleHost Agent` renders it locally in locked `reset_required` form
-- the current pilot intentionally supports both paths so first credential establishment and later credential recovery remain operator-driven
+- mailbox credential state is explicit in the control plane as `configured`, `missing`, or `reset_required`
+- when a mailbox is created with generated credentials, `SimpleHost Control` stores the encrypted desired secret, emits a one-time reveal token, and `SimpleHost Agent` renders a local `Dovecot` auth hash
+- when an operator rotates a credential manually or through generation, the previous runtime secret is replaced and the action is audited
+- when a mailbox is created without a credential or an operator explicitly resets it, `SimpleHost Agent` renders it locally in locked `reset_required` form
+- generated credentials are intentionally visible only once; later recovery always happens through reset or rotation, never by reading an existing secret back out of the control plane
 
 ## Mail routing model
 

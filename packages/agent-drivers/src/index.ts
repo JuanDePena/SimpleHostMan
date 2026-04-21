@@ -1563,6 +1563,7 @@ async function executeMailSyncJob(
       DkimMaterial & { domainName: string; selector: string; webmailHostname: string }
     > = [];
     let missingMailboxCredentialCount = 0;
+    let resetRequiredMailboxCount = 0;
     const systemGroupCreated = await ensureSystemGroup(context.services.mail.vmailGroup);
     const systemUserCreated = await ensureSystemUser(
       context.services.mail.vmailUser,
@@ -1644,8 +1645,13 @@ async function executeMailSyncJob(
         await mkdir(homePath, { recursive: true });
         await ensureMaildirScaffold(maildirPath);
 
-        if (!mailbox.desiredPassword) {
+        const credentialState =
+          mailbox.credentialState ?? (mailbox.desiredPassword ? "configured" : "missing");
+
+        if (credentialState === "missing") {
           missingMailboxCredentialCount += 1;
+        } else if (credentialState === "reset_required") {
+          resetRequiredMailboxCount += 1;
         }
 
         dovecotPasswdEntries.push({
@@ -1848,10 +1854,23 @@ async function executeMailSyncJob(
       context.services.mail.redisServiceName
     );
 
-    const resetRequiredMailboxCount = missingMailboxCredentialCount;
+    const credentialSummaryParts: string[] = [];
+
+    if (resetRequiredMailboxCount > 0) {
+      credentialSummaryParts.push(
+        `${resetRequiredMailboxCount} mailbox credential(s) remain reset-required`
+      );
+    }
+
+    if (missingMailboxCredentialCount > 0) {
+      credentialSummaryParts.push(
+        `${missingMailboxCredentialCount} mailbox credential(s) remain missing`
+      );
+    }
+
     const summary =
-      resetRequiredMailboxCount > 0
-        ? `Applied mail runtime for ${payload.domains.length} domain(s); ${resetRequiredMailboxCount} mailbox credential(s) remain reset-required.`
+      credentialSummaryParts.length > 0
+        ? `Applied mail runtime for ${payload.domains.length} domain(s); ${credentialSummaryParts.join("; ")}.`
         : `Applied mail runtime for ${payload.domains.length} domain(s).`;
 
     return createCompletedResult(
@@ -1931,6 +1950,7 @@ async function executeMailSyncJob(
           redis: redisService
         },
         configuredMailboxCount,
+        missingMailboxCredentialCount,
         resetRequiredMailboxCount,
         domains: payload.domains.map((domain) => ({
           domainName: domain.domainName,
@@ -1969,7 +1989,11 @@ async function executeMailSyncJob(
           homePath: entry.homePath,
           maildirPath: entry.maildirPath,
           quotaBytes: entry.quotaBytes,
-          credentialState: entry.passwordHash === "!" ? "reset_required" : "configured"
+          credentialState:
+            payload.domains
+              .flatMap((domain) => domain.mailboxes)
+              .find((mailbox) => mailbox.address === entry.address)?.credentialState ??
+            (entry.passwordHash === "!" ? "missing" : "configured")
         }))
       }
     );

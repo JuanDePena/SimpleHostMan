@@ -101,6 +101,7 @@ export interface PackageInstallPayload {
 export interface MailSyncMailboxPayload {
   address: string;
   localPart: string;
+  credentialState?: "missing" | "configured" | "reset_required";
   desiredPassword?: string;
   quotaBytes?: number;
 }

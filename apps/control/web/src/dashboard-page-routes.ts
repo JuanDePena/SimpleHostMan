@@ -43,6 +43,7 @@ export function createDashboardHandler(args: {
     const rawTab = url.searchParams.get("tab") ?? undefined;
     const desiredStateTab = normalizeDesiredStateTab(rawTab);
     const focus = normalizeDashboardFocus(url.searchParams.get("focus"));
+    const mailCredentialRevealId = url.searchParams.get("mailCredentialReveal");
 
     const session = await resolveSession();
 
@@ -72,6 +73,19 @@ export function createDashboardHandler(args: {
 
     try {
       const { dashboard } = await loadAuthenticatedDashboard();
+      const historyReplaceUrl = (() => {
+        if (!mailCredentialRevealId) {
+          return undefined;
+        }
+
+        const nextUrl = new URL(`${url.pathname}${url.search}`, "http://localhost");
+        nextUrl.searchParams.delete("mailCredentialReveal");
+        return sanitizeReturnTo(`${nextUrl.pathname}${nextUrl.search}`);
+      })();
+      const mailCredentialReveal =
+        mailCredentialRevealId && session.token
+          ? await args.api.consumeMailboxCredentialReveal(session.token, mailCredentialRevealId)
+          : null;
       writeHtml(
         response,
         200,
@@ -81,7 +95,9 @@ export function createDashboardHandler(args: {
           defaultImportPath: args.defaultImportPath,
           desiredStateTab,
           focus,
+          historyReplaceUrl,
           locale,
+          mailCredentialReveal,
           notice: getNoticeFromUrl(url),
           version: args.version,
           view

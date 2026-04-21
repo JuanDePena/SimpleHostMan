@@ -4,6 +4,7 @@ import { buildMailSectionModel } from "./mail-section-model.js";
 import { renderMailSectionContent } from "./mail-section-panels.js";
 import { type WebLocale } from "./request.js";
 import {
+  type MailCredentialRevealViewModel,
   type MailSectionCopy,
   type MailSectionRenderers
 } from "./mail-section-types.js";
@@ -14,6 +15,7 @@ export function renderMailSection(
   locale: WebLocale,
   focus: string | undefined,
   returnTo: string,
+  mailCredentialReveal: MailCredentialRevealViewModel | undefined,
   renderers: MailSectionRenderers
 ): string {
   const mailCopy = getMailSectionCopy(locale);
@@ -24,6 +26,7 @@ export function renderMailSection(
     data,
     locale,
     mailCopy,
+    mailCredentialReveal,
     model,
     renderers,
     returnTo

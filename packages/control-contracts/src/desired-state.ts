@@ -66,13 +66,17 @@ export interface DesiredStateMailDomainInput {
   dkimSelector: string;
 }
 
+export type MailboxCredentialState = "missing" | "configured" | "reset_required";
+
 export interface DesiredStateMailboxInput {
   address: string;
   domainName: string;
   localPart: string;
   primaryNodeId: string;
   standbyNodeId?: string;
+  credentialState?: MailboxCredentialState;
   desiredPassword?: string;
+  generateCredential?: boolean;
 }
 
 export interface DesiredStateMailAliasInput {

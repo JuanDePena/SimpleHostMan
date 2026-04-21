@@ -403,6 +403,7 @@ async function inspectMail(): Promise<MailServiceSnapshot> {
 
   let managedDomains: MailServiceSnapshot["managedDomains"] = [];
   let configuredMailboxCount = 0;
+  let missingMailboxCount = 0;
   let resetRequiredMailboxCount = 0;
 
   if (desiredStateContent) {
@@ -453,6 +454,8 @@ async function inspectMail(): Promise<MailServiceSnapshot> {
         for (const mailbox of domain.mailboxes ?? []) {
           if (mailbox.credentialState === "configured") {
             configuredMailboxCount += 1;
+          } else if (mailbox.credentialState === "missing") {
+            missingMailboxCount += 1;
           } else {
             resetRequiredMailboxCount += 1;
           }
@@ -500,6 +503,7 @@ async function inspectMail(): Promise<MailServiceSnapshot> {
     firewallServiceName,
     firewallConfigured,
     configuredMailboxCount,
+    missingMailboxCount,
     resetRequiredMailboxCount,
     managedDomains,
     checkedAt

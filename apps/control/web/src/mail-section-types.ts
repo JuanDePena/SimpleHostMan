@@ -1,3 +1,5 @@
+import type { MailboxCredentialReveal } from "@simplehost/control-contracts";
+
 import { type DashboardData } from "./api-client.js";
 import { type WebLocale } from "./request.js";
 import { type PillTone, type SelectOption } from "./web-types.js";
@@ -57,6 +59,7 @@ export interface LocalizedMailCopy {
   selectedQuotaTitle: string;
   createLabel: string;
   editLabel: string;
+  rotateLabel: string;
   resetLabel: string;
   deleteLabel: string;
   actionsLabel: string;
@@ -98,6 +101,14 @@ export interface LocalizedMailCopy {
   saveQuotaLabel: string;
   deleteQuotaLabel: string;
   desiredPasswordLabel: string;
+  credentialStrategyLabel: string;
+  credentialStrategyGenerateLabel: string;
+  credentialStrategyManualLabel: string;
+  credentialStrategyMissingLabel: string;
+  credentialStrategyKeepLabel: string;
+  createMailboxDescription: string;
+  editMailboxDescription: string;
+  manualPasswordHelp: string;
   localPartLabel: string;
   addressLabel: string;
   tenantSlugLabel: string;
@@ -106,8 +117,16 @@ export interface LocalizedMailCopy {
   mailboxTotalLabel: string;
   aliasTotalLabel: string;
   quotaTotalLabel: string;
-  credentialPresent: string;
+  credentialConfigured: string;
   credentialMissing: string;
+  credentialResetRequired: string;
+  credentialRevealTitle: string;
+  credentialRevealDescription: string;
+  credentialRevealValueLabel: string;
+  credentialRevealShownOnce: string;
+  credentialRevealMailboxLabel: string;
+  credentialRevealGeneratedLabel: string;
+  credentialRevealRotatedLabel: string;
   runtimeReported: string;
   runtimeUnreported: string;
   serviceActive: string;
@@ -150,7 +169,7 @@ export interface MailSectionModel {
     localPart: string;
     primaryNodeId: string;
     standbyNodeId?: string;
-    hasCredential: boolean;
+    credentialState: DashboardData["mail"]["mailboxes"][number]["credentialState"];
     quotaBytes?: number;
   };
   selectedAliasDefaults: {
@@ -164,4 +183,9 @@ export interface MailSectionModel {
     storageBytes: number;
     domainName: string;
   };
+}
+
+export interface MailCredentialRevealViewModel {
+  historyReplaceUrl?: string;
+  reveal: MailboxCredentialReveal;
 }

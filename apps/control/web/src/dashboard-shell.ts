@@ -58,6 +58,7 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
   data: DashboardData;
   locale: WebLocale;
   currentPath: string;
+  historyReplaceUrl?: string;
   version: string;
   view: DashboardView;
   focus?: string;
@@ -101,6 +102,7 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
     data,
     locale,
     currentPath,
+    historyReplaceUrl,
     version,
     view,
     focus,
@@ -384,6 +386,7 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
     versionValue: version,
     sidebarSearchPlaceholder: copy.sidebarSearchPlaceholder,
     sidebarGroups,
-    body
+    body,
+    historyReplaceUrl
   });
 }

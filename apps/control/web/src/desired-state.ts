@@ -412,19 +412,41 @@ export function parseMailboxForm(form: URLSearchParams): UpsertMailboxRequest {
   const standbyNodeId = form.get("standbyNodeId")?.trim()
     ? assertSlug(form.get("standbyNodeId")?.trim() ?? "", "Standby node")
     : undefined;
+  const desiredPassword = form.get("desiredPassword")?.trim() || undefined;
+  const credentialStrategy = (form.get("credentialStrategy")?.trim() ?? "keep").toLowerCase();
 
   if (standbyNodeId && standbyNodeId === primaryNodeId) {
     throw new Error("Standby node must differ from primary node.");
   }
 
-  return {
+  const request: UpsertMailboxRequest = {
     address: assertRequired(form.get("address")?.trim() ?? "", "Mailbox address"),
     domainName: assertDomain(form.get("domainName")?.trim() ?? "", "Mail domain"),
     localPart: assertRequired(form.get("localPart")?.trim() ?? "", "Local part"),
     primaryNodeId,
-    standbyNodeId,
-    desiredPassword: form.get("desiredPassword")?.trim() || undefined
+    standbyNodeId
   };
+
+  switch (credentialStrategy) {
+    case "generate":
+      request.generateCredential = true;
+      request.credentialState = "configured";
+      return request;
+    case "manual":
+      request.desiredPassword = assertRequired(desiredPassword ?? "", "Manual password");
+      request.credentialState = "configured";
+      return request;
+    case "missing":
+      request.credentialState = "missing";
+      return request;
+    case "keep":
+    default:
+      if (desiredPassword) {
+        request.desiredPassword = desiredPassword;
+        request.credentialState = "configured";
+      }
+      return request;
+  }
 }
 
 export function parseMailAliasForm(form: URLSearchParams): UpsertMailAliasRequest {

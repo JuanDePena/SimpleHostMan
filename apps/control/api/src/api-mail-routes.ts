@@ -1,5 +1,6 @@
 import type {
   ResetMailboxCredentialRequest,
+  RotateMailboxCredentialRequest,
   UpsertMailAliasRequest,
   UpsertMailboxQuotaRequest,
   UpsertMailboxRequest,
@@ -76,6 +77,35 @@ export const handleMailRoutes: ApiRouteHandler = async ({
       200,
       await controlPlaneStore.resetMailboxCredential(
         await readJsonBody<ResetMailboxCredentialRequest>(request),
+        bearerToken
+      )
+    );
+    return true;
+  }
+
+  if (request.method === "POST" && url.pathname === "/v1/mail/mailboxes/rotate-credential") {
+    writeJson(
+      response,
+      200,
+      await controlPlaneStore.rotateMailboxCredential(
+        await readJsonBody<RotateMailboxCredentialRequest>(request),
+        bearerToken
+      )
+    );
+    return true;
+  }
+
+  const consumeCredentialRevealMatch = matchRoute(
+    url.pathname,
+    /^\/v1\/mail\/mailboxes\/credential-reveals\/([^/]+)$/
+  );
+
+  if (request.method === "GET" && consumeCredentialRevealMatch) {
+    writeJson(
+      response,
+      200,
+      await controlPlaneStore.consumeMailboxCredentialReveal(
+        decodeURIComponent(consumeCredentialRevealMatch[1] ?? ""),
         bearerToken
       )
     );

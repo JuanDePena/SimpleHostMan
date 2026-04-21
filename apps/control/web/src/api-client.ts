@@ -15,6 +15,8 @@ import {
   type InventoryImportSummary,
   type JobDispatchResponse,
   type JobHistoryEntry,
+  type MailboxCredentialMutationResult,
+  type MailboxCredentialReveal,
   type MailOverview,
   type NodeHealthSnapshot,
   type OperationsOverview,
@@ -23,6 +25,7 @@ import {
   type PackageInventorySnapshot,
   type ProxyRenderPayload,
   type ResetMailboxCredentialRequest,
+  type RotateMailboxCredentialRequest,
   type ResourceDriftSummary,
   type RustDeskPublicConnectionInfo
   ,
@@ -99,8 +102,22 @@ export interface ControlWebApi extends ControlAuthSurface {
   loadProxyPreview(token: string, slug: string): Promise<ProxyRenderPayload>;
   upsertMailDomain(token: string, request: UpsertMailDomainRequest): Promise<void>;
   deleteMailDomain(token: string, domainName: string): Promise<void>;
-  upsertMailbox(token: string, request: UpsertMailboxRequest): Promise<void>;
-  resetMailboxCredential(token: string, request: ResetMailboxCredentialRequest): Promise<void>;
+  upsertMailbox(
+    token: string,
+    request: UpsertMailboxRequest
+  ): Promise<MailboxCredentialMutationResult>;
+  resetMailboxCredential(
+    token: string,
+    request: ResetMailboxCredentialRequest
+  ): Promise<MailboxCredentialMutationResult>;
+  rotateMailboxCredential(
+    token: string,
+    request: RotateMailboxCredentialRequest
+  ): Promise<MailboxCredentialMutationResult>;
+  consumeMailboxCredentialReveal(
+    token: string,
+    revealId: string
+  ): Promise<MailboxCredentialReveal | null>;
   deleteMailbox(token: string, address: string): Promise<void>;
   upsertMailAlias(token: string, request: UpsertMailAliasRequest): Promise<void>;
   deleteMailAlias(token: string, address: string): Promise<void>;
@@ -354,8 +371,11 @@ export function createControlWebApiFromRequest(request: ControlWebApiRequest): C
         token
       });
     },
-    async upsertMailbox(token: string, upsertRequest: UpsertMailboxRequest): Promise<void> {
-      await request("/v1/mail/mailboxes", {
+    async upsertMailbox(
+      token: string,
+      upsertRequest: UpsertMailboxRequest
+    ): Promise<MailboxCredentialMutationResult> {
+      return request<MailboxCredentialMutationResult>("/v1/mail/mailboxes", {
         method: "POST",
         token,
         body: upsertRequest
@@ -364,12 +384,31 @@ export function createControlWebApiFromRequest(request: ControlWebApiRequest): C
     async resetMailboxCredential(
       token: string,
       resetRequest: ResetMailboxCredentialRequest
-    ): Promise<void> {
-      await request("/v1/mail/mailboxes/reset-credential", {
+    ): Promise<MailboxCredentialMutationResult> {
+      return request<MailboxCredentialMutationResult>("/v1/mail/mailboxes/reset-credential", {
         method: "POST",
         token,
         body: resetRequest
       });
+    },
+    async rotateMailboxCredential(
+      token: string,
+      rotateRequest: RotateMailboxCredentialRequest
+    ): Promise<MailboxCredentialMutationResult> {
+      return request<MailboxCredentialMutationResult>("/v1/mail/mailboxes/rotate-credential", {
+        method: "POST",
+        token,
+        body: rotateRequest
+      });
+    },
+    async consumeMailboxCredentialReveal(
+      token: string,
+      revealId: string
+    ): Promise<MailboxCredentialReveal | null> {
+      return request<MailboxCredentialReveal | null>(
+        `/v1/mail/mailboxes/credential-reveals/${encodeURIComponent(revealId)}`,
+        { token }
+      );
     },
     async deleteMailbox(token: string, address: string): Promise<void> {
       await request(`/v1/mail/mailboxes/${encodeURIComponent(address)}`, {

@@ -1,9 +1,12 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 
 import { Pool, type PoolClient } from "pg";
 import YAML from "yaml";
 
 import type {
+  MailboxCredentialMutationResult,
+  MailboxCredentialReveal,
+  MailboxCredentialState,
   DesiredStateAppInput,
   DesiredStateApplyResponse,
   DesiredStateDatabaseInput,
@@ -75,6 +78,62 @@ export async function getLatestInventoryExport(
   );
 
   return result.rows[0] ? toInventoryExportSummary(result.rows[0]) : null;
+}
+
+function normalizeMailboxCredentialState(
+  state: string | null | undefined,
+  hasDesiredPassword: boolean
+): MailboxCredentialState {
+  if (
+    state === "missing" ||
+    state === "configured" ||
+    state === "reset_required"
+  ) {
+    return state;
+  }
+
+  return hasDesiredPassword ? "configured" : "missing";
+}
+
+function createMailboxCredentialSecret(length = 20): string {
+  return randomBytes(24)
+    .toString("base64url")
+    .replace(/[^A-Za-z0-9]/g, "")
+    .slice(0, length);
+}
+
+async function createMailboxCredentialReveal(args: {
+  client: PoolClient;
+  mailboxId: string;
+  actorId: string;
+  action: "generated" | "rotated";
+  credential: string;
+  payloadKey: Buffer | null;
+}): Promise<string> {
+  const revealId = `mailbox-credential-reveal-${randomUUID()}`;
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+
+  await args.client.query(
+    `INSERT INTO shp_mailbox_credential_reveals (
+       reveal_id,
+       mailbox_id,
+       actor_id,
+       action,
+       secret_payload,
+       expires_at
+     )
+     VALUES ($1, $2, $3, $4, $5::jsonb, $6)`,
+    [
+      revealId,
+      args.mailboxId,
+      args.actorId,
+      args.action,
+      JSON.stringify(encodeDesiredPassword(args.credential, args.payloadKey)),
+      expiresAt
+    ]
+  );
+
+  return revealId;
 }
 
 export async function buildInventorySnapshot(client: PoolClient) {
@@ -152,7 +211,8 @@ export async function buildInventorySnapshot(client: PoolClient) {
 }
 
 export async function buildDesiredStateSpecFromDatabase(
-  client: PoolClient
+  client: PoolClient,
+  payloadKey: Buffer | null
 ): Promise<DesiredStateSpec> {
   const [
     tenantResult,
@@ -279,7 +339,9 @@ export async function buildDesiredStateSpecFromDatabase(
          mailboxes.local_part,
          mailboxes.primary_node_id,
          mailboxes.standby_node_id,
-         credentials.secret_payload AS desired_password
+         credentials.secret_payload AS desired_password,
+         credentials.credential_state,
+         credentials.updated_at AS credential_updated_at
        FROM shp_mailboxes mailboxes
        INNER JOIN shp_mail_domains domains
          ON domains.mail_domain_id = mailboxes.mail_domain_id
@@ -383,7 +445,16 @@ export async function buildDesiredStateSpecFromDatabase(
       domainName: row.domain_name,
       localPart: row.local_part,
       primaryNodeId: row.primary_node_id,
-      standbyNodeId: row.standby_node_id ?? undefined
+      standbyNodeId: row.standby_node_id ?? undefined,
+      credentialState: normalizeMailboxCredentialState(
+        row.credential_state,
+        Boolean(row.desired_password)
+      ),
+      desiredPassword:
+        normalizeMailboxCredentialState(row.credential_state, Boolean(row.desired_password)) ===
+          "configured" && row.desired_password
+          ? decodeDesiredPassword(row.desired_password, payloadKey) ?? undefined
+          : undefined
     })),
     mailAliases: mailAliasResult.rows.map((row) => ({
       address: row.address,
@@ -417,10 +488,18 @@ export async function applyDesiredStateSpec(
     (mailDomain) => `mail-domain-${mailDomain.domainName}`
   );
   const desiredMailboxIds = spec.mailboxes.map((mailbox) => `mailbox-${mailbox.address}`);
-  const desiredMailboxCredentialIds = spec.mailboxes
-    .filter((mailbox) => typeof mailbox.desiredPassword === "string" && mailbox.desiredPassword.length > 0)
-    .map((mailbox) => `mailbox-${mailbox.address}`);
   const desiredMailAliasIds = spec.mailAliases.map((mailAlias) => `mail-alias-${mailAlias.address}`);
+  const existingMailboxCredentialRows = await client.query<{
+    mailbox_id: string;
+    secret_payload: Record<string, unknown>;
+    credential_state: string;
+  }>(
+    `SELECT mailbox_id, secret_payload, credential_state
+     FROM shp_mailbox_credentials`
+  );
+  const existingMailboxCredentials = new Map(
+    existingMailboxCredentialRows.rows.map((row) => [row.mailbox_id, row] as const)
+  );
 
   for (const tenant of spec.tenants) {
     await client.query(
@@ -554,6 +633,11 @@ export async function applyDesiredStateSpec(
 
   for (const mailbox of spec.mailboxes) {
     const mailboxId = `mailbox-${mailbox.address}`;
+    const credentialState = normalizeMailboxCredentialState(
+      mailbox.credentialState,
+      Boolean(mailbox.desiredPassword)
+    );
+    const existingCredential = existingMailboxCredentials.get(mailboxId);
 
     await client.query(
       `INSERT INTO shp_mailboxes (
@@ -584,24 +668,28 @@ export async function applyDesiredStateSpec(
       ]
     );
 
-    if (mailbox.desiredPassword) {
-      await client.query(
-        `INSERT INTO shp_mailbox_credentials (
-           mailbox_id,
-           secret_payload,
-           updated_at
-         )
-         VALUES ($1, $2::jsonb, NOW())
-         ON CONFLICT (mailbox_id)
-         DO UPDATE SET
-           secret_payload = EXCLUDED.secret_payload,
-           updated_at = EXCLUDED.updated_at`,
-        [
-          mailboxId,
-          JSON.stringify(encodeDesiredPassword(mailbox.desiredPassword, payloadKey))
-        ]
-      );
-    }
+    const nextSecretPayload =
+      credentialState === "configured"
+        ? mailbox.desiredPassword
+          ? encodeDesiredPassword(mailbox.desiredPassword, payloadKey)
+          : existingCredential?.secret_payload ?? {}
+        : {};
+
+    await client.query(
+      `INSERT INTO shp_mailbox_credentials (
+         mailbox_id,
+         secret_payload,
+         credential_state,
+         updated_at
+       )
+       VALUES ($1, $2::jsonb, $3, NOW())
+       ON CONFLICT (mailbox_id)
+       DO UPDATE SET
+         secret_payload = EXCLUDED.secret_payload,
+         credential_state = EXCLUDED.credential_state,
+         updated_at = EXCLUDED.updated_at`,
+      [mailboxId, JSON.stringify(nextSecretPayload), credentialState]
+    );
   }
 
   for (const mailAlias of spec.mailAliases) {
@@ -826,7 +914,7 @@ export async function applyDesiredStateSpec(
   await client.query(
     `DELETE FROM shp_mailbox_credentials
      WHERE NOT (mailbox_id = ANY($1::text[]))`,
-    [desiredMailboxCredentialIds]
+    [desiredMailboxIds]
   );
   await client.query(
     `DELETE FROM shp_mail_aliases
@@ -1738,15 +1826,21 @@ export function removeSpecItem<T>(
 }
 
 export async function buildMailOverview(client: PoolClient): Promise<MailOverview> {
-  const spec = await buildDesiredStateSpecFromDatabase(client);
-  const credentialResult = await client.query<{ address: string }>(
-    `SELECT mailboxes.address
+  const spec = await buildDesiredStateSpecFromDatabase(client, null);
+  const credentialResult = await client.query<{
+    address: string;
+    credential_state: "missing" | "configured" | "reset_required" | null;
+    updated_at: Date | string | null;
+  }>(
+    `SELECT mailboxes.address, credentials.credential_state, credentials.updated_at
      FROM shp_mailbox_credentials credentials
      INNER JOIN shp_mailboxes mailboxes
        ON mailboxes.mailbox_id = credentials.mailbox_id
      ORDER BY mailboxes.address ASC`
   );
-  const credentialAddresses = new Set(credentialResult.rows.map((row) => row.address));
+  const credentialRowsByAddress = new Map(
+    credentialResult.rows.map((row) => [row.address, row] as const)
+  );
   const quotasByMailbox = new Map(
     spec.mailboxQuotas.map((quota) => [quota.mailboxAddress, quota.storageBytes] as const)
   );
@@ -1775,8 +1869,21 @@ export async function buildMailOverview(client: PoolClient): Promise<MailOvervie
     })),
     mailboxes: spec.mailboxes.map((mailbox) => ({
       ...mailbox,
-      hasCredential: credentialAddresses.has(mailbox.address),
-      quotaBytes: quotasByMailbox.get(mailbox.address)
+      hasCredential:
+        normalizeMailboxCredentialState(
+          credentialRowsByAddress.get(mailbox.address)?.credential_state,
+          Boolean(mailbox.desiredPassword)
+        ) === "configured",
+      credentialState: normalizeMailboxCredentialState(
+        credentialRowsByAddress.get(mailbox.address)?.credential_state,
+        Boolean(mailbox.desiredPassword)
+      ),
+      quotaBytes: quotasByMailbox.get(mailbox.address),
+      credentialUpdatedAt: credentialRowsByAddress.get(mailbox.address)?.updated_at
+        ? new Date(
+            credentialRowsByAddress.get(mailbox.address)?.updated_at as Date | string
+          ).toISOString()
+        : undefined
     })),
     aliases: spec.mailAliases,
     quotas: spec.mailboxQuotas.map((quota) => ({
@@ -1810,7 +1917,7 @@ export function createControlPlaneSpecMethods(
         "platform_admin",
         "platform_operator"
       ]);
-      const currentSpec = await buildDesiredStateSpecFromDatabase(client);
+      const currentSpec = await buildDesiredStateSpecFromDatabase(client, jobPayloadKey);
       const nextSpec = mutate(currentSpec);
 
       await applyDesiredStateSpec(client, nextSpec, jobPayloadKey);
@@ -1828,6 +1935,96 @@ export function createControlPlaneSpecMethods(
 
       return buildMailOverview(client);
     });
+
+  const updateMailboxCredentialTimestamps = async (
+    client: PoolClient,
+    mailboxAddress: string,
+    options: {
+      generated?: boolean;
+      rotated?: boolean;
+      reset?: boolean;
+    }
+  ): Promise<void> => {
+    await client.query(
+      `UPDATE shp_mailbox_credentials credentials
+       SET
+         generated_at = CASE WHEN $2 THEN NOW() ELSE credentials.generated_at END,
+         rotated_at = CASE WHEN $3 THEN NOW() ELSE credentials.rotated_at END,
+         reset_at = CASE WHEN $4 THEN NOW() ELSE credentials.reset_at END
+       FROM shp_mailboxes mailboxes
+       WHERE mailboxes.mailbox_id = credentials.mailbox_id
+         AND mailboxes.address = $1`,
+      [mailboxAddress, options.generated ?? false, options.rotated ?? false, options.reset ?? false]
+    );
+  };
+
+  const consumeMailboxCredentialRevealById = async (
+    client: PoolClient,
+    revealId: string,
+    actorId: string
+  ): Promise<MailboxCredentialReveal | null> => {
+    const result = await client.query<{
+      reveal_id: string;
+      actor_id: string | null;
+      action: "generated" | "rotated";
+      secret_payload: Record<string, unknown>;
+      created_at: Date | string;
+      expires_at: Date | string;
+      consumed_at: Date | string | null;
+      address: string;
+    }>(
+      `SELECT
+         reveals.reveal_id,
+         reveals.actor_id,
+         reveals.action,
+         reveals.secret_payload,
+         reveals.created_at,
+         reveals.expires_at,
+         reveals.consumed_at,
+         mailboxes.address
+       FROM shp_mailbox_credential_reveals reveals
+       INNER JOIN shp_mailboxes mailboxes
+         ON mailboxes.mailbox_id = reveals.mailbox_id
+       WHERE reveals.reveal_id = $1`,
+      [revealId]
+    );
+
+    const row = result.rows[0];
+
+    if (!row || row.actor_id !== actorId || row.consumed_at) {
+      return null;
+    }
+
+    const expiresAt = new Date(row.expires_at);
+
+    if (!Number.isFinite(expiresAt.getTime()) || expiresAt.getTime() < Date.now()) {
+      return null;
+    }
+
+    const credential = decodeDesiredPassword(row.secret_payload, jobPayloadKey);
+
+    if (!credential) {
+      return null;
+    }
+
+    await client.query(
+      `UPDATE shp_mailbox_credential_reveals
+       SET consumed_at = NOW()
+       WHERE reveal_id = $1`,
+      [revealId]
+    );
+
+    return {
+      revealId: row.reveal_id,
+      mailboxAddress: row.address,
+      credential,
+      action: row.action,
+      generatedAt:
+        row.created_at instanceof Date
+          ? row.created_at.toISOString()
+          : new Date(row.created_at).toISOString()
+    };
+  };
 
   return {
     async importInventory(request, presentedToken) {
@@ -1937,7 +2134,7 @@ export function createControlPlaneSpecMethods(
           "platform_operator"
         ]);
 
-        const spec = await buildDesiredStateSpecFromDatabase(client);
+        const spec = await buildDesiredStateSpecFromDatabase(client, jobPayloadKey);
         const summary = summarizeDesiredStateSpec(spec);
         const exportedAt = new Date().toISOString();
         const exportId = `export-${randomUUID()}`;
@@ -2016,41 +2213,234 @@ export function createControlPlaneSpecMethods(
     },
 
     async upsertMailbox(request, presentedToken) {
-      return mutateDesiredStateAsUser(
-        presentedToken,
-        `mailbox.upsert:${request.address}`,
-        "mail.mailbox.upserted",
-        "mailbox",
-        request.address,
-        (spec) => ({
-          ...spec,
-          mailboxes: upsertSpecItem(spec.mailboxes, request, (item) => item.address)
-        })
-      );
+      return withTransaction(pool, async (client) => {
+        const actor = await requireAuthorizedUser(client, presentedToken, [
+          "platform_admin",
+          "platform_operator"
+        ]);
+        const currentSpec = await buildDesiredStateSpecFromDatabase(client, jobPayloadKey);
+        const existingMailbox = currentSpec.mailboxes.find(
+          (mailbox) => mailbox.address === request.address
+        );
+        const manualPassword = request.desiredPassword?.trim() || undefined;
+        const generatedCredential =
+          request.generateCredential && !manualPassword
+            ? createMailboxCredentialSecret()
+            : undefined;
+        const credentialState =
+          manualPassword || generatedCredential
+            ? "configured"
+            : request.credentialState === "missing"
+              ? "missing"
+              : existingMailbox?.credentialState ?? "missing";
+        const nextMailbox = {
+          address: request.address,
+          domainName: request.domainName,
+          localPart: request.localPart,
+          primaryNodeId: request.primaryNodeId,
+          standbyNodeId: request.standbyNodeId,
+          credentialState,
+          desiredPassword:
+            manualPassword ??
+            generatedCredential ??
+            (credentialState === "configured" ? existingMailbox?.desiredPassword : undefined)
+        };
+        const nextSpec = {
+          ...currentSpec,
+          mailboxes: upsertSpecItem(currentSpec.mailboxes, nextMailbox, (item) => item.address)
+        };
+
+        await applyDesiredStateSpec(client, nextSpec, jobPayloadKey);
+
+        let action: MailboxCredentialMutationResult["action"] =
+          credentialState === "missing" ? "missing" : "configured";
+        let revealId: string | undefined;
+
+        if (generatedCredential) {
+          action = existingMailbox ? "rotated" : "generated";
+          revealId = await createMailboxCredentialReveal({
+            client,
+            mailboxId: `mailbox-${request.address}`,
+            actorId: actor.userId,
+            action: existingMailbox ? "rotated" : "generated",
+            credential: generatedCredential,
+            payloadKey: jobPayloadKey
+          });
+        } else if (manualPassword && existingMailbox) {
+          action = "rotated";
+        }
+
+        if (generatedCredential && existingMailbox) {
+          await updateMailboxCredentialTimestamps(client, request.address, { rotated: true });
+        } else if (generatedCredential) {
+          await updateMailboxCredentialTimestamps(client, request.address, { generated: true });
+        } else if (manualPassword && existingMailbox) {
+          await updateMailboxCredentialTimestamps(client, request.address, { rotated: true });
+        }
+
+        await insertAuditEvent(client, {
+          actorType: "user",
+          actorId: actor.userId,
+          eventType: "mail.mailbox.upserted",
+          entityType: "mailbox",
+          entityId: request.address,
+          payload: {
+            reason: `mailbox.upsert:${request.address}`,
+            credentialState,
+            generatedCredential: Boolean(generatedCredential),
+            manualPassword: Boolean(manualPassword)
+          }
+        });
+
+        if (action === "generated" || action === "rotated") {
+          await insertAuditEvent(client, {
+            actorType: "user",
+            actorId: actor.userId,
+            eventType:
+              action === "generated"
+                ? "mail.mailbox_credential.generated"
+                : "mail.mailbox_credential.rotated",
+            entityType: "mailbox",
+            entityId: request.address,
+            payload: {
+              credentialState,
+              revealId: revealId ?? null,
+              source: generatedCredential ? "generated" : "manual"
+            }
+          });
+        }
+
+        return {
+          mailboxAddress: request.address,
+          credentialState,
+          action,
+          revealId
+        };
+      });
     },
 
     async resetMailboxCredential(request, presentedToken) {
-      return mutateDesiredStateAsUser(
-        presentedToken,
-        `mailbox-credential.reset:${request.mailboxAddress}`,
-        "mail.mailbox_credential.reset",
-        "mailbox",
-        request.mailboxAddress,
-        (spec) => ({
-          ...spec,
-          mailboxes: spec.mailboxes.map((mailbox) =>
+      return withTransaction(pool, async (client) => {
+        const actor = await requireAuthorizedUser(client, presentedToken, [
+          "platform_admin",
+          "platform_operator"
+        ]);
+        const currentSpec = await buildDesiredStateSpecFromDatabase(client, jobPayloadKey);
+        const existingMailbox = currentSpec.mailboxes.find(
+          (mailbox) => mailbox.address === request.mailboxAddress
+        );
+
+        if (!existingMailbox) {
+          throw new Error(`Mailbox ${request.mailboxAddress} does not exist.`);
+        }
+
+        const nextSpec = {
+          ...currentSpec,
+          mailboxes: currentSpec.mailboxes.map((mailbox) =>
             mailbox.address === request.mailboxAddress
               ? {
-                  address: mailbox.address,
-                  domainName: mailbox.domainName,
-                  localPart: mailbox.localPart,
-                  primaryNodeId: mailbox.primaryNodeId,
-                  standbyNodeId: mailbox.standbyNodeId
+                  ...mailbox,
+                  credentialState: "reset_required" as const,
+                  desiredPassword: undefined
                 }
               : mailbox
           )
-        })
-      );
+        };
+
+        await applyDesiredStateSpec(client, nextSpec, jobPayloadKey);
+        await updateMailboxCredentialTimestamps(client, request.mailboxAddress, { reset: true });
+
+        await insertAuditEvent(client, {
+          actorType: "user",
+          actorId: actor.userId,
+          eventType: "mail.mailbox_credential.reset",
+          entityType: "mailbox",
+          entityId: request.mailboxAddress,
+          payload: {
+            previousCredentialState: existingMailbox.credentialState ?? "missing",
+            credentialState: "reset_required"
+          }
+        });
+
+        return {
+          mailboxAddress: request.mailboxAddress,
+          credentialState: "reset_required",
+          action: "reset"
+        };
+      });
+    },
+
+    async rotateMailboxCredential(request, presentedToken) {
+      return withTransaction(pool, async (client) => {
+        const actor = await requireAuthorizedUser(client, presentedToken, [
+          "platform_admin",
+          "platform_operator"
+        ]);
+        const currentSpec = await buildDesiredStateSpecFromDatabase(client, jobPayloadKey);
+        const existingMailbox = currentSpec.mailboxes.find(
+          (mailbox) => mailbox.address === request.mailboxAddress
+        );
+
+        if (!existingMailbox) {
+          throw new Error(`Mailbox ${request.mailboxAddress} does not exist.`);
+        }
+
+        const generatedCredential = createMailboxCredentialSecret();
+        const nextSpec = {
+          ...currentSpec,
+          mailboxes: currentSpec.mailboxes.map((mailbox) =>
+            mailbox.address === request.mailboxAddress
+              ? {
+                  ...mailbox,
+                  credentialState: "configured" as const,
+                  desiredPassword: generatedCredential
+                }
+              : mailbox
+          )
+        };
+
+        await applyDesiredStateSpec(client, nextSpec, jobPayloadKey);
+        await updateMailboxCredentialTimestamps(client, request.mailboxAddress, { rotated: true });
+
+        const revealId = await createMailboxCredentialReveal({
+          client,
+          mailboxId: `mailbox-${request.mailboxAddress}`,
+          actorId: actor.userId,
+          action: "rotated",
+          credential: generatedCredential,
+          payloadKey: jobPayloadKey
+        });
+
+        await insertAuditEvent(client, {
+          actorType: "user",
+          actorId: actor.userId,
+          eventType: "mail.mailbox_credential.rotated",
+          entityType: "mailbox",
+          entityId: request.mailboxAddress,
+          payload: {
+            credentialState: "configured",
+            revealId
+          }
+        });
+
+        return {
+          mailboxAddress: request.mailboxAddress,
+          credentialState: "configured",
+          action: "rotated",
+          revealId
+        };
+      });
+    },
+
+    async consumeMailboxCredentialReveal(revealId, presentedToken) {
+      return withTransaction(pool, async (client) => {
+        const actor = await requireAuthorizedUser(client, presentedToken, [
+          "platform_admin",
+          "platform_operator"
+        ]);
+
+        return consumeMailboxCredentialRevealById(client, revealId, actor.userId);
+      });
     },
 
     async deleteMailbox(address, presentedToken) {

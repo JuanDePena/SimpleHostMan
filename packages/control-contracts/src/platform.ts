@@ -79,6 +79,7 @@ export interface MailServiceSnapshot {
   firewallServiceName?: string;
   firewallConfigured?: boolean;
   configuredMailboxCount?: number;
+  missingMailboxCount?: number;
   resetRequiredMailboxCount?: number;
   managedDomains: MailManagedDomainSnapshot[];
   checkedAt: string;

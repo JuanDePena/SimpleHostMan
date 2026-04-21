@@ -1,6 +1,7 @@
 import type {
   DesiredStateMailAliasInput,
   DesiredStateMailDomainInput,
+  MailboxCredentialState,
   DesiredStateMailboxInput,
   DesiredStateMailboxQuotaInput
 } from "./desired-state.js";
@@ -13,7 +14,9 @@ export interface MailDomainSummary extends DesiredStateMailDomainInput {
 export interface MailboxSummary
   extends Omit<DesiredStateMailboxInput, "desiredPassword"> {
   hasCredential: boolean;
+  credentialState: MailboxCredentialState;
   quotaBytes?: number;
+  credentialUpdatedAt?: string;
 }
 
 export interface MailAliasSummary extends DesiredStateMailAliasInput {}
@@ -40,4 +43,30 @@ export interface UpsertMailboxQuotaRequest extends DesiredStateMailboxQuotaInput
 
 export interface ResetMailboxCredentialRequest {
   mailboxAddress: string;
+}
+
+export interface RotateMailboxCredentialRequest {
+  mailboxAddress: string;
+}
+
+export type MailboxCredentialAction =
+  | "missing"
+  | "configured"
+  | "generated"
+  | "rotated"
+  | "reset";
+
+export interface MailboxCredentialMutationResult {
+  mailboxAddress: string;
+  credentialState: MailboxCredentialState;
+  action: MailboxCredentialAction;
+  revealId?: string;
+}
+
+export interface MailboxCredentialReveal {
+  revealId: string;
+  mailboxAddress: string;
+  credential: string;
+  action: Extract<MailboxCredentialAction, "generated" | "rotated">;
+  generatedAt: string;
 }

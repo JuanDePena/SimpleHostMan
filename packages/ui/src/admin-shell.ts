@@ -46,7 +46,7 @@ ${renderBaseStyleBlock()}
 ${renderAdminShellStyleBlock()}
     </style>
   </head>
-  <body>
+  <body${props.historyReplaceUrl ? ` data-history-replace="${escapeHtml(props.historyReplaceUrl)}"` : ""}>
     <div class="admin-shell">
       <aside class="admin-sidebar">
         <div class="sidebar-header">

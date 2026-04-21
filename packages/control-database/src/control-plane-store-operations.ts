@@ -101,7 +101,9 @@ export async function buildMailSyncPlans(
          mailboxes.local_part,
          mailboxes.primary_node_id,
          mailboxes.standby_node_id,
-         credentials.secret_payload AS desired_password
+         credentials.secret_payload AS desired_password,
+         credentials.credential_state,
+         credentials.updated_at AS credential_updated_at
        FROM shp_mailboxes mailboxes
        INNER JOIN shp_mail_domains domains
          ON domains.mail_domain_id = mailboxes.mail_domain_id
@@ -145,9 +147,18 @@ export async function buildMailSyncPlans(
 
   for (const mailbox of mailboxResult.rows) {
     const entries = mailboxesByDomain.get(mailbox.domain_name) ?? [];
+    const credentialState =
+      mailbox.credential_state === "missing" ||
+      mailbox.credential_state === "configured" ||
+      mailbox.credential_state === "reset_required"
+        ? mailbox.credential_state
+        : mailbox.desired_password
+          ? "configured"
+          : "missing";
     entries.push({
       address: mailbox.address,
       localPart: mailbox.local_part,
+      credentialState,
       desiredPassword: mailbox.desired_password
         ? decodeDesiredPassword(mailbox.desired_password, payloadKey) ?? undefined
         : undefined,

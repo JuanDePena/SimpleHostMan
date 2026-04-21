@@ -23,6 +23,8 @@ import type {
   JobClaimResponse,
   JobDispatchResponse,
   JobHistoryEntry,
+  MailboxCredentialMutationResult,
+  MailboxCredentialReveal,
   JobReportRequest,
   MailOverview,
   NodeHealthSnapshot,
@@ -35,6 +37,7 @@ import type {
   ControlGlobalRole,
   ReconciliationRunSummary,
   ResetMailboxCredentialRequest,
+  RotateMailboxCredentialRequest,
   ResourceDriftSummary,
   TenantMembershipRole,
   TenantMembershipSummary,
@@ -261,6 +264,8 @@ export interface MailboxRow {
   primary_node_id: string;
   standby_node_id: string | null;
   desired_password: Record<string, unknown> | null;
+  credential_state: "missing" | "configured" | "reset_required" | null;
+  credential_updated_at: Date | string | null;
 }
 
 export interface MailAliasRow {
@@ -485,7 +490,7 @@ export interface ControlPlaneStore {
   upsertMailbox(
     request: UpsertMailboxRequest,
     presentedToken: string | null
-  ): Promise<MailOverview>;
+  ): Promise<MailboxCredentialMutationResult>;
   deleteMailbox(
     address: string,
     presentedToken: string | null
@@ -505,7 +510,15 @@ export interface ControlPlaneStore {
   resetMailboxCredential(
     request: ResetMailboxCredentialRequest,
     presentedToken: string | null
-  ): Promise<MailOverview>;
+  ): Promise<MailboxCredentialMutationResult>;
+  rotateMailboxCredential(
+    request: RotateMailboxCredentialRequest,
+    presentedToken: string | null
+  ): Promise<MailboxCredentialMutationResult>;
+  consumeMailboxCredentialReveal(
+    revealId: string,
+    presentedToken: string | null
+  ): Promise<MailboxCredentialReveal | null>;
   deleteMailboxQuota(
     mailboxAddress: string,
     presentedToken: string | null
@@ -554,6 +567,8 @@ export type ControlPlaneSpecMethods = Pick<
   | "deleteMailAlias"
   | "upsertMailboxQuota"
   | "resetMailboxCredential"
+  | "rotateMailboxCredential"
+  | "consumeMailboxCredentialReveal"
   | "deleteMailboxQuota"
 >;
 

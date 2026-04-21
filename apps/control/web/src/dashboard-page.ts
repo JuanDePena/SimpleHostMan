@@ -3,6 +3,7 @@ import {
   renderDataTable,
   type PanelNotice
 } from "@simplehost/ui";
+import type { MailboxCredentialReveal } from "@simplehost/control-contracts";
 
 import { type DashboardData } from "./api-client.js";
 import {
@@ -72,7 +73,9 @@ type RenderDashboardArgs = {
   defaultImportPath: string;
   desiredStateTab: DesiredStateTabId;
   focus?: string;
+  historyReplaceUrl?: string;
   locale: WebLocale;
+  mailCredentialReveal?: MailboxCredentialReveal | null;
   notice?: PanelNotice;
   version: string;
   view: DashboardView;
@@ -196,7 +199,9 @@ export function renderDashboardPage(args: RenderDashboardArgs): string {
     defaultImportPath,
     desiredStateTab,
     focus,
+    historyReplaceUrl,
     locale,
+    mailCredentialReveal,
     notice,
     version,
     view
@@ -557,7 +562,12 @@ export function renderDashboardPage(args: RenderDashboardArgs): string {
     renderPill,
     renderSignalStrip
   });
-  const mailSection = renderMailSection(data, copy, locale, focus, currentPath, {
+  const mailSection = renderMailSection(data, copy, locale, focus, currentPath, mailCredentialReveal
+    ? {
+        historyReplaceUrl,
+        reveal: mailCredentialReveal
+      }
+    : undefined, {
     formatDate,
     renderActionForm,
     renderDetailGrid,
@@ -642,6 +652,7 @@ export function renderDashboardPage(args: RenderDashboardArgs): string {
     data,
     locale,
     currentPath,
+    historyReplaceUrl,
     version,
     view,
     focus,

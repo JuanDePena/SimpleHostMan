@@ -134,9 +134,10 @@ export function renderMailDesiredState(payload: MailSyncPayload): string {
     {
       domains: payload.domains.map((domain) => ({
         ...domain,
-        mailboxes: domain.mailboxes.map(({ desiredPassword, ...mailbox }) => ({
+        mailboxes: domain.mailboxes.map(({ desiredPassword, credentialState, ...mailbox }) => ({
           ...mailbox,
-          credentialState: desiredPassword ? "configured" : "reset_required"
+          credentialState:
+            credentialState ?? (desiredPassword ? "configured" : "missing")
         }))
       }))
     },

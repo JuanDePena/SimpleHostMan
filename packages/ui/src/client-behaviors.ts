@@ -1,5 +1,11 @@
 export function renderAdminShellClientScript(): string {
   return `(() => {
+        const historyReplaceUrl = document.body.getAttribute("data-history-replace");
+
+        if (historyReplaceUrl) {
+          history.replaceState(null, "", historyReplaceUrl);
+        }
+
         const sidebarSearch = document.querySelector("[data-sidebar-search]");
         const navItems = Array.from(document.querySelectorAll("[data-nav-item]"));
         const navGroups = Array.from(document.querySelectorAll("[data-nav-group]"));

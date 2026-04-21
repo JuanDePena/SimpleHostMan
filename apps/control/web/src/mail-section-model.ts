@@ -80,7 +80,7 @@ export function buildMailSectionModel(
     localPart: "",
     primaryNodeId: nodeOptions[0]?.value ?? "",
     standbyNodeId: "",
-    hasCredential: false,
+    credentialState: "missing" as const,
     quotaBytes: undefined
   };
   const selectedAliasDefaults = selectedAlias ?? {

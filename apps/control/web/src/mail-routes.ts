@@ -12,6 +12,26 @@ import { readFormBody, redirect } from "./request.js";
 import { requireSessionToken } from "./route-helpers.js";
 import type { WebRouteHandler } from "./web-route-context.js";
 
+function mailboxCredentialReturnTo(args: {
+  returnTo: string | null;
+  message: string;
+  revealId?: string;
+}): string {
+  const location = noticeReturnTo(
+    args.returnTo ?? buildDashboardViewUrl("mail"),
+    args.message,
+    "success"
+  );
+
+  if (!args.revealId) {
+    return location;
+  }
+
+  const url = new URL(location, "http://localhost");
+  url.searchParams.set("mailCredentialReveal", args.revealId);
+  return `${url.pathname}${url.search}`;
+}
+
 export const handleMailRoute: WebRouteHandler = async ({
   api,
   request,
@@ -55,7 +75,7 @@ export const handleMailRoute: WebRouteHandler = async ({
     const token = await requireSessionToken({ requireSession });
     const form = await readFormBody(request);
     const next = parseMailboxForm(form);
-    await api.upsertMailbox(token, next);
+    const result = await api.upsertMailbox(token, next);
 
     const storageBytesRaw = form.get("storageBytes")?.trim() ?? "";
 
@@ -70,11 +90,16 @@ export const handleMailRoute: WebRouteHandler = async ({
 
     redirect(
       response,
-      noticeReturnTo(
-        form.get("returnTo") ?? buildDashboardViewUrl("mail"),
-        `Saved mailbox ${next.address}.`,
-        "success"
-      )
+      mailboxCredentialReturnTo({
+        returnTo: form.get("returnTo"),
+        revealId: result.revealId,
+        message:
+          result.action === "generated"
+            ? `Generated mailbox credential for ${next.address}.`
+            : result.action === "rotated"
+              ? `Rotated mailbox credential for ${next.address}.`
+              : `Saved mailbox ${next.address}.`
+      })
     );
     return true;
   }
@@ -104,9 +129,25 @@ export const handleMailRoute: WebRouteHandler = async ({
       response,
       noticeReturnTo(
         form.get("returnTo") ?? buildDashboardViewUrl("mail"),
-        `Reset mailbox credential for ${mailboxAddress}.`,
+        `Marked mailbox credential as reset-required for ${mailboxAddress}.`,
         "success"
       )
+    );
+    return true;
+  }
+
+  if (request.method === "POST" && url.pathname === "/resources/mail/mailboxes/rotate-credential") {
+    const token = await requireSessionToken({ requireSession });
+    const form = await readFormBody(request);
+    const mailboxAddress = form.get("mailboxAddress")?.trim() ?? "";
+    const result = await api.rotateMailboxCredential(token, { mailboxAddress });
+    redirect(
+      response,
+      mailboxCredentialReturnTo({
+        returnTo: form.get("returnTo"),
+        revealId: result.revealId,
+        message: `Rotated mailbox credential for ${mailboxAddress}.`
+      })
     );
     return true;
   }

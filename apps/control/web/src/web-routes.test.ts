@@ -85,6 +85,12 @@ function createStubApi(
     resetMailboxCredential: async () => {
       throw new Error("Unexpected mailbox credential reset in test");
     },
+    rotateMailboxCredential: async () => {
+      throw new Error("Unexpected mailbox credential rotate in test");
+    },
+    consumeMailboxCredentialReveal: async () => {
+      throw new Error("Unexpected mailbox credential reveal consume in test");
+    },
     deleteMailbox: async () => {
       throw new Error("Unexpected mailbox delete in test");
     },

@@ -3,6 +3,7 @@ import { escapeHtml, renderDataTable, type DataTableRow } from "@simplehost/ui";
 import { type DashboardData } from "./api-client.js";
 import { buildDashboardViewUrl } from "./dashboard-routing.js";
 import {
+  type MailCredentialRevealViewModel,
   type LocalizedMailCopy,
   type MailSectionCopy,
   type MailSectionModel,
@@ -14,12 +15,13 @@ export function renderMailSectionContent(args: {
   copy: MailSectionCopy;
   data: DashboardData;
   locale: WebLocale;
+  mailCredentialReveal?: MailCredentialRevealViewModel;
   mailCopy: LocalizedMailCopy;
   model: MailSectionModel;
   renderers: MailSectionRenderers;
   returnTo: string;
 }): string {
-  const { copy, data, locale, mailCopy, model, renderers, returnTo } = args;
+  const { copy, data, locale, mailCredentialReveal, mailCopy, model, renderers, returnTo } = args;
   const {
     mailDomainOptions,
     healthyMailRuntimeCount,
@@ -110,6 +112,20 @@ export function renderMailSectionContent(args: {
     return renderers.renderPill(mailCopy.serviceDisabled, "muted");
   };
 
+  const renderCredentialState = (
+    credentialState: DashboardData["mail"]["mailboxes"][number]["credentialState"]
+  ): string => {
+    if (credentialState === "configured") {
+      return renderers.renderPill(mailCopy.credentialConfigured, "success");
+    }
+
+    if (credentialState === "reset_required") {
+      return renderers.renderPill(mailCopy.credentialResetRequired, "danger");
+    }
+
+    return renderers.renderPill(mailCopy.credentialMissing, "muted");
+  };
+
   const domainRows: DataTableRow[] = data.mail.domains.map((domain) => ({
     selectionKey: domain.domainName,
     selected: selectedDomain?.domainName === domain.domainName,
@@ -159,9 +175,7 @@ export function renderMailSectionContent(args: {
         copy.selectedStateLabel
       ),
       `<span class="mono">${escapeHtml(mailbox.primaryNodeId)}</span>`,
-      mailbox.hasCredential
-        ? renderers.renderPill(mailCopy.credentialPresent, "success")
-        : renderers.renderPill(mailCopy.credentialMissing, "danger"),
+      renderCredentialState(mailbox.credentialState),
       mailbox.quotaBytes
         ? `<span class="mono">${escapeHtml(formatStorageBytes(mailbox.quotaBytes))}</span>`
         : escapeHtml(copy.none),
@@ -169,6 +183,7 @@ export function renderMailSectionContent(args: {
         `mail-mailbox-edit-${toModalIdSegment(mailbox.address)}`,
         `mail-mailbox-delete-${toModalIdSegment(mailbox.address)}`,
         {
+          rotateModalId: `mail-mailbox-rotate-${toModalIdSegment(mailbox.address)}`,
           resetModalId: `mail-mailbox-reset-${toModalIdSegment(mailbox.address)}`
         }
       )
@@ -179,7 +194,7 @@ export function renderMailSectionContent(args: {
       mailbox.localPart,
       mailbox.primaryNodeId,
       mailbox.standbyNodeId ?? "",
-      mailbox.hasCredential ? "present" : "missing",
+      mailbox.credentialState,
       String(mailbox.quotaBytes ?? "")
     ].join(" ")
   }));
@@ -295,6 +310,47 @@ export function renderMailSectionContent(args: {
       }
     </article>`;
 
+  const credentialRevealPanel = mailCredentialReveal
+    ? `<article class="panel detail-shell">
+        <div class="section-head">
+          <div>
+            <h3>${escapeHtml(mailCopy.credentialRevealTitle)}</h3>
+            <p class="muted section-description">${escapeHtml(mailCopy.credentialRevealDescription)}</p>
+          </div>
+        </div>
+        ${renderers.renderSignalStrip([
+          {
+            label: mailCopy.credentialRevealMailboxLabel,
+            value: mailCredentialReveal.reveal.mailboxAddress,
+            tone: "default"
+          },
+          {
+            label:
+              mailCredentialReveal.reveal.action === "generated"
+                ? mailCopy.credentialRevealGeneratedLabel
+                : mailCopy.credentialRevealRotatedLabel,
+            value: escapeHtml(renderers.formatDate(mailCredentialReveal.reveal.generatedAt, locale)),
+            tone: "success"
+          },
+          {
+            label: mailCopy.selectedRecordLabel,
+            value: mailCopy.credentialRevealShownOnce,
+            tone: "danger"
+          }
+        ])}
+        ${renderers.renderDetailGrid(
+          [
+            {
+              label: mailCopy.credentialRevealValueLabel,
+              value: `<span class="mono">${escapeHtml(mailCredentialReveal.reveal.credential)}</span>`,
+              className: "detail-item-span-two"
+            }
+          ],
+          { className: "detail-grid-two" }
+        )}
+      </article>`
+    : "";
+
   const renderModalShell = (
     modalId: string,
     title: string,
@@ -331,12 +387,19 @@ export function renderMailSectionContent(args: {
   function renderRowActionButtons(
     editModalId: string,
     deleteModalId: string,
-    options?: { resetModalId?: string }
+    options?: { rotateModalId?: string; resetModalId?: string }
   ): string {
     return `<div class="table-row-actions">
       <button type="button" class="secondary" data-overlay-trigger data-modal-id="${escapeHtml(
         editModalId
       )}">${escapeHtml(mailCopy.editLabel)}</button>
+      ${
+        options?.rotateModalId
+          ? `<button type="button" class="secondary" data-overlay-trigger data-modal-id="${escapeHtml(
+              options.rotateModalId
+            )}">${escapeHtml(mailCopy.rotateLabel)}</button>`
+          : ""
+      }
       ${
         options?.resetModalId
           ? `<button type="button" class="secondary" data-overlay-trigger data-modal-id="${escapeHtml(
@@ -366,6 +429,7 @@ export function renderMailSectionContent(args: {
     localPart: "",
     primaryNodeId: nodeOptions[0]?.value ?? selectedMailboxDefaults.primaryNodeId,
     standbyNodeId: "",
+    credentialState: "configured" as const,
     quotaBytes: undefined as number | undefined
   };
 
@@ -424,8 +488,10 @@ export function renderMailSectionContent(args: {
       localPart: string;
       primaryNodeId: string;
       standbyNodeId?: string;
+      credentialState?: DashboardData["mail"]["mailboxes"][number]["credentialState"];
       quotaBytes?: number;
     },
+    mode: "create" | "edit",
     autofocus = false
   ): string => `<form method="post" action="/resources/mail/mailboxes/upsert" class="stack">
       <input type="hidden" name="returnTo" value="${escapeHtml(returnTo)}" />
@@ -445,6 +511,46 @@ export function renderMailSectionContent(args: {
         <label>${escapeHtml(mailCopy.standbyNodeLabel)}
           <select name="standbyNodeId">${renderers.renderSelectOptions(nodeOptions, defaults.standbyNodeId || undefined, { allowBlank: true, blankLabel: "none" })}</select>
         </label>
+        <label>${escapeHtml(mailCopy.credentialStrategyLabel)}
+          <select name="credentialStrategy">${renderers.renderSelectOptions(
+            mode === "create"
+              ? [
+                  {
+                    value: "generate",
+                    label: mailCopy.credentialStrategyGenerateLabel
+                  },
+                  {
+                    value: "manual",
+                    label: mailCopy.credentialStrategyManualLabel
+                  },
+                  {
+                    value: "missing",
+                    label: mailCopy.credentialStrategyMissingLabel
+                  }
+                ]
+              : [
+                  {
+                    value: "keep",
+                    label: mailCopy.credentialStrategyKeepLabel
+                  },
+                  {
+                    value: "manual",
+                    label: mailCopy.credentialStrategyManualLabel
+                  },
+                  {
+                    value: "missing",
+                    label: mailCopy.credentialStrategyMissingLabel
+                  }
+                ],
+            mode === "create"
+              ? defaults.credentialState === "missing"
+                ? "missing"
+                : "generate"
+              : defaults.credentialState === "missing" || defaults.credentialState === "reset_required"
+                ? "missing"
+                : "keep"
+          )}</select>
+        </label>
         <label>${escapeHtml(mailCopy.desiredPasswordLabel)}
           <input name="desiredPassword" type="password" value="" autocomplete="new-password" />
         </label>
@@ -454,6 +560,10 @@ export function renderMailSectionContent(args: {
           )}" />
         </label>
       </div>
+      <p class="muted section-description">${escapeHtml(
+        mode === "create" ? mailCopy.createMailboxDescription : mailCopy.editMailboxDescription
+      )}</p>
+      <p class="muted section-description">${escapeHtml(mailCopy.manualPasswordHelp)}</p>
       <div class="toolbar">
         <button type="submit">${escapeHtml(mailCopy.saveMailboxLabel)}</button>
       </div>
@@ -576,10 +686,28 @@ export function renderMailSectionContent(args: {
               localPart: mailbox.localPart,
               primaryNodeId: mailbox.primaryNodeId,
               standbyNodeId: mailbox.standbyNodeId ?? "",
+              credentialState: mailbox.credentialState,
               quotaBytes: mailbox.quotaBytes
             },
+            "edit",
             true
           )
+        ),
+        renderModalShell(
+          `mail-mailbox-rotate-${toModalIdSegment(mailbox.address)}`,
+          mailCopy.rotateLabel,
+          mailCopy.credentialRevealDescription,
+          `<div class="action-card-context">
+            <span class="action-card-context-title">${escapeHtml(mailCopy.credentialRevealMailboxLabel)}</span>
+            <p class="mono">${escapeHtml(mailbox.address)}</p>
+          </div>
+          <form method="post" action="/resources/mail/mailboxes/rotate-credential" class="stack">
+            <input type="hidden" name="mailboxAddress" value="${escapeHtml(mailbox.address)}" />
+            <input type="hidden" name="returnTo" value="${escapeHtml(returnTo)}" />
+            <div class="toolbar">
+              <button class="secondary" type="submit">${escapeHtml(mailCopy.rotateLabel)}</button>
+            </div>
+          </form>`
         ),
         renderModalShell(
           resetModalId,
@@ -653,8 +781,8 @@ export function renderMailSectionContent(args: {
     renderModalShell(
       mailboxCreateModalId,
       mailCopy.mailboxesTitle,
-      mailCopy.modalEditorDescription,
-      renderMailboxEditorForm(createMailboxDefaults, true)
+      mailCopy.createMailboxDescription,
+      renderMailboxEditorForm(createMailboxDefaults, "create", true)
     ),
     renderModalShell(
       aliasCreateModalId,
@@ -701,6 +829,7 @@ export function renderMailSectionContent(args: {
         tone: healthyMailRuntimeCount > 0 ? "success" : "muted"
       }
     ])}
+    ${credentialRevealPanel}
     ${renderDataTable({
       id: "section-mail-domains",
       heading: mailCopy.domainsTitle,

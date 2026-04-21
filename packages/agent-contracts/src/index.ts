@@ -217,6 +217,7 @@ export interface RustDeskServiceSnapshot {
 export interface MailSyncMailboxPayload {
   address: string;
   localPart: string;
+  credentialState?: "missing" | "configured" | "reset_required";
   desiredPassword?: string;
   quotaBytes?: number;
 }
@@ -289,6 +290,7 @@ export interface MailServiceSnapshot {
   firewallServiceName?: string;
   firewallConfigured?: boolean;
   configuredMailboxCount?: number;
+  missingMailboxCount?: number;
   resetRequiredMailboxCount?: number;
   managedDomains: MailManagedDomainSnapshot[];
   checkedAt: string;
@@ -542,6 +544,10 @@ export function isMailSyncPayload(value: unknown): value is MailSyncPayload {
           return (
             typeof mailboxCandidate.address === "string" &&
             typeof mailboxCandidate.localPart === "string" &&
+            (mailboxCandidate.credentialState === undefined ||
+              mailboxCandidate.credentialState === "missing" ||
+              mailboxCandidate.credentialState === "configured" ||
+              mailboxCandidate.credentialState === "reset_required") &&
             (mailboxCandidate.desiredPassword === undefined ||
               typeof mailboxCandidate.desiredPassword === "string") &&
             (mailboxCandidate.quotaBytes === undefined ||

@@ -13,7 +13,7 @@ export function getMailSectionCopy(locale: WebLocale): LocalizedMailCopy {
         quotasTitle: "Quotas",
         formsTitle: "Edición operativa",
         formsDescription:
-          "Establece credenciales manualmente al crear o rotar buzones. La recuperación será sólo por reset, nunca por lectura.",
+          "Gestiona buzones con credenciales generadas, manuales o en reset requerido. La recuperación sigue siendo solo por reset, nunca por lectura.",
         modalEditorDescription:
           "Abre un editor modal para crear un registro nuevo o ajustar el seleccionado.",
         modalDeleteDescription:
@@ -24,6 +24,7 @@ export function getMailSectionCopy(locale: WebLocale): LocalizedMailCopy {
         selectedQuotaTitle: "Quota seleccionada",
         createLabel: "Crear",
         editLabel: "Editar",
+        rotateLabel: "Rotar",
         resetLabel: "Resetear",
         deleteLabel: "Eliminar",
         actionsLabel: "Acciones",
@@ -65,7 +66,18 @@ export function getMailSectionCopy(locale: WebLocale): LocalizedMailCopy {
         deleteAliasLabel: "Eliminar alias",
         saveQuotaLabel: "Guardar quota",
         deleteQuotaLabel: "Eliminar quota",
-        desiredPasswordLabel: "Contraseña deseada",
+        desiredPasswordLabel: "Contraseña manual",
+        credentialStrategyLabel: "Estrategia de credencial",
+        credentialStrategyGenerateLabel: "Generar temporal",
+        credentialStrategyManualLabel: "Establecer manualmente",
+        credentialStrategyMissingLabel: "Dejar faltante",
+        credentialStrategyKeepLabel: "Conservar actual",
+        createMailboxDescription:
+          "Crea el buzón con una contraseña temporal generada, una manual o dejándolo en estado faltante.",
+        editMailboxDescription:
+          "Edita el buzón sin tocar la credencial, establece una manual nueva o déjalo en reset requerido.",
+        manualPasswordHelp:
+          "Las credenciales generadas se muestran una sola vez. Si eliges manual, debes escribirla ahora.",
         localPartLabel: "Local part",
         addressLabel: "Dirección",
         tenantSlugLabel: "Tenant",
@@ -74,8 +86,17 @@ export function getMailSectionCopy(locale: WebLocale): LocalizedMailCopy {
         mailboxTotalLabel: "Buzones",
         aliasTotalLabel: "Aliases",
         quotaTotalLabel: "Quotas",
-        credentialPresent: "configurada",
+        credentialConfigured: "configurada",
         credentialMissing: "faltante",
+        credentialResetRequired: "reset requerido",
+        credentialRevealTitle: "Credencial de buzón",
+        credentialRevealDescription:
+          "Guarda esta contraseña ahora. SimpleHostMan solo la mostrará una vez.",
+        credentialRevealValueLabel: "Contraseña temporal",
+        credentialRevealShownOnce: "Visible solo una vez",
+        credentialRevealMailboxLabel: "Buzón",
+        credentialRevealGeneratedLabel: "Generada",
+        credentialRevealRotatedLabel: "Rotada",
         runtimeReported: "reportado",
         runtimeUnreported: "sin reporte",
         serviceActive: "active",
@@ -97,7 +118,7 @@ export function getMailSectionCopy(locale: WebLocale): LocalizedMailCopy {
         quotasTitle: "Quotas",
         formsTitle: "Operator editing",
         formsDescription:
-          "Set credentials manually when creating or rotating mailboxes. Recovery will be reset-only and never readable.",
+          "Manage mailboxes with generated, manual, or reset-required credentials. Recovery remains reset-only and never readable.",
         modalEditorDescription:
           "Open a modal editor to create a new record or adjust the selected one.",
         modalDeleteDescription:
@@ -108,6 +129,7 @@ export function getMailSectionCopy(locale: WebLocale): LocalizedMailCopy {
         selectedQuotaTitle: "Selected quota",
         createLabel: "Create",
         editLabel: "Edit",
+        rotateLabel: "Rotate",
         resetLabel: "Reset",
         deleteLabel: "Delete",
         actionsLabel: "Actions",
@@ -149,7 +171,18 @@ export function getMailSectionCopy(locale: WebLocale): LocalizedMailCopy {
         deleteAliasLabel: "Delete alias",
         saveQuotaLabel: "Save quota",
         deleteQuotaLabel: "Delete quota",
-        desiredPasswordLabel: "Desired password",
+        desiredPasswordLabel: "Manual password",
+        credentialStrategyLabel: "Credential strategy",
+        credentialStrategyGenerateLabel: "Generate temporary",
+        credentialStrategyManualLabel: "Set manually",
+        credentialStrategyMissingLabel: "Leave missing",
+        credentialStrategyKeepLabel: "Keep current",
+        createMailboxDescription:
+          "Create the mailbox with a generated temporary password, a manual password, or leave it missing.",
+        editMailboxDescription:
+          "Edit the mailbox without changing the credential, set a new manual one, or move it to reset-required.",
+        manualPasswordHelp:
+          "Generated credentials are shown only once. If you choose manual, enter the password now.",
         localPartLabel: "Local part",
         addressLabel: "Address",
         tenantSlugLabel: "Tenant",
@@ -158,8 +191,17 @@ export function getMailSectionCopy(locale: WebLocale): LocalizedMailCopy {
         mailboxTotalLabel: "Mailboxes",
         aliasTotalLabel: "Aliases",
         quotaTotalLabel: "Quotas",
-        credentialPresent: "present",
+        credentialConfigured: "configured",
         credentialMissing: "missing",
+        credentialResetRequired: "reset required",
+        credentialRevealTitle: "Mailbox credential",
+        credentialRevealDescription:
+          "Save this password now. SimpleHostMan will only show it once.",
+        credentialRevealValueLabel: "Temporary password",
+        credentialRevealShownOnce: "Shown only once",
+        credentialRevealMailboxLabel: "Mailbox",
+        credentialRevealGeneratedLabel: "Generated",
+        credentialRevealRotatedLabel: "Rotated",
         runtimeReported: "reported",
         runtimeUnreported: "unreported",
         serviceActive: "active",
