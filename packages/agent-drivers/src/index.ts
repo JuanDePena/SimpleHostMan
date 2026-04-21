@@ -63,7 +63,10 @@ import {
   renderRspamdActionsConf,
   renderRspamdDkimSigningConf,
   renderRspamdMilterHeadersConf,
+  renderRspamdMultimapConf,
+  renderRspamdRatelimitConf,
   renderRspamdRedisConf,
+  renderRspamdSenderMap,
   renderRspamdSelectorsMap
 } from "@simplehost/agent-renderers";
 
@@ -1466,7 +1469,80 @@ function validateContainerPayload(payload: ContainerReconcilePayload): void {
   }
 }
 
+function splitMailSenderPolicyEntries(entries: string[]): {
+  addresses: string[];
+  domains: string[];
+} {
+  const addresses = new Set<string>();
+  const domains = new Set<string>();
+
+  for (const entry of entries) {
+    const normalized = entry.trim().toLowerCase();
+
+    if (!normalized) {
+      continue;
+    }
+
+    if (normalized.startsWith("@")) {
+      domains.add(normalized.slice(1));
+      continue;
+    }
+
+    addresses.add(normalized);
+  }
+
+  return {
+    addresses: [...addresses].sort((left, right) => left.localeCompare(right)),
+    domains: [...domains].sort((left, right) => left.localeCompare(right))
+  };
+}
+
 function validateMailPayload(payload: MailSyncPayload): void {
+  if (!Number.isFinite(payload.policy.rejectThreshold) || payload.policy.rejectThreshold <= 0) {
+    throw new Error("Mail policy reject threshold must be positive.");
+  }
+
+  if (
+    !Number.isFinite(payload.policy.addHeaderThreshold) ||
+    payload.policy.addHeaderThreshold <= 0
+  ) {
+    throw new Error("Mail policy add-header threshold must be positive.");
+  }
+
+  if (payload.policy.addHeaderThreshold >= payload.policy.rejectThreshold) {
+    throw new Error("Mail policy reject threshold must exceed add-header threshold.");
+  }
+
+  if (
+    payload.policy.greylistThreshold !== undefined &&
+    (!Number.isFinite(payload.policy.greylistThreshold) ||
+      payload.policy.greylistThreshold <= 0 ||
+      payload.policy.greylistThreshold >= payload.policy.addHeaderThreshold)
+  ) {
+    throw new Error(
+      "Mail policy greylist threshold must be positive and below add-header threshold."
+    );
+  }
+
+  if (
+    payload.policy.rateLimit &&
+    (!Number.isInteger(payload.policy.rateLimit.burst) || payload.policy.rateLimit.burst <= 0)
+  ) {
+    throw new Error("Mail policy rate-limit burst must be a positive integer.");
+  }
+
+  if (
+    payload.policy.rateLimit &&
+    (!Number.isInteger(payload.policy.rateLimit.periodSeconds) ||
+      payload.policy.rateLimit.periodSeconds <= 0)
+  ) {
+    throw new Error("Mail policy rate-limit period must be a positive integer.");
+  }
+
+  for (const senderEntry of [...payload.policy.senderAllowlist, ...payload.policy.senderDenylist]) {
+    assertSingleLineValue(senderEntry, "Mail sender policy entry");
+  }
+
   const seenDomains = new Set<string>();
 
   for (const domain of payload.domains) {
@@ -1672,6 +1748,9 @@ async function executeMailSyncJob(
     await mkdir(rspamdConfigDir, { recursive: true });
     await mkdir(rspamdLocalDir, { recursive: true });
 
+    const senderAllowlist = splitMailSenderPolicyEntries(payload.policy.senderAllowlist);
+    const senderDenylist = splitMailSenderPolicyEntries(payload.policy.senderDenylist);
+
     const stagedStatePath = await writeRenderedFile(
       context.services.mail.stagingDir,
       "desired-state.json",
@@ -1725,12 +1804,22 @@ async function executeMailSyncJob(
     const stagedRspamdActionsPath = await writeRenderedFile(
       context.services.mail.stagingDir,
       "rspamd-actions.conf",
-      renderRspamdActionsConf()
+      renderRspamdActionsConf(payload.policy)
     );
     const stagedRspamdMilterHeadersPath = await writeRenderedFile(
       context.services.mail.stagingDir,
       "rspamd-milter_headers.conf",
       renderRspamdMilterHeadersConf()
+    );
+    const stagedRspamdMultimapPath = await writeRenderedFile(
+      context.services.mail.stagingDir,
+      "rspamd-multimap.conf",
+      renderRspamdMultimapConf(context.services.mail.configRoot, payload.policy)
+    );
+    const stagedRspamdRatelimitPath = await writeRenderedFile(
+      context.services.mail.stagingDir,
+      "rspamd-ratelimit.conf",
+      renderRspamdRatelimitConf(payload.policy)
     );
     const stagedRspamdDkimPath = await writeRenderedFile(
       context.services.mail.stagingDir,
@@ -1758,7 +1847,25 @@ async function executeMailSyncJob(
       rspamdLocalDir,
       "milter_headers.conf"
     );
+    const deployedRspamdMultimapPath = path.join(rspamdLocalDir, "multimap.conf");
+    const deployedRspamdRatelimitPath = path.join(rspamdLocalDir, "ratelimit.conf");
     const deployedRspamdDkimPath = path.join(rspamdLocalDir, "dkim_signing.conf");
+    const deployedRspamdSenderAllowlistAddressesPath = path.join(
+      rspamdConfigDir,
+      "sender_allowlist_addresses.map"
+    );
+    const deployedRspamdSenderAllowlistDomainsPath = path.join(
+      rspamdConfigDir,
+      "sender_allowlist_domains.map"
+    );
+    const deployedRspamdSenderDenylistAddressesPath = path.join(
+      rspamdConfigDir,
+      "sender_denylist_addresses.map"
+    );
+    const deployedRspamdSenderDenylistDomainsPath = path.join(
+      rspamdConfigDir,
+      "sender_denylist_domains.map"
+    );
 
     await writeFileAtomic(
       deployedPostfixDomainsPath,
@@ -1790,10 +1897,18 @@ async function executeMailSyncJob(
       renderRspamdSelectorsMap(payload)
     );
     await writeFileAtomic(deployedRspamdRedisPath, renderRspamdRedisConf());
-    await writeFileAtomic(deployedRspamdActionsPath, renderRspamdActionsConf());
+    await writeFileAtomic(deployedRspamdActionsPath, renderRspamdActionsConf(payload.policy));
     await writeFileAtomic(
       deployedRspamdMilterHeadersPath,
       renderRspamdMilterHeadersConf()
+    );
+    await writeFileAtomic(
+      deployedRspamdMultimapPath,
+      renderRspamdMultimapConf(context.services.mail.configRoot, payload.policy)
+    );
+    await writeFileAtomic(
+      deployedRspamdRatelimitPath,
+      renderRspamdRatelimitConf(payload.policy)
     );
     await writeFileAtomic(
       deployedRspamdDkimPath,
@@ -1802,6 +1917,22 @@ async function executeMailSyncJob(
         context.services.mail.dkimRoot,
         dkimMaterials.some((material) => material.available)
       )
+    );
+    await writeFileAtomic(
+      deployedRspamdSenderAllowlistAddressesPath,
+      renderRspamdSenderMap(senderAllowlist.addresses)
+    );
+    await writeFileAtomic(
+      deployedRspamdSenderAllowlistDomainsPath,
+      renderRspamdSenderMap(senderAllowlist.domains)
+    );
+    await writeFileAtomic(
+      deployedRspamdSenderDenylistAddressesPath,
+      renderRspamdSenderMap(senderDenylist.addresses)
+    );
+    await writeFileAtomic(
+      deployedRspamdSenderDenylistDomainsPath,
+      renderRspamdSenderMap(senderDenylist.domains)
     );
 
     await ensureOwnedPath(
@@ -1833,6 +1964,8 @@ async function executeMailSyncJob(
       "milter_headers.conf",
       deployedRspamdMilterHeadersPath
     );
+    await ensureRspamdLiveConfiguration("multimap.conf", deployedRspamdMultimapPath);
+    await ensureRspamdLiveConfiguration("ratelimit.conf", deployedRspamdRatelimitPath);
     await ensureRspamdLiveConfiguration("dkim_signing.conf", deployedRspamdDkimPath);
     await execFileAsync("postfix", ["check"], {
       encoding: "utf8"
@@ -1935,8 +2068,16 @@ async function executeMailSyncJob(
           deployedActions: deployedRspamdActionsPath,
           stagedMilterHeaders: stagedRspamdMilterHeadersPath,
           deployedMilterHeaders: deployedRspamdMilterHeadersPath,
+          stagedMultimap: stagedRspamdMultimapPath,
+          deployedMultimap: deployedRspamdMultimapPath,
+          stagedRatelimit: stagedRspamdRatelimitPath,
+          deployedRatelimit: deployedRspamdRatelimitPath,
           stagedDkim: stagedRspamdDkimPath,
-          deployedDkim: deployedRspamdDkimPath
+          deployedDkim: deployedRspamdDkimPath,
+          deployedSenderAllowlistAddresses: deployedRspamdSenderAllowlistAddressesPath,
+          deployedSenderAllowlistDomains: deployedRspamdSenderAllowlistDomainsPath,
+          deployedSenderDenylistAddresses: deployedRspamdSenderDenylistAddressesPath,
+          deployedSenderDenylistDomains: deployedRspamdSenderDenylistDomainsPath
         },
         policyDocuments: mailPolicyDocuments,
         postfixServiceName: context.services.mail.postfixServiceName,

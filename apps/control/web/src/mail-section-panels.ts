@@ -1,7 +1,19 @@
+import type {
+  DesiredStateMailPolicyInput,
+  MailDeliveryFailureSnapshot,
+  MailQueueSnapshot,
+  MailServiceSnapshot
+} from "@simplehost/control-contracts";
+import { createDefaultMailPolicy } from "@simplehost/control-contracts";
 import { escapeHtml, renderDataTable, type DataTableRow } from "@simplehost/ui";
 
 import { type DashboardData } from "./api-client.js";
+import { findRelatedAuditEvents, findRelatedJobs } from "./dashboard-panels.js";
 import { buildDashboardViewUrl } from "./dashboard-routing.js";
+import {
+  buildMailObservabilityModel,
+  toneForMailObservabilityStatus
+} from "./mail-observability.js";
 import {
   type MailCredentialRevealViewModel,
   type LocalizedMailCopy,
@@ -64,6 +76,8 @@ export function renderMailSectionContent(args: {
       .map((domain) => domain.standbyNodeId)
       .filter((nodeId): nodeId is string => Boolean(nodeId))
   );
+  const observability = buildMailObservabilityModel(data);
+  const mailPolicy = data.mail.policy ?? createDefaultMailPolicy();
 
   const renderServiceStatus = (
     snapshot:
@@ -125,6 +139,165 @@ export function renderMailSectionContent(args: {
 
     return renderers.renderPill(mailCopy.credentialMissing, "muted");
   };
+
+  const formatObservabilityStatus = (
+    status: Parameters<typeof toneForMailObservabilityStatus>[0]
+  ): string => {
+    const label = labelForObservabilityStatus(status);
+
+    return renderers.renderPill(label, toneForMailObservabilityStatus(status));
+  };
+
+  const labelForObservabilityStatus = (
+    status: Parameters<typeof toneForMailObservabilityStatus>[0]
+  ): string =>
+    status === "ready"
+      ? mailCopy.observabilityReady
+      : status === "warning"
+        ? mailCopy.observabilityWarning
+        : status === "missing"
+          ? mailCopy.observabilityMissing
+          : mailCopy.observabilityUnreported;
+
+  const renderQueueStatus = (
+    queue: MailQueueSnapshot | undefined
+  ): string => {
+    if (!queue) {
+      return renderers.renderPill(mailCopy.runtimeUnreported, "muted");
+    }
+
+    return renderers.renderPill(
+      String(queue.messageCount),
+      queue.deferredCount > 0 ? "danger" : queue.messageCount > 0 ? "default" : "success"
+    );
+  };
+
+  const renderPolicyDocumentStatus = (
+    snapshot: MailServiceSnapshot | undefined
+  ): string => {
+    if (!snapshot) {
+      return renderers.renderPill(mailCopy.runtimeUnreported, "muted");
+    }
+
+    const total = snapshot.policyDocumentCount ?? snapshot.managedDomains.length;
+    const healthy = snapshot.healthyPolicyDocumentCount ?? 0;
+
+    return renderers.renderPill(
+      `${healthy}/${total}`,
+      total > 0 && healthy === total ? "success" : healthy > 0 ? "default" : "danger"
+    );
+  };
+
+  const renderWebmailStatus = (
+    snapshot: MailServiceSnapshot | undefined
+  ): string => {
+    if (!snapshot) {
+      return renderers.renderPill(mailCopy.runtimeUnreported, "muted");
+    }
+
+    if (snapshot.webmailHealthy) {
+      return renderers.renderPill(mailCopy.observabilityReady, "success");
+    }
+
+    if (snapshot.roundcubeDeployment === "packaged") {
+      return renderers.renderPill(mailCopy.observabilityWarning, "default");
+    }
+
+    return renderers.renderPill(mailCopy.observabilityMissing, "danger");
+  };
+
+  const renderFailureStatus = (
+    failures: MailDeliveryFailureSnapshot[] | undefined
+  ): string => {
+    if (!failures) {
+      return renderers.renderPill(mailCopy.runtimeUnreported, "muted");
+    }
+
+    return renderers.renderPill(
+      String(failures.length),
+      failures.length > 0 ? "danger" : "success"
+    );
+  };
+
+  const renderFailureFeed = (
+    failures: MailDeliveryFailureSnapshot[] | undefined
+  ): string => {
+    if (!failures || failures.length === 0) {
+      return `<p class="empty">${escapeHtml(mailCopy.noRecentFailures)}</p>`;
+    }
+
+    return `<div class="feed-list">
+      ${failures
+        .map(
+          (failure) => `<article class="feed-item feed-item-danger">
+            <strong>${escapeHtml(failure.status)}</strong>
+            <span class="feed-meta">${escapeHtml(
+              [
+                failure.recipient ?? copy.none,
+                failure.queueId ?? "",
+                renderers.formatDate(failure.occurredAt, locale)
+              ]
+                .filter(Boolean)
+                .join(" · ")
+            )}</span>
+            <p>${escapeHtml(failure.reason)}</p>
+          </article>`
+        )
+        .join("")}
+    </div>`;
+  };
+
+  const renderSenderPolicyList = (entries: string[]): string => {
+    if (entries.length === 0) {
+      return `<p class="empty">${escapeHtml(mailCopy.noSenderPolicyEntries)}</p>`;
+    }
+
+    return `<div class="feed-list">
+      ${entries
+        .map(
+          (entry) => `<article class="feed-item">
+            <strong class="mono">${escapeHtml(entry)}</strong>
+          </article>`
+        )
+        .join("")}
+    </div>`;
+  };
+
+  const formatRateLimit = (policy: DesiredStateMailPolicyInput): string =>
+    policy.rateLimit
+      ? `${policy.rateLimit.burst} / ${policy.rateLimit.periodSeconds}s`
+      : mailCopy.rateLimitDisabledLabel;
+
+  const deliverabilityRows: DataTableRow[] = observability.deliverabilityRows.map((row) => ({
+    selectionKey: row.domainName,
+    selected: selectedDomain?.domainName === row.domainName,
+    cells: [
+      renderers.renderFocusLink(
+        row.domainName,
+        buildDashboardViewUrl("mail", undefined, row.domainName),
+        selectedDomain?.domainName === row.domainName,
+        copy.selectedStateLabel
+      ),
+      formatObservabilityStatus(row.spf.status),
+      formatObservabilityStatus(row.dkim.status),
+      formatObservabilityStatus(row.dmarc.status),
+      formatObservabilityStatus(row.mtaSts.status),
+      formatObservabilityStatus(row.tlsRpt.status),
+      formatObservabilityStatus(row.runtime.status),
+      row.checkedAt ? escapeHtml(renderers.formatDate(row.checkedAt, locale)) : escapeHtml(copy.none)
+    ],
+    searchText: [
+      row.domainName,
+      row.zoneName,
+      row.primaryNodeId,
+      row.spf.status,
+      row.dkim.status,
+      row.dmarc.status,
+      row.mtaSts.status,
+      row.tlsRpt.status,
+      row.runtime.status
+    ].join(" ")
+  }));
 
   const domainRows: DataTableRow[] = data.mail.domains.map((domain) => ({
     selectionKey: domain.domainName,
@@ -240,6 +413,10 @@ export function renderMailSectionContent(args: {
       renderServiceStatus(node.mail, "dovecot"),
       renderServiceStatus(node.mail, "rspamd"),
       renderServiceStatus(node.mail, "redis"),
+      renderWebmailStatus(node.mail),
+      renderPolicyDocumentStatus(node.mail),
+      renderQueueStatus(node.mail?.queue),
+      renderFailureStatus(node.mail?.recentDeliveryFailures),
       node.mail
         ? renderers.renderPill(
             String(node.mail.managedDomains.length),
@@ -254,6 +431,8 @@ export function renderMailSectionContent(args: {
       node.nodeId,
       node.hostname,
       ...(node.mail?.managedDomains.map((domain) => domain.domainName) ?? []),
+      node.mail?.queue?.topDeferReasons.join(" ") ?? "",
+      ...(node.mail?.recentDeliveryFailures?.map((failure) => failure.reason) ?? []),
       node.mail?.checkedAt ?? ""
     ].join(" ")
   }));
@@ -308,6 +487,334 @@ export function renderMailSectionContent(args: {
               </dl>
             </div>`
       }
+    </article>`;
+
+  const selectedDeliverability = selectedDomain
+    ? observability.deliverabilityRows.find((row) => row.domainName === selectedDomain.domainName)
+    : undefined;
+  const selectedActivityScope = selectedMailbox?.address ?? selectedAlias?.address ?? selectedDomain?.domainName;
+  const selectedRelatedJobs = selectedDomain
+    ? findRelatedJobs(
+        data.jobHistory,
+        {
+          resourceKeys: [
+            `mail:${selectedDomain.primaryNodeId}`,
+            `mail:${selectedDomain.domainName}:webmail:${selectedDomain.primaryNodeId}`,
+            `mail:${selectedDomain.domainName}:mta-sts:${selectedDomain.primaryNodeId}`
+          ],
+          needles: [
+            selectedDomain.domainName,
+            selectedDomain.mailHost,
+            selectedDomain.primaryNodeId,
+            selectedMailbox?.address ?? "",
+            selectedAlias?.address ?? ""
+          ]
+        },
+        6
+      )
+    : [];
+  const selectedRelatedAudits = selectedActivityScope
+    ? findRelatedAuditEvents(
+        data.auditEvents,
+        [
+          selectedActivityScope,
+          selectedDomain?.domainName ?? "",
+          selectedDomain?.mailHost ?? "",
+          selectedDomain?.primaryNodeId ?? ""
+        ],
+        6
+      )
+    : [];
+  const selectedLatestMailSyncJob = selectedDomain
+    ? selectedRelatedJobs.find(
+        (job) => job.kind === "mail.sync" && job.nodeId === selectedDomain.primaryNodeId
+      )
+    : undefined;
+  const selectedRuntimeNode = selectedDomain
+    ? mailRuntimeNodes.find((node) => node.nodeId === selectedDomain.primaryNodeId)
+    : undefined;
+  const selectedRuntimeFailures = selectedRuntimeNode?.mail?.recentDeliveryFailures;
+  const selectedActivityPanel = `<article class="panel detail-shell">
+      <div class="section-head">
+        <div>
+          <h3>${escapeHtml(mailCopy.activityTitle)}</h3>
+          <p class="muted section-description">${escapeHtml(mailCopy.activityDescription)}</p>
+        </div>
+      </div>
+      ${
+        selectedDomain
+          ? `${renderers.renderSignalStrip([
+              {
+                label: mailCopy.selectedRecordLabel,
+                value: selectedActivityScope ?? selectedDomain.domainName,
+                tone: "default"
+              },
+              {
+                label: mailCopy.relatedJobsTitle,
+                value: String(selectedRelatedJobs.length),
+                tone: selectedRelatedJobs.length > 0 ? "success" : "muted"
+              },
+              {
+                label: mailCopy.relatedAuditsTitle,
+                value: String(selectedRelatedAudits.length),
+                tone: selectedRelatedAudits.length > 0 ? "default" : "muted"
+              }
+            ])}
+            ${renderers.renderDetailGrid(
+              [
+                {
+                  label: mailCopy.latestMailSyncLabel,
+                  value: selectedLatestMailSyncJob
+                    ? `<a class="detail-link" href="${escapeHtml(
+                        buildDashboardViewUrl("job-history", undefined, selectedLatestMailSyncJob.jobId)
+                      )}">${escapeHtml(selectedLatestMailSyncJob.summary ?? selectedLatestMailSyncJob.jobId)}</a>`
+                    : escapeHtml(copy.none)
+                },
+                {
+                  label: mailCopy.openJobHistoryLabel,
+                  value: `<a class="detail-link" href="${escapeHtml(
+                    buildDashboardViewUrl("job-history", undefined, undefined, {
+                      jobNode: selectedDomain.primaryNodeId
+                    })
+                  )}">${escapeHtml(mailCopy.openJobHistoryLabel)}</a>`
+                },
+                {
+                  label: mailCopy.openAuditHistoryLabel,
+                  value: `<a class="detail-link" href="${escapeHtml(
+                    buildDashboardViewUrl("audit", undefined, undefined, {
+                      auditEntity: selectedActivityScope ?? selectedDomain.domainName
+                    })
+                  )}">${escapeHtml(mailCopy.openAuditHistoryLabel)}</a>`
+                },
+                {
+                  label: mailCopy.topDeferReasonLabel,
+                  value: escapeHtml(selectedDeliverability?.topDeferReason ?? copy.none)
+                }
+              ],
+              { className: "detail-grid-two" }
+            )}
+            <div class="grid-two-desktop">
+              <article class="panel detail-shell panel-nested">
+                <h4>${escapeHtml(mailCopy.relatedJobsTitle)}</h4>
+                ${
+                  selectedRelatedJobs.length === 0
+                    ? `<p class="empty">${escapeHtml(copy.none)}</p>`
+                    : `<div class="feed-list">
+                        ${selectedRelatedJobs
+                          .map(
+                            (job) => `<article class="feed-item${
+                              job.status === "failed"
+                                ? " feed-item-danger"
+                                : job.status === "applied"
+                                  ? " feed-item-success"
+                                  : ""
+                            }">
+                              <strong><a class="detail-link" href="${escapeHtml(
+                                buildDashboardViewUrl("job-history", undefined, job.jobId)
+                              )}">${escapeHtml(job.kind)}</a></strong>
+                              <span class="feed-meta">${escapeHtml(
+                                [job.jobId, job.status ?? "queued", renderers.formatDate(job.createdAt, locale)]
+                                  .join(" · ")
+                              )}</span>
+                              <p>${escapeHtml(job.summary ?? job.dispatchReason ?? copy.none)}</p>
+                            </article>`
+                          )
+                          .join("")}
+                      </div>`
+                }
+              </article>
+              <article class="panel detail-shell panel-nested">
+                <h4>${escapeHtml(mailCopy.relatedAuditsTitle)}</h4>
+                ${
+                  selectedRelatedAudits.length === 0
+                    ? `<p class="empty">${escapeHtml(copy.none)}</p>`
+                    : `<div class="feed-list">
+                        ${selectedRelatedAudits
+                          .map(
+                            (event) => `<article class="feed-item">
+                              <strong>${escapeHtml(event.eventType)}</strong>
+                              <span class="feed-meta">${escapeHtml(
+                                [
+                                  event.entityType && event.entityId
+                                    ? `${event.entityType}:${event.entityId}`
+                                    : event.entityType ?? event.entityId ?? copy.none,
+                                  renderers.formatDate(event.occurredAt, locale)
+                                ].join(" · ")
+                              )}</span>
+                              <p>${escapeHtml(
+                                Object.keys(event.payload).length > 0
+                                  ? JSON.stringify(event.payload)
+                                  : copy.none
+                              )}</p>
+                            </article>`
+                          )
+                          .join("")}
+                      </div>`
+                }
+              </article>
+            </div>
+            <article class="panel detail-shell panel-nested">
+              <h4>${escapeHtml(mailCopy.recentFailuresLabel)}</h4>
+              ${renderFailureFeed(selectedRuntimeFailures)}
+            </article>`
+          : `<p class="empty">${escapeHtml(mailCopy.noSelectionLabel)}</p>`
+      }
+    </article>`;
+  const selectedObservabilityPanel = `<article class="panel detail-shell">
+      <div class="section-head">
+        <div>
+          <h3>${escapeHtml(mailCopy.deliverabilityTitle)}</h3>
+          <p class="muted section-description">${escapeHtml(mailCopy.deliverabilityDescription)}</p>
+        </div>
+      </div>
+      ${
+        selectedDeliverability
+          ? `${renderers.renderSignalStrip([
+              {
+                label: mailCopy.spfLabel,
+                value: labelForObservabilityStatus(selectedDeliverability.spf.status),
+                tone: toneForMailObservabilityStatus(selectedDeliverability.spf.status)
+              },
+              {
+                label: mailCopy.dkimLabel,
+                value: labelForObservabilityStatus(selectedDeliverability.dkim.status),
+                tone: toneForMailObservabilityStatus(selectedDeliverability.dkim.status)
+              },
+              {
+                label: mailCopy.dmarcLabel,
+                value: labelForObservabilityStatus(selectedDeliverability.dmarc.status),
+                tone: toneForMailObservabilityStatus(selectedDeliverability.dmarc.status)
+              },
+              {
+                label: mailCopy.mtaStsLabel,
+                value: labelForObservabilityStatus(selectedDeliverability.mtaSts.status),
+                tone: toneForMailObservabilityStatus(selectedDeliverability.mtaSts.status)
+              },
+              {
+                label: mailCopy.tlsRptLabel,
+                value: labelForObservabilityStatus(selectedDeliverability.tlsRpt.status),
+                tone: toneForMailObservabilityStatus(selectedDeliverability.tlsRpt.status)
+              }
+            ])}
+            ${renderers.renderDetailGrid(
+              [
+                {
+                  label: mailCopy.runtimeTitle,
+                  value: formatObservabilityStatus(selectedDeliverability.runtime.status)
+                },
+                {
+                  label: mailCopy.webmailLabel,
+                  value: formatObservabilityStatus(selectedDeliverability.webmail.status)
+                },
+                {
+                  label: mailCopy.queuedMessagesLabel,
+                  value: escapeHtml(
+                    selectedDeliverability.queueMessageCount !== undefined
+                      ? String(selectedDeliverability.queueMessageCount)
+                      : copy.none
+                  )
+                },
+                {
+                  label: mailCopy.recentFailuresLabel,
+                  value: escapeHtml(String(selectedDeliverability.recentFailureCount))
+                },
+                {
+                  label: mailCopy.topDeferReasonLabel,
+                  value: escapeHtml(selectedDeliverability.topDeferReason ?? copy.none),
+                  className: "detail-item-span-two"
+                }
+              ],
+              { className: "detail-grid-two" }
+            )}`
+          : `<p class="empty">${escapeHtml(mailCopy.noSelectionLabel)}</p>`
+      }
+    </article>`;
+  const antiSpamPolicyPanel = `<article class="panel detail-shell">
+      <div class="section-head">
+        <div>
+          <h3>${escapeHtml(mailCopy.antiSpamTitle)}</h3>
+          <p class="muted section-description">${escapeHtml(mailCopy.antiSpamDescription)}</p>
+        </div>
+        <button type="button" class="secondary" data-overlay-trigger data-modal-id="mail-policy-edit-modal">${escapeHtml(
+          mailCopy.editLabel
+        )}</button>
+      </div>
+      ${renderers.renderSignalStrip([
+        {
+          label: mailCopy.tagAtLabel,
+          value: String(mailPolicy.addHeaderThreshold),
+          tone: "default"
+        },
+        {
+          label: mailCopy.rejectAtLabel,
+          value: String(mailPolicy.rejectThreshold),
+          tone: "danger"
+        },
+        {
+          label: mailCopy.greylistAtLabel,
+          value:
+            mailPolicy.greylistThreshold !== undefined
+              ? String(mailPolicy.greylistThreshold)
+              : mailCopy.greylistDisabledLabel,
+          tone: mailPolicy.greylistThreshold !== undefined ? "default" : "muted"
+        },
+        {
+          label: mailCopy.rateLimitLabel,
+          value: formatRateLimit(mailPolicy),
+          tone: mailPolicy.rateLimit ? "success" : "muted"
+        }
+      ])}
+      ${renderers.renderDetailGrid(
+        [
+          {
+            label: mailCopy.acceptBelowLabel,
+            value: escapeHtml(String(mailPolicy.addHeaderThreshold))
+          },
+          {
+            label: mailCopy.tagAtLabel,
+            value: escapeHtml(String(mailPolicy.addHeaderThreshold))
+          },
+          {
+            label: mailCopy.rejectAtLabel,
+            value: escapeHtml(String(mailPolicy.rejectThreshold))
+          },
+          {
+            label: mailCopy.greylistAtLabel,
+            value: escapeHtml(
+              mailPolicy.greylistThreshold !== undefined
+                ? String(mailPolicy.greylistThreshold)
+                : mailCopy.greylistDisabledLabel
+            )
+          },
+          {
+            label: mailCopy.senderAllowlistLabel,
+            value: renderers.renderPill(
+              String(mailPolicy.senderAllowlist.length),
+              mailPolicy.senderAllowlist.length > 0 ? "success" : "muted"
+            )
+          },
+          {
+            label: mailCopy.senderDenylistLabel,
+            value: renderers.renderPill(
+              String(mailPolicy.senderDenylist.length),
+              mailPolicy.senderDenylist.length > 0 ? "danger" : "muted"
+            )
+          }
+        ],
+        { className: "detail-grid-three" }
+      )}
+      <div class="grid-two-desktop">
+        <article class="panel detail-shell panel-nested">
+          <h4>${escapeHtml(mailCopy.senderAllowlistLabel)}</h4>
+          <p class="muted section-description">${escapeHtml(mailCopy.senderPolicyHelp)}</p>
+          ${renderSenderPolicyList(mailPolicy.senderAllowlist)}
+        </article>
+        <article class="panel detail-shell panel-nested">
+          <h4>${escapeHtml(mailCopy.senderDenylistLabel)}</h4>
+          <p class="muted section-description">${escapeHtml(mailCopy.senderPolicyHelp)}</p>
+          ${renderSenderPolicyList(mailPolicy.senderDenylist)}
+        </article>
+      </div>
     </article>`;
 
   const credentialRevealPanel = mailCredentialReveal
@@ -598,9 +1105,51 @@ export function renderMailSectionContent(args: {
       </div>
     </form>`;
 
+  const renderMailPolicyForm = (policy: DesiredStateMailPolicyInput): string => `<form method="post" action="/resources/mail/policy/upsert" class="stack">
+      <input type="hidden" name="returnTo" value="${escapeHtml(returnTo)}" />
+      <div class="form-grid">
+        <label>${escapeHtml(mailCopy.tagAtLabel)}
+          <input type="number" step="0.1" min="0.1" name="addHeaderThreshold" value="${escapeHtml(
+            String(policy.addHeaderThreshold)
+          )}" required />
+        </label>
+        <label>${escapeHtml(mailCopy.rejectAtLabel)}
+          <input type="number" step="0.1" min="0.1" name="rejectThreshold" value="${escapeHtml(
+            String(policy.rejectThreshold)
+          )}" required />
+        </label>
+        <label>${escapeHtml(mailCopy.greylistAtLabel)}
+          <input type="number" step="0.1" min="0.1" name="greylistThreshold" value="${escapeHtml(
+            policy.greylistThreshold !== undefined ? String(policy.greylistThreshold) : ""
+          )}" />
+        </label>
+        <label>${escapeHtml(mailCopy.rateLimitBurstLabel)}
+          <input type="number" min="1" name="rateLimitBurst" value="${escapeHtml(
+            policy.rateLimit ? String(policy.rateLimit.burst) : ""
+          )}" />
+        </label>
+        <label>${escapeHtml(mailCopy.rateLimitPeriodLabel)}
+          <input type="number" min="1" name="rateLimitPeriodSeconds" value="${escapeHtml(
+            policy.rateLimit ? String(policy.rateLimit.periodSeconds) : ""
+          )}" />
+        </label>
+        <label>${escapeHtml(mailCopy.senderAllowlistLabel)}
+          <textarea name="senderAllowlist" rows="5">${escapeHtml(policy.senderAllowlist.join("\n"))}</textarea>
+        </label>
+        <label>${escapeHtml(mailCopy.senderDenylistLabel)}
+          <textarea name="senderDenylist" rows="5">${escapeHtml(policy.senderDenylist.join("\n"))}</textarea>
+        </label>
+      </div>
+      <p class="muted section-description">${escapeHtml(mailCopy.senderPolicyHelp)}</p>
+      <div class="toolbar">
+        <button type="submit">${escapeHtml(mailCopy.savePolicyLabel)}</button>
+      </div>
+    </form>`;
+
   const domainCreateModalId = "mail-domain-create-modal";
   const mailboxCreateModalId = "mail-mailbox-create-modal";
   const aliasCreateModalId = "mail-alias-create-modal";
+  const policyEditModalId = "mail-policy-edit-modal";
 
   const renderDeleteModal = (
     modalId: string | undefined,
@@ -773,6 +1322,12 @@ export function renderMailSectionContent(args: {
 
   const mailModals = [
     renderModalShell(
+      policyEditModalId,
+      mailCopy.antiSpamTitle,
+      mailCopy.antiSpamEditDescription,
+      renderMailPolicyForm(mailPolicy)
+    ),
+    renderModalShell(
       domainCreateModalId,
       mailCopy.domainsTitle,
       mailCopy.modalEditorDescription,
@@ -827,9 +1382,50 @@ export function renderMailSectionContent(args: {
         label: mailCopy.runtimeHealthyLabel,
         value: String(healthyMailRuntimeCount),
         tone: healthyMailRuntimeCount > 0 ? "success" : "muted"
+      },
+      {
+        label: mailCopy.queuedMessagesLabel,
+        value: String(observability.totalQueuedMessages),
+        tone:
+          observability.totalQueuedMessages > 0
+            ? "default"
+            : reportedMailRuntimeCount > 0
+              ? "success"
+              : "muted"
+      },
+      {
+        label: mailCopy.recentFailuresLabel,
+        value: String(observability.totalRecentFailures),
+        tone: observability.totalRecentFailures > 0 ? "danger" : "success"
       }
     ])}
     ${credentialRevealPanel}
+    ${antiSpamPolicyPanel}
+    ${renderDataTable({
+      id: "section-mail-deliverability",
+      heading: mailCopy.deliverabilityTitle,
+      description: mailCopy.deliverabilityDescription,
+      headingBadgeClassName: "section-badge-lime",
+      restoreSelectionHref: true,
+      columns: [
+        { label: mailCopy.domainNameLabel, className: "mono" },
+        { label: mailCopy.spfLabel },
+        { label: mailCopy.dkimLabel },
+        { label: mailCopy.dmarcLabel },
+        { label: mailCopy.mtaStsLabel },
+        { label: mailCopy.tlsRptLabel },
+        { label: mailCopy.runtimeTitle },
+        { label: mailCopy.checkedAtLabel }
+      ],
+      rows: deliverabilityRows,
+      emptyMessage: mailCopy.noMailDomains,
+      filterPlaceholder: copy.dataFilterPlaceholder,
+      rowsPerPageLabel: copy.rowsPerPage,
+      showingLabel: copy.showing,
+      ofLabel: copy.of,
+      recordsLabel: copy.records,
+      defaultPageSize: 10
+    })}
     ${renderDataTable({
       id: "section-mail-domains",
       heading: mailCopy.domainsTitle,
@@ -858,6 +1454,10 @@ export function renderMailSectionContent(args: {
     })}
     <div class="grid-two-desktop">
       ${selectedDomainPanel}
+      ${selectedObservabilityPanel}
+    </div>
+    <div class="grid-two-desktop">
+      ${selectedActivityPanel}
       ${renderDataTable({
         id: "section-mail-runtime",
         heading: mailCopy.runtimeTitle,
@@ -869,6 +1469,10 @@ export function renderMailSectionContent(args: {
           { label: mailCopy.dovecotLabel },
           { label: mailCopy.rspamdLabel },
           { label: mailCopy.redisLabel },
+          { label: mailCopy.webmailLabel },
+          { label: mailCopy.policyDocsLabel },
+          { label: mailCopy.queuedMessagesLabel },
+          { label: mailCopy.recentFailuresLabel },
           { label: mailCopy.managedDomainsLabel },
           { label: mailCopy.checkedAtLabel }
         ],

@@ -42,11 +42,38 @@ export interface MailManagedDomainSnapshot {
   deliveryRole: "primary" | "standby";
   mailboxCount: number;
   aliasCount: number;
+  dkimSelector?: string;
   dkimDnsTxtValue?: string;
+  dkimAvailable?: boolean;
   dmarcReportAddress?: string;
   tlsReportAddress?: string;
   mtaStsMode?: "enforce" | "testing" | "none";
   mtaStsMaxAgeSeconds?: number;
+  webmailDocumentRoot?: string;
+  webmailDocumentPresent?: boolean;
+  mtaStsDocumentRoot?: string;
+  mtaStsPolicyPath?: string;
+  mtaStsPolicyPresent?: boolean;
+}
+
+export interface MailQueueSnapshot {
+  messageCount: number;
+  activeCount: number;
+  deferredCount: number;
+  holdCount: number;
+  incomingCount: number;
+  maildropCount: number;
+  corruptCount?: number;
+  topDeferReasons: string[];
+}
+
+export interface MailDeliveryFailureSnapshot {
+  occurredAt: string;
+  status: "deferred" | "bounced" | "expired";
+  queueId?: string;
+  recipient?: string;
+  relay?: string;
+  reason: string;
 }
 
 export interface MailServiceSnapshot {
@@ -76,11 +103,16 @@ export interface MailServiceSnapshot {
   roundcubeConfigPath?: string;
   roundcubeDatabasePath?: string;
   roundcubeDeployment?: "packaged" | "placeholder" | "absent";
+  webmailHealthy?: boolean;
   firewallServiceName?: string;
   firewallConfigured?: boolean;
   configuredMailboxCount?: number;
   missingMailboxCount?: number;
   resetRequiredMailboxCount?: number;
+  policyDocumentCount?: number;
+  healthyPolicyDocumentCount?: number;
+  queue?: MailQueueSnapshot;
+  recentDeliveryFailures?: MailDeliveryFailureSnapshot[];
   managedDomains: MailManagedDomainSnapshot[];
   checkedAt: string;
 }

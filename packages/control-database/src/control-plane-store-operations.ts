@@ -5,6 +5,7 @@ import { Pool, type PoolClient } from "pg";
 import {
   type CodeServerUpdatePayload,
   type ContainerReconcilePayload,
+  createDefaultMailPolicy,
   createDispatchedJobEnvelope,
   type DnsSyncPayload,
   type PackageInstallPayload,
@@ -62,6 +63,7 @@ import type {
   MailAliasRow,
   MailDnsDomainRow,
   MailDomainRow,
+  MailPolicyRow,
   MailProxyDispatchRow,
   MailboxQuotaRow,
   MailboxRow,
@@ -77,7 +79,8 @@ export async function buildMailSyncPlans(
   client: PoolClient,
   payloadKey: Buffer | null
 ): Promise<Array<{ nodeId: string; payload: MailSyncPayload }>> {
-  const [mailDomainResult, mailboxResult, aliasResult, quotaResult] = await Promise.all([
+  const [mailDomainResult, mailboxResult, aliasResult, quotaResult, mailPolicyResult] =
+    await Promise.all([
     client.query<MailDomainRow>(
       `SELECT
          domains.domain_name,
@@ -130,8 +133,47 @@ export async function buildMailSyncPlans(
        INNER JOIN shp_mailboxes mailboxes
          ON mailboxes.mailbox_id = quotas.mailbox_id
        ORDER BY mailboxes.address ASC`
+    ),
+    client.query<MailPolicyRow>(
+      `SELECT
+         policy_id,
+         reject_threshold,
+         add_header_threshold,
+         greylist_threshold,
+         sender_allowlist,
+         sender_denylist,
+         rate_limit_burst,
+         rate_limit_period_seconds
+       FROM shp_mail_policy
+       WHERE policy_id = 'mail-policy'`
     )
   ]);
+
+  const defaultMailPolicy = createDefaultMailPolicy();
+  const mailPolicyRow = mailPolicyResult.rows[0];
+  const mailPolicy: MailSyncPayload["policy"] = {
+    rejectThreshold: Number(mailPolicyRow?.reject_threshold ?? defaultMailPolicy.rejectThreshold),
+    addHeaderThreshold: Number(
+      mailPolicyRow?.add_header_threshold ?? defaultMailPolicy.addHeaderThreshold
+    ),
+    greylistThreshold:
+      mailPolicyRow?.greylist_threshold === null || mailPolicyRow?.greylist_threshold === undefined
+        ? undefined
+        : Number(mailPolicyRow.greylist_threshold),
+    senderAllowlist: [...new Set(mailPolicyRow?.sender_allowlist ?? [])].sort((left, right) =>
+      left.localeCompare(right)
+    ),
+    senderDenylist: [...new Set(mailPolicyRow?.sender_denylist ?? [])].sort((left, right) =>
+      left.localeCompare(right)
+    ),
+    rateLimit:
+      mailPolicyRow?.rate_limit_burst && mailPolicyRow?.rate_limit_period_seconds
+        ? {
+            burst: Number(mailPolicyRow.rate_limit_burst),
+            periodSeconds: Number(mailPolicyRow.rate_limit_period_seconds)
+          }
+        : undefined
+  };
 
   const quotasByMailbox = new Map(
     quotaResult.rows.map((row) => [row.mailbox_address, Number(row.storage_bytes)] as const)
@@ -226,6 +268,7 @@ export async function buildMailSyncPlans(
     .map(([nodeId, domains]) => ({
       nodeId,
       payload: {
+        policy: mailPolicy,
         domains: domains.sort((left, right) => {
           const keyLeft = `${left.domainName}:${left.deliveryRole}`;
           const keyRight = `${right.domainName}:${right.deliveryRole}`;

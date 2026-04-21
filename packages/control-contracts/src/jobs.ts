@@ -112,6 +112,20 @@ export interface MailSyncAliasPayload {
   destinations: string[];
 }
 
+export interface MailSyncPolicyRateLimitPayload {
+  burst: number;
+  periodSeconds: number;
+}
+
+export interface MailSyncPolicyPayload {
+  rejectThreshold: number;
+  addHeaderThreshold: number;
+  greylistThreshold?: number;
+  senderAllowlist: string[];
+  senderDenylist: string[];
+  rateLimit?: MailSyncPolicyRateLimitPayload;
+}
+
 export interface MailSyncDomainPayload {
   domainName: string;
   tenantSlug: string;
@@ -130,6 +144,7 @@ export interface MailSyncDomainPayload {
 }
 
 export interface MailSyncPayload {
+  policy: MailSyncPolicyPayload;
   domains: MailSyncDomainPayload[];
 }
 

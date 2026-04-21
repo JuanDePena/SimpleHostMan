@@ -5,7 +5,8 @@ import {
   parseMailAliasForm,
   parseMailboxForm,
   parseMailboxQuotaForm,
-  parseMailDomainForm
+  parseMailDomainForm,
+  parseMailPolicyForm
 } from "./desired-state.js";
 import { buildDashboardViewUrl } from "./dashboard-routing.js";
 import { readFormBody, redirect } from "./request.js";
@@ -49,6 +50,22 @@ export const handleMailRoute: WebRouteHandler = async ({
       noticeReturnTo(
         form.get("returnTo") ?? buildDashboardViewUrl("mail"),
         `Saved mail domain ${next.domainName}.`,
+        "success"
+      )
+    );
+    return true;
+  }
+
+  if (request.method === "POST" && url.pathname === "/resources/mail/policy/upsert") {
+    const token = await requireSessionToken({ requireSession });
+    const form = await readFormBody(request);
+    const next = parseMailPolicyForm(form);
+    await api.upsertMailPolicy(token, next);
+    redirect(
+      response,
+      noticeReturnTo(
+        form.get("returnTo") ?? buildDashboardViewUrl("mail"),
+        "Saved mail anti-spam policy.",
         "success"
       )
     );

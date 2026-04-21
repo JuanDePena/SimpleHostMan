@@ -43,6 +43,7 @@ import type {
   TenantMembershipSummary,
   UpsertMailAliasRequest,
   UpsertMailDomainRequest,
+  UpsertMailPolicyRequest,
   UpsertMailboxQuotaRequest,
   UpsertMailboxRequest,
   AppReconcileRequest,
@@ -255,6 +256,17 @@ export interface MailDomainRow {
   standby_node_id: string | null;
   mail_host: string;
   dkim_selector: string;
+}
+
+export interface MailPolicyRow {
+  policy_id: string;
+  reject_threshold: number | string;
+  add_header_threshold: number | string;
+  greylist_threshold: number | string | null;
+  sender_allowlist: string[];
+  sender_denylist: string[];
+  rate_limit_burst: number | null;
+  rate_limit_period_seconds: number | null;
 }
 
 export interface MailboxRow {
@@ -479,6 +491,10 @@ export interface ControlPlaneStore {
   getPackageInventory(presentedToken: string | null): Promise<PackageInventorySnapshot>;
   getRustDeskNodeHealth(): Promise<NodeHealthSnapshot[]>;
   getMailOverview(presentedToken: string | null): Promise<MailOverview>;
+  upsertMailPolicy(
+    request: UpsertMailPolicyRequest,
+    presentedToken: string | null
+  ): Promise<MailOverview>;
   upsertMailDomain(
     request: UpsertMailDomainRequest,
     presentedToken: string | null
@@ -559,6 +575,7 @@ export type ControlPlaneSpecMethods = Pick<
   | "applyDesiredState"
   | "exportDesiredState"
   | "getMailOverview"
+  | "upsertMailPolicy"
   | "upsertMailDomain"
   | "deleteMailDomain"
   | "upsertMailbox"

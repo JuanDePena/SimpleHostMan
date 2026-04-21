@@ -103,6 +103,9 @@ function createStubApi(
     upsertMailboxQuota: async () => {
       throw new Error("Unexpected mailbox quota upsert in test");
     },
+    upsertMailPolicy: async () => {
+      throw new Error("Unexpected mail policy upsert in test");
+    },
     deleteMailboxQuota: async () => {
       throw new Error("Unexpected mailbox quota delete in test");
     },

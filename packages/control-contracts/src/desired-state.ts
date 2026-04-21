@@ -66,6 +66,20 @@ export interface DesiredStateMailDomainInput {
   dkimSelector: string;
 }
 
+export interface DesiredStateMailRateLimitInput {
+  burst: number;
+  periodSeconds: number;
+}
+
+export interface DesiredStateMailPolicyInput {
+  rejectThreshold: number;
+  addHeaderThreshold: number;
+  greylistThreshold?: number;
+  senderAllowlist: string[];
+  senderDenylist: string[];
+  rateLimit?: DesiredStateMailRateLimitInput;
+}
+
 export type MailboxCredentialState = "missing" | "configured" | "reset_required";
 
 export interface DesiredStateMailboxInput {
@@ -98,10 +112,20 @@ export interface DesiredStateSpec {
   apps: DesiredStateAppInput[];
   databases: DesiredStateDatabaseInput[];
   backupPolicies: DesiredStateBackupPolicyInput[];
+  mailPolicy?: DesiredStateMailPolicyInput;
   mailDomains: DesiredStateMailDomainInput[];
   mailboxes: DesiredStateMailboxInput[];
   mailAliases: DesiredStateMailAliasInput[];
   mailboxQuotas: DesiredStateMailboxQuotaInput[];
+}
+
+export function createDefaultMailPolicy(): DesiredStateMailPolicyInput {
+  return {
+    rejectThreshold: 15,
+    addHeaderThreshold: 6,
+    senderAllowlist: [],
+    senderDenylist: []
+  };
 }
 
 export interface DesiredStateApplyRequest {

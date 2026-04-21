@@ -30,14 +30,16 @@ Related references:
 - [`/opt/simplehostman/src/docs/REPO_LAYOUT.md`](/opt/simplehostman/src/docs/REPO_LAYOUT.md)
 - [`/opt/simplehostman/src/apps/control/README.md`](/opt/simplehostman/src/apps/control/README.md)
 
-## Status on 2026-04-20
+## Status on 2026-04-21
 
 - `SimpleHost Control` now implements desired-state objects and operator CRUD for mail domains, mailboxes, aliases, quotas, plus mailbox credential generate / rotate / reset flows.
 - `SimpleHost Control` reconciliation derives baseline mail DNS, `webmail.<domain>`, and `mta-sts.<domain>` proxy scaffolding.
 - `SimpleHost Agent` now executes `mail.sync` end-to-end: it installs and restarts `Postfix`, `Dovecot`, `Roundcube`, `Redis`-compatible cache (`valkey` by default), creates the `vmail` runtime user, generates DKIM material, writes node-local runtime artifacts, deploys `Roundcube`, and applies a generated `firewalld` service policy.
 - Phase-2 deliverability scaffolding is now wired end-to-end: `SimpleHost Control` derives `MTA-STS`, `TLS-RPT`, strict `SPF`, strengthened `DMARC`, and node-reported `DKIM` TXT records; `SimpleHost Agent` publishes the `mta-sts.txt` policy document and injects `Rspamd` into the live `Postfix` path through milters.
+- Phase-3 anti-spam policy is now explicit end-to-end: `SimpleHost Control` persists `Rspamd` thresholds plus sender allowlists, denylists, optional greylisting, and authenticated-sender rate limits, while `SimpleHost Agent` renders those policies into node-local `Rspamd` config and `SimpleHostMan` surfaces the current posture in the operator UI.
 - Mail desired state persisted on the nodes is sanitized: mailbox plaintext passwords are not written to `/srv/mail/config/desired-state.json`.
 - Node runtime reporting now includes service installation state, firewall state, `Roundcube` deployment state, and configured vs reset-required mailbox counts.
+- `SimpleHostMan` now exposes mail observability directly from control-plane and node snapshots: queue depth, recent delivery failures, defer reasons, per-domain deliverability checks, and direct tracing from mail resources into recent jobs and audit history.
 - The chosen direction remains self-hosted mail on the two VPS nodes, not a third-party hosted mail backend.
 - The selected persistence model remains filesystem-backed mailbox storage, not message storage inside `PostgreSQL`.
 - `adudoc.com` remains the first pilot mail domain, with `webmaster@adudoc.com` and `notificaciones@adudoc.com` as the initial mailbox set.
@@ -238,6 +240,12 @@ Current rendered runtime artifacts:
 - `/srv/mail/config/rspamd/local.d/actions.conf`
 - `/srv/mail/config/rspamd/local.d/milter_headers.conf`
 - `/srv/mail/config/rspamd/local.d/dkim_signing.conf`
+- `/srv/mail/config/rspamd/local.d/multimap.conf`
+- `/srv/mail/config/rspamd/local.d/ratelimit.conf`
+- `/srv/mail/config/rspamd/sender_allowlist_addresses.map`
+- `/srv/mail/config/rspamd/sender_allowlist_domains.map`
+- `/srv/mail/config/rspamd/sender_denylist_addresses.map`
+- `/srv/mail/config/rspamd/sender_denylist_domains.map`
 - `/srv/mail/config/desired-state.json`
 - `/srv/mail/dkim/<domain>/<selector>.key`
 - `/srv/mail/dkim/<domain>/<selector>.dns.txt`
@@ -253,6 +261,15 @@ Current credential behavior:
 - when an operator rotates a credential manually or through generation, the previous runtime secret is replaced and the action is audited
 - when a mailbox is created without a credential or an operator explicitly resets it, `SimpleHost Agent` renders it locally in locked `reset_required` form
 - generated credentials are intentionally visible only once; later recovery always happens through reset or rotation, never by reading an existing secret back out of the control plane
+- operator-facing desired-state exports preserve mailbox `credentialState` but omit `desiredPassword`, so audit and UI views do not re-expose mailbox secrets
+
+Current anti-spam policy behavior:
+
+- `SimpleHost Control` persists a singleton mail policy with explicit `Rspamd` `add_header` and `reject` thresholds instead of relying on package defaults
+- greylisting is disabled by default and becomes active only when an operator sets a `greylist` threshold below `add_header`
+- sender allowlists and denylists accept either full mailbox addresses or `@domain` entries and are rendered into dedicated `Rspamd` selector maps
+- authenticated-sender rate limiting is optional and currently applies as a global `Rspamd` policy for authenticated traffic on the active mail node
+- `SimpleHostMan` shows the current anti-spam posture so operators can see why mail is accepted, tagged, greylisted, or rejected
 
 ## Mail routing model
 

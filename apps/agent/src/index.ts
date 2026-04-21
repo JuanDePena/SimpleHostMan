@@ -329,6 +329,141 @@ async function inspectRustDesk(): Promise<RustDeskServiceSnapshot> {
   };
 }
 
+function createEmptyMailQueueSnapshot(): NonNullable<MailServiceSnapshot["queue"]> {
+  return {
+    messageCount: 0,
+    activeCount: 0,
+    deferredCount: 0,
+    holdCount: 0,
+    incomingCount: 0,
+    maildropCount: 0,
+    topDeferReasons: []
+  };
+}
+
+async function inspectMailQueue(): Promise<MailServiceSnapshot["queue"] | undefined> {
+  const output = await commandOutput("postqueue", ["-j"]);
+
+  if (output === undefined) {
+    return undefined;
+  }
+
+  const snapshot = createEmptyMailQueueSnapshot();
+  const deferReasonCounts = new Map<string, number>();
+
+  for (const line of output.split(/\r?\n/g)) {
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      continue;
+    }
+
+    try {
+      const parsed = JSON.parse(trimmed) as {
+        queue_name?: string;
+        recipients?: Array<{ delay_reason?: string }>;
+      };
+
+      snapshot.messageCount += 1;
+
+      switch (parsed.queue_name) {
+        case "active":
+          snapshot.activeCount += 1;
+          break;
+        case "deferred":
+          snapshot.deferredCount += 1;
+          break;
+        case "hold":
+          snapshot.holdCount += 1;
+          break;
+        case "incoming":
+          snapshot.incomingCount += 1;
+          break;
+        case "maildrop":
+          snapshot.maildropCount += 1;
+          break;
+        case "corrupt":
+          snapshot.corruptCount = (snapshot.corruptCount ?? 0) + 1;
+          break;
+        default:
+          break;
+      }
+
+      for (const recipient of parsed.recipients ?? []) {
+        const reason = recipient?.delay_reason?.trim();
+
+        if (!reason) {
+          continue;
+        }
+
+        deferReasonCounts.set(reason, (deferReasonCounts.get(reason) ?? 0) + 1);
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  snapshot.topDeferReasons = [...deferReasonCounts.entries()]
+    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+    .slice(0, 5)
+    .map(([reason]) => reason);
+
+  return snapshot;
+}
+
+async function inspectRecentMailFailures(
+  postfixServiceName: string
+): Promise<NonNullable<MailServiceSnapshot["recentDeliveryFailures"]>> {
+  const output = await commandOutput("journalctl", [
+    "-u",
+    postfixServiceName,
+    "--since",
+    "12 hours ago",
+    "-n",
+    "200",
+    "--no-pager",
+    "-o",
+    "short-iso"
+  ]);
+
+  if (!output) {
+    return [];
+  }
+
+  const failures: NonNullable<MailServiceSnapshot["recentDeliveryFailures"]> = [];
+
+  for (const line of output.split(/\r?\n/g)) {
+    const trimmed = line.trim();
+
+    if (!trimmed || !trimmed.includes("status=")) {
+      continue;
+    }
+
+    const match = trimmed.match(
+      /^(\S+)\s+\S+\s+postfix\/[^:]+(?:\[\d+\])?:\s+([A-F0-9]+):\s+to=<([^>]+)>,.*?(?:relay=([^,\s]+)[^,]*,.*)?status=(deferred|bounced|expired)\s+\((.+)\)$/i
+    );
+
+    if (!match) {
+      continue;
+    }
+
+    const occurredAt = new Date(match[1] ?? "");
+
+    failures.push({
+      occurredAt: Number.isFinite(occurredAt.getTime())
+        ? occurredAt.toISOString()
+        : new Date().toISOString(),
+      queueId: match[2] ?? undefined,
+      recipient: match[3] ?? undefined,
+      relay: match[4] ?? undefined,
+      status: (match[5] ?? "deferred") as "deferred" | "bounced" | "expired",
+      reason: match[6] ?? "unknown postfix delivery failure"
+    });
+  }
+
+  return failures.slice(-8).reverse();
+}
+
 async function inspectMail(): Promise<MailServiceSnapshot> {
   const config = createAgentRuntimeConfig();
   const checkedAt = new Date().toISOString();
@@ -371,7 +506,9 @@ async function inspectMail(): Promise<MailServiceSnapshot> {
     roundcubePackageRootExists,
     roundcubeConfigExists,
     roundcubeDatabaseExists,
-    firewallConfigured
+    firewallConfigured,
+    queue,
+    recentDeliveryFailures
   ] = await Promise.all([
     commandOutput("systemctl", ["is-enabled", postfixServiceName]),
     commandOutput("systemctl", ["is-active", postfixServiceName]),
@@ -393,7 +530,9 @@ async function inspectMail(): Promise<MailServiceSnapshot> {
       "--permanent",
       "--query-service",
       firewallServiceName
-    ]).then((value) => value === "yes")
+    ]).then((value) => value === "yes"),
+    inspectMailQueue(),
+    inspectRecentMailFailures(postfixServiceName)
   ]);
 
   const postfixInstalledResolved = postfixEnabledState !== undefined || postfixInstalled;
@@ -411,6 +550,7 @@ async function inspectMail(): Promise<MailServiceSnapshot> {
       const parsed = JSON.parse(desiredStateContent) as {
         domains?: Array<{
           domainName: string;
+          tenantSlug: string;
           mailHost: string;
           webmailHostname: string;
           mtaStsHostname?: string;
@@ -426,15 +566,25 @@ async function inspectMail(): Promise<MailServiceSnapshot> {
       };
       managedDomains = Array.isArray(parsed.domains)
         ? await Promise.all(
-            parsed.domains.map(async (domain) => ({
-              domainName: domain.domainName,
-              mailHost: domain.mailHost,
-              webmailHostname: domain.webmailHostname,
-              mtaStsHostname: domain.mtaStsHostname ?? `mta-sts.${domain.domainName}`,
-              deliveryRole: domain.deliveryRole,
-              mailboxCount: Array.isArray(domain.mailboxes) ? domain.mailboxes.length : 0,
-              aliasCount: Array.isArray(domain.aliases) ? domain.aliases.length : 0,
-              dkimDnsTxtValue:
+            parsed.domains.map(async (domain) => {
+              const webmailDocumentRoot = path.join(
+                roundcubeRoot,
+                domain.tenantSlug,
+                domain.domainName,
+                "public"
+              );
+              const mtaStsDocumentRoot = path.join(
+                policyRoot,
+                domain.tenantSlug,
+                domain.domainName,
+                "public"
+              );
+              const mtaStsPolicyPath = path.join(
+                mtaStsDocumentRoot,
+                ".well-known",
+                "mta-sts.txt"
+              );
+              const dkimDnsTxtValue =
                 typeof domain.dkimSelector === "string"
                   ? await readFile(
                       path.join(dkimRoot, domain.domainName, `${domain.dkimSelector}.dns.txt`),
@@ -442,12 +592,34 @@ async function inspectMail(): Promise<MailServiceSnapshot> {
                     )
                       .then((content) => content.trim())
                       .catch(() => undefined)
-                  : undefined,
-              dmarcReportAddress: domain.dmarcReportAddress,
-              tlsReportAddress: domain.tlsReportAddress,
-              mtaStsMode: domain.mtaStsMode,
-              mtaStsMaxAgeSeconds: domain.mtaStsMaxAgeSeconds
-            }))
+                  : undefined;
+              const [webmailDocumentPresent, mtaStsPolicyPresent] = await Promise.all([
+                pathExists(webmailDocumentRoot),
+                pathExists(mtaStsPolicyPath)
+              ]);
+
+              return {
+                domainName: domain.domainName,
+                mailHost: domain.mailHost,
+                webmailHostname: domain.webmailHostname,
+                mtaStsHostname: domain.mtaStsHostname ?? `mta-sts.${domain.domainName}`,
+                deliveryRole: domain.deliveryRole,
+                mailboxCount: Array.isArray(domain.mailboxes) ? domain.mailboxes.length : 0,
+                aliasCount: Array.isArray(domain.aliases) ? domain.aliases.length : 0,
+                dkimSelector: domain.dkimSelector,
+                dkimDnsTxtValue,
+                dkimAvailable: Boolean(dkimDnsTxtValue),
+                dmarcReportAddress: domain.dmarcReportAddress,
+                tlsReportAddress: domain.tlsReportAddress,
+                mtaStsMode: domain.mtaStsMode,
+                mtaStsMaxAgeSeconds: domain.mtaStsMaxAgeSeconds,
+                webmailDocumentRoot,
+                webmailDocumentPresent,
+                mtaStsDocumentRoot,
+                mtaStsPolicyPath,
+                mtaStsPolicyPresent
+              };
+            })
           )
         : [];
       for (const domain of parsed.domains ?? []) {
@@ -472,6 +644,13 @@ async function inspectMail(): Promise<MailServiceSnapshot> {
       : managedDomains.length > 0
         ? "placeholder"
         : "absent";
+  const policyDocumentCount = managedDomains.length;
+  const healthyPolicyDocumentCount = managedDomains.filter(
+    (domain) => domain.mtaStsPolicyPresent
+  ).length;
+  const webmailHealthy =
+    roundcubeDeployment === "packaged" &&
+    (managedDomains.length === 0 || managedDomains.every((domain) => domain.webmailDocumentPresent));
 
   return {
     postfixServiceName,
@@ -500,11 +679,16 @@ async function inspectMail(): Promise<MailServiceSnapshot> {
     roundcubeConfigPath,
     roundcubeDatabasePath,
     roundcubeDeployment,
+    webmailHealthy,
     firewallServiceName,
     firewallConfigured,
     configuredMailboxCount,
     missingMailboxCount,
     resetRequiredMailboxCount,
+    policyDocumentCount,
+    healthyPolicyDocumentCount,
+    queue,
+    recentDeliveryFailures,
     managedDomains,
     checkedAt
   };

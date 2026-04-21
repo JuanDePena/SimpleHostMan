@@ -1,9 +1,10 @@
 import { isIP } from "node:net";
 
-import type {
+import {
   DesiredStateAppInput,
   DesiredStateBackupPolicyInput,
   DesiredStateDatabaseInput,
+  type DesiredStateMailPolicyInput,
   DesiredStateNodeInput,
   DesiredStateTenantInput,
   DesiredStateZoneInput,
@@ -11,7 +12,8 @@ import type {
   UpsertMailAliasRequest,
   UpsertMailboxQuotaRequest,
   UpsertMailboxRequest,
-  UpsertMailDomainRequest
+  UpsertMailDomainRequest,
+  createDefaultMailPolicy
 } from "@simplehost/control-contracts";
 
 const slugPattern = /^[a-z0-9](?:[a-z0-9-_]{0,61}[a-z0-9])?$/;
@@ -23,6 +25,13 @@ const domainPattern =
 function parseCommaSeparated(value: string): string[] {
   return value
     .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+function parseLooseList(value: string): string[] {
+  return value
+    .split(/[\n,]+/g)
     .map((entry) => entry.trim())
     .filter(Boolean);
 }
@@ -113,6 +122,33 @@ function assertPositiveInt(
   }
 
   return value;
+}
+
+function assertPositiveNumber(
+  value: number | undefined,
+  label: string
+): number {
+  if (value === undefined || !Number.isFinite(value) || value <= 0) {
+    throw new Error(`${label} must be a positive number.`);
+  }
+
+  return value;
+}
+
+function assertMailSenderEntry(value: string, label: string): string {
+  const normalized = assertRequired(value, label).toLowerCase();
+
+  if (normalized.startsWith("@")) {
+    return `@${assertDomain(normalized.slice(1), label)}`;
+  }
+
+  const [localPart, domainName] = normalized.split("@", 2);
+
+  if (!localPart || !domainName) {
+    throw new Error(`${label} must be a full mailbox address or @domain.`);
+  }
+
+  return `${localPart}@${assertDomain(domainName, label)}`;
 }
 
 function assertCronish(value: string, label: string): string {
@@ -405,6 +441,65 @@ export function parseMailDomainForm(
     mailHost: assertDomain(form.get("mailHost")?.trim() ?? "", "Mail host"),
     dkimSelector: assertSlug(form.get("dkimSelector")?.trim() ?? "", "DKIM selector")
   };
+}
+
+export function parseMailPolicyForm(form: URLSearchParams): DesiredStateMailPolicyInput {
+  const defaults = createDefaultMailPolicy();
+  const rejectThreshold = Number.parseFloat(
+    form.get("rejectThreshold")?.trim() ?? String(defaults.rejectThreshold)
+  );
+  const addHeaderThreshold = Number.parseFloat(
+    form.get("addHeaderThreshold")?.trim() ?? String(defaults.addHeaderThreshold)
+  );
+  const greylistRaw = form.get("greylistThreshold")?.trim() ?? "";
+  const rateLimitBurstRaw = form.get("rateLimitBurst")?.trim() ?? "";
+  const rateLimitPeriodRaw = form.get("rateLimitPeriodSeconds")?.trim() ?? "";
+  const senderAllowlist = parseLooseList(form.get("senderAllowlist") ?? "").map((entry) =>
+    assertMailSenderEntry(entry, "Sender allowlist entry")
+  );
+  const senderDenylist = parseLooseList(form.get("senderDenylist") ?? "").map((entry) =>
+    assertMailSenderEntry(entry, "Sender denylist entry")
+  );
+
+  const policy: DesiredStateMailPolicyInput = {
+    rejectThreshold: assertPositiveNumber(rejectThreshold, "Reject threshold"),
+    addHeaderThreshold: assertPositiveNumber(addHeaderThreshold, "Add-header threshold"),
+    greylistThreshold:
+      greylistRaw.length > 0
+        ? assertPositiveNumber(
+            Number.parseFloat(greylistRaw),
+            "Greylist threshold"
+          )
+        : undefined,
+    senderAllowlist,
+    senderDenylist,
+    rateLimit:
+      rateLimitBurstRaw.length > 0 || rateLimitPeriodRaw.length > 0
+        ? {
+            burst: assertPositiveInt(
+              Number.parseInt(rateLimitBurstRaw, 10),
+              "Rate-limit burst"
+            ),
+            periodSeconds: assertPositiveInt(
+              Number.parseInt(rateLimitPeriodRaw, 10),
+              "Rate-limit period"
+            )
+          }
+        : undefined
+  };
+
+  if (policy.addHeaderThreshold >= policy.rejectThreshold) {
+    throw new Error("Reject threshold must be greater than add-header threshold.");
+  }
+
+  if (
+    policy.greylistThreshold !== undefined &&
+    policy.greylistThreshold >= policy.addHeaderThreshold
+  ) {
+    throw new Error("Greylist threshold must be below add-header threshold.");
+  }
+
+  return policy;
 }
 
 export function parseMailboxForm(form: URLSearchParams): UpsertMailboxRequest {

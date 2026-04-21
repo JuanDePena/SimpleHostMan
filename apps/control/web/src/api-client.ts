@@ -26,6 +26,7 @@ import {
   type ProxyRenderPayload,
   type ResetMailboxCredentialRequest,
   type RotateMailboxCredentialRequest,
+  type UpsertMailPolicyRequest,
   type ResourceDriftSummary,
   type RustDeskPublicConnectionInfo
   ,
@@ -100,6 +101,7 @@ export interface ControlWebApi extends ControlAuthSurface {
     request: PackageInstallRequest
   ): Promise<JobDispatchResponse>;
   loadProxyPreview(token: string, slug: string): Promise<ProxyRenderPayload>;
+  upsertMailPolicy(token: string, request: UpsertMailPolicyRequest): Promise<void>;
   upsertMailDomain(token: string, request: UpsertMailDomainRequest): Promise<void>;
   deleteMailDomain(token: string, domainName: string): Promise<void>;
   upsertMailbox(
@@ -360,6 +362,13 @@ export function createControlWebApiFromRequest(request: ControlWebApiRequest): C
     },
     async upsertMailDomain(token: string, upsertRequest: UpsertMailDomainRequest): Promise<void> {
       await request("/v1/mail/domains", {
+        method: "POST",
+        token,
+        body: upsertRequest
+      });
+    },
+    async upsertMailPolicy(token: string, upsertRequest: UpsertMailPolicyRequest): Promise<void> {
+      await request("/v1/mail/policy", {
         method: "POST",
         token,
         body: upsertRequest

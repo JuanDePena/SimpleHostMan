@@ -30,19 +30,19 @@ The next mail work should continue as a deliberate roadmap. Phase 1 is now compl
 - mailbox credential state is explicit across UI, API, desired state, and job payloads
 - reset and rotation actions are audited
 
-### Phase 2. Mail observability
+Phase 2 is now complete:
 
 - Surface `Postfix` queue state, recent delivery failures, and defer reasons in `SimpleHostMan`.
 - Expose per-domain deliverability state for `SPF`, `DKIM`, `DMARC`, `MTA-STS`, and `TLS-RPT`.
 - Add node-level mail runtime health for `Postfix`, `Dovecot`, `Rspamd`, webmail, and policy documents.
 - Improve operator tracing from mail resources into jobs, audit, and runtime snapshots.
 
-### Phase 3. Anti-spam policy
+Phase 3 is now complete:
 
-- Make `Rspamd` thresholds and actions explicit instead of relying on opaque defaults.
-- Add support for allowlists, denylists, and basic rate-limiting policy.
-- Decide whether greylisting should be part of the default profile or an opt-in policy.
-- Surface anti-spam policy state in the UI so operators can understand why mail was accepted, tagged, or rejected.
+- `Rspamd` thresholds and actions are now explicit and versioned in desired state instead of opaque defaults.
+- Operators can manage sender allowlists, denylists, and a basic authenticated-sender rate-limiting policy.
+- Greylisting is now an opt-in policy and remains disabled in the default profile.
+- Anti-spam policy state is surfaced in the UI and propagated through API, desired state, and `mail.sync` jobs.
 
 ### Phase 4. Mail HA model
 

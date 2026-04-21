@@ -4,7 +4,8 @@ import type {
   UpsertMailAliasRequest,
   UpsertMailboxQuotaRequest,
   UpsertMailboxRequest,
-  UpsertMailDomainRequest
+  UpsertMailDomainRequest,
+  UpsertMailPolicyRequest
 } from "@simplehost/control-contracts";
 
 import {
@@ -36,6 +37,18 @@ export const handleMailRoutes: ApiRouteHandler = async ({
       200,
       await controlPlaneStore.upsertMailDomain(
         await readJsonBody<UpsertMailDomainRequest>(request),
+        bearerToken
+      )
+    );
+    return true;
+  }
+
+  if (request.method === "POST" && url.pathname === "/v1/mail/policy") {
+    writeJson(
+      response,
+      200,
+      await controlPlaneStore.upsertMailPolicy(
+        await readJsonBody<UpsertMailPolicyRequest>(request),
         bearerToken
       )
     );

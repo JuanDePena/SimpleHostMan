@@ -20,7 +20,9 @@ import type {
   InventoryNodeSummary,
   InventoryZoneSummary,
   JobHistoryEntry,
+  MailDeliveryFailureSnapshot,
   MailManagedDomainSnapshot,
+  MailQueueSnapshot,
   MailServiceSnapshot,
   NodeHealthSnapshot,
   ReconciliationRunSummary,
@@ -566,8 +568,11 @@ function normalizeMailManagedDomainSnapshot(
     deliveryRole: record.deliveryRole,
     mailboxCount: Number(record.mailboxCount ?? 0),
     aliasCount: Number(record.aliasCount ?? 0),
+    dkimSelector: typeof record.dkimSelector === "string" ? record.dkimSelector : undefined,
     dkimDnsTxtValue:
       typeof record.dkimDnsTxtValue === "string" ? record.dkimDnsTxtValue : undefined,
+    dkimAvailable:
+      typeof record.dkimAvailable === "boolean" ? record.dkimAvailable : undefined,
     dmarcReportAddress:
       typeof record.dmarcReportAddress === "string" ? record.dmarcReportAddress : undefined,
     tlsReportAddress:
@@ -581,7 +586,80 @@ function normalizeMailManagedDomainSnapshot(
     mtaStsMaxAgeSeconds:
       typeof record.mtaStsMaxAgeSeconds === "number"
         ? Number(record.mtaStsMaxAgeSeconds)
-        : undefined
+        : undefined,
+    webmailDocumentRoot:
+      typeof record.webmailDocumentRoot === "string" ? record.webmailDocumentRoot : undefined,
+    webmailDocumentPresent:
+      typeof record.webmailDocumentPresent === "boolean"
+        ? record.webmailDocumentPresent
+        : undefined,
+    mtaStsDocumentRoot:
+      typeof record.mtaStsDocumentRoot === "string" ? record.mtaStsDocumentRoot : undefined,
+    mtaStsPolicyPath:
+      typeof record.mtaStsPolicyPath === "string" ? record.mtaStsPolicyPath : undefined,
+    mtaStsPolicyPresent:
+      typeof record.mtaStsPolicyPresent === "boolean" ? record.mtaStsPolicyPresent : undefined
+  };
+}
+
+function normalizeMailQueueSnapshot(value: unknown): MailQueueSnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  if (
+    typeof record.messageCount !== "number" ||
+    typeof record.activeCount !== "number" ||
+    typeof record.deferredCount !== "number" ||
+    typeof record.holdCount !== "number" ||
+    typeof record.incomingCount !== "number" ||
+    typeof record.maildropCount !== "number" ||
+    !Array.isArray(record.topDeferReasons)
+  ) {
+    return undefined;
+  }
+
+  return {
+    messageCount: Number(record.messageCount),
+    activeCount: Number(record.activeCount),
+    deferredCount: Number(record.deferredCount),
+    holdCount: Number(record.holdCount),
+    incomingCount: Number(record.incomingCount),
+    maildropCount: Number(record.maildropCount),
+    corruptCount:
+      typeof record.corruptCount === "number" ? Number(record.corruptCount) : undefined,
+    topDeferReasons: record.topDeferReasons
+      .filter((entry): entry is string => typeof entry === "string")
+      .slice(0, 8)
+  };
+}
+
+function normalizeMailDeliveryFailureSnapshot(
+  value: unknown
+): MailDeliveryFailureSnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  if (
+    typeof record.occurredAt !== "string" ||
+    (record.status !== "deferred" && record.status !== "bounced" && record.status !== "expired") ||
+    typeof record.reason !== "string"
+  ) {
+    return undefined;
+  }
+
+  return {
+    occurredAt: record.occurredAt,
+    status: record.status,
+    queueId: typeof record.queueId === "string" ? record.queueId : undefined,
+    recipient: typeof record.recipient === "string" ? record.recipient : undefined,
+    relay: typeof record.relay === "string" ? record.relay : undefined,
+    reason: record.reason
   };
 }
 
@@ -645,6 +723,8 @@ export function normalizeMailSnapshot(value: unknown): MailServiceSnapshot | und
       record.roundcubeDeployment === "absent"
         ? record.roundcubeDeployment
         : undefined,
+    webmailHealthy:
+      typeof record.webmailHealthy === "boolean" ? record.webmailHealthy : undefined,
     firewallServiceName:
       typeof record.firewallServiceName === "string" ? record.firewallServiceName : undefined,
     firewallConfigured:
@@ -652,7 +732,16 @@ export function normalizeMailSnapshot(value: unknown): MailServiceSnapshot | und
         ? record.firewallConfigured
         : undefined,
     configuredMailboxCount: Number(record.configuredMailboxCount ?? 0),
+    missingMailboxCount: Number(record.missingMailboxCount ?? 0),
     resetRequiredMailboxCount: Number(record.resetRequiredMailboxCount ?? 0),
+    policyDocumentCount: Number(record.policyDocumentCount ?? 0),
+    healthyPolicyDocumentCount: Number(record.healthyPolicyDocumentCount ?? 0),
+    queue: normalizeMailQueueSnapshot(record.queue),
+    recentDeliveryFailures: Array.isArray(record.recentDeliveryFailures)
+      ? record.recentDeliveryFailures
+          .map(normalizeMailDeliveryFailureSnapshot)
+          .filter((entry): entry is MailDeliveryFailureSnapshot => Boolean(entry))
+      : undefined,
     managedDomains,
     checkedAt: typeof record.checkedAt === "string" ? record.checkedAt : new Date(0).toISOString()
   };

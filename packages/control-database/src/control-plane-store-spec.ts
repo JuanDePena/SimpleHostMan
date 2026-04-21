@@ -10,13 +10,16 @@ import type {
   DesiredStateAppInput,
   DesiredStateApplyResponse,
   DesiredStateDatabaseInput,
+  DesiredStateMailPolicyInput,
   DesiredStateNodeInput,
   DesiredStateSpec,
   DesiredStateTenantInput,
   DesiredStateZoneInput,
   DnsRecordPayload,
-  MailOverview
+  MailOverview,
+  UpsertMailPolicyRequest
 } from "@simplehost/control-contracts";
+import { createDefaultMailPolicy } from "@simplehost/control-contracts";
 
 import { readPlatformInventory, type PlatformInventoryApp, type PlatformInventoryDocument } from "./inventory.js";
 import { requireAuthorizedUser } from "./control-plane-store-auth.js";
@@ -48,10 +51,54 @@ import type {
   MailAliasRow,
   MailDnsDomainRow,
   MailDomainRow,
+  MailPolicyRow,
   MailboxQuotaRow,
   MailboxRow,
   ControlPlaneStoreOptions
 } from "./control-plane-store-types.js";
+
+const mailPolicyId = "mail-policy";
+const mailSenderDomainPattern =
+  /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
+const mailSenderAddressPattern =
+  /^[a-z0-9._%+-]+@(?:(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63})$/;
+
+function normalizeMailPolicy(
+  policy: DesiredStateMailPolicyInput | undefined
+): DesiredStateMailPolicyInput {
+  const defaults = createDefaultMailPolicy();
+
+  return {
+    rejectThreshold: policy?.rejectThreshold ?? defaults.rejectThreshold,
+    addHeaderThreshold: policy?.addHeaderThreshold ?? defaults.addHeaderThreshold,
+    greylistThreshold: policy?.greylistThreshold ?? undefined,
+    senderAllowlist: [...new Set((policy?.senderAllowlist ?? defaults.senderAllowlist).map((entry) => entry.trim().toLowerCase()).filter(Boolean))].sort(
+      (left, right) => left.localeCompare(right)
+    ),
+    senderDenylist: [...new Set((policy?.senderDenylist ?? defaults.senderDenylist).map((entry) => entry.trim().toLowerCase()).filter(Boolean))].sort(
+      (left, right) => left.localeCompare(right)
+    ),
+    rateLimit:
+      policy?.rateLimit &&
+      Number.isInteger(policy.rateLimit.burst) &&
+      Number.isInteger(policy.rateLimit.periodSeconds) &&
+      policy.rateLimit.burst > 0 &&
+      policy.rateLimit.periodSeconds > 0
+        ? {
+            burst: policy.rateLimit.burst,
+            periodSeconds: policy.rateLimit.periodSeconds
+          }
+        : undefined
+  };
+}
+
+function isValidMailSenderPolicyEntry(value: string): boolean {
+  if (value.startsWith("@")) {
+    return mailSenderDomainPattern.test(value.slice(1));
+  }
+
+  return mailSenderAddressPattern.test(value);
+}
 
 export async function getLatestInventoryImport(
   client: PoolClient
@@ -222,6 +269,7 @@ export async function buildDesiredStateSpecFromDatabase(
     appResult,
     databaseResult,
     backupPolicyResult,
+    mailPolicyResult,
     mailDomainResult,
     mailboxResult,
     mailAliasResult,
@@ -316,6 +364,20 @@ export async function buildDesiredStateSpecFromDatabase(
          ON tenants.tenant_id = policies.tenant_id
        ORDER BY policies.policy_slug ASC`
     ),
+    client.query<MailPolicyRow>(
+      `SELECT
+         policy_id,
+         reject_threshold,
+         add_header_threshold,
+         greylist_threshold,
+         sender_allowlist,
+         sender_denylist,
+         rate_limit_burst,
+         rate_limit_period_seconds
+       FROM shp_mail_policy
+       WHERE policy_id = $1`,
+      [mailPolicyId]
+    ),
     client.query<MailDomainRow>(
       `SELECT
          domains.domain_name,
@@ -384,6 +446,29 @@ export async function buildDesiredStateSpecFromDatabase(
     recordsByZone.set(row.zone_name, records);
   }
 
+  const mailPolicyRow = mailPolicyResult.rows[0];
+  const mailPolicy = normalizeMailPolicy(
+    mailPolicyRow
+      ? {
+          rejectThreshold: Number(mailPolicyRow.reject_threshold),
+          addHeaderThreshold: Number(mailPolicyRow.add_header_threshold),
+          greylistThreshold:
+            mailPolicyRow.greylist_threshold === null
+              ? undefined
+              : Number(mailPolicyRow.greylist_threshold),
+          senderAllowlist: mailPolicyRow.sender_allowlist,
+          senderDenylist: mailPolicyRow.sender_denylist,
+          rateLimit:
+            mailPolicyRow.rate_limit_burst && mailPolicyRow.rate_limit_period_seconds
+              ? {
+                  burst: Number(mailPolicyRow.rate_limit_burst),
+                  periodSeconds: Number(mailPolicyRow.rate_limit_period_seconds)
+                }
+              : undefined
+        }
+      : undefined
+  );
+
   return {
     tenants: tenantResult.rows.map((row) => ({
       slug: row.slug,
@@ -431,6 +516,7 @@ export async function buildDesiredStateSpecFromDatabase(
       storageLocation: row.storage_location,
       resourceSelectors: row.resource_selectors
     })),
+    mailPolicy,
     mailDomains: mailDomainResult.rows.map((row) => ({
       domainName: row.domain_name,
       tenantSlug: row.tenant_slug,
@@ -469,26 +555,46 @@ export async function buildDesiredStateSpecFromDatabase(
   };
 }
 
+export function sanitizeDesiredStateSpecForExport(spec: DesiredStateSpec): DesiredStateSpec {
+  return {
+    ...spec,
+    mailboxes: spec.mailboxes.map(({ desiredPassword: _desiredPassword, ...mailbox }) => ({
+      ...mailbox
+    }))
+  };
+}
+
 export async function applyDesiredStateSpec(
   client: PoolClient,
   spec: DesiredStateSpec,
   payloadKey: Buffer | null
 ): Promise<void> {
-  validateDesiredStateSpec(spec);
+  const resolvedSpec: DesiredStateSpec = {
+    ...spec,
+    mailPolicy: normalizeMailPolicy(spec.mailPolicy)
+  };
 
-  const desiredTenantIds = spec.tenants.map((tenant) => `tenant-${tenant.slug}`);
-  const desiredNodeIds = spec.nodes.map((node) => node.nodeId);
-  const desiredZoneIds = spec.zones.map((zone) => `zone-${zone.zoneName}`);
-  const desiredAppIds = spec.apps.map((app) => `app-${app.slug}`);
-  const desiredDatabaseIds = spec.databases.map((database) => `database-${database.appSlug}`);
-  const desiredBackupPolicyIds = spec.backupPolicies.map(
+  validateDesiredStateSpec(resolvedSpec);
+
+  const desiredTenantIds = resolvedSpec.tenants.map((tenant) => `tenant-${tenant.slug}`);
+  const desiredNodeIds = resolvedSpec.nodes.map((node) => node.nodeId);
+  const desiredZoneIds = resolvedSpec.zones.map((zone) => `zone-${zone.zoneName}`);
+  const desiredAppIds = resolvedSpec.apps.map((app) => `app-${app.slug}`);
+  const desiredDatabaseIds = resolvedSpec.databases.map(
+    (database) => `database-${database.appSlug}`
+  );
+  const desiredBackupPolicyIds = resolvedSpec.backupPolicies.map(
     (policy) => `backup-policy-${policy.policySlug}`
   );
-  const desiredMailDomainIds = spec.mailDomains.map(
+  const desiredMailDomainIds = resolvedSpec.mailDomains.map(
     (mailDomain) => `mail-domain-${mailDomain.domainName}`
   );
-  const desiredMailboxIds = spec.mailboxes.map((mailbox) => `mailbox-${mailbox.address}`);
-  const desiredMailAliasIds = spec.mailAliases.map((mailAlias) => `mail-alias-${mailAlias.address}`);
+  const desiredMailboxIds = resolvedSpec.mailboxes.map(
+    (mailbox) => `mailbox-${mailbox.address}`
+  );
+  const desiredMailAliasIds = resolvedSpec.mailAliases.map(
+    (mailAlias) => `mail-alias-${mailAlias.address}`
+  );
   const existingMailboxCredentialRows = await client.query<{
     mailbox_id: string;
     secret_payload: Record<string, unknown>;
@@ -501,7 +607,7 @@ export async function applyDesiredStateSpec(
     existingMailboxCredentialRows.rows.map((row) => [row.mailbox_id, row] as const)
   );
 
-  for (const tenant of spec.tenants) {
+  for (const tenant of resolvedSpec.tenants) {
     await client.query(
       `INSERT INTO shp_tenants (
          tenant_id,
@@ -519,7 +625,7 @@ export async function applyDesiredStateSpec(
     );
   }
 
-  for (const node of spec.nodes) {
+  for (const node of resolvedSpec.nodes) {
     await client.query(
       `INSERT INTO shp_nodes (
          node_id,
@@ -540,7 +646,7 @@ export async function applyDesiredStateSpec(
     );
   }
 
-  for (const zone of spec.zones) {
+  for (const zone of resolvedSpec.zones) {
     const zoneId = `zone-${zone.zoneName}`;
 
     await client.query(
@@ -592,7 +698,43 @@ export async function applyDesiredStateSpec(
     }
   }
 
-  for (const mailDomain of spec.mailDomains) {
+  await client.query(
+    `INSERT INTO shp_mail_policy (
+       policy_id,
+       reject_threshold,
+       add_header_threshold,
+       greylist_threshold,
+       sender_allowlist,
+       sender_denylist,
+       rate_limit_burst,
+       rate_limit_period_seconds,
+       created_at,
+       updated_at
+     )
+     VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7, $8, NOW(), NOW())
+     ON CONFLICT (policy_id)
+     DO UPDATE SET
+       reject_threshold = EXCLUDED.reject_threshold,
+       add_header_threshold = EXCLUDED.add_header_threshold,
+       greylist_threshold = EXCLUDED.greylist_threshold,
+       sender_allowlist = EXCLUDED.sender_allowlist,
+       sender_denylist = EXCLUDED.sender_denylist,
+       rate_limit_burst = EXCLUDED.rate_limit_burst,
+       rate_limit_period_seconds = EXCLUDED.rate_limit_period_seconds,
+       updated_at = EXCLUDED.updated_at`,
+    [
+      mailPolicyId,
+      resolvedSpec.mailPolicy?.rejectThreshold ?? createDefaultMailPolicy().rejectThreshold,
+      resolvedSpec.mailPolicy?.addHeaderThreshold ?? createDefaultMailPolicy().addHeaderThreshold,
+      resolvedSpec.mailPolicy?.greylistThreshold ?? null,
+      JSON.stringify(resolvedSpec.mailPolicy?.senderAllowlist ?? []),
+      JSON.stringify(resolvedSpec.mailPolicy?.senderDenylist ?? []),
+      resolvedSpec.mailPolicy?.rateLimit?.burst ?? null,
+      resolvedSpec.mailPolicy?.rateLimit?.periodSeconds ?? null
+    ]
+  );
+
+  for (const mailDomain of resolvedSpec.mailDomains) {
     const mailDomainId = `mail-domain-${mailDomain.domainName}`;
 
     await client.query(
@@ -631,7 +773,7 @@ export async function applyDesiredStateSpec(
     );
   }
 
-  for (const mailbox of spec.mailboxes) {
+  for (const mailbox of resolvedSpec.mailboxes) {
     const mailboxId = `mailbox-${mailbox.address}`;
     const credentialState = normalizeMailboxCredentialState(
       mailbox.credentialState,
@@ -692,7 +834,7 @@ export async function applyDesiredStateSpec(
     );
   }
 
-  for (const mailAlias of spec.mailAliases) {
+  for (const mailAlias of resolvedSpec.mailAliases) {
     await client.query(
       `INSERT INTO shp_mail_aliases (
          mail_alias_id,
@@ -720,7 +862,7 @@ export async function applyDesiredStateSpec(
     );
   }
 
-  for (const quota of spec.mailboxQuotas) {
+  for (const quota of resolvedSpec.mailboxQuotas) {
     await client.query(
       `INSERT INTO shp_mailbox_quotas (
          mailbox_id,
@@ -736,7 +878,7 @@ export async function applyDesiredStateSpec(
     );
   }
 
-  for (const app of spec.apps) {
+  for (const app of resolvedSpec.apps) {
     const appId = `app-${app.slug}`;
 
     await client.query(
@@ -801,7 +943,7 @@ export async function applyDesiredStateSpec(
     );
   }
 
-  for (const database of spec.databases) {
+  for (const database of resolvedSpec.databases) {
     const databaseId = `database-${database.appSlug}`;
 
     await client.query(
@@ -864,7 +1006,7 @@ export async function applyDesiredStateSpec(
     }
   }
 
-  for (const policy of spec.backupPolicies) {
+  for (const policy of resolvedSpec.backupPolicies) {
     await client.query(
       `INSERT INTO shp_backup_policies (
          policy_id,
@@ -1509,6 +1651,8 @@ function ensureUnique(values: string[], label: string): void {
 }
 
 export function validateDesiredStateSpec(spec: DesiredStateSpec): void {
+  const mailPolicy = normalizeMailPolicy(spec.mailPolicy);
+
   ensureUnique(
     spec.tenants.map((tenant) => tenant.slug),
     "tenant slug"
@@ -1561,6 +1705,65 @@ export function validateDesiredStateSpec(spec: DesiredStateSpec): void {
     spec.mailboxQuotas.map((quota) => quota.mailboxAddress),
     "mailbox quota"
   );
+  ensureUnique(mailPolicy.senderAllowlist, "mail sender allowlist entry");
+  ensureUnique(mailPolicy.senderDenylist, "mail sender denylist entry");
+
+  if (!Number.isFinite(mailPolicy.addHeaderThreshold) || mailPolicy.addHeaderThreshold <= 0) {
+    throw new Error("Mail policy add-header threshold must be positive.");
+  }
+
+  if (!Number.isFinite(mailPolicy.rejectThreshold) || mailPolicy.rejectThreshold <= 0) {
+    throw new Error("Mail policy reject threshold must be positive.");
+  }
+
+  if (mailPolicy.addHeaderThreshold >= mailPolicy.rejectThreshold) {
+    throw new Error("Mail policy reject threshold must be greater than add-header threshold.");
+  }
+
+  if (
+    mailPolicy.greylistThreshold !== undefined &&
+    (!Number.isFinite(mailPolicy.greylistThreshold) || mailPolicy.greylistThreshold <= 0)
+  ) {
+    throw new Error("Mail policy greylist threshold must be positive when enabled.");
+  }
+
+  if (
+    mailPolicy.greylistThreshold !== undefined &&
+    mailPolicy.greylistThreshold >= mailPolicy.addHeaderThreshold
+  ) {
+    throw new Error(
+      "Mail policy greylist threshold must stay below add-header threshold."
+    );
+  }
+
+  if (
+    mailPolicy.rateLimit &&
+    (!Number.isInteger(mailPolicy.rateLimit.burst) || mailPolicy.rateLimit.burst <= 0)
+  ) {
+    throw new Error("Mail policy rate-limit burst must be a positive integer.");
+  }
+
+  if (
+    mailPolicy.rateLimit &&
+    (!Number.isInteger(mailPolicy.rateLimit.periodSeconds) ||
+      mailPolicy.rateLimit.periodSeconds <= 0)
+  ) {
+    throw new Error("Mail policy rate-limit window must be a positive integer.");
+  }
+
+  for (const entry of [...mailPolicy.senderAllowlist, ...mailPolicy.senderDenylist]) {
+    if (!isValidMailSenderPolicyEntry(entry)) {
+      throw new Error(
+        `Mail policy sender entry ${entry} must be a mailbox address or @domain.`
+      );
+    }
+  }
+
+  for (const entry of mailPolicy.senderAllowlist) {
+    if (mailPolicy.senderDenylist.includes(entry)) {
+      throw new Error(`Mail policy sender entry ${entry} cannot be allowlisted and denylisted.`);
+    }
+  }
 
   const tenantSlugs = new Set(spec.tenants.map((tenant) => tenant.slug));
   const nodeIds = new Set(spec.nodes.map((node) => node.nodeId));
@@ -1862,6 +2065,7 @@ export async function buildMailOverview(client: PoolClient): Promise<MailOvervie
 
   return {
     generatedAt: new Date().toISOString(),
+    policy: spec.mailPolicy,
     domains: spec.mailDomains.map((domain) => ({
       ...domain,
       mailboxCount: mailboxesByDomain.get(domain.domainName) ?? 0,
@@ -1965,39 +2169,40 @@ export function createControlPlaneSpecMethods(
   ): Promise<MailboxCredentialReveal | null> => {
     const result = await client.query<{
       reveal_id: string;
-      actor_id: string | null;
       action: "generated" | "rotated";
       secret_payload: Record<string, unknown>;
       created_at: Date | string;
-      expires_at: Date | string;
-      consumed_at: Date | string | null;
       address: string;
     }>(
-      `SELECT
-         reveals.reveal_id,
-         reveals.actor_id,
-         reveals.action,
-         reveals.secret_payload,
-         reveals.created_at,
-         reveals.expires_at,
-         reveals.consumed_at,
+      `WITH consumed_reveal AS (
+         UPDATE shp_mailbox_credential_reveals reveals
+         SET consumed_at = NOW()
+         WHERE reveals.reveal_id = $1
+           AND reveals.actor_id = $2
+           AND reveals.consumed_at IS NULL
+           AND reveals.expires_at > NOW()
+         RETURNING
+           reveals.reveal_id,
+           reveals.mailbox_id,
+           reveals.action,
+           reveals.secret_payload,
+           reveals.created_at
+       )
+       SELECT
+         consumed_reveal.reveal_id,
+         consumed_reveal.action,
+         consumed_reveal.secret_payload,
+         consumed_reveal.created_at,
          mailboxes.address
-       FROM shp_mailbox_credential_reveals reveals
+       FROM consumed_reveal
        INNER JOIN shp_mailboxes mailboxes
-         ON mailboxes.mailbox_id = reveals.mailbox_id
-       WHERE reveals.reveal_id = $1`,
-      [revealId]
+         ON mailboxes.mailbox_id = consumed_reveal.mailbox_id`,
+      [revealId, actorId]
     );
 
     const row = result.rows[0];
 
-    if (!row || row.actor_id !== actorId || row.consumed_at) {
-      return null;
-    }
-
-    const expiresAt = new Date(row.expires_at);
-
-    if (!Number.isFinite(expiresAt.getTime()) || expiresAt.getTime() < Date.now()) {
+    if (!row) {
       return null;
     }
 
@@ -2006,14 +2211,6 @@ export function createControlPlaneSpecMethods(
     if (!credential) {
       return null;
     }
-
-    await client.query(
-      `UPDATE shp_mailbox_credential_reveals
-       SET consumed_at = NOW()
-       WHERE reveal_id = $1`,
-      [revealId]
-    );
-
     return {
       revealId: row.reveal_id,
       mailboxAddress: row.address,
@@ -2135,6 +2332,7 @@ export function createControlPlaneSpecMethods(
         ]);
 
         const spec = await buildDesiredStateSpecFromDatabase(client, jobPayloadKey);
+        const exportedSpec = sanitizeDesiredStateSpecForExport(spec);
         const summary = summarizeDesiredStateSpec(spec);
         const exportedAt = new Date().toISOString();
         const exportId = `export-${randomUUID()}`;
@@ -2155,8 +2353,8 @@ export function createControlPlaneSpecMethods(
         return {
           exportedAt,
           summary,
-          spec,
-          yaml: YAML.stringify(spec)
+          spec: exportedSpec,
+          yaml: YAML.stringify(exportedSpec)
         };
       });
     },
@@ -2170,6 +2368,20 @@ export function createControlPlaneSpecMethods(
 
         return buildMailOverview(client);
       });
+    },
+
+    async upsertMailPolicy(request, presentedToken) {
+      return mutateDesiredStateAsUser(
+        presentedToken,
+        "mail-policy.upsert",
+        "mail.policy.updated",
+        "mail_policy",
+        mailPolicyId,
+        (spec) => ({
+          ...spec,
+          mailPolicy: normalizeMailPolicy(request)
+        })
+      );
     },
 
     async upsertMailDomain(request, presentedToken) {

@@ -132,6 +132,7 @@ export function renderQuadletContainerUnit(
 export function renderMailDesiredState(payload: MailSyncPayload): string {
   return JSON.stringify(
     {
+      policy: payload.policy,
       domains: payload.domains.map((domain) => ({
         ...domain,
         mailboxes: domain.mailboxes.map(({ desiredPassword, credentialState, ...mailbox }) => ({
@@ -394,12 +395,42 @@ export function renderRspamdRedisConf(): string {
   ].join("\n");
 }
 
-export function renderRspamdActionsConf(): string {
+function splitRspamdSenderPolicyEntries(entries: string[]): {
+  addresses: string[];
+  domains: string[];
+} {
+  const addresses = new Set<string>();
+  const domains = new Set<string>();
+
+  for (const entry of entries) {
+    const normalized = entry.trim().toLowerCase();
+
+    if (!normalized) {
+      continue;
+    }
+
+    if (normalized.startsWith("@")) {
+      domains.add(normalized.slice(1));
+      continue;
+    }
+
+    addresses.add(normalized);
+  }
+
+  return {
+    addresses: [...addresses].sort((left, right) => left.localeCompare(right)),
+    domains: [...domains].sort((left, right) => left.localeCompare(right))
+  };
+}
+
+export function renderRspamdActionsConf(policy: MailSyncPayload["policy"]): string {
   return [
     "# SimpleHost generated rspamd actions snippet",
-    "reject = 15;",
-    "add_header = 6;",
-    "greylist = 4;"
+    `reject = ${policy.rejectThreshold};`,
+    `add_header = ${policy.addHeaderThreshold};`,
+    policy.greylistThreshold !== undefined
+      ? `greylist = ${policy.greylistThreshold};`
+      : "greylist = null;"
   ].join("\n");
 }
 
@@ -407,6 +438,105 @@ export function renderRspamdMilterHeadersConf(): string {
   return [
     "# SimpleHost generated rspamd milter_headers snippet",
     'use = ["authentication-results", "x-spam-status", "x-spam-level", "x-spamd-bar"];'
+  ].join("\n");
+}
+
+export function renderRspamdSenderMap(entries: string[]): string {
+  return [...new Set(entries.map((entry) => entry.trim()).filter(Boolean))]
+    .sort((left, right) => left.localeCompare(right))
+    .join("\n");
+}
+
+export function renderRspamdMultimapConf(
+  configRoot: string,
+  policy: MailSyncPayload["policy"]
+): string {
+  const allowlist = splitRspamdSenderPolicyEntries(policy.senderAllowlist);
+  const denylist = splitRspamdSenderPolicyEntries(policy.senderDenylist);
+  const rules: string[] = ["# SimpleHost generated rspamd multimap snippet"];
+
+  if (allowlist.addresses.length > 0) {
+    rules.push(
+      "SIMPLEHOST_ALLOWLIST_FROM_ADDRESS {",
+      '  type = "selector";',
+      '  selector = "from:addr.lower";',
+      `  map = "${configRoot}/rspamd/sender_allowlist_addresses.map";`,
+      "  prefilter = true;",
+      '  action = "accept";',
+      '  description = "SimpleHost sender allowlist by exact address";',
+      "}"
+    );
+  }
+
+  if (allowlist.domains.length > 0) {
+    rules.push(
+      "SIMPLEHOST_ALLOWLIST_FROM_DOMAIN {",
+      '  type = "selector";',
+      '  selector = "from:domain.lower";',
+      `  map = "${configRoot}/rspamd/sender_allowlist_domains.map";`,
+      "  prefilter = true;",
+      '  action = "accept";',
+      '  description = "SimpleHost sender allowlist by domain";',
+      "}"
+    );
+  }
+
+  if (denylist.addresses.length > 0) {
+    rules.push(
+      "SIMPLEHOST_DENYLIST_FROM_ADDRESS {",
+      '  type = "selector";',
+      '  selector = "from:addr.lower";',
+      `  map = "${configRoot}/rspamd/sender_denylist_addresses.map";`,
+      "  prefilter = true;",
+      '  action = "reject";',
+      '  message = "SimpleHost sender denylist policy matched";',
+      '  description = "SimpleHost sender denylist by exact address";',
+      "}"
+    );
+  }
+
+  if (denylist.domains.length > 0) {
+    rules.push(
+      "SIMPLEHOST_DENYLIST_FROM_DOMAIN {",
+      '  type = "selector";',
+      '  selector = "from:domain.lower";',
+      `  map = "${configRoot}/rspamd/sender_denylist_domains.map";`,
+      "  prefilter = true;",
+      '  action = "reject";',
+      '  message = "SimpleHost sender denylist policy matched";',
+      '  description = "SimpleHost sender denylist by domain";',
+      "}"
+    );
+  }
+
+  if (rules.length === 1) {
+    rules.push("# No sender allowlist or denylist entries are configured.");
+  }
+
+  return rules.join("\n");
+}
+
+export function renderRspamdRatelimitConf(policy: MailSyncPayload["policy"]): string {
+  if (!policy.rateLimit) {
+    return [
+      "# SimpleHost generated rspamd ratelimit snippet",
+      "# Authenticated sender rate limit is disabled."
+    ].join("\n");
+  }
+
+  const ratePerSecond = policy.rateLimit.burst / policy.rateLimit.periodSeconds;
+
+  return [
+    "# SimpleHost generated rspamd ratelimit snippet",
+    "rates = {",
+    "  user = {",
+    "    bucket = {",
+    `      burst = ${policy.rateLimit.burst};`,
+    `      rate = ${ratePerSecond};`,
+    '      message = "SimpleHost authenticated sender rate limit exceeded";',
+    "    }",
+    "  }",
+    "}"
   ].join("\n");
 }
 

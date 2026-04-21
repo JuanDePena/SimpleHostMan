@@ -228,6 +228,20 @@ export interface MailSyncAliasPayload {
   destinations: string[];
 }
 
+export interface MailSyncPolicyRateLimitPayload {
+  burst: number;
+  periodSeconds: number;
+}
+
+export interface MailSyncPolicyPayload {
+  rejectThreshold: number;
+  addHeaderThreshold: number;
+  greylistThreshold?: number;
+  senderAllowlist: string[];
+  senderDenylist: string[];
+  rateLimit?: MailSyncPolicyRateLimitPayload;
+}
+
 export interface MailSyncDomainPayload {
   domainName: string;
   tenantSlug: string;
@@ -253,11 +267,38 @@ export interface MailManagedDomainSnapshot {
   deliveryRole: "primary" | "standby";
   mailboxCount: number;
   aliasCount: number;
+  dkimSelector?: string;
   dkimDnsTxtValue?: string;
+  dkimAvailable?: boolean;
   dmarcReportAddress?: string;
   tlsReportAddress?: string;
   mtaStsMode?: "enforce" | "testing" | "none";
   mtaStsMaxAgeSeconds?: number;
+  webmailDocumentRoot?: string;
+  webmailDocumentPresent?: boolean;
+  mtaStsDocumentRoot?: string;
+  mtaStsPolicyPath?: string;
+  mtaStsPolicyPresent?: boolean;
+}
+
+export interface MailQueueSnapshot {
+  messageCount: number;
+  activeCount: number;
+  deferredCount: number;
+  holdCount: number;
+  incomingCount: number;
+  maildropCount: number;
+  corruptCount?: number;
+  topDeferReasons: string[];
+}
+
+export interface MailDeliveryFailureSnapshot {
+  occurredAt: string;
+  status: "deferred" | "bounced" | "expired";
+  queueId?: string;
+  recipient?: string;
+  relay?: string;
+  reason: string;
 }
 
 export interface MailServiceSnapshot {
@@ -287,11 +328,16 @@ export interface MailServiceSnapshot {
   roundcubeConfigPath?: string;
   roundcubeDatabasePath?: string;
   roundcubeDeployment?: "packaged" | "placeholder" | "absent";
+  webmailHealthy?: boolean;
   firewallServiceName?: string;
   firewallConfigured?: boolean;
   configuredMailboxCount?: number;
   missingMailboxCount?: number;
   resetRequiredMailboxCount?: number;
+  policyDocumentCount?: number;
+  healthyPolicyDocumentCount?: number;
+  queue?: MailQueueSnapshot;
+  recentDeliveryFailures?: MailDeliveryFailureSnapshot[];
   managedDomains: MailManagedDomainSnapshot[];
   checkedAt: string;
 }
@@ -318,6 +364,7 @@ export interface AgentNodeRuntimeSnapshot {
 }
 
 export interface MailSyncPayload {
+  policy: MailSyncPolicyPayload;
   domains: MailSyncDomainPayload[];
 }
 
@@ -510,7 +557,28 @@ export function isMailSyncPayload(value: unknown): value is MailSyncPayload {
   const payload = value as Record<string, unknown>;
 
   return (
+    payload.policy !== null &&
+    typeof payload.policy === "object" &&
     Array.isArray(payload.domains) &&
+    typeof (payload.policy as Record<string, unknown>).rejectThreshold === "number" &&
+    typeof (payload.policy as Record<string, unknown>).addHeaderThreshold === "number" &&
+    (((payload.policy as Record<string, unknown>).greylistThreshold === undefined) ||
+      typeof (payload.policy as Record<string, unknown>).greylistThreshold === "number") &&
+    Array.isArray((payload.policy as Record<string, unknown>).senderAllowlist) &&
+    ((payload.policy as Record<string, unknown>).senderAllowlist as unknown[]).every(
+      (item) => typeof item === "string"
+    ) &&
+    Array.isArray((payload.policy as Record<string, unknown>).senderDenylist) &&
+    ((payload.policy as Record<string, unknown>).senderDenylist as unknown[]).every(
+      (item) => typeof item === "string"
+    ) &&
+    (((payload.policy as Record<string, unknown>).rateLimit === undefined) ||
+      (!Array.isArray((payload.policy as Record<string, unknown>).rateLimit) &&
+        (payload.policy as Record<string, unknown>).rateLimit !== null &&
+        typeof ((payload.policy as Record<string, unknown>).rateLimit as Record<string, unknown>)
+          .burst === "number" &&
+        typeof ((payload.policy as Record<string, unknown>).rateLimit as Record<string, unknown>)
+          .periodSeconds === "number")) &&
     payload.domains.every((domain) => {
       if (!domain || typeof domain !== "object") {
         return false;

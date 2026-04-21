@@ -4,10 +4,16 @@ import assert from "node:assert/strict";
 import {
   buildMailZoneRecords,
   mergeDerivedDnsRecords,
+  sanitizeDesiredStateSpecForExport,
+  validateDesiredStateSpec,
   type MailDkimRuntimeRecord
 } from "./control-plane-store-spec.js";
 import { toInventoryExportSummary } from "./control-plane-store-helpers.js";
-import type { DnsRecordPayload } from "@simplehost/control-contracts";
+import {
+  createDefaultMailPolicy,
+  type DesiredStateSpec,
+  type DnsRecordPayload
+} from "@simplehost/control-contracts";
 
 test("buildMailZoneRecords derives phase-2 deliverability records", () => {
   const dkimRuntimeRecords: MailDkimRuntimeRecord[] = [
@@ -163,4 +169,106 @@ test("toInventoryExportSummary reads audit-backed export metadata", () => {
     siteCount: 5,
     databaseCount: 5
   });
+});
+
+test("sanitizeDesiredStateSpecForExport strips mailbox desired passwords only from operator exports", () => {
+  const spec: DesiredStateSpec = {
+    tenants: [
+      {
+        slug: "acme",
+        displayName: "Acme"
+      }
+    ],
+    nodes: [
+      {
+        nodeId: "mail-a",
+        hostname: "mail-a.example.com",
+        publicIpv4: "203.0.113.10",
+        wireguardAddress: "10.0.0.10/24"
+      }
+    ],
+    zones: [
+      {
+        zoneName: "example.com",
+        tenantSlug: "acme",
+        primaryNodeId: "mail-a",
+        records: []
+      }
+    ],
+    apps: [],
+    databases: [
+      {
+        appSlug: "adudoc",
+        engine: "postgresql",
+        databaseName: "app_adudoc",
+        databaseUser: "app_adudoc",
+        primaryNodeId: "mail-a",
+        desiredPassword: "db-secret"
+      }
+    ],
+    backupPolicies: [],
+    mailDomains: [
+      {
+        domainName: "example.com",
+        tenantSlug: "acme",
+        zoneName: "example.com",
+        primaryNodeId: "mail-a",
+        mailHost: "mail.example.com",
+        dkimSelector: "mail"
+      }
+    ],
+    mailboxes: [
+      {
+        address: "ops@example.com",
+        domainName: "example.com",
+        localPart: "ops",
+        primaryNodeId: "mail-a",
+        credentialState: "configured",
+        desiredPassword: "mail-secret"
+      },
+      {
+        address: "pending@example.com",
+        domainName: "example.com",
+        localPart: "pending",
+        primaryNodeId: "mail-a",
+        credentialState: "reset_required"
+      }
+    ],
+    mailAliases: [],
+    mailboxQuotas: []
+  };
+
+  const sanitized = sanitizeDesiredStateSpecForExport(spec);
+
+  assert.equal(sanitized.mailboxes[0]?.desiredPassword, undefined);
+  assert.equal(sanitized.mailboxes[0]?.credentialState, "configured");
+  assert.equal(sanitized.mailboxes[1]?.desiredPassword, undefined);
+  assert.equal(sanitized.databases[0]?.desiredPassword, "db-secret");
+  assert.equal(spec.mailboxes[0]?.desiredPassword, "mail-secret");
+  assert.notEqual(sanitized.mailboxes[0], spec.mailboxes[0]);
+});
+
+test("validateDesiredStateSpec rejects sender entries that are both allowlisted and denylisted", () => {
+  const spec: DesiredStateSpec = {
+    tenants: [],
+    nodes: [],
+    zones: [],
+    apps: [],
+    databases: [],
+    backupPolicies: [],
+    mailDomains: [],
+    mailboxes: [],
+    mailAliases: [],
+    mailboxQuotas: [],
+    mailPolicy: {
+      ...createDefaultMailPolicy(),
+      senderAllowlist: ["vip@example.com"],
+      senderDenylist: ["vip@example.com"]
+    }
+  };
+
+  assert.throws(
+    () => validateDesiredStateSpec(spec),
+    /cannot be allowlisted and denylisted/i
+  );
 });

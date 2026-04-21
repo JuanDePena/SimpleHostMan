@@ -1,6 +1,7 @@
 import type {
   DesiredStateMailAliasInput,
   DesiredStateMailDomainInput,
+  DesiredStateMailPolicyInput,
   MailboxCredentialState,
   DesiredStateMailboxInput,
   DesiredStateMailboxQuotaInput
@@ -27,6 +28,7 @@ export interface MailboxQuotaSummary extends DesiredStateMailboxQuotaInput {
 
 export interface MailOverview {
   generatedAt: string;
+  policy?: DesiredStateMailPolicyInput;
   domains: MailDomainSummary[];
   mailboxes: MailboxSummary[];
   aliases: MailAliasSummary[];
@@ -34,6 +36,8 @@ export interface MailOverview {
 }
 
 export interface UpsertMailDomainRequest extends DesiredStateMailDomainInput {}
+
+export interface UpsertMailPolicyRequest extends DesiredStateMailPolicyInput {}
 
 export interface UpsertMailboxRequest extends DesiredStateMailboxInput {}
 
