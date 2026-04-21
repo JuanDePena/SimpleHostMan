@@ -375,7 +375,10 @@ export function toBackupRunSummary(row: BackupRunRow): BackupsOverview["latestRu
     status: row.status,
     summary: row.summary,
     startedAt: normalizeTimestamp(row.started_at),
-    completedAt: row.completed_at ? normalizeTimestamp(row.completed_at) : undefined
+    completedAt: row.completed_at ? normalizeTimestamp(row.completed_at) : undefined,
+    details: row.details
+      ? (sanitizePayload(row.details) as BackupsOverview["latestRuns"][number]["details"])
+      : undefined
   };
 }
 

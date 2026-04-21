@@ -51,8 +51,6 @@ Phase 4 is now complete:
 - The failover model is now documented and surfaced as manual DNS cutover through stable `mail.<domain>` and `MX` semantics.
 - `SimpleHostMan` now reports per-domain standby promotion readiness and concrete blockers before a secondary is treated as mail-ready.
 
-### Phase 5. Product validations
-
 Phase 5 is now complete:
 
 - `SimpleHost Control` now blocks alias loops, unsupported `mailHost` and `MX` combinations, incoherent standby topology, and nonsensical mailbox quotas before they are persisted.
@@ -60,12 +58,12 @@ Phase 5 is now complete:
 - The current mail execution model is now guarded explicitly around zone-apex domains, stable `mail.<domain>` routing, and domain-level standby semantics.
 - Mail editing flows now return operator-facing validation notices inside the dashboard instead of falling through to low-level backend errors.
 
-### Phase 6. Backup and restore
+Phase 6 is now complete:
 
-- Add explicit backup and restore coverage for `Maildir`, DKIM keys, mail runtime config, and webmail state where needed.
-- Define recovery procedures for a single mailbox, a single domain, and the full mail stack.
-- Add operator-visible restore readiness checks instead of assuming backups are enough.
-- Validate at least one real restore path end-to-end, not just backup creation.
+- Backup runs can now report explicit mail artifact coverage for `Maildir`, DKIM keys, mail runtime config, and `Roundcube` state.
+- `SimpleHostMan` now surfaces per-domain backup posture and restore readiness for mailbox, domain, and full mail-stack recoveries.
+- The mail product now documents concrete recovery procedures instead of treating backup policy presence as sufficient evidence.
+- Restore rehearsal evidence now travels end-to-end from backup run details into the operator UI so recovery readiness is visible, not implied.
 
 ### Phase 7. End-to-end reliability
 

@@ -2087,7 +2087,8 @@ export function createControlPlaneOperationsMethods(
                runs.status,
                runs.summary,
                runs.started_at,
-               runs.completed_at
+               runs.completed_at,
+               runs.details
              FROM shp_backup_runs runs
              INNER JOIN shp_backup_policies policies
                ON policies.policy_id = runs.policy_id
@@ -2131,7 +2132,7 @@ export function createControlPlaneOperationsMethods(
              $5,
              $6,
              $7,
-             '{}'::jsonb
+             $8::jsonb
            )`,
           [
             runId,
@@ -2140,19 +2141,21 @@ export function createControlPlaneOperationsMethods(
             request.status,
             request.summary,
             startedAt,
-            request.completedAt ?? null
+            request.completedAt ?? null,
+            JSON.stringify(request.details ?? {})
           ]
         );
 
-        return {
-          runId,
-          policySlug: request.policySlug,
-          nodeId: request.nodeId,
+        return toBackupRunSummary({
+          run_id: runId,
+          policy_slug: request.policySlug,
+          node_id: request.nodeId,
           status: request.status,
           summary: request.summary,
-          startedAt,
-          completedAt: request.completedAt
-        };
+          started_at: startedAt,
+          completed_at: request.completedAt ?? null,
+          details: (request.details ?? {}) as Record<string, unknown>
+        });
       });
     },
 

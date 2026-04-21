@@ -8,7 +8,11 @@ import {
   validateDesiredStateSpec,
   type MailDkimRuntimeRecord
 } from "./control-plane-store-spec.js";
-import { toInventoryExportSummary } from "./control-plane-store-helpers.js";
+import {
+  toBackupRunSummary,
+  toInventoryExportSummary
+} from "./control-plane-store-helpers.js";
+import type { BackupRunRow } from "./control-plane-store-types.js";
 import {
   minimumMailboxQuotaBytes,
   createDefaultMailPolicy,
@@ -233,6 +237,49 @@ test("toInventoryExportSummary reads audit-backed export metadata", () => {
     siteCount: 5,
     databaseCount: 5
   });
+});
+
+test("toBackupRunSummary preserves mail backup details for dashboard restore readiness", () => {
+  const row: BackupRunRow = {
+    run_id: "backup-run-1",
+    policy_slug: "mail-acme",
+    node_id: "mail-a",
+    status: "succeeded",
+    summary: "Validated mailbox restore for ops@example.com",
+    started_at: "2026-04-21T09:00:00.000Z",
+    completed_at: "2026-04-21T09:12:00.000Z",
+    details: {
+      mail: {
+        artifactPaths: {
+          maildir: ["/srv/mail/vmail/example.com"],
+          dkim: ["/srv/mail/dkim/example.com/mail.key"],
+          runtimeConfig: ["/srv/mail/config"],
+          webmailState: ["/srv/www/roundcube/_shared/roundcube.sqlite"]
+        },
+        restoreChecks: [
+          {
+            scope: "mailbox",
+            target: "ops@example.com",
+            status: "validated",
+            summary: "Mailbox restore rehearsal completed.",
+            validatedAt: "2026-04-21T09:10:00.000Z"
+          }
+        ]
+      }
+    }
+  };
+
+  const summary = toBackupRunSummary(row);
+
+  assert.equal(summary.runId, "backup-run-1");
+  assert.deepEqual(summary.details?.mail?.artifactPaths.maildir, [
+    "/srv/mail/vmail/example.com"
+  ]);
+  assert.equal(summary.details?.mail?.restoreChecks[0]?.scope, "mailbox");
+  assert.equal(
+    summary.details?.mail?.restoreChecks[0]?.summary,
+    "Mailbox restore rehearsal completed."
+  );
 });
 
 test("sanitizeDesiredStateSpecForExport strips mailbox desired passwords only from operator exports", () => {

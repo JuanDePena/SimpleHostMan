@@ -39,6 +39,7 @@ Related references:
 - Phase-3 anti-spam policy is now explicit end-to-end: `SimpleHost Control` persists `Rspamd` thresholds plus sender allowlists, denylists, optional greylisting, and authenticated-sender rate limits, while `SimpleHost Agent` renders those policies into node-local `Rspamd` config and `SimpleHostMan` surfaces the current posture in the operator UI.
 - Phase-4 mail HA semantics are now explicit end-to-end: `SimpleHost Control` keeps per-domain primary and standby roles, `SimpleHost Agent` pre-seeds both nodes with mail runtime artifacts, and `SimpleHostMan` reports whether a standby is actually promotable or still blocked.
 - Phase-5 product validations are now explicit end-to-end: `SimpleHost Control` rejects unsafe mail desired-state shapes such as alias loops, conflicting `MX` intent, unsupported `mailHost` placement, divergent standby topology, and nonsensical quotas, while `SimpleHostMan` surfaces pre-dispatch warnings when published DNS or runtime posture drifts away from the expected model.
+- Phase-6 backup and restore visibility is now explicit end-to-end: backup runs can report structured mail coverage plus restore rehearsals, and `SimpleHostMan` now shows per-domain coverage for `Maildir`, DKIM, runtime config, and webmail state together with restore readiness for mailbox, domain, and full-stack recovery.
 - Mail desired state persisted on the nodes is sanitized: mailbox plaintext passwords are not written to `/srv/mail/config/desired-state.json`.
 - Node runtime reporting now includes service installation state, firewall state, `Roundcube` deployment state, and configured vs reset-required mailbox counts.
 - `SimpleHostMan` now exposes mail observability directly from control-plane and node snapshots: queue depth, recent delivery failures, defer reasons, per-domain deliverability checks, direct tracing from mail resources into recent jobs and audit history, plus per-domain standby promotion readiness and blockers.
@@ -539,6 +540,34 @@ Backups must allow:
 - point-in-time restore of webmail metadata when feasible
 
 The passive node is not a backup substitute.
+
+Current product behavior:
+
+- backup runs can now attach structured `details.mail` metadata with explicit path coverage for `Maildir`, DKIM, runtime config, and webmail state
+- backup runs can also attach restore rehearsal records for `mailbox`, `domain`, and `mail-stack` scopes, each with target, status, summary, and validation timestamp
+- `SimpleHostMan` now derives per-domain backup readiness from both backup policy scope and the latest successful backup evidence instead of assuming that a policy alone is enough
+- the mail UI now shows the expected runtime paths for each artifact so operators can compare what should be protected against what the latest successful backup actually reported
+
+Recommended selector conventions when a backup policy is intended to cover mail:
+
+- `mail-stack`
+- `mail-domain:<domain>`
+- `tenant:<tenant-slug>`
+
+Current restore procedures:
+
+1. Single mailbox restore
+   Restore the mailbox subtree under `/srv/mail/vmail/<domain>/<local-part>/Maildir`, confirm ownership and permissions, run a mailbox-level verification such as `doveadm force-resync` or an equivalent mailbox scan, and record the rehearsal as a `mailbox` restore check in the backup run details.
+2. Single domain restore
+   Restore the domain `Maildir` root, domain DKIM material under `/srv/mail/dkim/<domain>/`, the rendered webmail root for `webmail.<domain>`, and any affected policy documents, then verify submission, `IMAP`, and DKIM signing for that domain before recording a `domain` restore check.
+3. Full mail stack restore
+   Restore `/srv/mail/vmail`, `/srv/mail/config`, `/srv/mail/dkim`, `Roundcube` shared state, and `Roundcube` config, then confirm `Postfix`, `Dovecot`, `Rspamd`, `Redis`, webmail, and policy-doc hosting before recording a `mail-stack` restore check.
+
+Evidence model for restore readiness:
+
+- `ready`: the latest successful backup evidence includes the artifact paths or a validated restore rehearsal for that scope
+- `warning`: a policy exists, but the latest successful backup did not report the artifact explicitly or no rehearsal has been recorded yet
+- `missing`: no relevant policy exists or the latest recorded rehearsal for that scope failed
 
 ## Logging, traceability, and future `SimpleHost Control` visibility
 

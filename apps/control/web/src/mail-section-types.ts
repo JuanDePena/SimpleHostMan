@@ -83,6 +83,8 @@ export interface LocalizedMailCopy {
   deliverabilityDescription: string;
   validationTitle: string;
   validationDescription: string;
+  backupTitle: string;
+  backupDescription: string;
   haTitle: string;
   haDescription: string;
   antiSpamTitle: string;
@@ -92,6 +94,14 @@ export interface LocalizedMailCopy {
   activityDescription: string;
   runtimeNodesLabel: string;
   runtimeHealthyLabel: string;
+  backupPolicyCountLabel: string;
+  latestBackupLabel: string;
+  latestBackupFailureLabel: string;
+  expectedPathsLabel: string;
+  coveredPathsLabel: string;
+  restoreMailboxLabel: string;
+  restoreDomainLabel: string;
+  restoreStackLabel: string;
   warningCountLabel: string;
   dispatchWarningsLabel: string;
   queuedMessagesLabel: string;
@@ -198,6 +208,8 @@ export interface LocalizedMailCopy {
   observabilityUnreported: string;
   validationAffectsDispatchLabel: string;
   validationAdvisoryLabel: string;
+  openBackupsViewLabel: string;
+  noExpectedBackupPaths: string;
   noMailDomains: string;
   noMailboxes: string;
   noAliases: string;

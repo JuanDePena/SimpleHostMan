@@ -347,6 +347,151 @@ test("buildMailObservabilityModel uses the latest applied dns.sync per zone", ()
   assert.equal(row.tlsRpt.status, "ready");
 });
 
+test("buildMailObservabilityModel reports ready mail backup coverage and restore rehearsals", () => {
+  const data = createDashboardData();
+
+  data.backups = {
+    generatedAt: "2026-04-21T00:00:00.000Z",
+    policies: [
+      {
+        policySlug: "mail-acme",
+        tenantSlug: "acme",
+        targetNodeId: "mail-a",
+        schedule: "0 */6 * * *",
+        retentionDays: 14,
+        storageLocation: "/srv/backups/mail-acme",
+        resourceSelectors: ["mail-domain:example.com"]
+      }
+    ],
+    latestRuns: [
+      {
+        runId: "backup-run-1",
+        policySlug: "mail-acme",
+        nodeId: "mail-a",
+        status: "succeeded",
+        summary: "Validated mailbox, domain, and mail-stack restore rehearsals.",
+        startedAt: "2026-04-21T09:00:00.000Z",
+        completedAt: "2026-04-21T09:12:00.000Z",
+        details: {
+          mail: {
+            artifactPaths: {
+              maildir: ["/srv/mail/vmail/example.com"],
+              dkim: ["/srv/mail/dkim/example.com/mail.key"],
+              runtimeConfig: ["/srv/mail/config", "/srv/www/mail-policies"],
+              webmailState: [
+                "/etc/roundcubemail/config.inc.php",
+                "/srv/www/roundcube/_shared/roundcube.sqlite"
+              ]
+            },
+            restoreChecks: [
+              {
+                scope: "mailbox",
+                target: "ops@example.com",
+                status: "validated",
+                summary: "Mailbox restore rehearsal completed.",
+                validatedAt: "2026-04-21T09:05:00.000Z"
+              },
+              {
+                scope: "domain",
+                target: "example.com",
+                status: "validated",
+                summary: "Domain restore rehearsal completed.",
+                validatedAt: "2026-04-21T09:07:00.000Z"
+              },
+              {
+                scope: "mail-stack",
+                target: "acme",
+                status: "validated",
+                summary: "Full mail-stack restore rehearsal completed.",
+                validatedAt: "2026-04-21T09:10:00.000Z"
+              }
+            ]
+          }
+        }
+      }
+    ]
+  } as DashboardData["backups"];
+
+  const model = buildMailObservabilityModel(data);
+  const backupRow = model.backupRows[0];
+
+  assert.ok(backupRow);
+  assert.equal(backupRow.policyCount, 1);
+  assert.equal(backupRow.latestSuccessfulRunId, "backup-run-1");
+  assert.equal(backupRow.artifacts.maildir.status, "ready");
+  assert.equal(backupRow.artifacts.dkim.status, "ready");
+  assert.equal(backupRow.artifacts.runtimeConfig.status, "ready");
+  assert.equal(backupRow.artifacts.webmailState.status, "ready");
+  assert.equal(
+    backupRow.restoreChecks.find((check) => check.scope === "mailbox")?.status,
+    "ready"
+  );
+  assert.equal(
+    backupRow.restoreChecks.find((check) => check.scope === "domain")?.status,
+    "ready"
+  );
+  assert.equal(
+    backupRow.restoreChecks.find((check) => check.scope === "mail-stack")?.status,
+    "ready"
+  );
+});
+
+test("buildMailObservabilityModel warns when mail backup coverage exists without restore rehearsal evidence", () => {
+  const data = createDashboardData();
+
+  data.backups = {
+    generatedAt: "2026-04-21T00:00:00.000Z",
+    policies: [
+      {
+        policySlug: "mail-acme",
+        tenantSlug: "acme",
+        targetNodeId: "mail-a",
+        schedule: "0 */6 * * *",
+        retentionDays: 14,
+        storageLocation: "/srv/backups/mail-acme",
+        resourceSelectors: ["mail-domain:example.com"]
+      }
+    ],
+    latestRuns: [
+      {
+        runId: "backup-run-2",
+        policySlug: "mail-acme",
+        nodeId: "mail-a",
+        status: "succeeded",
+        summary: "Mail backup completed without restore rehearsal metadata.",
+        startedAt: "2026-04-21T10:00:00.000Z",
+        completedAt: "2026-04-21T10:08:00.000Z",
+        details: {
+          mail: {
+            artifactPaths: {
+              maildir: ["/srv/mail/vmail/example.com"],
+              dkim: [],
+              runtimeConfig: [],
+              webmailState: []
+            },
+            restoreChecks: []
+          }
+        }
+      }
+    ]
+  } as DashboardData["backups"];
+
+  const model = buildMailObservabilityModel(data);
+  const backupRow = model.backupRows[0];
+
+  assert.ok(backupRow);
+  assert.equal(backupRow.artifacts.maildir.status, "ready");
+  assert.equal(backupRow.artifacts.dkim.status, "warning");
+  assert.equal(
+    backupRow.restoreChecks.find((check) => check.scope === "mailbox")?.status,
+    "warning"
+  );
+  assert.match(
+    backupRow.restoreChecks.find((check) => check.scope === "mail-stack")?.summary ?? "",
+    /No restore rehearsal/i
+  );
+});
+
 test("buildMailObservabilityModel raises dispatch warnings for DNS drift and missing primary runtime", () => {
   const data = createDashboardData();
   const currentPayload = data.jobHistory[0]!.payload as {

@@ -310,6 +310,61 @@ export function renderMailSectionContent(args: {
     </div>`;
   };
 
+  const renderPathList = (paths: string[], emptyMessage: string): string => {
+    if (paths.length === 0) {
+      return `<p class="empty">${escapeHtml(emptyMessage)}</p>`;
+    }
+
+    return `<div class="feed-list">
+      ${paths
+        .map(
+          (pathValue) => `<article class="feed-item">
+            <strong class="mono">${escapeHtml(pathValue)}</strong>
+          </article>`
+        )
+        .join("")}
+    </div>`;
+  };
+
+  const renderRestoreChecks = (
+    checks: Array<{
+      scope: "mailbox" | "domain" | "mail-stack";
+      status: Parameters<typeof toneForMailObservabilityStatus>[0];
+      target: string;
+      summary: string;
+      validatedAt?: string;
+      runId?: string;
+    }>
+  ): string =>
+    `<div class="feed-list">
+      ${checks
+        .map((check) => {
+          const scopeLabel =
+            check.scope === "mailbox"
+              ? mailCopy.restoreMailboxLabel
+              : check.scope === "domain"
+                ? mailCopy.restoreDomainLabel
+                : mailCopy.restoreStackLabel;
+
+          return `<article class="feed-item${
+            check.status === "missing" ? " feed-item-danger" : ""
+          }">
+            <strong>${escapeHtml(scopeLabel)}</strong>
+            <span class="feed-meta">${escapeHtml(
+              [
+                check.target,
+                check.validatedAt ? renderers.formatDate(check.validatedAt, locale) : "",
+                check.runId ?? ""
+              ]
+                .filter(Boolean)
+                .join(" · ")
+            )}</span>
+            <p>${escapeHtml(check.summary)}</p>
+          </article>`;
+        })
+        .join("")}
+    </div>`;
+
   const renderHaNodePanel = (node: MailHaNodeRow, title: string): string => `<article class="panel detail-shell panel-nested">
       <h4>${escapeHtml(title)}</h4>
       ${renderers.renderSignalStrip([
@@ -598,6 +653,9 @@ export function renderMailSectionContent(args: {
   const selectedDeliverability = selectedDomain
     ? observability.deliverabilityRows.find((row) => row.domainName === selectedDomain.domainName)
     : undefined;
+  const selectedBackup = selectedDomain
+    ? observability.backupRows.find((row) => row.domainName === selectedDomain.domainName)
+    : undefined;
   const selectedValidation = selectedDomain
     ? observability.validationRows.find((row) => row.domainName === selectedDomain.domainName)
     : undefined;
@@ -838,6 +896,154 @@ export function renderMailSectionContent(args: {
               ],
               { className: "detail-grid-two" }
             )}`
+          : `<p class="empty">${escapeHtml(mailCopy.noSelectionLabel)}</p>`
+      }
+    </article>`;
+  const selectedBackupPanel = `<article class="panel detail-shell">
+      <div class="section-head">
+        <div>
+          <h3>${escapeHtml(mailCopy.backupTitle)}</h3>
+          <p class="muted section-description">${escapeHtml(mailCopy.backupDescription)}</p>
+        </div>
+      </div>
+      ${
+        selectedBackup && selectedDomain
+          ? `${renderers.renderSignalStrip([
+              {
+                label: mailCopy.backupPolicyCountLabel,
+                value: String(selectedBackup.policyCount),
+                tone: selectedBackup.policyCount > 0 ? "success" : "muted"
+              },
+              {
+                label: mailCopy.latestBackupLabel,
+                value: selectedBackup.latestSuccessfulRunId ?? copy.none,
+                tone: selectedBackup.latestSuccessfulRunId ? "success" : "muted"
+              },
+              {
+                label: mailCopy.restoreStackLabel,
+                value: labelForObservabilityStatus(
+                  selectedBackup.restoreChecks.find((check) => check.scope === "mail-stack")
+                    ?.status ?? "missing"
+                ),
+                tone: toneForMailObservabilityStatus(
+                  selectedBackup.restoreChecks.find((check) => check.scope === "mail-stack")
+                    ?.status ?? "missing"
+                )
+              }
+            ])}
+            ${renderers.renderDetailGrid(
+              [
+                {
+                  label: mailCopy.latestBackupLabel,
+                  value: selectedBackup.latestSuccessfulRunId
+                    ? `<a class="detail-link mono" href="${escapeHtml(
+                        buildDashboardViewUrl("backups", undefined, selectedBackup.latestSuccessfulRunId)
+                      )}">${escapeHtml(selectedBackup.latestSuccessfulRunId)}</a>`
+                    : escapeHtml(copy.none)
+                },
+                {
+                  label: mailCopy.latestBackupFailureLabel,
+                  value: selectedBackup.latestFailureRunId
+                    ? `<a class="detail-link mono" href="${escapeHtml(
+                        buildDashboardViewUrl("backups", undefined, selectedBackup.latestFailureRunId)
+                      )}">${escapeHtml(selectedBackup.latestFailureRunId)}</a>`
+                    : escapeHtml(copy.none)
+                },
+                {
+                  label: mailCopy.openBackupsViewLabel,
+                  value: `<a class="detail-link" href="${escapeHtml(
+                    buildDashboardViewUrl("backups", undefined, undefined, {
+                      backupTenant: selectedDomain.tenantSlug
+                    })
+                  )}">${escapeHtml(mailCopy.openBackupsViewLabel)}</a>`
+                },
+                {
+                  label: mailCopy.backupPolicyCountLabel,
+                  value: escapeHtml(String(selectedBackup.policyCount))
+                }
+              ],
+              { className: "detail-grid-two" }
+            )}
+            <div class="grid-two-desktop">
+              <article class="panel detail-shell panel-nested">
+                <h4>${escapeHtml(mailCopy.maildirReadinessLabel)}</h4>
+                ${renderers.renderSignalStrip([
+                  {
+                    label: mailCopy.observabilityReady,
+                    value: labelForObservabilityStatus(selectedBackup.artifacts.maildir.status),
+                    tone: toneForMailObservabilityStatus(selectedBackup.artifacts.maildir.status)
+                  }
+                ])}
+                <p class="muted">${escapeHtml(selectedBackup.artifacts.maildir.detail)}</p>
+                <h5>${escapeHtml(mailCopy.expectedPathsLabel)}</h5>
+                ${renderPathList(
+                  selectedBackup.artifacts.maildir.expectedPaths,
+                  mailCopy.noExpectedBackupPaths
+                )}
+                <h5>${escapeHtml(mailCopy.coveredPathsLabel)}</h5>
+                ${renderPathList(selectedBackup.artifacts.maildir.coveredPaths, copy.none)}
+              </article>
+              <article class="panel detail-shell panel-nested">
+                <h4>${escapeHtml(mailCopy.dkimLabel)}</h4>
+                ${renderers.renderSignalStrip([
+                  {
+                    label: mailCopy.observabilityReady,
+                    value: labelForObservabilityStatus(selectedBackup.artifacts.dkim.status),
+                    tone: toneForMailObservabilityStatus(selectedBackup.artifacts.dkim.status)
+                  }
+                ])}
+                <p class="muted">${escapeHtml(selectedBackup.artifacts.dkim.detail)}</p>
+                <h5>${escapeHtml(mailCopy.expectedPathsLabel)}</h5>
+                ${renderPathList(
+                  selectedBackup.artifacts.dkim.expectedPaths,
+                  mailCopy.noExpectedBackupPaths
+                )}
+                <h5>${escapeHtml(mailCopy.coveredPathsLabel)}</h5>
+                ${renderPathList(selectedBackup.artifacts.dkim.coveredPaths, copy.none)}
+              </article>
+            </div>
+            <div class="grid-two-desktop">
+              <article class="panel detail-shell panel-nested">
+                <h4>${escapeHtml(mailCopy.runtimeConfigLabel)}</h4>
+                ${renderers.renderSignalStrip([
+                  {
+                    label: mailCopy.observabilityReady,
+                    value: labelForObservabilityStatus(selectedBackup.artifacts.runtimeConfig.status),
+                    tone: toneForMailObservabilityStatus(selectedBackup.artifacts.runtimeConfig.status)
+                  }
+                ])}
+                <p class="muted">${escapeHtml(selectedBackup.artifacts.runtimeConfig.detail)}</p>
+                <h5>${escapeHtml(mailCopy.expectedPathsLabel)}</h5>
+                ${renderPathList(
+                  selectedBackup.artifacts.runtimeConfig.expectedPaths,
+                  mailCopy.noExpectedBackupPaths
+                )}
+                <h5>${escapeHtml(mailCopy.coveredPathsLabel)}</h5>
+                ${renderPathList(selectedBackup.artifacts.runtimeConfig.coveredPaths, copy.none)}
+              </article>
+              <article class="panel detail-shell panel-nested">
+                <h4>${escapeHtml(mailCopy.webmailLabel)}</h4>
+                ${renderers.renderSignalStrip([
+                  {
+                    label: mailCopy.observabilityReady,
+                    value: labelForObservabilityStatus(selectedBackup.artifacts.webmailState.status),
+                    tone: toneForMailObservabilityStatus(selectedBackup.artifacts.webmailState.status)
+                  }
+                ])}
+                <p class="muted">${escapeHtml(selectedBackup.artifacts.webmailState.detail)}</p>
+                <h5>${escapeHtml(mailCopy.expectedPathsLabel)}</h5>
+                ${renderPathList(
+                  selectedBackup.artifacts.webmailState.expectedPaths,
+                  mailCopy.noExpectedBackupPaths
+                )}
+                <h5>${escapeHtml(mailCopy.coveredPathsLabel)}</h5>
+                ${renderPathList(selectedBackup.artifacts.webmailState.coveredPaths, copy.none)}
+              </article>
+            </div>
+            <article class="panel detail-shell panel-nested">
+              <h4>${escapeHtml(mailCopy.backupTitle)}</h4>
+              ${renderRestoreChecks(selectedBackup.restoreChecks)}
+            </article>`
           : `<p class="empty">${escapeHtml(mailCopy.noSelectionLabel)}</p>`
       }
     </article>`;
@@ -1699,10 +1905,11 @@ export function renderMailSectionContent(args: {
       ${selectedObservabilityPanel}
     </div>
     <div class="grid-two-desktop">
+      ${selectedBackupPanel}
       ${selectedValidationPanel}
-      ${selectedHaPanel}
     </div>
     <div class="grid-two-desktop">
+      ${selectedHaPanel}
       ${selectedActivityPanel}
     </div>
     <div class="grid-two-desktop">

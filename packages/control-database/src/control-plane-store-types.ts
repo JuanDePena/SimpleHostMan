@@ -316,6 +316,7 @@ export interface BackupRunRow {
   summary: string;
   started_at: Date | string;
   completed_at: Date | string | null;
+  details: Record<string, unknown> | null;
 }
 
 export interface DriftStatusRow {

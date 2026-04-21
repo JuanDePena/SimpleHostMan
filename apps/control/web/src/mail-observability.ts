@@ -50,6 +50,41 @@ export interface MailHaRow {
   standby?: MailHaNodeRow;
 }
 
+export interface MailBackupArtifactRow {
+  status: MailObservabilityStatus;
+  detail: string;
+  expectedPaths: string[];
+  coveredPaths: string[];
+}
+
+export interface MailRestoreCheckRow {
+  scope: "mailbox" | "domain" | "mail-stack";
+  status: MailObservabilityStatus;
+  target: string;
+  summary: string;
+  validatedAt?: string;
+  runId?: string;
+}
+
+export interface MailBackupRow {
+  domainName: string;
+  tenantSlug: string;
+  zoneName: string;
+  policyCount: number;
+  policySlugs: string[];
+  latestSuccessfulRunId?: string;
+  latestSuccessfulStartedAt?: string;
+  latestFailureRunId?: string;
+  latestFailureSummary?: string;
+  artifacts: {
+    maildir: MailBackupArtifactRow;
+    dkim: MailBackupArtifactRow;
+    runtimeConfig: MailBackupArtifactRow;
+    webmailState: MailBackupArtifactRow;
+  };
+  restoreChecks: MailRestoreCheckRow[];
+}
+
 export interface MailValidationWarning {
   code: string;
   summary: string;
@@ -70,6 +105,7 @@ export interface MailValidationRow {
 export interface MailObservabilityModel {
   deliverabilityRows: MailDeliverabilityRow[];
   haRows: MailHaRow[];
+  backupRows: MailBackupRow[];
   validationRows: MailValidationRow[];
   totalQueuedMessages: number;
   totalRecentFailures: number;
@@ -81,6 +117,26 @@ type DomainRuntimeMatch = {
   nodeId: string;
   mail: NonNullable<DashboardData["nodeHealth"][number]["mail"]>;
   managedDomain: NonNullable<DashboardData["nodeHealth"][number]["mail"]>["managedDomains"][number];
+};
+
+type BackupRun = DashboardData["backups"]["latestRuns"][number];
+type ParsedMailBackupRestoreCheck = {
+  scope: "mailbox" | "domain" | "mail-stack";
+  target: string;
+  status: "validated" | "warning" | "failed";
+  summary: string;
+  validatedAt: string;
+  runId: string;
+};
+
+type ParsedMailBackupDetails = {
+  artifactPaths: {
+    maildir: string[];
+    dkim: string[];
+    runtimeConfig: string[];
+    webmailState: string[];
+  };
+  restoreChecks: ParsedMailBackupRestoreCheck[];
 };
 
 function ready(detail?: string): MailDeliverabilityCheck {
@@ -97,6 +153,10 @@ function missing(detail?: string): MailDeliverabilityCheck {
 
 function unreported(detail?: string): MailDeliverabilityCheck {
   return { status: "unreported", detail };
+}
+
+function uniqueStrings(values: Array<string | undefined>): string[] {
+  return [...new Set(values.map((value) => value?.trim()).filter(Boolean) as string[])];
 }
 
 function resolveZoneRecordName(fqdn: string, zoneName: string): string | undefined {
@@ -130,6 +190,249 @@ function parseMxRecordTarget(value: string): string | undefined {
   const target = Number.isInteger(priority) ? parts[1] : parts.at(-1);
 
   return target ? normalizeHostnameValue(target) : undefined;
+}
+
+function sortRunsByStartedAtDescending(runs: BackupRun[]): BackupRun[] {
+  return [...runs].sort(
+    (left, right) => Date.parse(right.startedAt) - Date.parse(left.startedAt)
+  );
+}
+
+function parseMailBackupDetails(run: BackupRun): ParsedMailBackupDetails | undefined {
+  const details = run.details;
+
+  if (!details || typeof details !== "object" || Array.isArray(details)) {
+    return undefined;
+  }
+
+  const mail = (details as Record<string, unknown>).mail;
+
+  if (!mail || typeof mail !== "object" || Array.isArray(mail)) {
+    return undefined;
+  }
+
+  const artifactPathsCandidate = (mail as Record<string, unknown>).artifactPaths;
+  const restoreChecksCandidate = (mail as Record<string, unknown>).restoreChecks;
+  const artifactPathsRecord =
+    artifactPathsCandidate &&
+    typeof artifactPathsCandidate === "object" &&
+    !Array.isArray(artifactPathsCandidate)
+      ? (artifactPathsCandidate as Record<string, unknown>)
+      : {};
+  const restoreChecks = Array.isArray(restoreChecksCandidate)
+    ? restoreChecksCandidate
+        .flatMap((entry) => {
+          if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+            return [];
+          }
+
+          const candidate = entry as Record<string, unknown>;
+
+          if (
+            (candidate.scope !== "mailbox" &&
+              candidate.scope !== "domain" &&
+              candidate.scope !== "mail-stack") ||
+            typeof candidate.target !== "string" ||
+            (candidate.status !== "validated" &&
+              candidate.status !== "warning" &&
+              candidate.status !== "failed") ||
+            typeof candidate.summary !== "string" ||
+            typeof candidate.validatedAt !== "string"
+          ) {
+            return [];
+          }
+
+          return [
+            {
+              scope: candidate.scope,
+              target: candidate.target,
+              status: candidate.status,
+              summary: candidate.summary,
+              validatedAt: candidate.validatedAt,
+              runId: run.runId
+            } satisfies ParsedMailBackupRestoreCheck
+          ];
+        })
+        .sort(
+          (left, right) => Date.parse(right.validatedAt) - Date.parse(left.validatedAt)
+        )
+    : [];
+
+  return {
+    artifactPaths: {
+      maildir: uniqueStrings(
+        Array.isArray(artifactPathsRecord.maildir)
+          ? (artifactPathsRecord.maildir as Array<string | undefined>)
+          : []
+      ),
+      dkim: uniqueStrings(
+        Array.isArray(artifactPathsRecord.dkim)
+          ? (artifactPathsRecord.dkim as Array<string | undefined>)
+          : []
+      ),
+      runtimeConfig: uniqueStrings(
+        Array.isArray(artifactPathsRecord.runtimeConfig)
+          ? (artifactPathsRecord.runtimeConfig as Array<string | undefined>)
+          : []
+      ),
+      webmailState: uniqueStrings(
+        Array.isArray(artifactPathsRecord.webmailState)
+          ? (artifactPathsRecord.webmailState as Array<string | undefined>)
+          : []
+      )
+    },
+    restoreChecks
+  };
+}
+
+function policyCoversMailDomain(
+  policy: DashboardData["backups"]["policies"][number],
+  tenantSlug: string,
+  domainName: string
+): boolean {
+  if (policy.tenantSlug !== tenantSlug) {
+    return false;
+  }
+
+  const selectors = policy.resourceSelectors.map((selector) => selector.trim().toLowerCase());
+
+  if (selectors.length === 0) {
+    return true;
+  }
+
+  return (
+    selectors.includes(`tenant:${tenantSlug}`) ||
+    selectors.includes("mail-stack") ||
+    selectors.includes(`mail-domain:${domainName}`)
+  );
+}
+
+function buildExpectedMailBackupPaths(
+  data: DashboardData,
+  domain: DashboardData["mail"]["domains"][number]
+): MailBackupRow["artifacts"] {
+  const runtime =
+    findDomainRuntimeOnNode(data, domain.domainName, domain.primaryNodeId) ??
+    findDomainRuntime(data, domain.domainName, domain.primaryNodeId);
+  const dkimRoot = runtime?.mail.dkimRoot;
+
+  return {
+    maildir: {
+      status: "unreported",
+      detail: "Expected backup paths will appear after the primary mail runtime reports in.",
+      expectedPaths: uniqueStrings([runtime?.managedDomain.maildirRoot]),
+      coveredPaths: []
+    },
+    dkim: {
+      status: "unreported",
+      detail: "Expected backup paths will appear after the primary mail runtime reports in.",
+      expectedPaths:
+        dkimRoot && domain.dkimSelector
+          ? [
+              `${dkimRoot}/${domain.domainName}/${domain.dkimSelector}.key`,
+              `${dkimRoot}/${domain.domainName}/${domain.dkimSelector}.dns.txt`
+            ]
+          : [],
+      coveredPaths: []
+    },
+    runtimeConfig: {
+      status: "unreported",
+      detail: "Expected backup paths will appear after the primary mail runtime reports in.",
+      expectedPaths: uniqueStrings([runtime?.mail.configRoot, runtime?.mail.policyRoot]),
+      coveredPaths: []
+    },
+    webmailState: {
+      status: "unreported",
+      detail: "Expected backup paths will appear after the primary mail runtime reports in.",
+      expectedPaths: uniqueStrings([
+        runtime?.mail.roundcubeConfigPath,
+        runtime?.mail.roundcubeDatabasePath,
+        runtime?.mail.roundcubeSharedRoot,
+        runtime?.managedDomain.webmailDocumentRoot
+      ]),
+      coveredPaths: []
+    }
+  };
+}
+
+function buildMailBackupArtifactRow(args: {
+  categoryLabel: string;
+  policyCount: number;
+  expectedPaths: string[];
+  coveredPaths: string[];
+  latestSuccessfulRunId?: string;
+}): MailBackupArtifactRow {
+  const { categoryLabel, policyCount, expectedPaths, coveredPaths, latestSuccessfulRunId } = args;
+
+  if (policyCount === 0) {
+    return {
+      status: "missing",
+      detail: "No backup policy currently covers this mail domain.",
+      expectedPaths,
+      coveredPaths: []
+    };
+  }
+
+  if (coveredPaths.length > 0) {
+    return {
+      status: "ready",
+      detail: latestSuccessfulRunId
+        ? `${categoryLabel} was reported by backup run ${latestSuccessfulRunId}.`
+        : `${categoryLabel} was reported by the latest successful backup run.`,
+      expectedPaths,
+      coveredPaths
+    };
+  }
+
+  return {
+    status: latestSuccessfulRunId ? "warning" : "missing",
+    detail: latestSuccessfulRunId
+      ? `A successful backup run exists, but it did not report ${categoryLabel.toLowerCase()} coverage explicitly.`
+      : `No successful backup run has reported ${categoryLabel.toLowerCase()} coverage yet.`,
+    expectedPaths,
+    coveredPaths: []
+  };
+}
+
+function buildMailRestoreCheckRow(args: {
+  scope: MailRestoreCheckRow["scope"];
+  target: string;
+  policyCount: number;
+  checks: ParsedMailBackupRestoreCheck[];
+}): MailRestoreCheckRow {
+  const latestCheck = args.checks[0];
+
+  if (args.policyCount === 0) {
+    return {
+      scope: args.scope,
+      status: "missing",
+      target: args.target,
+      summary: "No backup policy currently covers this mail domain."
+    };
+  }
+
+  if (!latestCheck) {
+    return {
+      scope: args.scope,
+      status: "warning",
+      target: args.target,
+      summary: "No restore rehearsal has been recorded for this scope yet."
+    };
+  }
+
+  return {
+    scope: args.scope,
+    status:
+      latestCheck.status === "validated"
+        ? "ready"
+        : latestCheck.status === "warning"
+          ? "warning"
+          : "missing",
+    target: latestCheck.target,
+    summary: latestCheck.summary,
+    validatedAt: latestCheck.validatedAt,
+    runId: latestCheck.runId
+  };
 }
 
 function findRecord(
@@ -534,6 +837,100 @@ export function buildMailObservabilityModel(data: DashboardData): MailObservabil
       standby
     };
   });
+  const backupRows: MailBackupRow[] = data.mail.domains.map((domain) => {
+    const relevantPolicies = data.backups.policies.filter((policy) =>
+      policyCoversMailDomain(policy, domain.tenantSlug, domain.domainName)
+    );
+    const relevantPolicySlugs = new Set(relevantPolicies.map((policy) => policy.policySlug));
+    const relevantRuns = sortRunsByStartedAtDescending(
+      data.backups.latestRuns.filter((run) => relevantPolicySlugs.has(run.policySlug))
+    );
+    const successfulRuns = relevantRuns.filter((run) => run.status === "succeeded");
+    const latestSuccessfulRun = successfulRuns[0];
+    const latestFailureRun = relevantRuns.find((run) => run.status === "failed");
+    const expectedArtifacts = buildExpectedMailBackupPaths(data, domain);
+    const parsedSuccessfulRuns = successfulRuns.map((run) => ({
+      run,
+      details: parseMailBackupDetails(run)
+    }));
+    const collectCoveredPaths = (
+      key: keyof ParsedMailBackupDetails["artifactPaths"]
+    ): string[] =>
+      uniqueStrings(
+        parsedSuccessfulRuns.flatMap((entry) => entry.details?.artifactPaths[key] ?? [])
+      );
+    const restoreChecks = parsedSuccessfulRuns.flatMap(
+      (entry) => entry.details?.restoreChecks ?? []
+    );
+    const mailboxesForDomain = data.mail.mailboxes.filter(
+      (mailbox) => mailbox.domainName === domain.domainName
+    );
+    const mailboxTarget = mailboxesForDomain[0]?.address ?? `mailbox@${domain.domainName}`;
+
+    return {
+      domainName: domain.domainName,
+      tenantSlug: domain.tenantSlug,
+      zoneName: domain.zoneName,
+      policyCount: relevantPolicies.length,
+      policySlugs: relevantPolicies.map((policy) => policy.policySlug).sort((left, right) =>
+        left.localeCompare(right)
+      ),
+      latestSuccessfulRunId: latestSuccessfulRun?.runId,
+      latestSuccessfulStartedAt: latestSuccessfulRun?.startedAt,
+      latestFailureRunId: latestFailureRun?.runId,
+      latestFailureSummary: latestFailureRun?.summary,
+      artifacts: {
+        maildir: buildMailBackupArtifactRow({
+          categoryLabel: "Maildir coverage",
+          policyCount: relevantPolicies.length,
+          expectedPaths: expectedArtifacts.maildir.expectedPaths,
+          coveredPaths: collectCoveredPaths("maildir"),
+          latestSuccessfulRunId: latestSuccessfulRun?.runId
+        }),
+        dkim: buildMailBackupArtifactRow({
+          categoryLabel: "DKIM coverage",
+          policyCount: relevantPolicies.length,
+          expectedPaths: expectedArtifacts.dkim.expectedPaths,
+          coveredPaths: collectCoveredPaths("dkim"),
+          latestSuccessfulRunId: latestSuccessfulRun?.runId
+        }),
+        runtimeConfig: buildMailBackupArtifactRow({
+          categoryLabel: "Runtime config coverage",
+          policyCount: relevantPolicies.length,
+          expectedPaths: expectedArtifacts.runtimeConfig.expectedPaths,
+          coveredPaths: collectCoveredPaths("runtimeConfig"),
+          latestSuccessfulRunId: latestSuccessfulRun?.runId
+        }),
+        webmailState: buildMailBackupArtifactRow({
+          categoryLabel: "Webmail state coverage",
+          policyCount: relevantPolicies.length,
+          expectedPaths: expectedArtifacts.webmailState.expectedPaths,
+          coveredPaths: collectCoveredPaths("webmailState"),
+          latestSuccessfulRunId: latestSuccessfulRun?.runId
+        })
+      },
+      restoreChecks: [
+        buildMailRestoreCheckRow({
+          scope: "mailbox",
+          target: mailboxTarget,
+          policyCount: relevantPolicies.length,
+          checks: restoreChecks.filter((check) => check.scope === "mailbox")
+        }),
+        buildMailRestoreCheckRow({
+          scope: "domain",
+          target: domain.domainName,
+          policyCount: relevantPolicies.length,
+          checks: restoreChecks.filter((check) => check.scope === "domain")
+        }),
+        buildMailRestoreCheckRow({
+          scope: "mail-stack",
+          target: domain.tenantSlug,
+          policyCount: relevantPolicies.length,
+          checks: restoreChecks.filter((check) => check.scope === "mail-stack")
+        })
+      ]
+    };
+  });
   const deliverabilityByDomain = new Map(
     deliverabilityRows.map((row) => [row.domainName, row] as const)
   );
@@ -705,6 +1102,7 @@ export function buildMailObservabilityModel(data: DashboardData): MailObservabil
   return {
     deliverabilityRows,
     haRows,
+    backupRows,
     validationRows,
     totalQueuedMessages: data.nodeHealth.reduce(
       (total, node) => total + (node.mail?.queue?.messageCount ?? 0),
