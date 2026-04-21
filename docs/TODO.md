@@ -53,10 +53,12 @@ Phase 4 is now complete:
 
 ### Phase 5. Product validations
 
-- Add guardrails for alias loops, inconsistent `MX` or `mailHost` values, missing runtime nodes, and nonsensical quotas.
-- Detect domains that have lost deliverability prerequisites and raise clear warnings before dispatch.
-- Prevent operators from creating states that the current mail execution model cannot safely apply.
-- Extend the UI to explain validation failures in product language rather than low-level backend errors.
+Phase 5 is now complete:
+
+- `SimpleHost Control` now blocks alias loops, unsupported `mailHost` and `MX` combinations, incoherent standby topology, and nonsensical mailbox quotas before they are persisted.
+- `SimpleHostMan` now derives per-domain pre-dispatch warnings when DNS, deliverability prerequisites, or runtime mail snapshots drift out of the expected posture.
+- The current mail execution model is now guarded explicitly around zone-apex domains, stable `mail.<domain>` routing, and domain-level standby semantics.
+- Mail editing flows now return operator-facing validation notices inside the dashboard instead of falling through to low-level backend errors.
 
 ### Phase 6. Backup and restore
 

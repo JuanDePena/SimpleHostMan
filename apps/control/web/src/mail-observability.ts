@@ -50,11 +50,31 @@ export interface MailHaRow {
   standby?: MailHaNodeRow;
 }
 
+export interface MailValidationWarning {
+  code: string;
+  summary: string;
+  detail: string;
+  affectsDispatch: boolean;
+}
+
+export interface MailValidationRow {
+  domainName: string;
+  zoneName: string;
+  primaryNodeId: string;
+  standbyNodeId?: string;
+  warningCount: number;
+  dispatchWarningCount: number;
+  warnings: MailValidationWarning[];
+}
+
 export interface MailObservabilityModel {
   deliverabilityRows: MailDeliverabilityRow[];
   haRows: MailHaRow[];
+  validationRows: MailValidationRow[];
   totalQueuedMessages: number;
   totalRecentFailures: number;
+  totalWarnings: number;
+  totalDispatchWarnings: number;
 }
 
 type DomainRuntimeMatch = {
@@ -91,6 +111,27 @@ function resolveZoneRecordName(fqdn: string, zoneName: string): string | undefin
   return fqdn.slice(0, -(`.${zoneName}`).length);
 }
 
+function normalizeHostnameValue(value: string): string {
+  return value.trim().replace(/\.+$/, "").toLowerCase();
+}
+
+function parseMxRecordTarget(value: string): string | undefined {
+  const parts = value.trim().split(/\s+/).filter(Boolean);
+
+  if (parts.length === 0) {
+    return undefined;
+  }
+
+  if (parts.length === 1) {
+    return normalizeHostnameValue(parts[0]!);
+  }
+
+  const priority = Number.parseInt(parts[0]!, 10);
+  const target = Number.isInteger(priority) ? parts[1] : parts.at(-1);
+
+  return target ? normalizeHostnameValue(target) : undefined;
+}
+
 function findRecord(
   records: DnsRecordPayload[] | undefined,
   zoneName: string,
@@ -106,6 +147,44 @@ function findRecord(
 
   return records.some(
     (record) => record.type === type && record.name === recordName && predicate(record.value)
+  );
+}
+
+function hasAddressRecord(
+  records: DnsRecordPayload[] | undefined,
+  zoneName: string,
+  fqdn: string
+): boolean {
+  const recordName = resolveZoneRecordName(fqdn, zoneName);
+
+  if (!records || !recordName) {
+    return false;
+  }
+
+  return records.some(
+    (record) =>
+      (record.type === "A" || record.type === "AAAA" || record.type === "CNAME") &&
+      record.name.toLowerCase() === recordName.toLowerCase()
+  );
+}
+
+function hasMxRecordForTarget(
+  records: DnsRecordPayload[] | undefined,
+  zoneName: string,
+  fqdn: string,
+  targetFqdn: string
+): boolean {
+  const recordName = resolveZoneRecordName(fqdn, zoneName);
+
+  if (!records || !recordName) {
+    return false;
+  }
+
+  return records.some(
+    (record) =>
+      record.type === "MX" &&
+      record.name.toLowerCase() === recordName.toLowerCase() &&
+      parseMxRecordTarget(record.value) === normalizeHostnameValue(targetFqdn)
   );
 }
 
@@ -455,16 +534,189 @@ export function buildMailObservabilityModel(data: DashboardData): MailObservabil
       standby
     };
   });
+  const deliverabilityByDomain = new Map(
+    deliverabilityRows.map((row) => [row.domainName, row] as const)
+  );
+  const haByDomain = new Map(haRows.map((row) => [row.domainName, row] as const));
+  const validationRows: MailValidationRow[] = data.mail.domains.map((domain) => {
+    const deliverability = deliverabilityByDomain.get(domain.domainName);
+    const ha = haByDomain.get(domain.domainName);
+    const dnsRecords = dnsRecordsByZone.get(domain.zoneName);
+    const primaryRuntime = findDomainRuntimeOnNode(data, domain.domainName, domain.primaryNodeId);
+    const standbyRuntime = domain.standbyNodeId
+      ? findDomainRuntimeOnNode(data, domain.domainName, domain.standbyNodeId)
+      : undefined;
+    const warnings: MailValidationWarning[] = [];
+    const pushWarning = (
+      code: string,
+      summary: string,
+      detail: string,
+      affectsDispatch: boolean
+    ): void => {
+      warnings.push({
+        code,
+        summary,
+        detail,
+        affectsDispatch
+      });
+    };
+
+    if (!dnsRecords) {
+      pushWarning(
+        "dns-sync-missing",
+        "DNS validation is missing for this domain.",
+        "SimpleHostMan has no applied dns.sync payload for the zone yet, so it cannot confirm the published MX and mail host records before dispatch.",
+        true
+      );
+    } else {
+      if (!hasMxRecordForTarget(dnsRecords, domain.zoneName, domain.domainName, domain.mailHost)) {
+        pushWarning(
+          "mx-mismatch",
+          "MX no longer points to the configured mail host.",
+          `The latest dns.sync payload for ${domain.zoneName} does not point ${domain.domainName} at ${domain.mailHost}.`,
+          true
+        );
+      }
+
+      if (!hasAddressRecord(dnsRecords, domain.zoneName, domain.mailHost)) {
+        pushWarning(
+          "mail-host-missing",
+          "The configured mail host no longer has a published address record.",
+          `The latest dns.sync payload for ${domain.zoneName} does not publish an A, AAAA, or CNAME record for ${domain.mailHost}.`,
+          true
+        );
+      }
+
+      if (deliverability && deliverability.spf.status !== "ready") {
+        pushWarning(
+          "spf-missing",
+          "SPF is not fully published.",
+          deliverability.spf.detail ?? "The latest dns.sync payload is missing the strict SPF record.",
+          true
+        );
+      }
+
+      if (deliverability && deliverability.dmarc.status !== "ready") {
+        pushWarning(
+          "dmarc-missing",
+          "DMARC is not fully published.",
+          deliverability.dmarc.detail ?? "The latest dns.sync payload is missing the DMARC record.",
+          true
+        );
+      }
+
+      if (deliverability && deliverability.tlsRpt.status !== "ready") {
+        pushWarning(
+          "tls-rpt-missing",
+          "TLS-RPT is not fully published.",
+          deliverability.tlsRpt.detail ?? "The latest dns.sync payload is missing the TLS-RPT record.",
+          true
+        );
+      }
+
+      if (primaryRuntime && deliverability && deliverability.mtaSts.status !== "ready") {
+        pushWarning(
+          "mta-sts-dns",
+          "MTA-STS is only partially published.",
+          "The current domain posture is missing either the MTA-STS DNS records or the primary-node policy document.",
+          true
+        );
+      }
+    }
+
+    if (!primaryRuntime) {
+      pushWarning(
+        "primary-runtime-missing",
+        "The primary mail node has not reported runtime yet.",
+        `SimpleHostMan has no mail runtime snapshot for primary node ${domain.primaryNodeId}, so dispatch would proceed without a fresh readiness signal.`,
+        true
+      );
+    } else if (ha) {
+      if (ha.primary.services.status !== "ready") {
+        pushWarning(
+          "primary-services",
+          "The primary mail node is not fully healthy.",
+          ha.primary.services.detail ?? "Core mail services or firewall policy are not fully active on the primary node.",
+          true
+        );
+      }
+
+      if (ha.primary.runtimeConfig.status !== "ready") {
+        pushWarning(
+          "primary-runtime-config",
+          "Generated mail runtime config is incomplete on the primary node.",
+          ha.primary.runtimeConfig.detail ?? "SimpleHost Agent has not finished rendering the expected mail runtime config.",
+          true
+        );
+      }
+
+      if (ha.primary.mailboxes.status !== "ready") {
+        pushWarning(
+          "primary-maildir",
+          "Mailbox storage is incomplete on the primary node.",
+          ha.primary.mailboxes.detail ?? "One or more expected Maildir trees are missing on the primary node.",
+          true
+        );
+      }
+
+      if (ha.primary.dkim.status !== "ready") {
+        pushWarning(
+          "dkim-missing",
+          "DKIM signing material is missing on the primary node.",
+          ha.primary.dkim.detail ?? "SimpleHost Agent did not report DKIM key material for this domain on the primary node.",
+          true
+        );
+      }
+    }
+
+    if (domain.standbyNodeId) {
+      if (!standbyRuntime) {
+        pushWarning(
+          "standby-runtime-missing",
+          "The standby mail node has not reported runtime yet.",
+          `SimpleHostMan has no mail runtime snapshot for standby node ${domain.standbyNodeId}, so failover readiness is unknown.`,
+          false
+        );
+      } else if (ha?.standby && ha.standby.promotionReady.status !== "ready") {
+        pushWarning(
+          "standby-not-promotable",
+          "The standby node is not ready for promotion.",
+          ha.standby.blockers[0] ??
+            ha.standby.promotionReady.detail ??
+            "One or more promotion checks are still failing on the standby node.",
+          false
+        );
+      }
+    }
+
+    const dispatchWarningCount = warnings.filter((entry) => entry.affectsDispatch).length;
+
+    return {
+      domainName: domain.domainName,
+      zoneName: domain.zoneName,
+      primaryNodeId: domain.primaryNodeId,
+      standbyNodeId: domain.standbyNodeId,
+      warningCount: warnings.length,
+      dispatchWarningCount,
+      warnings
+    };
+  });
 
   return {
     deliverabilityRows,
     haRows,
+    validationRows,
     totalQueuedMessages: data.nodeHealth.reduce(
       (total, node) => total + (node.mail?.queue?.messageCount ?? 0),
       0
     ),
     totalRecentFailures: data.nodeHealth.reduce(
       (total, node) => total + (node.mail?.recentDeliveryFailures?.length ?? 0),
+      0
+    ),
+    totalWarnings: validationRows.reduce((total, row) => total + row.warningCount, 0),
+    totalDispatchWarnings: validationRows.reduce(
+      (total, row) => total + row.dispatchWarningCount,
       0
     )
   };

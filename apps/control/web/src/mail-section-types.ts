@@ -81,6 +81,8 @@ export interface LocalizedMailCopy {
   runtimeDescription: string;
   deliverabilityTitle: string;
   deliverabilityDescription: string;
+  validationTitle: string;
+  validationDescription: string;
   haTitle: string;
   haDescription: string;
   antiSpamTitle: string;
@@ -90,6 +92,8 @@ export interface LocalizedMailCopy {
   activityDescription: string;
   runtimeNodesLabel: string;
   runtimeHealthyLabel: string;
+  warningCountLabel: string;
+  dispatchWarningsLabel: string;
   queuedMessagesLabel: string;
   recentFailuresLabel: string;
   postfixLabel: string;
@@ -192,10 +196,13 @@ export interface LocalizedMailCopy {
   observabilityWarning: string;
   observabilityMissing: string;
   observabilityUnreported: string;
+  validationAffectsDispatchLabel: string;
+  validationAdvisoryLabel: string;
   noMailDomains: string;
   noMailboxes: string;
   noAliases: string;
   noQuotas: string;
+  noValidationWarnings: string;
   noRuntimeNodes: string;
 }
 

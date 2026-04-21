@@ -48,6 +48,9 @@ export function getMailSectionCopy(locale: WebLocale): LocalizedMailCopy {
         deliverabilityTitle: "Deliverability",
         deliverabilityDescription:
           "Postura derivada por dominio usando el último dns.sync aplicado y el runtime mail reportado por los nodos.",
+        validationTitle: "Validaciones de producto",
+        validationDescription:
+          "Warnings previos al dispatch para DNS, runtime y topología mail que SimpleHostMan no puede aplicar con seguridad.",
         haTitle: "Mail HA",
         haDescription:
           "Modelo activo/pasivo por dominio: el primario sirve el tráfico y el secundario solo se considera promovible cuando ya tiene artefactos y servicios listos.",
@@ -61,6 +64,8 @@ export function getMailSectionCopy(locale: WebLocale): LocalizedMailCopy {
           "Conecta el dominio o recurso seleccionado con jobs recientes, auditoría y el snapshot runtime actual.",
         runtimeNodesLabel: "Nodos runtime",
         runtimeHealthyLabel: "Nodos sanos",
+        warningCountLabel: "Warnings",
+        dispatchWarningsLabel: "Bloquean dispatch",
         queuedMessagesLabel: "En cola",
         recentFailuresLabel: "Fallos recientes",
         postfixLabel: "Postfix",
@@ -167,10 +172,13 @@ export function getMailSectionCopy(locale: WebLocale): LocalizedMailCopy {
         observabilityWarning: "parcial",
         observabilityMissing: "faltante",
         observabilityUnreported: "sin reporte",
+        validationAffectsDispatchLabel: "Afecta dispatch",
+        validationAdvisoryLabel: "Warning operativo",
         noMailDomains: "No hay dominios mail.",
         noMailboxes: "No hay buzones.",
         noAliases: "No hay aliases.",
         noQuotas: "No hay quotas.",
+        noValidationWarnings: "No hay warnings de validación para este dominio.",
         noRuntimeNodes: "Ningún nodo relevante ha reportado runtime mail todavía."
       }
     : {
@@ -218,6 +226,9 @@ export function getMailSectionCopy(locale: WebLocale): LocalizedMailCopy {
         deliverabilityTitle: "Deliverability",
         deliverabilityDescription:
           "Per-domain posture derived from the latest applied dns.sync payload plus node-reported mail runtime.",
+        validationTitle: "Product validations",
+        validationDescription:
+          "Pre-dispatch warnings for DNS, runtime, and mail topology states that SimpleHostMan cannot safely apply.",
         haTitle: "Mail HA",
         haDescription:
           "Per-domain active/passive model: the primary serves traffic and the secondary is only treated as promotable when artifacts and services are ready.",
@@ -231,6 +242,8 @@ export function getMailSectionCopy(locale: WebLocale): LocalizedMailCopy {
           "Connect the selected mail resource to recent jobs, audit history, and the current runtime snapshot.",
         runtimeNodesLabel: "Runtime nodes",
         runtimeHealthyLabel: "Healthy nodes",
+        warningCountLabel: "Warnings",
+        dispatchWarningsLabel: "Block dispatch",
         queuedMessagesLabel: "Queued",
         recentFailuresLabel: "Recent failures",
         postfixLabel: "Postfix",
@@ -337,10 +350,13 @@ export function getMailSectionCopy(locale: WebLocale): LocalizedMailCopy {
         observabilityWarning: "partial",
         observabilityMissing: "missing",
         observabilityUnreported: "unreported",
+        validationAffectsDispatchLabel: "Affects dispatch",
+        validationAdvisoryLabel: "Operational warning",
         noMailDomains: "No mail domains.",
         noMailboxes: "No mailboxes.",
         noAliases: "No aliases.",
         noQuotas: "No quotas.",
+        noValidationWarnings: "No validation warnings for this domain.",
         noRuntimeNodes: "No relevant nodes have reported mail runtime yet."
       };
 }

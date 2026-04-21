@@ -183,15 +183,17 @@ function createDashboardData(): DashboardData {
         createdAt: "2026-04-21T07:55:00.000Z",
         completedAt: "2026-04-21T07:56:00.000Z",
         status: "applied",
-        payload: {
-          zoneName: "example.com",
-          serial: 2026042101,
-          nameservers: ["ns1.example.com"],
-          records: [
-            { name: "@", type: "TXT", value: "\"v=spf1 mx -all\"", ttl: 300 },
-            {
-              name: "_dmarc",
-              type: "TXT",
+          payload: {
+            zoneName: "example.com",
+            serial: 2026042101,
+            nameservers: ["ns1.example.com"],
+            records: [
+              { name: "@", type: "MX", value: "10 mail.example.com.", ttl: 300 },
+              { name: "mail", type: "A", value: "203.0.113.10", ttl: 300 },
+              { name: "@", type: "TXT", value: "\"v=spf1 mx -all\"", ttl: 300 },
+              {
+                name: "_dmarc",
+                type: "TXT",
               value: "\"v=DMARC1; p=quarantine; rua=mailto:postmaster@example.com\"",
               ttl: 300
             },
@@ -268,9 +270,11 @@ test("buildMailObservabilityModel marks a fully reported mail domain as ready", 
   const model = buildMailObservabilityModel(createDashboardData());
   const row = model.deliverabilityRows[0];
   const haRow = model.haRows[0];
+  const validationRow = model.validationRows[0];
 
   assert.ok(row);
   assert.ok(haRow);
+  assert.ok(validationRow);
   assert.equal(row.spf.status, "ready");
   assert.equal(row.dkim.status, "ready");
   assert.equal(row.dmarc.status, "ready");
@@ -283,6 +287,10 @@ test("buildMailObservabilityModel marks a fully reported mail domain as ready", 
   assert.equal(row.topDeferReason, "connect to mx.remote.test timed out");
   assert.equal(model.totalQueuedMessages, 3);
   assert.equal(model.totalRecentFailures, 1);
+  assert.equal(model.totalWarnings, 0);
+  assert.equal(model.totalDispatchWarnings, 0);
+  assert.equal(validationRow.warningCount, 0);
+  assert.equal(validationRow.dispatchWarningCount, 0);
   assert.equal(haRow.primary.services.status, "ready");
   assert.equal(haRow.primary.promotionReady.status, "ready");
 });
@@ -337,6 +345,39 @@ test("buildMailObservabilityModel uses the latest applied dns.sync per zone", ()
   assert.equal(row.dmarc.status, "ready");
   assert.equal(row.mtaSts.status, "ready");
   assert.equal(row.tlsRpt.status, "ready");
+});
+
+test("buildMailObservabilityModel raises dispatch warnings for DNS drift and missing primary runtime", () => {
+  const data = createDashboardData();
+  const currentPayload = data.jobHistory[0]!.payload as {
+    records: Array<{ name: string; type: string }>;
+  };
+
+  data.nodeHealth = [];
+  data.jobHistory[0] = {
+    ...data.jobHistory[0]!,
+    payload: {
+      ...currentPayload,
+      records: currentPayload.records.filter(
+        (record: { name: string; type: string }) =>
+          !(record.type === "MX" && record.name === "@") &&
+          !(record.type === "A" && record.name === "mail")
+      )
+    }
+  };
+
+  const model = buildMailObservabilityModel(data);
+  const validationRow = model.validationRows[0];
+
+  assert.ok(validationRow);
+  assert.equal(validationRow.warningCount, 3);
+  assert.equal(validationRow.dispatchWarningCount, 3);
+  assert.deepEqual(
+    validationRow.warnings.map((warning) => warning.code),
+    ["mx-mismatch", "mail-host-missing", "primary-runtime-missing"]
+  );
+  assert.equal(model.totalWarnings, 3);
+  assert.equal(model.totalDispatchWarnings, 3);
 });
 
 test("buildMailObservabilityModel reports standby promotion readiness when both mail roles are present", () => {
@@ -409,6 +450,56 @@ test("buildMailObservabilityModel reports standby promotion readiness when both 
   assert.equal(haRow.standby?.promotionReady.status, "ready");
   assert.equal(haRow.standby?.runtimeConfig.status, "ready");
   assert.equal(haRow.standby?.mailboxes.status, "ready");
+});
+
+test("buildMailObservabilityModel keeps standby promotion blockers as advisory warnings", () => {
+  const data = createDashboardData();
+
+  data.desiredState.spec.nodes.push({
+    nodeId: "mail-b",
+    hostname: "mail-b.example.net",
+    publicIpv4: "203.0.113.11",
+    wireguardAddress: "10.0.0.11/24"
+  });
+  data.mail.domains[0] = {
+    ...data.mail.domains[0]!,
+    standbyNodeId: "mail-b"
+  };
+  data.mail.mailboxes[0] = {
+    ...data.mail.mailboxes[0]!,
+    standbyNodeId: "mail-b"
+  };
+  data.nodeHealth.push({
+    nodeId: "mail-b",
+    hostname: "mail-b.example.net",
+    desiredRole: "inventory",
+    pendingJobCount: 0,
+    mail: {
+      ...data.nodeHealth[0]!.mail!,
+      checkedAt: "2026-04-21T09:05:00.000Z",
+      managedDomains: [
+        {
+          ...data.nodeHealth[0]!.mail!.managedDomains[0]!,
+          deliveryRole: "standby",
+          promotionReady: false,
+          promotionBlockers: ["DKIM key material is missing on the standby node."]
+        }
+      ]
+    }
+  } as DashboardData["nodeHealth"][number]);
+
+  const model = buildMailObservabilityModel(data);
+  const validationRow = model.validationRows[0];
+
+  assert.ok(validationRow);
+  assert.equal(validationRow.warningCount, 1);
+  assert.equal(validationRow.dispatchWarningCount, 0);
+  assert.equal(validationRow.warnings[0]?.code, "standby-not-promotable");
+  assert.equal(validationRow.warnings[0]?.affectsDispatch, false);
+  assert.match(
+    validationRow.warnings[0]?.detail ?? "",
+    /DKIM key material is missing/i
+  );
 });
 
 test("toneForMailObservabilityStatus maps states to the expected UI tones", () => {

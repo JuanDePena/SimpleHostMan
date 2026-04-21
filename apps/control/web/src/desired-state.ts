@@ -21,6 +21,12 @@ const hostnamePattern =
   /^(?=.{1,253}$)(?!-)(?:[a-zA-Z0-9-]{1,63}\.)*[a-zA-Z0-9-]{1,63}$/;
 const domainPattern =
   /^(?=.{1,253}$)(?!-)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i;
+const minimumMailboxQuotaBytes = 64 * 1024 * 1024;
+const maximumMailboxQuotaBytes = 10 * 1024 * 1024 * 1024 * 1024;
+
+function normalizeHostnameValue(value: string): string {
+  return value.trim().replace(/\.+$/, "").toLowerCase();
+}
 
 function parseCommaSeparated(value: string): string[] {
   return value
@@ -133,6 +139,20 @@ function assertPositiveNumber(
   }
 
   return value;
+}
+
+function formatStorageBytesForValidation(value: number): string {
+  const units = ["B", "KB", "MB", "GB", "TB", "PB"];
+  let normalized = value;
+  let unitIndex = 0;
+
+  while (normalized >= 1024 && unitIndex < units.length - 1) {
+    normalized /= 1024;
+    unitIndex += 1;
+  }
+
+  const fractionDigits = normalized >= 10 || unitIndex === 0 ? 0 : 1;
+  return `${normalized.toFixed(fractionDigits)} ${units[unitIndex]}`;
 }
 
 function assertMailSenderEntry(value: string, label: string): string {
@@ -432,13 +452,31 @@ export function parseMailDomainForm(
     throw new Error("Standby node must differ from primary node.");
   }
 
+  const domainName = assertDomain(form.get("domainName")?.trim() ?? "", "Mail domain");
+  const zoneName = assertDomain(form.get("zoneName")?.trim() ?? "", "Zone name");
+  const mailHost = assertDomain(form.get("mailHost")?.trim() ?? "", "Mail host");
+
+  if (zoneName !== domainName) {
+    throw new Error(
+      "Mail domain must use the matching zone. The current mail DNS model only supports zone-apex mail domains."
+    );
+  }
+
+  if (normalizeHostnameValue(mailHost) === normalizeHostnameValue(domainName)) {
+    throw new Error("Mail host must live below the domain apex, not at the apex itself.");
+  }
+
+  if (!normalizeHostnameValue(mailHost).endsWith(`.${normalizeHostnameValue(domainName)}`)) {
+    throw new Error(`Mail host must stay under ${domainName}.`);
+  }
+
   return {
-    domainName: assertDomain(form.get("domainName")?.trim() ?? "", "Mail domain"),
+    domainName,
     tenantSlug: assertSlug(form.get("tenantSlug")?.trim() ?? "", "Tenant slug"),
-    zoneName: assertDomain(form.get("zoneName")?.trim() ?? "", "Zone name"),
+    zoneName,
     primaryNodeId,
     standbyNodeId,
-    mailHost: assertDomain(form.get("mailHost")?.trim() ?? "", "Mail host"),
+    mailHost,
     dkimSelector: assertSlug(form.get("dkimSelector")?.trim() ?? "", "DKIM selector")
   };
 }
@@ -558,15 +596,29 @@ export function parseMailAliasForm(form: URLSearchParams): UpsertMailAliasReques
 export function parseMailboxQuotaForm(
   form: URLSearchParams
 ): UpsertMailboxQuotaRequest {
+  const storageBytes = assertPositiveInt(
+    parseOptionalNumber(form.get("storageBytes")?.trim() ?? ""),
+    "Storage bytes",
+    { min: 1 }
+  );
+
+  if (storageBytes < minimumMailboxQuotaBytes) {
+    throw new Error(
+      `Mailbox quota must be at least ${formatStorageBytesForValidation(minimumMailboxQuotaBytes)}.`
+    );
+  }
+
+  if (storageBytes > maximumMailboxQuotaBytes) {
+    throw new Error(
+      `Mailbox quota must stay below ${formatStorageBytesForValidation(maximumMailboxQuotaBytes)}.`
+    );
+  }
+
   return {
     mailboxAddress: assertRequired(
       form.get("mailboxAddress")?.trim() ?? "",
       "Mailbox address"
     ),
-    storageBytes: assertPositiveInt(
-      parseOptionalNumber(form.get("storageBytes")?.trim() ?? ""),
-      "Storage bytes",
-      { min: 1 }
-    )
+    storageBytes
   };
 }

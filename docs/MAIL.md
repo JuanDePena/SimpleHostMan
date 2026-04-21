@@ -38,6 +38,7 @@ Related references:
 - Phase-2 deliverability scaffolding is now wired end-to-end: `SimpleHost Control` derives `MTA-STS`, `TLS-RPT`, strict `SPF`, strengthened `DMARC`, and node-reported `DKIM` TXT records; `SimpleHost Agent` publishes the `mta-sts.txt` policy document and injects `Rspamd` into the live `Postfix` path through milters.
 - Phase-3 anti-spam policy is now explicit end-to-end: `SimpleHost Control` persists `Rspamd` thresholds plus sender allowlists, denylists, optional greylisting, and authenticated-sender rate limits, while `SimpleHost Agent` renders those policies into node-local `Rspamd` config and `SimpleHostMan` surfaces the current posture in the operator UI.
 - Phase-4 mail HA semantics are now explicit end-to-end: `SimpleHost Control` keeps per-domain primary and standby roles, `SimpleHost Agent` pre-seeds both nodes with mail runtime artifacts, and `SimpleHostMan` reports whether a standby is actually promotable or still blocked.
+- Phase-5 product validations are now explicit end-to-end: `SimpleHost Control` rejects unsafe mail desired-state shapes such as alias loops, conflicting `MX` intent, unsupported `mailHost` placement, divergent standby topology, and nonsensical quotas, while `SimpleHostMan` surfaces pre-dispatch warnings when published DNS or runtime posture drifts away from the expected model.
 - Mail desired state persisted on the nodes is sanitized: mailbox plaintext passwords are not written to `/srv/mail/config/desired-state.json`.
 - Node runtime reporting now includes service installation state, firewall state, `Roundcube` deployment state, and configured vs reset-required mailbox counts.
 - `SimpleHostMan` now exposes mail observability directly from control-plane and node snapshots: queue depth, recent delivery failures, defer reasons, per-domain deliverability checks, direct tracing from mail resources into recent jobs and audit history, plus per-domain standby promotion readiness and blockers.
@@ -271,6 +272,16 @@ Current anti-spam policy behavior:
 - sender allowlists and denylists accept either full mailbox addresses or `@domain` entries and are rendered into dedicated `Rspamd` selector maps
 - authenticated-sender rate limiting is optional and currently applies as a global `Rspamd` policy for authenticated traffic on the active mail node
 - `SimpleHostMan` shows the current anti-spam posture so operators can see why mail is accepted, tagged, greylisted, or rejected
+
+Current product-validation behavior:
+
+- mail domains must currently match the managed zone apex and use a dedicated `mail.<domain>` host under that same domain
+- explicit apex `MX` overrides that disagree with the configured `mailHost` are rejected before desired state is persisted
+- mailboxes must follow the same primary and standby topology as their parent mail domain so the current failover model stays coherent
+- alias chains are validated server-side and rejected when they loop back into another managed alias instead of terminating in a mailbox or external address
+- mailbox quotas below `64 MiB` or above `10 TiB` are rejected as outside the supported operating envelope for the current mail stack
+- `SimpleHostMan` now derives per-domain pre-dispatch warnings for missing applied `dns.sync` payloads, `MX` drift, missing `mailHost` records, missing primary runtime snapshots, missing primary DKIM or runtime artifacts, and standby promotion blockers
+- mail CRUD failures now return to the dashboard as operator-facing notices instead of falling through to the generic web error page
 
 ## Mail routing model
 

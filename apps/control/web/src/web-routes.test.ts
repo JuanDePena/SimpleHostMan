@@ -225,6 +225,50 @@ test("missing session on protected routes redirects to login", async () => {
   assert.match(String(response.headers["set-cookie"]), /shp_session=;/);
 });
 
+test("mail validation failures redirect back to the dashboard with an operator-facing notice", async () => {
+  const handler = createControlWebSurface(
+    {
+      config: createConfig(),
+      startedAt: Date.now()
+    },
+    createStubApi({
+      resolveSession: async () => ({
+        state: "authenticated",
+        token: "test-token",
+        currentUser: {
+          userId: "user-1",
+          email: "ops@example.com",
+          displayName: "Ops",
+          status: "active",
+          globalRoles: ["platform_admin"],
+          tenantMemberships: []
+        }
+      })
+    })
+  ).requestListener;
+
+  const response = await invokeRequestHandler(handler, {
+    method: "POST",
+    url: "/resources/mail/domains/upsert",
+    body: "domainName=example.com&tenantSlug=acme&zoneName=example.com&primaryNodeId=mail-a&mailHost=mx.external.test&dkimSelector=mail&returnTo=%2F%3Fview%3Dmail",
+    headers: {
+      "content-type": "application/x-www-form-urlencoded; charset=utf-8",
+      cookie: "shp_session=test-token"
+    }
+  });
+
+  assert.equal(response.statusCode, 303);
+  const location = new URL(String(response.headers.location), "http://localhost");
+
+  assert.equal(location.pathname, "/");
+  assert.equal(location.searchParams.get("view"), "mail");
+  assert.equal(
+    location.searchParams.get("notice"),
+    "Couldn't save mail domain. Mail host must stay under example.com."
+  );
+  assert.equal(location.searchParams.get("kind"), "error");
+});
+
 test("login failures render the login page with the API error message", async () => {
   const handler = createControlWebSurface(
     {

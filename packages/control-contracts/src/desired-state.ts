@@ -105,6 +105,9 @@ export interface DesiredStateMailboxQuotaInput {
   storageBytes: number;
 }
 
+export const minimumMailboxQuotaBytes = 64 * 1024 * 1024;
+export const maximumMailboxQuotaBytes = 10 * 1024 * 1024 * 1024 * 1024;
+
 export interface DesiredStateSpec {
   tenants: DesiredStateTenantInput[];
   nodes: DesiredStateNodeInput[];

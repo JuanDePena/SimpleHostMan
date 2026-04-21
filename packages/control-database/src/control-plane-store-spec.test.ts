@@ -10,10 +10,74 @@ import {
 } from "./control-plane-store-spec.js";
 import { toInventoryExportSummary } from "./control-plane-store-helpers.js";
 import {
+  minimumMailboxQuotaBytes,
   createDefaultMailPolicy,
   type DesiredStateSpec,
   type DnsRecordPayload
 } from "@simplehost/control-contracts";
+
+function createValidMailSpec(): DesiredStateSpec {
+  return {
+    tenants: [
+      {
+        slug: "acme",
+        displayName: "Acme"
+      }
+    ],
+    nodes: [
+      {
+        nodeId: "mail-a",
+        hostname: "mail-a.example.com",
+        publicIpv4: "203.0.113.10",
+        wireguardAddress: "10.0.0.10/24"
+      },
+      {
+        nodeId: "mail-b",
+        hostname: "mail-b.example.com",
+        publicIpv4: "203.0.113.11",
+        wireguardAddress: "10.0.0.11/24"
+      }
+    ],
+    zones: [
+      {
+        zoneName: "example.com",
+        tenantSlug: "acme",
+        primaryNodeId: "mail-a",
+        records: []
+      }
+    ],
+    apps: [],
+    databases: [],
+    backupPolicies: [],
+    mailPolicy: createDefaultMailPolicy(),
+    mailDomains: [
+      {
+        domainName: "example.com",
+        tenantSlug: "acme",
+        zoneName: "example.com",
+        primaryNodeId: "mail-a",
+        mailHost: "mail.example.com",
+        dkimSelector: "mail"
+      }
+    ],
+    mailboxes: [
+      {
+        address: "ops@example.com",
+        domainName: "example.com",
+        localPart: "ops",
+        primaryNodeId: "mail-a",
+        credentialState: "configured"
+      }
+    ],
+    mailAliases: [],
+    mailboxQuotas: [
+      {
+        mailboxAddress: "ops@example.com",
+        storageBytes: minimumMailboxQuotaBytes
+      }
+    ]
+  };
+}
 
 test("buildMailZoneRecords derives phase-2 deliverability records", () => {
   const dkimRuntimeRecords: MailDkimRuntimeRecord[] = [
@@ -270,5 +334,96 @@ test("validateDesiredStateSpec rejects sender entries that are both allowlisted 
   assert.throws(
     () => validateDesiredStateSpec(spec),
     /cannot be allowlisted and denylisted/i
+  );
+});
+
+test("validateDesiredStateSpec rejects mail domains outside the current zone-apex model", () => {
+  const spec = createValidMailSpec();
+
+  spec.zones[0] = {
+    ...spec.zones[0]!,
+    zoneName: "platform.example.com"
+  };
+  spec.mailDomains[0] = {
+    ...spec.mailDomains[0]!,
+    zoneName: "platform.example.com"
+  };
+
+  assert.throws(
+    () => validateDesiredStateSpec(spec),
+    /zone-apex mail domains/i
+  );
+});
+
+test("validateDesiredStateSpec rejects mail domains with conflicting explicit MX records", () => {
+  const spec = createValidMailSpec();
+
+  spec.zones[0] = {
+    ...spec.zones[0]!,
+    records: [
+      {
+        name: "@",
+        type: "MX",
+        value: "10 mx.backup.example.net.",
+        ttl: 300
+      }
+    ]
+  };
+
+  assert.throws(
+    () => validateDesiredStateSpec(spec),
+    /keeps MX aligned/i
+  );
+});
+
+test("validateDesiredStateSpec rejects alias loops", () => {
+  const spec = createValidMailSpec();
+
+  spec.mailAliases = [
+    {
+      address: "sales@example.com",
+      domainName: "example.com",
+      localPart: "sales",
+      destinations: ["support@example.com"]
+    },
+    {
+      address: "support@example.com",
+      domainName: "example.com",
+      localPart: "support",
+      destinations: ["sales@example.com"]
+    }
+  ];
+
+  assert.throws(
+    () => validateDesiredStateSpec(spec),
+    /alias loop detected/i
+  );
+});
+
+test("validateDesiredStateSpec rejects mailbox standby topology that diverges from its domain", () => {
+  const spec = createValidMailSpec();
+
+  spec.mailDomains[0] = {
+    ...spec.mailDomains[0]!,
+    standbyNodeId: "mail-b"
+  };
+
+  assert.throws(
+    () => validateDesiredStateSpec(spec),
+    /must follow the same standby node/i
+  );
+});
+
+test("validateDesiredStateSpec rejects mailbox quotas below the supported floor", () => {
+  const spec = createValidMailSpec();
+
+  spec.mailboxQuotas[0] = {
+    mailboxAddress: "ops@example.com",
+    storageBytes: minimumMailboxQuotaBytes - 1
+  };
+
+  assert.throws(
+    () => validateDesiredStateSpec(spec),
+    /must be at least/i
   );
 });

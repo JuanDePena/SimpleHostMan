@@ -19,7 +19,11 @@ import type {
   MailOverview,
   UpsertMailPolicyRequest
 } from "@simplehost/control-contracts";
-import { createDefaultMailPolicy } from "@simplehost/control-contracts";
+import {
+  createDefaultMailPolicy,
+  maximumMailboxQuotaBytes,
+  minimumMailboxQuotaBytes
+} from "@simplehost/control-contracts";
 
 import { readPlatformInventory, type PlatformInventoryApp, type PlatformInventoryDocument } from "./inventory.js";
 import { requireAuthorizedUser } from "./control-plane-store-auth.js";
@@ -98,6 +102,91 @@ function isValidMailSenderPolicyEntry(value: string): boolean {
   }
 
   return mailSenderAddressPattern.test(value);
+}
+
+function normalizeHostnameValue(value: string): string {
+  return value.trim().replace(/\.+$/, "").toLowerCase();
+}
+
+function parseMxRecordTarget(value: string): string | null {
+  const parts = value.trim().split(/\s+/).filter(Boolean);
+
+  if (parts.length === 0) {
+    return null;
+  }
+
+  if (parts.length === 1) {
+    return normalizeHostnameValue(parts[0]!);
+  }
+
+  const priority = Number.parseInt(parts[0]!, 10);
+  const target = Number.isInteger(priority) ? parts[1] : parts.at(-1);
+
+  return target ? normalizeHostnameValue(target) : null;
+}
+
+function formatStorageBytesForValidation(value: number): string {
+  const units = ["B", "KB", "MB", "GB", "TB", "PB"];
+  let normalized = value;
+  let unitIndex = 0;
+
+  while (normalized >= 1024 && unitIndex < units.length - 1) {
+    normalized /= 1024;
+    unitIndex += 1;
+  }
+
+  const fractionDigits = normalized >= 10 || unitIndex === 0 ? 0 : 1;
+  return `${normalized.toFixed(fractionDigits)} ${units[unitIndex]}`;
+}
+
+function findMailAliasLoop(
+  aliases: DesiredStateSpec["mailAliases"]
+): string[] | null {
+  const aliasesByAddress = new Map(aliases.map((alias) => [alias.address, alias] as const));
+  const visited = new Set<string>();
+  const visiting = new Set<string>();
+  const path: string[] = [];
+
+  const visit = (address: string): string[] | null => {
+    if (visiting.has(address)) {
+      const loopStart = path.indexOf(address);
+      return [...path.slice(loopStart), address];
+    }
+
+    if (visited.has(address)) {
+      return null;
+    }
+
+    visiting.add(address);
+    path.push(address);
+
+    for (const destination of aliasesByAddress.get(address)?.destinations ?? []) {
+      if (!aliasesByAddress.has(destination)) {
+        continue;
+      }
+
+      const loop = visit(destination);
+
+      if (loop) {
+        return loop;
+      }
+    }
+
+    path.pop();
+    visiting.delete(address);
+    visited.add(address);
+    return null;
+  };
+
+  for (const address of aliasesByAddress.keys()) {
+    const loop = visit(address);
+
+    if (loop) {
+      return loop;
+    }
+  }
+
+  return null;
 }
 
 export async function getLatestInventoryImport(
@@ -1838,6 +1927,12 @@ export function validateDesiredStateSpec(spec: DesiredStateSpec): void {
       );
     }
 
+    if (mailDomain.domainName !== zone.zoneName) {
+      throw new Error(
+        `Mail domain ${mailDomain.domainName} must use zone ${mailDomain.domainName}. The current mail DNS model only supports zone-apex mail domains.`
+      );
+    }
+
     if (!nodeIds.has(mailDomain.primaryNodeId)) {
       throw new Error(
         `Mail domain ${mailDomain.domainName} references unknown node ${mailDomain.primaryNodeId}.`
@@ -1848,6 +1943,42 @@ export function validateDesiredStateSpec(spec: DesiredStateSpec): void {
       throw new Error(
         `Mail domain ${mailDomain.domainName} references unknown standby node ${mailDomain.standbyNodeId}.`
       );
+    }
+
+    if (mailDomain.standbyNodeId && mailDomain.standbyNodeId === mailDomain.primaryNodeId) {
+      throw new Error(
+        `Mail domain ${mailDomain.domainName} must use a different standby node than the primary node.`
+      );
+    }
+
+    if (normalizeHostnameValue(mailDomain.mailHost) === normalizeHostnameValue(mailDomain.domainName)) {
+      throw new Error(
+        `Mail domain ${mailDomain.domainName} must use a dedicated mail host below the domain, not the apex itself.`
+      );
+    }
+
+    if (
+      !normalizeHostnameValue(mailDomain.mailHost).endsWith(
+        `.${normalizeHostnameValue(mailDomain.domainName)}`
+      )
+    ) {
+      throw new Error(
+        `Mail host ${mailDomain.mailHost} must stay under ${mailDomain.domainName} so MX and failover stay consistent.`
+      );
+    }
+
+    for (const record of zone.records) {
+      if (record.type !== "MX" || record.name.toLowerCase() !== "@") {
+        continue;
+      }
+
+      const target = parseMxRecordTarget(record.value);
+
+      if (target && target !== normalizeHostnameValue(mailDomain.mailHost)) {
+        throw new Error(
+          `Mail domain ${mailDomain.domainName} cannot publish MX ${record.value}. SimpleHostMan keeps MX aligned with ${mailDomain.mailHost}.`
+        );
+      }
     }
   }
 
@@ -1880,9 +2011,27 @@ export function validateDesiredStateSpec(spec: DesiredStateSpec): void {
       );
     }
 
+    if (mailbox.standbyNodeId && mailbox.standbyNodeId === mailbox.primaryNodeId) {
+      throw new Error(
+        `Mailbox ${mailbox.address} must use a different standby node than the primary node.`
+      );
+    }
+
     if (mailbox.primaryNodeId !== mailDomain.primaryNodeId) {
       throw new Error(
         `Mailbox ${mailbox.address} primary node ${mailbox.primaryNodeId} does not match mail domain ${mailDomain.domainName} primary node ${mailDomain.primaryNodeId}.`
+      );
+    }
+
+    if (mailDomain.standbyNodeId) {
+      if (mailbox.standbyNodeId !== mailDomain.standbyNodeId) {
+        throw new Error(
+          `Mailbox ${mailbox.address} must follow the same standby node as mail domain ${mailDomain.domainName} so failover stays coherent.`
+        );
+      }
+    } else if (mailbox.standbyNodeId) {
+      throw new Error(
+        `Mailbox ${mailbox.address} cannot define a standby node before mail domain ${mailDomain.domainName} has one.`
       );
     }
   }
@@ -1907,6 +2056,14 @@ export function validateDesiredStateSpec(spec: DesiredStateSpec): void {
     }
   }
 
+  const aliasLoop = findMailAliasLoop(spec.mailAliases);
+
+  if (aliasLoop) {
+    throw new Error(
+      `Mail alias loop detected: ${aliasLoop.join(" -> ")}. Update the alias chain so it ends in a mailbox or external address.`
+    );
+  }
+
   for (const quota of spec.mailboxQuotas) {
     if (!mailboxAddresses.has(quota.mailboxAddress)) {
       throw new Error(
@@ -1917,6 +2074,18 @@ export function validateDesiredStateSpec(spec: DesiredStateSpec): void {
     if (!Number.isFinite(quota.storageBytes) || quota.storageBytes <= 0) {
       throw new Error(
         `Mailbox quota ${quota.mailboxAddress} must define a positive storage limit.`
+      );
+    }
+
+    if (quota.storageBytes < minimumMailboxQuotaBytes) {
+      throw new Error(
+        `Mailbox quota ${quota.mailboxAddress} must be at least ${formatStorageBytesForValidation(minimumMailboxQuotaBytes)} so the current mail stack has usable headroom.`
+      );
+    }
+
+    if (quota.storageBytes > maximumMailboxQuotaBytes) {
+      throw new Error(
+        `Mailbox quota ${quota.mailboxAddress} must stay below ${formatStorageBytesForValidation(maximumMailboxQuotaBytes)} in the current mail model.`
       );
     }
   }

@@ -13,7 +13,8 @@ import { buildDashboardViewUrl } from "./dashboard-routing.js";
 import {
   buildMailObservabilityModel,
   toneForMailObservabilityStatus,
-  type MailHaNodeRow
+  type MailHaNodeRow,
+  type MailValidationWarning
 } from "./mail-observability.js";
 import {
   type MailCredentialRevealViewModel,
@@ -279,6 +280,30 @@ export function renderMailSectionContent(args: {
         .map(
           (blocker) => `<article class="feed-item feed-item-danger">
             <p>${escapeHtml(blocker)}</p>
+          </article>`
+        )
+        .join("")}
+    </div>`;
+  };
+
+  const renderValidationWarnings = (warnings: MailValidationWarning[]): string => {
+    if (warnings.length === 0) {
+      return `<p class="empty">${escapeHtml(mailCopy.noValidationWarnings)}</p>`;
+    }
+
+    return `<div class="feed-list">
+      ${warnings
+        .map(
+          (warning) => `<article class="feed-item${
+            warning.affectsDispatch ? " feed-item-danger" : ""
+          }">
+            <strong>${escapeHtml(warning.summary)}</strong>
+            <span class="feed-meta">${escapeHtml(
+              warning.affectsDispatch
+                ? mailCopy.validationAffectsDispatchLabel
+                : mailCopy.validationAdvisoryLabel
+            )}</span>
+            <p>${escapeHtml(warning.detail)}</p>
           </article>`
         )
         .join("")}
@@ -573,6 +598,9 @@ export function renderMailSectionContent(args: {
   const selectedDeliverability = selectedDomain
     ? observability.deliverabilityRows.find((row) => row.domainName === selectedDomain.domainName)
     : undefined;
+  const selectedValidation = selectedDomain
+    ? observability.validationRows.find((row) => row.domainName === selectedDomain.domainName)
+    : undefined;
   const selectedHa = selectedDomain
     ? observability.haRows.find((row) => row.domainName === selectedDomain.domainName)
     : undefined;
@@ -810,6 +838,37 @@ export function renderMailSectionContent(args: {
               ],
               { className: "detail-grid-two" }
             )}`
+          : `<p class="empty">${escapeHtml(mailCopy.noSelectionLabel)}</p>`
+      }
+    </article>`;
+  const selectedValidationPanel = `<article class="panel detail-shell">
+      <div class="section-head">
+        <div>
+          <h3>${escapeHtml(mailCopy.validationTitle)}</h3>
+          <p class="muted section-description">${escapeHtml(mailCopy.validationDescription)}</p>
+        </div>
+      </div>
+      ${
+        selectedValidation
+          ? `${renderers.renderSignalStrip([
+              {
+                label: mailCopy.warningCountLabel,
+                value: String(selectedValidation.warningCount),
+                tone:
+                  selectedValidation.warningCount > 0
+                    ? selectedValidation.dispatchWarningCount > 0
+                      ? "danger"
+                      : "default"
+                    : "success"
+              },
+              {
+                label: mailCopy.dispatchWarningsLabel,
+                value: String(selectedValidation.dispatchWarningCount),
+                tone:
+                  selectedValidation.dispatchWarningCount > 0 ? "danger" : "success"
+              }
+            ])}
+            ${renderValidationWarnings(selectedValidation.warnings)}`
           : `<p class="empty">${escapeHtml(mailCopy.noSelectionLabel)}</p>`
       }
     </article>`;
@@ -1552,6 +1611,21 @@ export function renderMailSectionContent(args: {
         tone: healthyMailRuntimeCount > 0 ? "success" : "muted"
       },
       {
+        label: mailCopy.warningCountLabel,
+        value: String(observability.totalWarnings),
+        tone:
+          observability.totalWarnings > 0
+            ? observability.totalDispatchWarnings > 0
+              ? "danger"
+              : "default"
+            : "success"
+      },
+      {
+        label: mailCopy.dispatchWarningsLabel,
+        value: String(observability.totalDispatchWarnings),
+        tone: observability.totalDispatchWarnings > 0 ? "danger" : "success"
+      },
+      {
         label: mailCopy.queuedMessagesLabel,
         value: String(observability.totalQueuedMessages),
         tone:
@@ -1625,7 +1699,10 @@ export function renderMailSectionContent(args: {
       ${selectedObservabilityPanel}
     </div>
     <div class="grid-two-desktop">
+      ${selectedValidationPanel}
       ${selectedHaPanel}
+    </div>
+    <div class="grid-two-desktop">
       ${selectedActivityPanel}
     </div>
     <div class="grid-two-desktop">
