@@ -47,6 +47,8 @@ export interface DnsSyncPayload {
   serial: number;
   nameservers: string[];
   records: DnsRecordPayload[];
+  deliveryRole?: "primary" | "secondary";
+  primaryAddresses?: string[];
 }
 
 export interface PostgresReconcilePayload {

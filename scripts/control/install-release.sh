@@ -31,6 +31,8 @@ ln -sfn "${release_dir}" "${runtime_root}/current"
 
 install -m 0644 "${repo_root}/packaging/systemd/simplehost-control.service" /etc/systemd/system/simplehost-control.service
 install -m 0644 "${repo_root}/packaging/systemd/simplehost-worker.service" /etc/systemd/system/simplehost-worker.service
+install -m 0644 "${repo_root}/packaging/systemd/simplehost-backup-runner.service" /etc/systemd/system/simplehost-backup-runner.service
+install -m 0644 "${repo_root}/packaging/systemd/simplehost-backup-runner.timer" /etc/systemd/system/simplehost-backup-runner.timer
 install -d /etc/systemd/system/postgresql@control.service.d /etc/systemd/system/postgresql@apps.service.d
 install -m 0644 "${repo_root}/packaging/systemd/postgresql@control.service.d/30-postgresql-setup.conf" /etc/systemd/system/postgresql@control.service.d/30-postgresql-setup.conf
 install -m 0644 "${repo_root}/packaging/systemd/postgresql@control.service.d/40-pgdg18-binary.conf" /etc/systemd/system/postgresql@control.service.d/40-pgdg18-binary.conf

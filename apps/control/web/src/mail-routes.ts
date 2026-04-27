@@ -1,3 +1,6 @@
+import { createHmac, randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
+
 import {
   noticeReturnTo
 } from "./api-client.js";
@@ -13,6 +16,61 @@ import { buildDashboardViewUrl } from "./dashboard-routing.js";
 import { readFormBody, redirect } from "./request.js";
 import { requireSessionToken } from "./route-helpers.js";
 import type { WebRouteHandler } from "./web-route-context.js";
+
+const roundcubeAutologinSecretPath =
+  process.env.SIMPLEHOST_MAIL_WEBMAIL_AUTOLOGIN_SECRET_PATH?.trim() ||
+  "/srv/www/roundcube/_shared/roundcube.des.key";
+const roundcubeConfigPath = "/etc/roundcubemail/config.inc.php";
+
+function encodeBase64Url(value: Buffer | string): string {
+  return Buffer.from(value)
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+}
+
+async function readRoundcubeAutologinSecret(): Promise<string> {
+  try {
+    const secret = (await readFile(roundcubeAutologinSecretPath, "utf8")).trim();
+
+    if (secret) {
+      return secret;
+    }
+  } catch {
+    // Fall back to the rendered Roundcube config if the shared key file is not readable.
+  }
+
+  const configText = await readFile(roundcubeConfigPath, "utf8");
+  const configSecret = /\$config\['des_key'\]\s*=\s*'([^']+)'/.exec(configText)?.[1]?.trim();
+
+  if (!configSecret) {
+    throw new Error("Roundcube autologin secret is unavailable.");
+  }
+
+  return configSecret;
+}
+
+function createMailboxWebmailAutologinToken(args: {
+  mailboxAddress: string;
+  credential: string;
+  secret: string;
+  expiresAt: string;
+}): string {
+  const encodedPayload = encodeBase64Url(
+    JSON.stringify({
+      address: args.mailboxAddress,
+      credential: args.credential,
+      exp: args.expiresAt,
+      nonce: randomUUID()
+    })
+  );
+  const signature = encodeBase64Url(
+    createHmac("sha256", args.secret).update(encodedPayload).digest()
+  );
+
+  return `${encodedPayload}.${signature}`;
+}
 
 function mailboxCredentialReturnTo(args: {
   returnTo: string | null;
@@ -254,6 +312,41 @@ export const handleMailRoute: WebRouteHandler = async ({
         mailErrorReturnTo({
           returnTo,
           prefix: "Couldn't rotate mailbox credential.",
+          error
+        })
+      );
+    }
+
+    return true;
+  }
+
+  if (request.method === "GET" && url.pathname === "/resources/mail/mailboxes/open-webmail") {
+    const token = await requireSessionToken({ requireSession });
+    const mailboxAddress = url.searchParams.get("mailboxAddress")?.trim() ?? "";
+    const returnTo =
+      url.searchParams.get("returnTo")?.trim() || buildDashboardViewUrl("mail", undefined, mailboxAddress);
+
+    try {
+      const autologin = await api.getMailboxWebmailAutologin(token, mailboxAddress);
+      const secret = await readRoundcubeAutologinSecret();
+      const launchToken = createMailboxWebmailAutologinToken({
+        mailboxAddress: autologin.mailboxAddress,
+        credential: autologin.credential,
+        secret,
+        expiresAt: new Date(Date.now() + 90_000).toISOString()
+      });
+      redirect(
+        response,
+        `http://${encodeURI(
+          autologin.webmailHostname
+        )}/simplehost-autologin.php?token=${encodeURIComponent(launchToken)}`
+      );
+    } catch (error) {
+      redirect(
+        response,
+        mailErrorReturnTo({
+          returnTo,
+          prefix: "Couldn't open mailbox in webmail.",
           error
         })
       );

@@ -122,6 +122,8 @@ export interface DnsSyncPayload {
   serial: number;
   nameservers: string[];
   records: DnsRecordPayload[];
+  deliveryRole?: "primary" | "secondary";
+  primaryAddresses?: string[];
 }
 
 export interface PostgresReconcilePayload {
@@ -452,7 +454,13 @@ export function isDnsSyncPayload(value: unknown): value is DnsSyncPayload {
       );
     }) &&
     Array.isArray(payload.nameservers) &&
-    payload.nameservers.every((item) => typeof item === "string")
+    payload.nameservers.every((item) => typeof item === "string") &&
+    (payload.deliveryRole === undefined ||
+      payload.deliveryRole === "primary" ||
+      payload.deliveryRole === "secondary") &&
+    (payload.primaryAddresses === undefined ||
+      (Array.isArray(payload.primaryAddresses) &&
+        payload.primaryAddresses.every((item) => typeof item === "string")))
   );
 }
 

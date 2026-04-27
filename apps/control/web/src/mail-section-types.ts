@@ -60,6 +60,7 @@ export interface LocalizedMailCopy {
   createLabel: string;
   editLabel: string;
   rotateLabel: string;
+  openWebmailLabel: string;
   resetLabel: string;
   deleteLabel: string;
   actionsLabel: string;

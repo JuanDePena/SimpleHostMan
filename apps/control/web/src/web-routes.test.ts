@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import test from "node:test";
 
 import { invokeRequestHandler } from "@simplehost/control-shared";
@@ -87,6 +90,9 @@ function createStubApi(
     },
     rotateMailboxCredential: async () => {
       throw new Error("Unexpected mailbox credential rotate in test");
+    },
+    getMailboxWebmailAutologin: async () => {
+      throw new Error("Unexpected mailbox webmail autologin request in test");
     },
     consumeMailboxCredentialReveal: async () => {
       throw new Error("Unexpected mailbox credential reveal consume in test");
@@ -293,4 +299,61 @@ test("login failures render the login page with the API error message", async ()
 
   assert.equal(response.statusCode, 401);
   assert.match(response.bodyText, /Invalid credentials/);
+});
+
+test("mailbox webmail route issues a launcher redirect for the selected mailbox", async () => {
+  const tempDir = mkdtempSync(path.join(tmpdir(), "simplehost-webmail-secret-"));
+  const secretPath = path.join(tempDir, "roundcube.des.key");
+  writeFileSync(secretPath, "test-roundcube-secret\n", "utf8");
+  process.env.SIMPLEHOST_MAIL_WEBMAIL_AUTOLOGIN_SECRET_PATH = secretPath;
+
+  try {
+    const handler = createControlWebSurface(
+      {
+        config: createConfig(),
+        startedAt: Date.now()
+      },
+      createStubApi({
+        resolveSession: async () => ({
+          state: "authenticated",
+          token: "test-token",
+          currentUser: {
+            userId: "user-1",
+            email: "ops@example.com",
+            displayName: "Ops",
+            status: "active",
+            globalRoles: ["platform_admin"],
+            tenantMemberships: []
+          }
+        }),
+        getMailboxWebmailAutologin: async (token, mailboxAddress) => {
+          assert.equal(token, "test-token");
+          assert.equal(mailboxAddress, "webmaster@adudoc.com");
+
+          return {
+            mailboxAddress,
+            webmailHostname: "webmail.adudoc.com",
+            credential: "AdudocWeb26!"
+          };
+        }
+      })
+    ).requestListener;
+
+    const response = await invokeRequestHandler(handler, {
+      method: "GET",
+      url: "/resources/mail/mailboxes/open-webmail?mailboxAddress=webmaster%40adudoc.com&returnTo=%2F%3Fview%3Dmail",
+      headers: {
+        cookie: "shp_session=test-token"
+      }
+    });
+
+    assert.equal(response.statusCode, 303);
+    assert.match(
+      String(response.headers.location),
+      /^http:\/\/webmail\.adudoc\.com\/simplehost-autologin\.php\?token=/
+    );
+  } finally {
+    delete process.env.SIMPLEHOST_MAIL_WEBMAIL_AUTOLOGIN_SECRET_PATH;
+    rmSync(tempDir, { recursive: true, force: true });
+  }
 });

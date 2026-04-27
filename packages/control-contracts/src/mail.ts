@@ -53,6 +53,12 @@ export interface RotateMailboxCredentialRequest {
   mailboxAddress: string;
 }
 
+export interface MailboxWebmailAutologin {
+  mailboxAddress: string;
+  webmailHostname: string;
+  credential: string;
+}
+
 export type MailboxCredentialAction =
   | "missing"
   | "configured"

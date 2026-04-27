@@ -12,6 +12,7 @@ import {
   symlink,
   writeFile
 } from "node:fs/promises";
+import { isIP } from "node:net";
 import path from "node:path";
 import { promisify } from "node:util";
 
@@ -59,6 +60,7 @@ import {
   renderPostfixVirtualDomains,
   renderPostfixVirtualMailboxes,
   renderQuadletContainerUnit,
+  renderRoundcubeAutologinScript,
   renderRoundcubeConfig,
   renderRspamdActionsConf,
   renderRspamdDkimSigningConf,
@@ -1118,6 +1120,7 @@ async function ensureRoundcubeDeployment(
   const tempDir = path.join(sharedRoot, "temp");
   const logDir = path.join(sharedRoot, "logs");
   const desKeyPath = path.join(sharedRoot, "roundcube.des.key");
+  const autologinScriptPath = path.join(packageRoot, "simplehost-autologin.php");
 
   if (!(await pathExists(packageRoot)) || !(await pathExists(schemaPath))) {
     return {
@@ -1160,6 +1163,7 @@ async function ensureRoundcubeDeployment(
       desKey
     })
   );
+  await writeFileAtomic(autologinScriptPath, renderRoundcubeAutologinScript(desKeyPath));
 
   if (
     (await commandSucceeded("getent", ["passwd", context.services.mail.roundcubeUser])) &&
@@ -1328,6 +1332,7 @@ function absoluteDnsName(zoneName: string, recordName: string): string {
 
 interface PowerDnsZoneSnapshot {
   id: string;
+  kind?: string;
   rrsets?: Array<Record<string, unknown>>;
 }
 
@@ -1475,7 +1480,98 @@ async function readPowerDnsZone(
   };
 }
 
-async function ensurePowerDnsZone(
+function normalizePowerDnsZoneName(zoneName: string): string {
+  return zoneName.replace(/\.$/, "");
+}
+
+function resolveDnsDeliveryRole(payload: DnsSyncPayload): "primary" | "secondary" {
+  return payload.deliveryRole === "secondary" ? "secondary" : "primary";
+}
+
+function normalizePrimaryAddresses(payload: DnsSyncPayload): string[] {
+  return Array.from(
+    new Set(
+      (payload.primaryAddresses ?? [])
+        .map((value: string) => value.trim())
+        .filter((value: string) => value.length > 0)
+    )
+  );
+}
+
+function isPowerDnsPrimaryKind(kind: string | undefined): boolean {
+  const normalized = kind?.trim().toLowerCase();
+  return normalized === "master" || normalized === "primary";
+}
+
+function isPowerDnsSecondaryKind(kind: string | undefined): boolean {
+  const normalized = kind?.trim().toLowerCase();
+  return normalized === "slave" || normalized === "secondary";
+}
+
+async function runPowerDnsControlCommand(args: string[]): Promise<void> {
+  const result = await runCommandAllowFailure("pdns_control", args);
+
+  if (result.exitCode !== 0) {
+    const output = [result.stdout.trim(), result.stderr.trim()].filter(Boolean).join("\n");
+    throw new Error(`pdns_control ${args.join(" ")} failed${output ? `: ${output}` : "."}`);
+  }
+}
+
+async function runPowerDnsUtilCommand(args: string[]): Promise<void> {
+  const result = await runCommandAllowFailure("pdnsutil", args);
+
+  if (result.exitCode !== 0) {
+    const output = [result.stdout.trim(), result.stderr.trim()].filter(Boolean).join("\n");
+    throw new Error(`pdnsutil ${args.join(" ")} failed${output ? `: ${output}` : "."}`);
+  }
+}
+
+async function refreshPowerDnsCatalog(): Promise<void> {
+  await runPowerDnsControlCommand(["rediscover"]);
+  await runPowerDnsControlCommand(["reload"]);
+}
+
+async function updatePowerDnsZonePrimaries(
+  payload: DnsSyncPayload,
+  context: DriverExecutionContext
+): Promise<void> {
+  const { apiUrl, apiKey, serverId } = context.services.pdns;
+
+  if (!apiUrl || !apiKey) {
+    throw new Error("SIMPLEHOST_PDNS_API_URL and SIMPLEHOST_PDNS_API_KEY are required.");
+  }
+
+  const primaryAddresses = normalizePrimaryAddresses(payload);
+
+  if (primaryAddresses.length === 0) {
+    throw new Error(`Zone ${payload.zoneName} does not declare any primary addresses.`);
+  }
+
+  const zoneId = `${normalizePowerDnsZoneName(payload.zoneName)}.`;
+  const zoneEndpoint = new URL(
+    `/api/v1/servers/${encodeURIComponent(serverId)}/zones/${encodeURIComponent(zoneId)}`,
+    apiUrl
+  );
+  const response = await fetch(zoneEndpoint, {
+    method: "PUT",
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "x-api-key": apiKey
+    },
+    body: JSON.stringify({
+      kind: "Slave",
+      masters: primaryAddresses
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `PowerDNS zone primary update failed (${response.status}): ${await response.text()}`
+    );
+  }
+}
+
+async function ensurePrimaryPowerDnsZone(
   payload: DnsSyncPayload,
   context: DriverExecutionContext
 ): Promise<{ created: boolean }> {
@@ -1485,7 +1581,7 @@ async function ensurePowerDnsZone(
     throw new Error("SIMPLEHOST_PDNS_API_URL and SIMPLEHOST_PDNS_API_KEY are required.");
   }
 
-  const zoneId = `${payload.zoneName.replace(/\.$/, "")}.`;
+  const zoneId = `${normalizePowerDnsZoneName(payload.zoneName)}.`;
   const createEndpoint = new URL(
     `/api/v1/servers/${encodeURIComponent(serverId)}/zones`,
     apiUrl
@@ -1501,7 +1597,7 @@ async function ensurePowerDnsZone(
       },
       body: JSON.stringify({
         name: zoneId,
-        kind: "Native",
+        kind: "Master",
         nameservers: payload.nameservers.map((nameserver) => `${nameserver}.`)
       })
     });
@@ -1517,12 +1613,22 @@ async function ensurePowerDnsZone(
     };
   }
 
+  if (!isPowerDnsPrimaryKind(zoneState.zone?.kind)) {
+    await runPowerDnsUtilCommand([
+      "zone",
+      "set-kind",
+      normalizePowerDnsZoneName(payload.zoneName),
+      "primary"
+    ]);
+    await refreshPowerDnsCatalog();
+  }
+
   return {
     created: false
   };
 }
 
-async function upsertPowerDnsRecords(
+async function upsertPrimaryPowerDnsRecords(
   payload: DnsSyncPayload,
   context: DriverExecutionContext
 ): Promise<{ createdZone: boolean }> {
@@ -1532,9 +1638,9 @@ async function upsertPowerDnsRecords(
     throw new Error("SIMPLEHOST_PDNS_API_URL and SIMPLEHOST_PDNS_API_KEY are required.");
   }
 
-  const zoneState = await ensurePowerDnsZone(payload, context);
+  const zoneState = await ensurePrimaryPowerDnsZone(payload, context);
 
-  const zoneId = `${payload.zoneName.replace(/\.$/, "")}.`;
+  const zoneId = `${normalizePowerDnsZoneName(payload.zoneName)}.`;
   const zoneEndpoint = new URL(
     `/api/v1/servers/${encodeURIComponent(serverId)}/zones/${encodeURIComponent(zoneId)}`,
     apiUrl
@@ -1604,6 +1710,130 @@ async function upsertPowerDnsRecords(
   };
 }
 
+async function ensureSecondaryPowerDnsZone(
+  payload: DnsSyncPayload,
+  context: DriverExecutionContext
+): Promise<{ created: boolean }> {
+  const { apiUrl, apiKey, serverId } = context.services.pdns;
+
+  if (!apiUrl || !apiKey) {
+    throw new Error("SIMPLEHOST_PDNS_API_URL and SIMPLEHOST_PDNS_API_KEY are required.");
+  }
+
+  const primaryAddresses = normalizePrimaryAddresses(payload);
+
+  if (primaryAddresses.length === 0) {
+    throw new Error(`Zone ${payload.zoneName} does not declare any primary addresses.`);
+  }
+
+  const zoneId = `${normalizePowerDnsZoneName(payload.zoneName)}.`;
+  const createEndpoint = new URL(
+    `/api/v1/servers/${encodeURIComponent(serverId)}/zones`,
+    apiUrl
+  );
+  const zoneState = await readPowerDnsZone(payload, context);
+  let created = false;
+
+  if (!zoneState.exists) {
+    const createResponse = await fetch(createEndpoint, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json; charset=utf-8",
+        "x-api-key": apiKey
+      },
+      body: JSON.stringify({
+        name: zoneId,
+        kind: "Slave",
+        nameservers: payload.nameservers.map((nameserver) => `${nameserver}.`),
+        masters: primaryAddresses
+      })
+    });
+
+    if (!createResponse.ok) {
+      throw new Error(
+        `PowerDNS secondary zone creation failed (${createResponse.status}): ${await createResponse.text()}`
+      );
+    }
+
+    created = true;
+    await refreshPowerDnsCatalog();
+  } else if (!isPowerDnsSecondaryKind(zoneState.zone?.kind)) {
+    await runPowerDnsUtilCommand([
+      "zone",
+      "set-kind",
+      normalizePowerDnsZoneName(payload.zoneName),
+      "secondary"
+    ]);
+    await refreshPowerDnsCatalog();
+  }
+
+  await updatePowerDnsZonePrimaries(payload, context);
+
+  return { created };
+}
+
+async function retrieveSecondaryPowerDnsZone(
+  payload: DnsSyncPayload,
+  primaryAddress: string
+): Promise<void> {
+  await runPowerDnsControlCommand([
+    "retrieve",
+    normalizePowerDnsZoneName(payload.zoneName),
+    primaryAddress
+  ]);
+}
+
+async function waitForPowerDnsVerification(
+  payload: DnsSyncPayload,
+  context: DriverExecutionContext,
+  timeoutMs = 8_000,
+  intervalMs = 500
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  let lastError: unknown;
+
+  while (Date.now() <= deadline) {
+    try {
+      await verifyPowerDnsZone(payload, context);
+      return;
+    } catch (error) {
+      lastError = error;
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error(`Timed out while verifying PowerDNS zone ${payload.zoneName}.`);
+}
+
+async function synchronizeSecondaryPowerDnsZone(
+  payload: DnsSyncPayload,
+  context: DriverExecutionContext
+): Promise<{ createdZone: boolean; retrievedFrom: string }> {
+  const zoneState = await ensureSecondaryPowerDnsZone(payload, context);
+  const primaryAddresses = normalizePrimaryAddresses(payload);
+  let lastError: unknown;
+
+  for (const primaryAddress of primaryAddresses) {
+    try {
+      await retrieveSecondaryPowerDnsZone(payload, primaryAddress);
+      await waitForPowerDnsVerification(payload, context);
+
+      return {
+        createdZone: zoneState.created,
+        retrievedFrom: primaryAddress
+      };
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error(`PowerDNS secondary retrieval failed for zone ${payload.zoneName}.`);
+}
+
 function validateDnsPayload(payload: DnsSyncPayload): void {
   if (!/^[A-Za-z0-9.-]+$/.test(payload.zoneName.replace(/\.$/, ""))) {
     throw new Error(`Zone name ${payload.zoneName} is invalid.`);
@@ -1617,6 +1847,20 @@ function validateDnsPayload(payload: DnsSyncPayload): void {
     if (!/^[A-Za-z0-9.-]+$/.test(nameserver.replace(/\.$/, ""))) {
       throw new Error(`Nameserver ${nameserver} is invalid.`);
     }
+  }
+
+  if (payload.deliveryRole && payload.deliveryRole !== "primary" && payload.deliveryRole !== "secondary") {
+    throw new Error(`Zone ${payload.zoneName} has an unsupported delivery role.`);
+  }
+
+  for (const primaryAddress of normalizePrimaryAddresses(payload)) {
+    if (isIP(primaryAddress) === 0) {
+      throw new Error(`Zone ${payload.zoneName} has an invalid primary address ${primaryAddress}.`);
+    }
+  }
+
+  if (resolveDnsDeliveryRole(payload) === "secondary" && normalizePrimaryAddresses(payload).length === 0) {
+    throw new Error(`Zone ${payload.zoneName} requires at least one primary address for secondary sync.`);
   }
 
   for (const record of payload.records) {
@@ -2691,13 +2935,17 @@ async function executeDnsSyncJob(
 ): Promise<AgentJobResult> {
   try {
     validateDnsPayload(payload);
+    const deliveryRole = resolveDnsDeliveryRole(payload);
     const zoneFileName = `${payload.zoneName.replace(/[^a-zA-Z0-9.-]/g, "_")}.zone`;
     const stagedPath = await writeRenderedFile(
       context.services.pdns.stagingDir,
       zoneFileName,
       renderDnsZoneFile(payload)
     );
-    const { createdZone } = await upsertPowerDnsRecords(payload, context);
+    const syncResult =
+      deliveryRole === "secondary"
+        ? await synchronizeSecondaryPowerDnsZone(payload, context)
+        : await upsertPrimaryPowerDnsRecords(payload, context);
     const verification = await verifyPowerDnsZone(payload, context);
 
     return createCompletedResult(
@@ -2709,11 +2957,20 @@ async function executeDnsSyncJob(
         stagedPath,
         recordCount: payload.records.length,
         serial: payload.serial,
+        deliveryRole,
         nameservers: payload.nameservers,
+        primaryAddresses: normalizePrimaryAddresses(payload),
+        retrievedFrom:
+          "retrievedFrom" in syncResult && typeof syncResult.retrievedFrom === "string"
+            ? syncResult.retrievedFrom
+            : undefined,
         validation: verification,
         rollback: {
-          strategy: "pdns-api-atomic-patch",
-          createdZone
+          strategy:
+            deliveryRole === "secondary"
+              ? "pdns-secondary-zone-refresh"
+              : "pdns-api-atomic-patch",
+          createdZone: syncResult.createdZone
         }
       }
     );

@@ -26,6 +26,14 @@ The goal is to replace legacy DNS hosted on an older cPanel VPS with a PowerDNS 
 - `dns.sync` is already dispatched from `SimpleHost Control` and executed by `SimpleHost Agent` against the local PowerDNS API.
 - Desired DNS state now lives in `SimpleHost Control` PostgreSQL; `apps.yaml` is only the bootstrap/import-export path.
 
+## Status on 2026-04-26
+
+- `dns.sync` now dispatches one DNS job per node for each managed zone instead of updating only the primary.
+- Primary zones are reconciled as `Master`; secondary copies are reconciled as `Slave`.
+- The secondary now keeps its local PowerDNS API enabled on `127.0.0.1:8081` so `SimpleHost Agent` can create or convert secondary zones cleanly before triggering the initial transfer.
+- `SimpleHost Agent` on the secondary explicitly runs `pdns_control retrieve <zone> <primary-ip>` after each `dns.sync`, so replication no longer depends on manual LMDB copies.
+- The current live PowerDNS-managed customer zones are `adudoc.com` and `gomezrosado.com.do`; `gomezrosado.com.do` is publicly delegated to the OVH-hostname nameservers, while `adudoc.com` may still be externally delegated until its registrar cutover is completed.
+
 ## Selected platform
 
 Target DNS stack:
@@ -124,8 +132,9 @@ The primary and secondary keep local configuration and local storage. The second
 1. Apply changes on the primary through the local API or local administrative tooling.
 2. Rectify and sign as needed when DNSSEC is enabled.
 3. Confirm the serial increment.
-4. Confirm transfer completion on the secondary.
-5. Validate public answers from both nodes.
+4. Reconcile the same zone on the secondary so it refreshes its `Slave` definition and triggers an explicit `retrieve`.
+5. Confirm transfer completion on the secondary.
+6. Validate public answers from both nodes.
 
 ### ACME support
 

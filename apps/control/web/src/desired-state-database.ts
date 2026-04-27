@@ -312,12 +312,6 @@ function renderDatabaseWorkspacePanel(args: {
               copy.openNodeHealth
             )}</a>
           </div>
-          ${renderers.renderRelatedPanel(
-            copy.backupsTitle,
-            copy.backupCoverageDescription,
-            databaseBackupItems,
-            copy.noRelatedRecords
-          )}
         </article>
       </div>
       <div class="resource-workspace-column stack">

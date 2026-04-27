@@ -227,12 +227,6 @@ function renderProxyWorkspacePanel(args: RenderAppProxyDesiredStatePanelsArgs): 
             >${escapeHtml(copy.viewApacheVhost)}</button>
           </div>
         </article>
-        ${renderers.renderRelatedPanel(
-          copy.backupsTitle,
-          copy.backupCoverageDescription,
-          proxyBackupItems,
-          copy.noRelatedRecords
-        )}
       </div>
       <div class="proxy-workspace-column stack">
         <article class="panel panel-nested detail-shell">
@@ -555,12 +549,6 @@ function renderAppWorkspacePanel(args: RenderAppProxyDesiredStatePanelsArgs): st
             >${escapeHtml(copy.viewApacheVhost)}</button>
           </div>
         </article>
-        ${renderers.renderRelatedPanel(
-          copy.backupsTitle,
-          copy.backupCoverageDescription,
-          appBackupItems,
-          copy.noRelatedRecords
-        )}
       </div>
       <div class="resource-workspace-column stack">
         <article class="panel panel-nested detail-shell">

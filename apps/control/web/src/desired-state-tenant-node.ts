@@ -236,12 +236,6 @@ function renderTenantWorkspacePanel(args: {
             )}</a>
           </div>
         </article>
-        ${renderers.renderRelatedPanel(
-          copy.backupsTitle,
-          copy.backupCoverageDescription,
-          tenantBackupItems,
-          copy.noRelatedRecords
-        )}
       </div>
       <div class="resource-workspace-column stack">
         <article class="panel panel-nested detail-shell">
@@ -460,12 +454,6 @@ function renderNodeWorkspacePanel(args: {
             )}</a>
           </div>
         </article>
-        ${renderers.renderRelatedPanel(
-          copy.backupsTitle,
-          copy.backupCoverageDescription,
-          nodeBackupItems,
-          copy.noRelatedRecords
-        )}
       </div>
       <div class="resource-workspace-column stack">
         <article class="panel panel-nested detail-shell">

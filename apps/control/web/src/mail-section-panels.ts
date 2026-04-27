@@ -520,9 +520,32 @@ export function renderMailSectionContent(args: {
     ].join(" ")
   }));
 
-  const mailboxRows: DataTableRow[] = data.mail.mailboxes.map((mailbox) => {
+  const scopedMailboxes = selectedDomain
+    ? data.mail.mailboxes.filter((mailbox) => mailbox.domainName === selectedDomain.domainName)
+    : data.mail.mailboxes;
+  const scopedAliases = selectedDomain
+    ? data.mail.aliases.filter((alias) => alias.domainName === selectedDomain.domainName)
+    : data.mail.aliases;
+  const selectedDomainNodeIds = selectedDomain
+    ? new Set(
+        [selectedDomain.primaryNodeId, selectedDomain.standbyNodeId].filter(
+          (nodeId): nodeId is string => Boolean(nodeId)
+        )
+      )
+    : undefined;
+  const scopedMailRuntimeNodes = selectedDomainNodeIds
+    ? mailRuntimeNodes.filter((node) => selectedDomainNodeIds.has(node.nodeId))
+    : mailRuntimeNodes;
+
+  const mailboxRows: DataTableRow[] = scopedMailboxes.map((mailbox) => {
     const mailboxUsage = findMailboxUsage(mailbox);
     const mailboxSize = formatMailboxSize(mailboxUsage?.usedBytes);
+    const webmailHref =
+      mailbox.hasCredential && mailbox.credentialState !== "reset_required"
+        ? `/resources/mail/mailboxes/open-webmail?mailboxAddress=${encodeURIComponent(
+            mailbox.address
+          )}&returnTo=${encodeURIComponent(returnTo)}`
+        : undefined;
 
     return {
       selectionKey: mailbox.address,
@@ -543,7 +566,7 @@ export function renderMailSectionContent(args: {
           `mail-mailbox-edit-${toModalIdSegment(mailbox.address)}`,
           `mail-mailbox-delete-${toModalIdSegment(mailbox.address)}`,
           {
-            rotateModalId: `mail-mailbox-rotate-${toModalIdSegment(mailbox.address)}`,
+            webmailHref,
             resetModalId: `mail-mailbox-reset-${toModalIdSegment(mailbox.address)}`
           }
         )
@@ -561,7 +584,7 @@ export function renderMailSectionContent(args: {
     };
   });
 
-  const aliasRows: DataTableRow[] = data.mail.aliases.map((alias) => ({
+  const aliasRows: DataTableRow[] = scopedAliases.map((alias) => ({
     selectionKey: alias.address,
     selected: selectedAlias?.address === alias.address,
     cells: [
@@ -580,7 +603,7 @@ export function renderMailSectionContent(args: {
     searchText: [alias.address, alias.domainName, alias.localPart, ...alias.destinations].join(" ")
   }));
 
-  const runtimeRows: DataTableRow[] = mailRuntimeNodes.map((node) => ({
+  const runtimeRows: DataTableRow[] = scopedMailRuntimeNodes.map((node) => ({
     selectionKey: node.nodeId,
     cells: [
       `<div class="mail-node-runtime-cell">
@@ -1239,17 +1262,19 @@ export function renderMailSectionContent(args: {
   function renderRowActionButtons(
     editModalId: string,
     deleteModalId: string,
-    options?: { rotateModalId?: string; resetModalId?: string }
+    options?: { webmailHref?: string; resetModalId?: string }
   ): string {
     return `<div class="table-row-actions">
       <button type="button" class="secondary" data-overlay-trigger data-modal-id="${escapeHtml(
         editModalId
       )}">${escapeHtml(mailCopy.editLabel)}</button>
       ${
-        options?.rotateModalId
-          ? `<button type="button" class="secondary" data-overlay-trigger data-modal-id="${escapeHtml(
-              options.rotateModalId
-            )}">${escapeHtml(mailCopy.rotateLabel)}</button>`
+        options?.webmailHref
+          ? `<a class="button-link secondary" href="${escapeHtml(
+              options.webmailHref
+            )}" target="_blank" rel="noopener noreferrer">${escapeHtml(
+              mailCopy.openWebmailLabel
+            )}</a>`
           : ""
       }
       ${
@@ -1277,17 +1302,24 @@ export function renderMailSectionContent(args: {
 
   const createMailboxDefaults = {
     address: "",
-    domainName: mailDomainOptions[0]?.value ?? selectedMailboxDefaults.domainName,
+    domainName:
+      selectedDomain?.domainName ??
+      mailDomainOptions[0]?.value ??
+      selectedMailboxDefaults.domainName,
     localPart: "",
-    primaryNodeId: nodeOptions[0]?.value ?? selectedMailboxDefaults.primaryNodeId,
-    standbyNodeId: "",
+    primaryNodeId:
+      selectedDomain?.primaryNodeId ?? nodeOptions[0]?.value ?? selectedMailboxDefaults.primaryNodeId,
+    standbyNodeId: selectedDomain?.standbyNodeId ?? "",
     credentialState: "configured" as const,
     quotaBytes: undefined as number | undefined
   };
 
   const createAliasDefaults = {
     address: "",
-    domainName: mailDomainOptions[0]?.value ?? selectedAliasDefaults.domainName,
+    domainName:
+      selectedDomain?.domainName ??
+      mailDomainOptions[0]?.value ??
+      selectedAliasDefaults.domainName,
     localPart: "",
     destinations: [] as string[]
   };
@@ -1637,22 +1669,6 @@ export function renderMailSectionContent(args: {
             "edit",
             true
           )
-        ),
-        renderModalShell(
-          `mail-mailbox-rotate-${toModalIdSegment(mailbox.address)}`,
-          mailCopy.rotateLabel,
-          mailCopy.credentialRevealDescription,
-          `<div class="action-card-context">
-            <span class="action-card-context-title">${escapeHtml(mailCopy.credentialRevealMailboxLabel)}</span>
-            <p class="mono">${escapeHtml(mailbox.address)}</p>
-          </div>
-          <form method="post" action="/resources/mail/mailboxes/rotate-credential" class="stack">
-            <input type="hidden" name="mailboxAddress" value="${escapeHtml(mailbox.address)}" />
-            <input type="hidden" name="returnTo" value="${escapeHtml(returnTo)}" />
-            <div class="toolbar">
-              <button class="secondary" type="submit">${escapeHtml(mailCopy.rotateLabel)}</button>
-            </div>
-          </form>`
         ),
         renderModalShell(
           resetModalId,

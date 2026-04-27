@@ -108,6 +108,23 @@ export const handleMailRoutes: ApiRouteHandler = async ({
     return true;
   }
 
+  const webmailAutologinMatch = matchRoute(
+    url.pathname,
+    /^\/v1\/mail\/mailboxes\/webmail-autologin\/([^/]+)$/
+  );
+
+  if (request.method === "GET" && webmailAutologinMatch) {
+    writeJson(
+      response,
+      200,
+      await controlPlaneStore.getMailboxWebmailAutologin(
+        decodeURIComponent(webmailAutologinMatch[1] ?? ""),
+        bearerToken
+      )
+    );
+    return true;
+  }
+
   const consumeCredentialRevealMatch = matchRoute(
     url.pathname,
     /^\/v1\/mail\/mailboxes\/credential-reveals\/([^/]+)$/

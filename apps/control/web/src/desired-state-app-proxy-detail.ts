@@ -166,12 +166,6 @@ export function renderProxyDetailPanel(args: RenderAppProxyDesiredStatePanelsArg
       </article>
     </div>
     ${renderers.renderRelatedPanel(
-      copy.backupsTitle,
-      copy.backupCoverageDescription,
-      proxyBackupItems,
-      copy.noRelatedRecords
-    )}
-    ${renderers.renderRelatedPanel(
       copy.relatedResourcesTitle,
       copy.relatedResourcesDescription,
       [

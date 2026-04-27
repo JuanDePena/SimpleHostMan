@@ -25,6 +25,7 @@ import type {
   JobHistoryEntry,
   MailboxCredentialMutationResult,
   MailboxCredentialReveal,
+  MailboxWebmailAutologin,
   JobReportRequest,
   MailOverview,
   NodeHealthSnapshot,
@@ -184,7 +185,9 @@ export interface InventoryDatabaseRow {
 export interface ZoneDispatchRow {
   zone_name: string;
   primary_node_id: string;
+  hostname: string;
   public_ipv4: string;
+  wireguard_address: string;
   desired_updated_at: Date | string;
 }
 
@@ -532,6 +535,10 @@ export interface ControlPlaneStore {
     request: RotateMailboxCredentialRequest,
     presentedToken: string | null
   ): Promise<MailboxCredentialMutationResult>;
+  getMailboxWebmailAutologin(
+    mailboxAddress: string,
+    presentedToken: string | null
+  ): Promise<MailboxWebmailAutologin>;
   consumeMailboxCredentialReveal(
     revealId: string,
     presentedToken: string | null
@@ -586,6 +593,7 @@ export type ControlPlaneSpecMethods = Pick<
   | "upsertMailboxQuota"
   | "resetMailboxCredential"
   | "rotateMailboxCredential"
+  | "getMailboxWebmailAutologin"
   | "consumeMailboxCredentialReveal"
   | "deleteMailboxQuota"
 >;

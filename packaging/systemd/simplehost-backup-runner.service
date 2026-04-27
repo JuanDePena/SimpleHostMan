@@ -1,0 +1,11 @@
+# /etc/systemd/system/simplehost-backup-runner.service
+[Unit]
+Description=SimpleHost Backup Runner
+After=network-online.target postgresql@control.service postgresql@apps.service mariadb-primary.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/simplehostman/release/current
+ExecStart=/usr/bin/node /opt/simplehostman/release/current/apps/worker/dist/backup-cycle.js
+

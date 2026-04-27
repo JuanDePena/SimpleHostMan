@@ -17,6 +17,7 @@ import {
   type JobHistoryEntry,
   type MailboxCredentialMutationResult,
   type MailboxCredentialReveal,
+  type MailboxWebmailAutologin,
   type MailOverview,
   type NodeHealthSnapshot,
   type OperationsOverview,
@@ -116,6 +117,10 @@ export interface ControlWebApi extends ControlAuthSurface {
     token: string,
     request: RotateMailboxCredentialRequest
   ): Promise<MailboxCredentialMutationResult>;
+  getMailboxWebmailAutologin(
+    token: string,
+    mailboxAddress: string
+  ): Promise<MailboxWebmailAutologin>;
   consumeMailboxCredentialReveal(
     token: string,
     revealId: string
@@ -409,6 +414,15 @@ export function createControlWebApiFromRequest(request: ControlWebApiRequest): C
         token,
         body: rotateRequest
       });
+    },
+    async getMailboxWebmailAutologin(
+      token: string,
+      mailboxAddress: string
+    ): Promise<MailboxWebmailAutologin> {
+      return request<MailboxWebmailAutologin>(
+        `/v1/mail/mailboxes/webmail-autologin/${encodeURIComponent(mailboxAddress)}`,
+        { token }
+      );
     },
     async consumeMailboxCredentialReveal(
       token: string,

@@ -311,12 +311,6 @@ function renderZoneWorkspacePanel(args: {
             )}">${escapeHtml(copy.openNodeHealth)}</a>
           </div>
         </article>
-        ${renderers.renderRelatedPanel(
-          copy.backupsTitle,
-          copy.backupCoverageDescription,
-          zoneBackupItems,
-          copy.noRelatedRecords
-        )}
       </div>
       <div class="resource-workspace-column stack">
         <article class="panel panel-nested detail-shell">

@@ -594,148 +594,133 @@ export async function buildDesiredStateSpecFromDatabase(
   client: PoolClient,
   payloadKey: Buffer | null
 ): Promise<DesiredStateSpec> {
-  const [
-    tenantResult,
-    nodeResult,
-    zoneResult,
-    recordResult,
-    appResult,
-    databaseResult,
-    backupPolicyResult,
-    mailPolicyResult,
-    mailDomainResult,
-    mailboxResult,
-    mailAliasResult,
-    mailboxQuotaResult
-  ] = await Promise.all([
-    client.query<{ slug: string; display_name: string }>(
-      `SELECT slug, display_name
-       FROM shp_tenants
-       ORDER BY slug ASC`
-    ),
-    client.query<InventoryNodeRow>(
-      `SELECT node_id, hostname, public_ipv4, wireguard_address
-       FROM shp_nodes
-       ORDER BY node_id ASC`
-    ),
-    client.query<InventoryZoneRow>(
-      `SELECT
-         zone_id,
-         zones.zone_name,
-         tenants.slug AS tenant_slug,
-         zones.primary_node_id
-       FROM shp_dns_zones zones
-       INNER JOIN shp_tenants tenants
-         ON tenants.tenant_id = zones.tenant_id
-       ORDER BY zones.zone_name ASC`
-    ),
-    client.query<InventoryRecordRow>(
-      `SELECT
-         zones.zone_name,
-         records.name,
-         records.type,
-         records.value,
-         records.ttl
-       FROM shp_dns_records records
-       INNER JOIN shp_dns_zones zones
-         ON zones.zone_id = records.zone_id
-       ORDER BY zones.zone_name ASC, records.name ASC, records.type ASC, records.value ASC`
-    ),
-    client.query<InventoryAppRow>(
-      `SELECT
-         apps.slug,
-         tenants.slug AS tenant_slug,
-         zones.zone_name,
-         apps.primary_node_id,
-         apps.standby_node_id,
-         sites.canonical_domain,
-         sites.aliases,
-         apps.backend_port,
-         apps.runtime_image,
-         apps.storage_root,
-         apps.mode
-       FROM shp_apps apps
-       INNER JOIN shp_tenants tenants
-         ON tenants.tenant_id = apps.tenant_id
-       INNER JOIN shp_dns_zones zones
-         ON zones.zone_id = apps.zone_id
-       INNER JOIN shp_sites sites
-         ON sites.app_id = apps.app_id
-       ORDER BY apps.slug ASC`
-    ),
-    client.query<InventoryDatabaseRow>(
-      `SELECT
-         databases.database_id,
-         apps.slug AS app_slug,
-         databases.engine,
-         databases.database_name,
-         databases.database_user,
-         databases.primary_node_id,
-         databases.standby_node_id,
-         databases.pending_migration_to,
-         databases.migration_completed_from,
-         databases.migration_completed_at,
-         credentials.secret_payload AS desired_password
-       FROM shp_databases databases
-       INNER JOIN shp_apps apps
-         ON apps.app_id = databases.app_id
-       LEFT JOIN shp_database_credentials credentials
-         ON credentials.database_id = databases.database_id
-       ORDER BY apps.slug ASC`
-    ),
-    client.query<BackupPolicyRow>(
-      `SELECT
-         policies.policy_slug,
-         tenants.slug AS tenant_slug,
-         policies.target_node_id,
-         policies.schedule,
-         policies.retention_days,
-         policies.storage_location,
-         policies.resource_selectors
-       FROM shp_backup_policies policies
-       INNER JOIN shp_tenants tenants
-         ON tenants.tenant_id = policies.tenant_id
-       ORDER BY policies.policy_slug ASC`
-    ),
-    queryMailPolicyRows(client),
-    client.query<MailDomainRow>(
-      `SELECT
-         domains.domain_name,
-         tenants.slug AS tenant_slug,
-         zones.zone_name,
-         domains.primary_node_id,
-         domains.standby_node_id,
-         domains.mail_host,
-         domains.dkim_selector
-       FROM shp_mail_domains domains
-       INNER JOIN shp_tenants tenants
-         ON tenants.tenant_id = domains.tenant_id
-       INNER JOIN shp_dns_zones zones
-         ON zones.zone_id = domains.zone_id
-       ORDER BY domains.domain_name ASC`
-    ),
-    queryMailboxRows(client),
-    client.query<MailAliasRow>(
-      `SELECT
-         aliases.address,
-         domains.domain_name,
-         aliases.local_part,
-         aliases.destinations
-       FROM shp_mail_aliases aliases
-       INNER JOIN shp_mail_domains domains
-         ON domains.mail_domain_id = aliases.mail_domain_id
-       ORDER BY aliases.address ASC`
-    ),
-    client.query<MailboxQuotaRow>(
-      `SELECT
-         mailboxes.address AS mailbox_address,
-         quotas.storage_bytes
-       FROM shp_mailbox_quotas quotas
-       INNER JOIN shp_mailboxes mailboxes
-         ON mailboxes.mailbox_id = quotas.mailbox_id
-       ORDER BY mailboxes.address ASC`
-    )
-  ]);
+  const tenantResult = await client.query<{ slug: string; display_name: string }>(
+    `SELECT slug, display_name
+     FROM shp_tenants
+     ORDER BY slug ASC`
+  );
+  const nodeResult = await client.query<InventoryNodeRow>(
+    `SELECT node_id, hostname, public_ipv4, wireguard_address
+     FROM shp_nodes
+     ORDER BY node_id ASC`
+  );
+  const zoneResult = await client.query<InventoryZoneRow>(
+    `SELECT
+       zone_id,
+       zones.zone_name,
+       tenants.slug AS tenant_slug,
+       zones.primary_node_id
+     FROM shp_dns_zones zones
+     INNER JOIN shp_tenants tenants
+       ON tenants.tenant_id = zones.tenant_id
+     ORDER BY zones.zone_name ASC`
+  );
+  const recordResult = await client.query<InventoryRecordRow>(
+    `SELECT
+       zones.zone_name,
+       records.name,
+       records.type,
+       records.value,
+       records.ttl
+     FROM shp_dns_records records
+     INNER JOIN shp_dns_zones zones
+       ON zones.zone_id = records.zone_id
+     ORDER BY zones.zone_name ASC, records.name ASC, records.type ASC, records.value ASC`
+  );
+  const appResult = await client.query<InventoryAppRow>(
+    `SELECT
+       apps.slug,
+       tenants.slug AS tenant_slug,
+       zones.zone_name,
+       apps.primary_node_id,
+       apps.standby_node_id,
+       sites.canonical_domain,
+       sites.aliases,
+       apps.backend_port,
+       apps.runtime_image,
+       apps.storage_root,
+       apps.mode
+     FROM shp_apps apps
+     INNER JOIN shp_tenants tenants
+       ON tenants.tenant_id = apps.tenant_id
+     INNER JOIN shp_dns_zones zones
+       ON zones.zone_id = apps.zone_id
+     INNER JOIN shp_sites sites
+       ON sites.app_id = apps.app_id
+     ORDER BY apps.slug ASC`
+  );
+  const databaseResult = await client.query<InventoryDatabaseRow>(
+    `SELECT
+       databases.database_id,
+       apps.slug AS app_slug,
+       databases.engine,
+       databases.database_name,
+       databases.database_user,
+       databases.primary_node_id,
+       databases.standby_node_id,
+       databases.pending_migration_to,
+       databases.migration_completed_from,
+       databases.migration_completed_at,
+       credentials.secret_payload AS desired_password
+     FROM shp_databases databases
+     INNER JOIN shp_apps apps
+       ON apps.app_id = databases.app_id
+     LEFT JOIN shp_database_credentials credentials
+       ON credentials.database_id = databases.database_id
+     ORDER BY apps.slug ASC`
+  );
+  const backupPolicyResult = await client.query<BackupPolicyRow>(
+    `SELECT
+       policies.policy_slug,
+       tenants.slug AS tenant_slug,
+       policies.target_node_id,
+       policies.schedule,
+       policies.retention_days,
+       policies.storage_location,
+       policies.resource_selectors
+     FROM shp_backup_policies policies
+     INNER JOIN shp_tenants tenants
+       ON tenants.tenant_id = policies.tenant_id
+     ORDER BY policies.policy_slug ASC`
+  );
+  const mailPolicyResult = await queryMailPolicyRows(client);
+  const mailDomainResult = await client.query<MailDomainRow>(
+    `SELECT
+       domains.domain_name,
+       tenants.slug AS tenant_slug,
+       zones.zone_name,
+       domains.primary_node_id,
+       domains.standby_node_id,
+       domains.mail_host,
+       domains.dkim_selector
+     FROM shp_mail_domains domains
+     INNER JOIN shp_tenants tenants
+       ON tenants.tenant_id = domains.tenant_id
+     INNER JOIN shp_dns_zones zones
+       ON zones.zone_id = domains.zone_id
+     ORDER BY domains.domain_name ASC`
+  );
+  const mailboxResult = await queryMailboxRows(client);
+  const mailAliasResult = await client.query<MailAliasRow>(
+    `SELECT
+       aliases.address,
+       domains.domain_name,
+       aliases.local_part,
+       aliases.destinations
+     FROM shp_mail_aliases aliases
+     INNER JOIN shp_mail_domains domains
+       ON domains.mail_domain_id = aliases.mail_domain_id
+     ORDER BY aliases.address ASC`
+  );
+  const mailboxQuotaResult = await client.query<MailboxQuotaRow>(
+    `SELECT
+       mailboxes.address AS mailbox_address,
+       quotas.storage_bytes
+     FROM shp_mailbox_quotas quotas
+     INNER JOIN shp_mailboxes mailboxes
+       ON mailboxes.mailbox_id = quotas.mailbox_id
+     ORDER BY mailboxes.address ASC`
+  );
 
   const recordsByZone = new Map<string, DnsRecordPayload[]>();
 
@@ -3006,6 +2991,37 @@ export function createControlPlaneSpecMethods(
           credentialState: "configured",
           action: "rotated",
           revealId
+        };
+      });
+    },
+
+    async getMailboxWebmailAutologin(mailboxAddress, presentedToken) {
+      return withTransaction(pool, async (client) => {
+        await requireAuthorizedUser(client, presentedToken, [
+          "platform_admin",
+          "platform_operator"
+        ]);
+        const currentSpec = await buildDesiredStateSpecFromDatabase(client, jobPayloadKey);
+        const existingMailbox = currentSpec.mailboxes.find(
+          (mailbox) => mailbox.address === mailboxAddress
+        );
+
+        if (!existingMailbox) {
+          throw new Error(`Mailbox ${mailboxAddress} does not exist.`);
+        }
+
+        const credential = existingMailbox.desiredPassword?.trim();
+
+        if (!credential) {
+          throw new Error(
+            `Mailbox ${mailboxAddress} does not currently have a usable credential for webmail autologin.`
+          );
+        }
+
+        return {
+          mailboxAddress: existingMailbox.address,
+          webmailHostname: `webmail.${existingMailbox.domainName}`,
+          credential
         };
       });
     },

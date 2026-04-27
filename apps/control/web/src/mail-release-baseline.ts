@@ -13,7 +13,7 @@ export interface MailReleaseBaselineResult {
   checks: MailReleaseBaselineCheck[];
 }
 
-function createMailReleaseBaselineData(): DashboardData {
+export function createMailReleaseBaselineData(): DashboardData {
   return {
     currentUser: {
       userId: "user-1",

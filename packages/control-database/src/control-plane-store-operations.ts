@@ -430,15 +430,17 @@ export async function buildMailProxyPlans(
   );
 }
 
-export async function buildZoneDnsPayload(
+export async function buildZoneDnsPlans(
   client: PoolClient,
   zoneName: string
-): Promise<{ nodeId: string; payload: DnsSyncPayload }> {
+): Promise<Array<{ nodeId: string; payload: DnsSyncPayload }>> {
   const zoneResult = await client.query<ZoneDispatchRow>(
     `SELECT
        zones.zone_name,
        zones.primary_node_id,
+       nodes.hostname,
        nodes.public_ipv4,
+       nodes.wireguard_address,
        GREATEST(
          zones.updated_at,
          nodes.updated_at,
@@ -465,7 +467,9 @@ export async function buildZoneDnsPayload(
      GROUP BY
        zones.zone_name,
        zones.primary_node_id,
+       nodes.hostname,
        nodes.public_ipv4,
+       nodes.wireguard_address,
        nodes.updated_at,
        zones.updated_at`,
     [zoneName]
@@ -474,6 +478,39 @@ export async function buildZoneDnsPayload(
 
   if (!zone) {
     throw new Error(`Zone ${zoneName} does not exist in SimpleHost Control inventory.`);
+  }
+
+  const nodeResult = await client.query<InventoryNodeRow>(
+    `SELECT
+       node_id,
+       hostname,
+       public_ipv4,
+       wireguard_address
+     FROM shp_nodes
+     ORDER BY
+       CASE WHEN node_id = $1 THEN 0 ELSE 1 END,
+       node_id ASC`,
+    [zone.primary_node_id]
+  );
+  const targetNodes = nodeResult.rows;
+  const nameservers = targetNodes.map((row) => row.hostname).slice(0, 2);
+
+  if (nameservers.length < 2) {
+    throw new Error(
+      `Zone ${zoneName} requires at least two inventory nodes to publish authoritative nameservers.`
+    );
+  }
+
+  const primaryAddresses = Array.from(
+    new Set(
+      [zone.public_ipv4, stripCidrSuffix(zone.wireguard_address)].filter(
+        (value): value is string => Boolean(value)
+      )
+    )
+  );
+
+  if (primaryAddresses.length === 0) {
+    throw new Error(`Zone ${zoneName} does not have any reachable primary node addresses.`);
   }
 
   const recordResult = await client.query<InventoryRecordRow>(
@@ -598,19 +635,24 @@ export async function buildZoneDnsPayload(
     mailDomainResult.rows,
     dkimRuntimeRecords
   );
-
-  return {
-    nodeId: zone.primary_node_id,
-    payload: {
-      zoneName,
-      serial: Math.max(1, Math.floor(new Date(zone.desired_updated_at).getTime() / 1000)),
-      nameservers: [`ns1.${zoneName}`, `ns2.${zoneName}`],
-      records: mergeDerivedDnsRecords(explicitRecords, [
-        ...derivedSiteRecords,
-        ...derivedMailRecords
-      ])
-    }
+  const payloadBase: Omit<DnsSyncPayload, "deliveryRole"> = {
+    zoneName,
+    serial: Math.max(1, Math.floor(new Date(zone.desired_updated_at).getTime() / 1000)),
+    nameservers,
+    primaryAddresses,
+    records: mergeDerivedDnsRecords(explicitRecords, [
+      ...derivedSiteRecords,
+      ...derivedMailRecords
+    ])
   };
+
+  return targetNodes.map((node) => ({
+    nodeId: node.node_id,
+    payload: {
+      ...payloadBase,
+      deliveryRole: node.node_id === zone.primary_node_id ? "primary" : "secondary"
+    }
+  }));
 }
 
 function stripCidrSuffix(value: string | null | undefined): string | undefined {
@@ -1156,24 +1198,24 @@ export async function buildReconciliationCandidates(
   );
 
   for (const row of zoneResult.rows) {
-    const plan = await buildZoneDnsPayload(client, row.zone_name);
+    for (const plan of await buildZoneDnsPlans(client, row.zone_name)) {
+      if (plan.payload.records.length === 0) {
+        continue;
+      }
 
-    if (plan.payload.records.length === 0) {
-      continue;
+      jobs.push(
+        createQueuedDispatchJob(
+          createDispatchedJobEnvelope(
+            "dns.sync",
+            plan.nodeId,
+            desiredStateVersion,
+            plan.payload as unknown as Record<string, unknown>
+          ),
+          `zone:${row.zone_name}`,
+          "dns"
+        )
+      );
     }
-
-    jobs.push(
-      createQueuedDispatchJob(
-        createDispatchedJobEnvelope(
-          "dns.sync",
-          plan.nodeId,
-          desiredStateVersion,
-          plan.payload as unknown as Record<string, unknown>
-        ),
-        `zone:${row.zone_name}`,
-        "dns"
-      )
-    );
   }
 
   const appResult = await client.query<{ slug: string }>(
@@ -1311,19 +1353,18 @@ export function createControlPlaneOperationsMethods(
           "platform_operator"
         ]);
         const desiredStateVersion = createDesiredStateVersion();
-        const { nodeId, payload } = await buildZoneDnsPayload(client, zoneName);
-        const jobs = [
+        const jobs = (await buildZoneDnsPlans(client, zoneName)).map((plan) =>
           createQueuedDispatchJob(
             createDispatchedJobEnvelope(
               "dns.sync",
-              nodeId,
+              plan.nodeId,
               desiredStateVersion,
-              payload as unknown as Record<string, unknown>
+              plan.payload as unknown as Record<string, unknown>
             ),
             `zone:${zoneName}`,
             "dns"
           )
-        ];
+        );
 
         await insertDispatchedJobs(
           client,
@@ -1407,20 +1448,20 @@ export function createControlPlaneOperationsMethods(
         }
 
         if (includeDns) {
-          const dnsPlan = await buildZoneDnsPayload(client, proxyPlan.zoneName);
-
-          jobs.push(
-            createQueuedDispatchJob(
-              createDispatchedJobEnvelope(
-                "dns.sync",
-                dnsPlan.nodeId,
-                desiredStateVersion,
-                dnsPlan.payload as unknown as Record<string, unknown>
-              ),
-              `zone:${proxyPlan.zoneName}`,
-              "dns"
-            )
-          );
+          for (const dnsPlan of await buildZoneDnsPlans(client, proxyPlan.zoneName)) {
+            jobs.push(
+              createQueuedDispatchJob(
+                createDispatchedJobEnvelope(
+                  "dns.sync",
+                  dnsPlan.nodeId,
+                  desiredStateVersion,
+                  dnsPlan.payload as unknown as Record<string, unknown>
+                ),
+                `zone:${proxyPlan.zoneName}`,
+                "dns"
+              )
+            );
+          }
         }
 
         if (jobs.length === 0) {
