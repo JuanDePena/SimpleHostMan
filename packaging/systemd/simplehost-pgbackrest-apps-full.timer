@@ -1,0 +1,11 @@
+[Unit]
+Description=SimpleHost pgBackRest weekly full backup for postgresql@apps
+
+[Timer]
+OnCalendar=Sun *-*-* 04:35:00
+Persistent=true
+RandomizedDelaySec=120
+Unit=simplehost-pgbackrest-apps-full.service
+
+[Install]
+WantedBy=timers.target

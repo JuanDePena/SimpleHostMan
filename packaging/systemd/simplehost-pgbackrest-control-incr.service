@@ -1,0 +1,10 @@
+[Unit]
+Description=SimpleHost pgBackRest incremental backup for postgresql@control
+Wants=network-online.target
+After=network-online.target postgresql@control.service
+
+[Service]
+Type=oneshot
+User=postgres
+Group=postgres
+ExecStart=/usr/bin/pgbackrest --stanza=control --type=incr backup

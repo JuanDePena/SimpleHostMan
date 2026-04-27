@@ -173,6 +173,16 @@ Back up at minimum:
 
 Do not treat container images in a registry as a substitute for configuration backup.
 
+SimpleHostMan backup policies should use explicit app file selectors for bind
+mount coverage:
+
+- `app-files:<slug>`
+- `storage-root:<slug>`
+
+The runner archives the configured `storageRoot` for the selected app. Keep
+database backups in separate policies so a static app file archive does not get
+mixed with database dump retention.
+
 ## Validation
 
 Example validation commands:

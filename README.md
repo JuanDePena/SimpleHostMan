@@ -170,6 +170,7 @@ If you need implementation details, architecture, or runbooks, start here:
 - [Repo Layout](/opt/simplehostman/src/docs/REPO_LAYOUT.md)
 - [Workspace Guide](/opt/simplehostman/src/docs/AGENTS.md)
 - [Database Platform](/opt/simplehostman/src/docs/DATABASES.md)
+- [Backups](/opt/simplehostman/src/docs/BACKUPS.md)
 - [PostgreSQL Upgrade Path](/opt/simplehostman/src/docs/POSTGRESQL_UPGRADE.md)
 
 If you need detailed boundaries for the main product surfaces:

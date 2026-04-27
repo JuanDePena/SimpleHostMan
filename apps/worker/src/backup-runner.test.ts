@@ -3,8 +3,10 @@ import test from "node:test";
 
 import {
   matchesCronExpression,
+  policyCoversAppFiles,
   policyCoversDatabase,
   policyCoversMailDomain,
+  policyCoversPostgresqlControl,
   resolveLocalNodeId,
   shouldRunPolicyAtTime
 } from "./backup-runner.js";
@@ -138,3 +140,72 @@ test("policyCoversDatabase recognizes app and database selectors", () => {
   );
 });
 
+test("policyCoversAppFiles recognizes explicit app file selectors", () => {
+  const policy = {
+    policySlug: "files-adudoc-daily",
+    tenantSlug: "adudoc",
+    targetNodeId: "primary",
+    schedule: "15 2 * * *",
+    retentionDays: 14,
+    storageLocation: "/srv/backups/apps/adudoc",
+    resourceSelectors: ["app-files:adudoc"]
+  };
+
+  assert.equal(
+    policyCoversAppFiles(policy, {
+      slug: "adudoc",
+      tenantSlug: "adudoc",
+      zoneName: "adudoc.com",
+      primaryNodeId: "primary",
+      canonicalDomain: "adudoc.com",
+      aliases: ["www.adudoc.com"],
+      backendPort: 10301,
+      runtimeImage: "registry.example.com/adudoc-app:stable",
+      storageRoot: "/srv/containers/apps/adudoc",
+      mode: "active-passive"
+    }),
+    true
+  );
+  assert.equal(
+    policyCoversAppFiles(policy, {
+      slug: "gomezrosado",
+      tenantSlug: "gomezrosado",
+      zoneName: "gomezrosado.com.do",
+      primaryNodeId: "primary",
+      canonicalDomain: "gomezrosado.com.do",
+      aliases: ["www.gomezrosado.com.do"],
+      backendPort: 10201,
+      runtimeImage: "registry.example.com/gomezrosado-app:stable",
+      storageRoot: "/srv/containers/apps/gomezrosado",
+      mode: "active-passive"
+    }),
+    false
+  );
+});
+
+test("policyCoversPostgresqlControl recognizes control cluster selectors", () => {
+  assert.equal(
+    policyCoversPostgresqlControl({
+      policySlug: "control-db-daily",
+      tenantSlug: "pyrosa",
+      targetNodeId: "primary",
+      schedule: "20 2 * * *",
+      retentionDays: 14,
+      storageLocation: "/srv/backups/postgresql-control/logical",
+      resourceSelectors: ["postgresql-cluster:control"]
+    }),
+    true
+  );
+  assert.equal(
+    policyCoversPostgresqlControl({
+      policySlug: "db-adudoc-daily",
+      tenantSlug: "adudoc",
+      targetNodeId: "primary",
+      schedule: "0 1 * * *",
+      retentionDays: 14,
+      storageLocation: "/srv/backups/databases/adudoc",
+      resourceSelectors: ["app:adudoc", "database:app_adudoc"]
+    }),
+    false
+  );
+});

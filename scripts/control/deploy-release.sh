@@ -72,16 +72,16 @@ activate_local() {
   systemctl daemon-reload
 
   if [[ "${mode}" == "disabled" ]]; then
-    systemctl disable simplehost-control.service simplehost-worker.service simplehost-backup-runner.timer || true
-    systemctl stop simplehost-control.service simplehost-worker.service simplehost-backup-runner.timer simplehost-backup-runner.service || true
+    systemctl disable simplehost-control.service simplehost-worker.service simplehost-backup-runner.timer simplehost-pgbackrest-control-full.timer simplehost-pgbackrest-control-incr.timer simplehost-pgbackrest-apps-full.timer simplehost-pgbackrest-apps-incr.timer simplehost-pgbackrest-offhost-sync.timer || true
+    systemctl stop simplehost-control.service simplehost-worker.service simplehost-backup-runner.timer simplehost-backup-runner.service simplehost-pgbackrest-control-full.timer simplehost-pgbackrest-control-incr.timer simplehost-pgbackrest-apps-full.timer simplehost-pgbackrest-apps-incr.timer simplehost-pgbackrest-offhost-sync.timer simplehost-pgbackrest-offhost-sync.service || true
     echo "Installed control runtime ${version} locally in disabled mode"
     return
   fi
 
-  systemctl enable simplehost-control.service simplehost-worker.service simplehost-backup-runner.timer
+  systemctl enable simplehost-control.service simplehost-worker.service simplehost-backup-runner.timer simplehost-pgbackrest-control-full.timer simplehost-pgbackrest-control-incr.timer simplehost-pgbackrest-apps-full.timer simplehost-pgbackrest-apps-incr.timer simplehost-pgbackrest-offhost-sync.timer
   systemctl restart simplehost-control.service simplehost-worker.service
-  systemctl restart simplehost-backup-runner.timer
-  systemctl is-active simplehost-control.service simplehost-worker.service simplehost-backup-runner.timer
+  systemctl restart simplehost-backup-runner.timer simplehost-pgbackrest-control-full.timer simplehost-pgbackrest-control-incr.timer simplehost-pgbackrest-apps-full.timer simplehost-pgbackrest-apps-incr.timer simplehost-pgbackrest-offhost-sync.timer
+  systemctl is-active simplehost-control.service simplehost-worker.service simplehost-backup-runner.timer simplehost-pgbackrest-control-full.timer simplehost-pgbackrest-control-incr.timer simplehost-pgbackrest-apps-full.timer simplehost-pgbackrest-apps-incr.timer simplehost-pgbackrest-offhost-sync.timer
   echo "Installed control runtime ${version} locally in active mode"
 }
 
@@ -97,6 +97,17 @@ activate_remote() {
      install -m 0644 '${remote_release_dir}/packaging/systemd/simplehost-worker.service' /etc/systemd/system/simplehost-worker.service && \
      install -m 0644 '${remote_release_dir}/packaging/systemd/simplehost-backup-runner.service' /etc/systemd/system/simplehost-backup-runner.service && \
      install -m 0644 '${remote_release_dir}/packaging/systemd/simplehost-backup-runner.timer' /etc/systemd/system/simplehost-backup-runner.timer && \
+     install -m 0644 '${remote_release_dir}/packaging/systemd/simplehost-pgbackrest-control-full.service' /etc/systemd/system/simplehost-pgbackrest-control-full.service && \
+     install -m 0644 '${remote_release_dir}/packaging/systemd/simplehost-pgbackrest-control-full.timer' /etc/systemd/system/simplehost-pgbackrest-control-full.timer && \
+     install -m 0644 '${remote_release_dir}/packaging/systemd/simplehost-pgbackrest-control-incr.service' /etc/systemd/system/simplehost-pgbackrest-control-incr.service && \
+     install -m 0644 '${remote_release_dir}/packaging/systemd/simplehost-pgbackrest-control-incr.timer' /etc/systemd/system/simplehost-pgbackrest-control-incr.timer && \
+     install -m 0644 '${remote_release_dir}/packaging/systemd/simplehost-pgbackrest-apps-full.service' /etc/systemd/system/simplehost-pgbackrest-apps-full.service && \
+     install -m 0644 '${remote_release_dir}/packaging/systemd/simplehost-pgbackrest-apps-full.timer' /etc/systemd/system/simplehost-pgbackrest-apps-full.timer && \
+     install -m 0644 '${remote_release_dir}/packaging/systemd/simplehost-pgbackrest-apps-incr.service' /etc/systemd/system/simplehost-pgbackrest-apps-incr.service && \
+     install -m 0644 '${remote_release_dir}/packaging/systemd/simplehost-pgbackrest-apps-incr.timer' /etc/systemd/system/simplehost-pgbackrest-apps-incr.timer && \
+     install -m 0644 '${remote_release_dir}/packaging/systemd/simplehost-pgbackrest-offhost-sync.service' /etc/systemd/system/simplehost-pgbackrest-offhost-sync.service && \
+     install -m 0644 '${remote_release_dir}/packaging/systemd/simplehost-pgbackrest-offhost-sync.timer' /etc/systemd/system/simplehost-pgbackrest-offhost-sync.timer && \
+     install -m 0644 '${remote_release_dir}/packaging/pgbackrest/pgbackrest.conf' /etc/pgbackrest.conf && \
      install -d /etc/systemd/system/postgresql@control.service.d /etc/systemd/system/postgresql@apps.service.d && \
      install -m 0644 '${remote_release_dir}/packaging/systemd/postgresql@control.service.d/30-postgresql-setup.conf' /etc/systemd/system/postgresql@control.service.d/30-postgresql-setup.conf && \
      install -m 0644 '${remote_release_dir}/packaging/systemd/postgresql@control.service.d/40-pgdg18-binary.conf' /etc/systemd/system/postgresql@control.service.d/40-pgdg18-binary.conf && \
@@ -104,8 +115,10 @@ activate_remote() {
      install -m 0644 '${remote_release_dir}/packaging/systemd/postgresql@apps.service.d/40-pgdg18-binary.conf' /etc/systemd/system/postgresql@apps.service.d/40-pgdg18-binary.conf && \
      install -m 0644 '${remote_release_dir}/packaging/env/simplehost-control.env.example' /etc/simplehost/control.env.example && \
      install -m 0644 '${remote_release_dir}/packaging/env/simplehost-worker.env.example' /etc/simplehost/worker.env.example && \
+     install -m 0644 '${remote_release_dir}/packaging/env/simplehost-pgbackrest-offhost.env.example' /etc/simplehost/pgbackrest-offhost.env.example && \
      if [ ! -f /etc/simplehost/control.env ]; then install -m 0640 '${remote_release_dir}/packaging/env/simplehost-control.env.example' /etc/simplehost/control.env; fi && \
      if [ ! -f /etc/simplehost/worker.env ]; then install -m 0640 '${remote_release_dir}/packaging/env/simplehost-worker.env.example' /etc/simplehost/worker.env; fi && \
+     if [ ! -f /etc/simplehost/pgbackrest-offhost.env ]; then install -m 0640 '${remote_release_dir}/packaging/env/simplehost-pgbackrest-offhost.env.example' /etc/simplehost/pgbackrest-offhost.env; fi && \
      if grep -q '^SIMPLEHOST_VERSION=' /etc/simplehost/control.env; then sed -i 's/^SIMPLEHOST_VERSION=.*/SIMPLEHOST_VERSION=${version}/' /etc/simplehost/control.env; else printf '\nSIMPLEHOST_VERSION=${version}\n' >> /etc/simplehost/control.env; fi && \
      if grep -q '^SIMPLEHOST_VERSION=' /etc/simplehost/worker.env; then sed -i 's/^SIMPLEHOST_VERSION=.*/SIMPLEHOST_VERSION=${version}/' /etc/simplehost/worker.env; else printf '\nSIMPLEHOST_VERSION=${version}\n' >> /etc/simplehost/worker.env; fi && \
      bash '${remote_release_dir}/scripts/control/normalize-api-env.sh' /etc/simplehost/control.env.example && \
@@ -115,17 +128,17 @@ activate_remote() {
 
   if [[ "${mode}" == "disabled" ]]; then
     ssh "${target_host}" \
-      "systemctl disable simplehost-control.service simplehost-worker.service simplehost-backup-runner.timer || true && \
-       systemctl stop simplehost-control.service simplehost-worker.service simplehost-backup-runner.timer simplehost-backup-runner.service || true"
+      "systemctl disable simplehost-control.service simplehost-worker.service simplehost-backup-runner.timer simplehost-pgbackrest-control-full.timer simplehost-pgbackrest-control-incr.timer simplehost-pgbackrest-apps-full.timer simplehost-pgbackrest-apps-incr.timer simplehost-pgbackrest-offhost-sync.timer || true && \
+       systemctl stop simplehost-control.service simplehost-worker.service simplehost-backup-runner.timer simplehost-backup-runner.service simplehost-pgbackrest-control-full.timer simplehost-pgbackrest-control-incr.timer simplehost-pgbackrest-apps-full.timer simplehost-pgbackrest-apps-incr.timer simplehost-pgbackrest-offhost-sync.timer simplehost-pgbackrest-offhost-sync.service || true"
     echo "Installed control runtime ${version} on ${target_host} in disabled mode"
     return
   fi
 
   ssh "${target_host}" \
-    "systemctl enable simplehost-control.service simplehost-worker.service simplehost-backup-runner.timer && \
+    "systemctl enable simplehost-control.service simplehost-worker.service simplehost-backup-runner.timer simplehost-pgbackrest-control-full.timer simplehost-pgbackrest-control-incr.timer simplehost-pgbackrest-apps-full.timer simplehost-pgbackrest-apps-incr.timer simplehost-pgbackrest-offhost-sync.timer && \
      systemctl restart simplehost-control.service simplehost-worker.service && \
-     systemctl restart simplehost-backup-runner.timer && \
-     systemctl is-active simplehost-control.service simplehost-worker.service simplehost-backup-runner.timer"
+     systemctl restart simplehost-backup-runner.timer simplehost-pgbackrest-control-full.timer simplehost-pgbackrest-control-incr.timer simplehost-pgbackrest-apps-full.timer simplehost-pgbackrest-apps-incr.timer simplehost-pgbackrest-offhost-sync.timer && \
+     systemctl is-active simplehost-control.service simplehost-worker.service simplehost-backup-runner.timer simplehost-pgbackrest-control-full.timer simplehost-pgbackrest-control-incr.timer simplehost-pgbackrest-apps-full.timer simplehost-pgbackrest-apps-incr.timer simplehost-pgbackrest-offhost-sync.timer"
   echo "Installed control runtime ${version} on ${target_host} in active mode"
 }
 

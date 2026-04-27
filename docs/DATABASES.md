@@ -199,6 +199,12 @@ Preferred tooling:
 
 - `pgBackRest`
 
+The SimpleHostMan worker also supports a logical safety-net policy for the
+control-plane database with selector `postgresql-cluster:control`. That policy
+creates a custom-format dump of `simplehost_control` plus a globals-only role
+dump, but it does not replace physical backups or WAL archiving for full cluster
+recovery.
+
 ### Client connectivity
 
 - `SimpleHost Control` API and workers connect to the current `postgresql-control` primary only.

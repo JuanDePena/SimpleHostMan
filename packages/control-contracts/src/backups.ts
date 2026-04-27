@@ -28,8 +28,28 @@ export interface BackupMailRunDetails {
   restoreChecks: BackupMailRestoreCheckSummary[];
 }
 
+export interface BackupAppFilesArtifact {
+  appSlug: string;
+  storageRoot: string;
+  archivePath: string;
+}
+
+export interface BackupAppFilesRunDetails {
+  artifacts: BackupAppFilesArtifact[];
+}
+
+export interface BackupPostgresqlClusterRunDetails {
+  cluster: "control";
+  port: number;
+  databaseName: string;
+  dumpPath: string;
+  globalsPath: string;
+}
+
 export interface BackupRunDetails {
   mail?: BackupMailRunDetails;
+  appFiles?: BackupAppFilesRunDetails;
+  postgresqlCluster?: BackupPostgresqlClusterRunDetails;
 }
 
 export interface BackupRunSummary {

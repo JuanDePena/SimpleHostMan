@@ -15,6 +15,7 @@ packages=(
   git
   nodejs
   nodejs-npm
+  pgbackrest
 )
 
 missing=()
@@ -35,4 +36,3 @@ fi
 echo "node: $(node --version)"
 echo "npm: $(npm --version)"
 echo "pnpm: $(pnpm --version)"
-

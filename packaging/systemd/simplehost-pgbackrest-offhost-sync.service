@@ -1,0 +1,9 @@
+[Unit]
+Description=SimpleHost pgBackRest off-host repository sync
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/simplehost/pgbackrest-offhost.env
+ExecStart=/opt/simplehostman/release/current/scripts/control/sync-pgbackrest-offhost.sh

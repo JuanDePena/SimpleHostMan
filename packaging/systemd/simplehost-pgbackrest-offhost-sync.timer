@@ -1,0 +1,11 @@
+[Unit]
+Description=SimpleHost pgBackRest off-host repository sync timer
+
+[Timer]
+OnCalendar=*-*-* 05:30:00
+Persistent=true
+RandomizedDelaySec=300
+Unit=simplehost-pgbackrest-offhost-sync.service
+
+[Install]
+WantedBy=timers.target

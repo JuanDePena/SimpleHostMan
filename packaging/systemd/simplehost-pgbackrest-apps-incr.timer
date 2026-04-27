@@ -1,0 +1,11 @@
+[Unit]
+Description=SimpleHost pgBackRest weekday incremental backup for postgresql@apps
+
+[Timer]
+OnCalendar=Mon..Sat *-*-* 04:35:00
+Persistent=true
+RandomizedDelaySec=120
+Unit=simplehost-pgbackrest-apps-incr.service
+
+[Install]
+WantedBy=timers.target

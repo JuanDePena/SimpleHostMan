@@ -1,4 +1,4 @@
-import { access, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { access, chmod, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { constants, createWriteStream } from "node:fs";
 import os from "node:os";
 import { join } from "node:path";
@@ -29,6 +29,7 @@ const defaultEnvFilePaths = [
 ];
 
 const defaultPgDumpBinary = "/usr/pgsql-18/bin/pg_dump";
+const defaultPgDumpAllBinary = "/usr/pgsql-18/bin/pg_dumpall";
 const defaultMariaDbContainerName = "mariadb-primary";
 
 export interface BackupCliOptions {
@@ -47,10 +48,14 @@ export interface BackupCycleOutcome {
 interface BackupRuntimeEnv {
   SIMPLEHOST_NODE_ID?: string;
   SIMPLEHOST_HOSTNAME?: string;
+  SIMPLEHOST_DATABASE_URL?: string;
   SIMPLEHOST_MARIADB_ADMIN_URL?: string;
   SIMPLEHOST_MAIL_ROUNDCUBE_DATABASE_DSN?: string;
   SIMPLEHOST_BACKUP_MARIADB_CONTAINER_NAME?: string;
   SIMPLEHOST_BACKUP_PG_DUMP_BIN?: string;
+  SIMPLEHOST_BACKUP_PG_DUMPALL_BIN?: string;
+  SIMPLEHOST_BACKUP_CONTROL_DATABASE?: string;
+  SIMPLEHOST_BACKUP_CONTROL_PGPORT?: string;
 }
 
 interface BackupExecutionContext {
@@ -360,6 +365,37 @@ export function policyCoversDatabase(
   );
 }
 
+export function policyCoversAppFiles(
+  policy: BackupPolicySummary,
+  app: DesiredApp
+): boolean {
+  if (policy.tenantSlug !== app.tenantSlug) {
+    return false;
+  }
+
+  const selectors = normalizeSelectors(policy.resourceSelectors);
+
+  if (selectors.length === 0) {
+    return true;
+  }
+
+  return (
+    selectors.includes("app-files") ||
+    selectors.includes(`app-files:${app.slug}`.toLowerCase()) ||
+    selectors.includes(`storage-root:${app.slug}`.toLowerCase())
+  );
+}
+
+export function policyCoversPostgresqlControl(policy: BackupPolicySummary): boolean {
+  const selectors = normalizeSelectors(policy.resourceSelectors);
+
+  return (
+    selectors.includes("postgresql-control") ||
+    selectors.includes("postgresql-cluster:control") ||
+    selectors.includes("control-db")
+  );
+}
+
 async function pathExists(path: string | undefined): Promise<boolean> {
   if (!path) {
     return false;
@@ -420,6 +456,9 @@ async function runCommand(args: {
     child.on("close", async (code) => {
       try {
         await stdoutPipeline;
+        if (args.stdoutPath) {
+          await chmod(args.stdoutPath, 0o600);
+        }
       } catch (error) {
         reject(error);
         return;
@@ -555,6 +594,7 @@ async function createMailArchive(args: {
     command: "/usr/bin/tar",
     commandArgs: ["-czf", archivePath, "-P", ...archiveSourcePaths]
   });
+  await chmod(archivePath, 0o600);
 
   const artifacts = [archivePath];
   const roundcubeDsn = args.runtimeEnv.SIMPLEHOST_MAIL_ROUNDCUBE_DATABASE_DSN?.trim();
@@ -606,6 +646,70 @@ async function createMailArchive(args: {
 
 function buildAppTenantMap(apps: DesiredApp[]): Map<string, string> {
   return new Map(apps.map((app) => [app.slug, app.tenantSlug]));
+}
+
+async function createAppFileArchives(args: {
+  policy: BackupPolicySummary;
+  runDirectory: string;
+  desiredState: DesiredStateSpec;
+}): Promise<{
+  details: NonNullable<BackupRunDetails["appFiles"]>;
+  artifacts: string[];
+  summary: string;
+}> {
+  const relevantApps = args.desiredState.apps.filter(
+    (app) =>
+      (app.primaryNodeId === args.policy.targetNodeId ||
+        app.standbyNodeId === args.policy.targetNodeId) &&
+      policyCoversAppFiles(args.policy, app)
+  );
+
+  if (relevantApps.length === 0) {
+    throw new Error(`Policy ${args.policy.policySlug} does not match any managed app file root.`);
+  }
+
+  const artifacts: string[] = [];
+  const details: NonNullable<BackupRunDetails["appFiles"]> = {
+    artifacts: []
+  };
+
+  for (const app of relevantApps) {
+    if (!(await pathExists(app.storageRoot))) {
+      throw new Error(`App ${app.slug} storage root does not exist: ${app.storageRoot}.`);
+    }
+
+    const archivePath = join(args.runDirectory, `${app.slug}-files.tar.gz`);
+
+    await runCommand({
+      command: "/usr/bin/tar",
+      commandArgs: [
+        "--ignore-failed-read",
+        "--warning=no-file-changed",
+        "-czf",
+        archivePath,
+        "--exclude",
+        `${app.storageRoot}/logs/*`,
+        "--exclude",
+        `${app.storageRoot}/app/storage/logs/*`,
+        "-P",
+        app.storageRoot
+      ]
+    });
+    await chmod(archivePath, 0o600);
+
+    artifacts.push(archivePath);
+    details.artifacts.push({
+      appSlug: app.slug,
+      storageRoot: app.storageRoot,
+      archivePath
+    });
+  }
+
+  return {
+    details,
+    artifacts,
+    summary: `Backed up ${relevantApps.length} app file root(s) into ${args.policy.storageLocation}.`
+  };
 }
 
 async function createDatabaseBackups(args: {
@@ -696,16 +800,119 @@ async function createDatabaseBackups(args: {
   };
 }
 
+function parseControlDatabaseUrl(rawUrl: string | undefined): URL | undefined {
+  if (!rawUrl?.trim()) {
+    return undefined;
+  }
+
+  try {
+    return new URL(rawUrl.trim());
+  } catch {
+    return undefined;
+  }
+}
+
+function resolveControlDatabaseName(runtimeEnv: BackupRuntimeEnv): string {
+  const configuredName = runtimeEnv.SIMPLEHOST_BACKUP_CONTROL_DATABASE?.trim();
+
+  if (configuredName) {
+    return configuredName;
+  }
+
+  const databaseUrl = parseControlDatabaseUrl(runtimeEnv.SIMPLEHOST_DATABASE_URL);
+  const databaseName = databaseUrl?.pathname.replace(/^\//, "").trim();
+
+  return databaseName || "simplehost_control";
+}
+
+function resolveControlPostgresqlPort(runtimeEnv: BackupRuntimeEnv): number {
+  const configuredPort =
+    runtimeEnv.SIMPLEHOST_BACKUP_CONTROL_PGPORT?.trim() ||
+    parseControlDatabaseUrl(runtimeEnv.SIMPLEHOST_DATABASE_URL)?.port ||
+    "5433";
+  const port = Number.parseInt(configuredPort, 10);
+
+  if (!Number.isInteger(port) || port <= 0 || port > 65535) {
+    throw new Error(`Invalid PostgreSQL control backup port: ${configuredPort}.`);
+  }
+
+  return port;
+}
+
+async function createControlPostgresqlBackup(args: {
+  policy: BackupPolicySummary;
+  runDirectory: string;
+  runtimeEnv: BackupRuntimeEnv;
+}): Promise<{
+  details: NonNullable<BackupRunDetails["postgresqlCluster"]>;
+  artifacts: string[];
+  summary: string;
+}> {
+  const pgDumpBinary =
+    args.runtimeEnv.SIMPLEHOST_BACKUP_PG_DUMP_BIN?.trim() || defaultPgDumpBinary;
+  const pgDumpAllBinary =
+    args.runtimeEnv.SIMPLEHOST_BACKUP_PG_DUMPALL_BIN?.trim() || defaultPgDumpAllBinary;
+  const port = resolveControlPostgresqlPort(args.runtimeEnv);
+  const databaseName = resolveControlDatabaseName(args.runtimeEnv);
+  const dumpPath = join(args.runDirectory, `${databaseName}.dump`);
+  const globalsPath = join(args.runDirectory, "postgresql-control-globals.sql");
+
+  await runCommand({
+    command: "/usr/sbin/runuser",
+    commandArgs: [
+      "-u",
+      "postgres",
+      "--",
+      pgDumpBinary,
+      "--format=custom",
+      "--compress=6",
+      "--port",
+      String(port),
+      "--dbname",
+      databaseName
+    ],
+    stdoutPath: dumpPath
+  });
+
+  await runCommand({
+    command: "/usr/sbin/runuser",
+    commandArgs: [
+      "-u",
+      "postgres",
+      "--",
+      pgDumpAllBinary,
+      "--globals-only",
+      "--port",
+      String(port)
+    ],
+    stdoutPath: globalsPath
+  });
+
+  return {
+    details: {
+      cluster: "control",
+      port,
+      databaseName,
+      dumpPath,
+      globalsPath
+    },
+    artifacts: [dumpPath, globalsPath],
+    summary: `Backed up PostgreSQL control database ${databaseName} on port ${port} into ${args.policy.storageLocation}.`
+  };
+}
+
 async function executePolicy(
   context: BackupExecutionContext,
   policy: BackupPolicySummary,
   now: Date
 ): Promise<PolicyExecutionResult> {
   await mkdir(policy.storageLocation, { recursive: true });
+  await chmod(policy.storageLocation, 0o700);
   await applyRetention(policy.storageLocation, policy.retentionDays);
 
   const runDirectory = join(policy.storageLocation, `${policy.policySlug}-${buildRunStamp(now)}`);
   await mkdir(runDirectory, { recursive: true });
+  await chmod(runDirectory, 0o700);
   try {
     const selectors = normalizeSelectors(policy.resourceSelectors);
     const handlesMail =
@@ -714,6 +921,15 @@ async function executePolicy(
     const handlesDatabases =
       selectors.length === 0 ||
       selectors.some((selector) => selector.startsWith("app:") || selector.startsWith("database:"));
+    const handlesAppFiles =
+      selectors.length === 0 ||
+      selectors.some(
+        (selector) =>
+          selector === "app-files" ||
+          selector.startsWith("app-files:") ||
+          selector.startsWith("storage-root:")
+      );
+    const handlesPostgresqlControl = policyCoversPostgresqlControl(policy);
 
     let details: BackupRunDetails | undefined;
     const artifacts: string[] = [];
@@ -737,6 +953,29 @@ async function executePolicy(
     }
 
     if (
+      handlesAppFiles &&
+      context.desiredState.spec.apps.some(
+        (app) =>
+          (app.primaryNodeId === policy.targetNodeId ||
+            app.standbyNodeId === policy.targetNodeId) &&
+          policyCoversAppFiles(policy, app)
+      )
+    ) {
+      const appFileResult = await createAppFileArchives({
+        policy,
+        runDirectory,
+        desiredState: context.desiredState.spec
+      });
+
+      details = {
+        ...(details ?? {}),
+        appFiles: appFileResult.details
+      };
+      artifacts.push(...appFileResult.artifacts);
+      summaryParts.push(appFileResult.summary);
+    }
+
+    if (
       handlesDatabases &&
       context.desiredState.spec.databases.some((database) =>
         policyCoversDatabase(
@@ -755,6 +994,21 @@ async function executePolicy(
 
       artifacts.push(...databaseResult.artifacts);
       summaryParts.push(databaseResult.summary);
+    }
+
+    if (handlesPostgresqlControl) {
+      const postgresqlResult = await createControlPostgresqlBackup({
+        policy,
+        runDirectory,
+        runtimeEnv: context.runtimeEnv
+      });
+
+      details = {
+        ...(details ?? {}),
+        postgresqlCluster: postgresqlResult.details
+      };
+      artifacts.push(...postgresqlResult.artifacts);
+      summaryParts.push(postgresqlResult.summary);
     }
 
     if (artifacts.length === 0) {
@@ -779,6 +1033,7 @@ async function executePolicy(
         2
       )
     );
+    await chmod(manifestPath, 0o600);
     artifacts.push(manifestPath);
 
     return {
