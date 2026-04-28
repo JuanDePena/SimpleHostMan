@@ -174,6 +174,16 @@ export function renderBaseStyleBlock(): string {
         min-height: var(--control-height);
       }
 
+      input[type="checkbox"],
+      input[type="radio"] {
+        width: auto;
+        min-width: 1rem;
+        min-height: 1rem;
+        padding: 0;
+        flex: 0 0 auto;
+        accent-color: var(--primary);
+      }
+
       input[readonly],
       textarea[readonly],
       select:disabled {
@@ -660,7 +670,6 @@ export function renderBaseStyleBlock(): string {
 
       .selection-option input[type="checkbox"] {
         margin: 0.13rem 0 0;
-        flex: 0 0 auto;
       }
 
       .selection-option-copy {
@@ -676,14 +685,21 @@ export function renderBaseStyleBlock(): string {
       .selection-option-copy small {
         color: var(--muted);
         font-size: 0.74rem;
+        overflow-wrap: anywhere;
       }
 
       .checkbox-inline {
         display: inline-flex;
         align-items: center;
         gap: 0.45rem;
+        min-width: 0;
         color: var(--ink);
         font-size: 0.84rem;
+      }
+
+      .checkbox-inline span {
+        min-width: 0;
+        overflow-wrap: anywhere;
       }
 
       .panel {
