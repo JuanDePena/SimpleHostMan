@@ -28,24 +28,21 @@ function buildLogRows(args: {
   copy: WebCopy;
   data: DashboardData;
   locale: WebLocale;
-  selectedNodeId?: string;
   formatDate: (value: string | undefined, locale: WebLocale) => string;
   renderFocusLink: (label: string, href: string, active: boolean, activeLabel: string) => string;
   renderPill: (value: string, tone?: "default" | "success" | "danger" | "muted") => string;
 }): DataTableRow[] {
-  const { copy, data, locale, selectedNodeId, formatDate, renderFocusLink, renderPill } = args;
+  const { copy, data, locale, formatDate, renderFocusLink, renderPill } = args;
 
   return data.nodeHealth.flatMap((node) => {
-    const selected = selectedNodeId === node.nodeId;
-
     return (node.logs?.entries ?? []).map((entry) => ({
       selectionKey: `${node.nodeId}:${entry.occurredAt}:${entry.unit ?? ""}:${entry.message}`,
-      selected,
+      selected: false,
       cells: [
         renderFocusLink(
           node.nodeId,
           buildDashboardViewUrl("logs", undefined, node.nodeId),
-          selected,
+          false,
           copy.selectedStateLabel
         ),
         `<span class="mono">${escapeHtml(entry.unit ?? copy.none)}</span>`,
@@ -156,7 +153,6 @@ export function renderLogsWorkspace(args: {
     copy,
     data,
     locale,
-    selectedNodeId: selectedNode?.nodeId,
     formatDate,
     renderFocusLink,
     renderPill

@@ -24,23 +24,20 @@ function usageTone(percent: number | undefined): "default" | "success" | "danger
 function buildFilesystemRows(args: {
   copy: WebCopy;
   data: DashboardData;
-  selectedNodeId?: string;
   renderFocusLink: (label: string, href: string, active: boolean, activeLabel: string) => string;
   renderPill: (value: string, tone?: "default" | "success" | "danger" | "muted") => string;
 }): DataTableRow[] {
-  const { copy, data, selectedNodeId, renderFocusLink, renderPill } = args;
+  const { copy, data, renderFocusLink, renderPill } = args;
 
   return data.nodeHealth.flatMap((node) => {
-    const selected = selectedNodeId === node.nodeId;
-
     return (node.storage?.filesystems ?? []).map((filesystem) => ({
       selectionKey: `${node.nodeId}:${filesystem.mountpoint}`,
-      selected,
+      selected: false,
       cells: [
         renderFocusLink(
           node.nodeId,
           buildDashboardViewUrl("storage", undefined, node.nodeId),
-          selected,
+          false,
           copy.selectedStateLabel
         ),
         `<span class="mono">${escapeHtml(filesystem.mountpoint)}</span>`,
@@ -185,7 +182,6 @@ export function renderStorageWorkspace(args: {
   const rows = buildFilesystemRows({
     copy,
     data,
-    selectedNodeId: selectedNode?.nodeId,
     renderFocusLink,
     renderPill
   });

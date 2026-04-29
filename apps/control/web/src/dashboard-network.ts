@@ -51,24 +51,21 @@ function buildNetworkListenerRows(args: {
   copy: WebCopy;
   data: DashboardData;
   locale: WebLocale;
-  selectedNodeId?: string;
   formatDate: (value: string | undefined, locale: WebLocale) => string;
   renderFocusLink: (label: string, href: string, active: boolean, activeLabel: string) => string;
   renderPill: (value: string, tone?: "default" | "success" | "danger" | "muted") => string;
 }): DataTableRow[] {
-  const { copy, data, locale, selectedNodeId, formatDate, renderFocusLink, renderPill } = args;
+  const { copy, data, locale, formatDate, renderFocusLink, renderPill } = args;
 
   return data.nodeHealth.flatMap((node) => {
-    const selected = selectedNodeId === node.nodeId;
-
     return (node.network?.listeners ?? []).map((listener) => ({
       selectionKey: `${node.nodeId}:${listener.protocol}:${formatListenerAddress(listener)}:${listener.process ?? ""}`,
-      selected,
+      selected: false,
       cells: [
         renderFocusLink(
           node.nodeId,
           buildDashboardViewUrl("network", undefined, node.nodeId),
-          selected,
+          false,
           copy.selectedStateLabel
         ),
         escapeHtml(node.hostname),
@@ -252,7 +249,6 @@ export function renderNetworkWorkspace(args: {
     copy,
     data,
     locale,
-    selectedNodeId: selectedNode?.nodeId,
     formatDate,
     renderFocusLink,
     renderPill

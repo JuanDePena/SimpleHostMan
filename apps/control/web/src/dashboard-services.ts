@@ -42,25 +42,23 @@ function buildServiceRows(args: {
   copy: WebCopy;
   data: DashboardData;
   locale: WebLocale;
-  selectedNodeId?: string;
   formatDate: (value: string | undefined, locale: WebLocale) => string;
   renderFocusLink: (label: string, href: string, active: boolean, activeLabel: string) => string;
   renderPill: (value: string, tone?: "default" | "success" | "danger" | "muted") => string;
 }): DataTableRow[] {
-  const { copy, data, locale, selectedNodeId, formatDate, renderFocusLink, renderPill } = args;
+  const { copy, data, locale, formatDate, renderFocusLink, renderPill } = args;
 
   return data.nodeHealth.flatMap((node) => {
-    const selected = selectedNodeId === node.nodeId;
     const services = node.services?.units ?? [];
 
     return services.map((unit) => ({
       selectionKey: `${node.nodeId}:${unit.serviceName}`,
-      selected,
+      selected: false,
       cells: [
         renderFocusLink(
           node.nodeId,
           buildDashboardViewUrl("services", undefined, node.nodeId),
-          selected,
+          false,
           copy.selectedStateLabel
         ),
         escapeHtml(node.hostname),
@@ -185,7 +183,6 @@ export function renderServicesWorkspace(args: {
     copy,
     data,
     locale,
-    selectedNodeId: selectedNode?.nodeId,
     formatDate,
     renderFocusLink,
     renderPill

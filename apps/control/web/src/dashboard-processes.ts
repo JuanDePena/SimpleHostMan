@@ -40,22 +40,19 @@ function formatDuration(seconds: number | undefined, copy: WebCopy): string {
 function buildProcessRows(args: {
   copy: WebCopy;
   data: DashboardData;
-  selectedNodeId?: string;
   renderFocusLink: (label: string, href: string, active: boolean, activeLabel: string) => string;
 }): DataTableRow[] {
-  const { copy, data, selectedNodeId, renderFocusLink } = args;
+  const { copy, data, renderFocusLink } = args;
 
   return data.nodeHealth.flatMap((node) => {
-    const selected = selectedNodeId === node.nodeId;
-
     return (node.processes?.processes ?? []).map((process) => ({
       selectionKey: `${node.nodeId}:${process.pid}:${process.command}`,
-      selected,
+      selected: false,
       cells: [
         renderFocusLink(
           node.nodeId,
           buildDashboardViewUrl("processes", undefined, node.nodeId),
-          selected,
+          false,
           copy.selectedStateLabel
         ),
         escapeHtml(node.hostname),
@@ -230,7 +227,6 @@ export function renderProcessesWorkspace(args: {
   const rows = buildProcessRows({
     copy,
     data,
-    selectedNodeId: selectedNode?.nodeId,
     renderFocusLink
   });
 

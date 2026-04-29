@@ -35,27 +35,24 @@ function buildCertificateRows(args: {
   copy: WebCopy;
   data: DashboardData;
   locale: WebLocale;
-  selectedNodeId?: string;
   formatDate: (value: string | undefined, locale: WebLocale) => string;
   renderFocusLink: (label: string, href: string, active: boolean, activeLabel: string) => string;
   renderPill: (value: string, tone?: "default" | "success" | "danger" | "muted") => string;
 }): DataTableRow[] {
-  const { copy, data, locale, selectedNodeId, formatDate, renderFocusLink, renderPill } = args;
+  const { copy, data, locale, formatDate, renderFocusLink, renderPill } = args;
 
   return data.nodeHealth.flatMap((node) => {
-    const selected = selectedNodeId === node.nodeId;
-
     return (node.tls?.certificates ?? []).map((certificate) => {
       const days = daysUntil(certificate.notAfter);
 
       return {
         selectionKey: `${node.nodeId}:${certificate.name}`,
-        selected,
+        selected: false,
         cells: [
           renderFocusLink(
             node.nodeId,
             buildDashboardViewUrl("certificates", undefined, node.nodeId),
-            selected,
+            false,
             copy.selectedStateLabel
           ),
           `<span class="mono">${escapeHtml(certificate.name)}</span>`,
@@ -182,7 +179,6 @@ export function renderCertificatesWorkspace(args: {
     copy,
     data,
     locale,
-    selectedNodeId: selectedNode?.nodeId,
     formatDate,
     renderFocusLink,
     renderPill

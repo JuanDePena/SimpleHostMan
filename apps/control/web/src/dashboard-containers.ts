@@ -60,23 +60,20 @@ function formatContainerPorts(container: ContainerEntry, copy: WebCopy): string 
 function buildContainerRows(args: {
   copy: WebCopy;
   data: DashboardData;
-  selectedNodeId?: string;
   renderFocusLink: (label: string, href: string, active: boolean, activeLabel: string) => string;
   renderPill: (value: string, tone?: "default" | "success" | "danger" | "muted") => string;
 }): DataTableRow[] {
-  const { copy, data, selectedNodeId, renderFocusLink, renderPill } = args;
+  const { copy, data, renderFocusLink, renderPill } = args;
 
   return data.nodeHealth.flatMap((node) => {
-    const selected = selectedNodeId === node.nodeId;
-
     return (node.containers?.containers ?? []).map((container) => ({
       selectionKey: `${node.nodeId}:${container.id}`,
-      selected,
+      selected: false,
       cells: [
         renderFocusLink(
           node.nodeId,
           buildDashboardViewUrl("containers", undefined, node.nodeId),
-          selected,
+          false,
           copy.selectedStateLabel
         ),
         escapeHtml(node.hostname),
@@ -221,7 +218,6 @@ export function renderContainersWorkspace(args: {
   const rows = buildContainerRows({
     copy,
     data,
-    selectedNodeId: selectedNode?.nodeId,
     renderFocusLink,
     renderPill
   });
