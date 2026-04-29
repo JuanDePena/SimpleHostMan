@@ -94,6 +94,24 @@ This view is read-only. Time service changes should be modeled as audited
 configuration jobs before becoming dashboard actions, because clock drift can
 affect TLS, mail, backups and job ordering.
 
+## DNS Resolver
+
+The DNS Resolver view reports node-local resolver configuration. The agent reads
+`/etc/resolv.conf` for nameservers, search domains and resolver options, then
+collects `resolvectl dns` and `resolvectl domain` when systemd-resolved tooling
+is present.
+
+The control UI shows:
+
+- per-node resolver inventory with nameservers, search domains and resolved
+  server reports
+- counters for nodes with missing resolver configuration and active
+  `systemd-resolved`
+- selected-node detail for `/etc/resolv.conf` and resolved domains
+
+This view is read-only. Resolver changes should remain in node configuration or
+audited maintenance jobs so DNS changes stay explicit and reversible.
+
 ## Services
 
 The Services view reports critical `systemd` units per managed node. The agent

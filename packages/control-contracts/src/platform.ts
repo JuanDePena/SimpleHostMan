@@ -305,6 +305,17 @@ export interface TimeSyncSnapshot {
   checkedAt: string;
 }
 
+export interface DnsResolverSnapshot {
+  resolvConfPath: string;
+  nameservers: string[];
+  searchDomains: string[];
+  options: string[];
+  resolvedServers: string[];
+  resolvedDomains: string[];
+  systemdResolvedActive?: boolean;
+  checkedAt: string;
+}
+
 export interface JournalLogEntrySnapshot {
   unit?: string;
   priority?: number;
@@ -505,6 +516,7 @@ export interface NodeRuntimeSnapshot {
   rebootState?: RebootStateSnapshot;
   configValidation?: ConfigValidationSnapshot;
   timeSync?: TimeSyncSnapshot;
+  dnsResolver?: DnsResolverSnapshot;
   logs?: SystemLogsSnapshot;
   tls?: TlsCertificatesSnapshot;
   storage?: StorageSnapshot;
@@ -550,6 +562,7 @@ export interface NodeHealthSnapshot {
   rebootState?: RebootStateSnapshot;
   configValidation?: ConfigValidationSnapshot;
   timeSync?: TimeSyncSnapshot;
+  dnsResolver?: DnsResolverSnapshot;
   logs?: SystemLogsSnapshot;
   tls?: TlsCertificatesSnapshot;
   storage?: StorageSnapshot;

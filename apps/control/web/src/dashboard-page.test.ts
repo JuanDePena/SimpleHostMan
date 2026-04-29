@@ -269,6 +269,44 @@ test("runtime workspaces select one row and render only that row detail", () => 
       }
     },
     {
+      name: "resolver",
+      view: "resolver",
+      focus: "mail-a",
+      marker: "Selected node resolver",
+      selectedText: "1.1.1.1",
+      otherText: "9.9.9.9",
+      arrange: (data) => {
+        data.nodeHealth[0] = {
+          ...data.nodeHealth[0]!,
+          dnsResolver: {
+            resolvConfPath: "/etc/resolv.conf",
+            nameservers: ["1.1.1.1"],
+            searchDomains: ["selected.example.com"],
+            options: ["timeout:1"],
+            resolvedServers: ["1.0.0.1"],
+            resolvedDomains: ["selected.example.com"],
+            systemdResolvedActive: true,
+            checkedAt: "2026-04-29T00:00:00.000Z"
+          }
+        };
+        data.nodeHealth[1] = {
+          ...data.nodeHealth[0]!,
+          nodeId: "mail-b",
+          hostname: "mail-b.example.com",
+          dnsResolver: {
+            resolvConfPath: "/etc/resolv.conf",
+            nameservers: ["9.9.9.9"],
+            searchDomains: ["other.example.com"],
+            options: [],
+            resolvedServers: [],
+            resolvedDomains: [],
+            systemdResolvedActive: false,
+            checkedAt: "2026-04-29T00:00:00.000Z"
+          }
+        };
+      }
+    },
+    {
       name: "services",
       view: "services",
       focus: "mail-a:httpd.service",

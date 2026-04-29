@@ -1072,6 +1072,99 @@ async function inspectTimeSync(): Promise<AgentNodeRuntimeSnapshot["timeSync"]> 
   };
 }
 
+function uniqueOrderedStrings(values: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const value of values.map((entry) => entry.trim()).filter(Boolean)) {
+    if (seen.has(value)) {
+      continue;
+    }
+
+    seen.add(value);
+    result.push(value);
+  }
+
+  return result;
+}
+
+function parseResolvConf(content: string | undefined): {
+  nameservers: string[];
+  searchDomains: string[];
+  options: string[];
+} {
+  const nameservers: string[] = [];
+  const searchDomains: string[] = [];
+  const options: string[] = [];
+
+  for (const rawLine of (content ?? "").split(/\r?\n/g)) {
+    const line = rawLine.replace(/[#;].*$/, "").trim();
+
+    if (!line) {
+      continue;
+    }
+
+    const [directive, ...values] = line.split(/\s+/g);
+
+    if (directive === "nameserver") {
+      nameservers.push(...values);
+    } else if (directive === "search" || directive === "domain") {
+      searchDomains.push(...values);
+    } else if (directive === "options") {
+      options.push(...values);
+    }
+  }
+
+  return {
+    nameservers: uniqueOrderedStrings(nameservers),
+    searchDomains: uniqueOrderedStrings(searchDomains),
+    options: uniqueOrderedStrings(options)
+  };
+}
+
+function parseResolvectlValues(output: string | undefined): string[] {
+  const values: string[] = [];
+
+  for (const rawLine of (output ?? "").split(/\r?\n/g)) {
+    const separatorIndex = rawLine.indexOf(":");
+
+    if (separatorIndex < 0) {
+      continue;
+    }
+
+    values.push(...rawLine.slice(separatorIndex + 1).trim().split(/\s+/g));
+  }
+
+  return uniqueOrderedStrings(values.filter((value) => value !== "~."));
+}
+
+async function inspectDnsResolver(): Promise<AgentNodeRuntimeSnapshot["dnsResolver"]> {
+  const checkedAt = new Date().toISOString();
+  const resolvConfPath = "/etc/resolv.conf";
+  const [
+    resolvConfContent,
+    systemdResolvedState,
+    resolvedServersOutput,
+    resolvedDomainsOutput
+  ] = await Promise.all([
+    readFile(resolvConfPath, "utf8").catch(() => undefined),
+    commandOutput("systemctl", ["is-active", "systemd-resolved.service"]),
+    commandOutput("resolvectl", ["dns"]),
+    commandOutput("resolvectl", ["domain"])
+  ]);
+  const resolvConf = parseResolvConf(resolvConfContent);
+
+  return {
+    resolvConfPath,
+    ...resolvConf,
+    resolvedServers: parseResolvectlValues(resolvedServersOutput),
+    resolvedDomains: parseResolvectlValues(resolvedDomainsOutput),
+    systemdResolvedActive:
+      systemdResolvedState === undefined ? undefined : systemdResolvedState === "active",
+    checkedAt
+  };
+}
+
 function formatJournalTimestamp(value: unknown): string | undefined {
   if (typeof value !== "string") {
     return undefined;
@@ -3061,6 +3154,7 @@ async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
     rebootState,
     configValidation,
     timeSync,
+    dnsResolver,
     logs,
     tls,
     storage,
@@ -3082,6 +3176,7 @@ async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
     inspectRebootState(),
     inspectConfigValidation(),
     inspectTimeSync(),
+    inspectDnsResolver(),
     inspectSystemLogs(),
     inspectTlsCertificates(),
     inspectStorage(),
@@ -3105,6 +3200,7 @@ async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
     rebootState,
     configValidation,
     timeSync,
+    dnsResolver,
     logs,
     tls,
     storage,

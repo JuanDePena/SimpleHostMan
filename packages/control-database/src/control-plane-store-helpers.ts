@@ -16,6 +16,7 @@ import type {
   ContainerPortMappingSnapshot,
   ContainerRuntimeSnapshot,
   ContainerSnapshot,
+  DnsResolverSnapshot,
   DispatchedJobEnvelope,
   Fail2BanJailSnapshot,
   Fail2BanSnapshot,
@@ -742,6 +743,35 @@ function normalizeTimeSyncSnapshot(value: unknown): TimeSyncSnapshot | undefined
     trackingSummary:
       typeof record.trackingSummary === "string" ? record.trackingSummary : undefined,
     sources,
+    checkedAt: typeof record.checkedAt === "string" ? record.checkedAt : new Date(0).toISOString()
+  };
+}
+
+function normalizeStringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === "string")
+    : [];
+}
+
+function normalizeDnsResolverSnapshot(value: unknown): DnsResolverSnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  return {
+    resolvConfPath:
+      typeof record.resolvConfPath === "string" ? record.resolvConfPath : "/etc/resolv.conf",
+    nameservers: normalizeStringArray(record.nameservers),
+    searchDomains: normalizeStringArray(record.searchDomains),
+    options: normalizeStringArray(record.options),
+    resolvedServers: normalizeStringArray(record.resolvedServers),
+    resolvedDomains: normalizeStringArray(record.resolvedDomains),
+    systemdResolvedActive:
+      typeof record.systemdResolvedActive === "boolean"
+        ? record.systemdResolvedActive
+        : undefined,
     checkedAt: typeof record.checkedAt === "string" ? record.checkedAt : new Date(0).toISOString()
   };
 }
@@ -1854,6 +1884,9 @@ export function toNodeHealthSnapshot(row: NodeHealthRow): NodeHealthSnapshot {
     ),
     timeSync: normalizeTimeSyncSnapshot(
       (runtimeSnapshot as Record<string, unknown>).timeSync
+    ),
+    dnsResolver: normalizeDnsResolverSnapshot(
+      (runtimeSnapshot as Record<string, unknown>).dnsResolver
     ),
     logs: normalizeSystemLogsSnapshot(
       (runtimeSnapshot as Record<string, unknown>).logs
