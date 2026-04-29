@@ -46,6 +46,7 @@ export interface AdminShellProps {
   sidebarGroups: AdminNavGroup[];
   notice?: PanelNotice;
   historyReplaceUrl?: string;
+  autoRefreshSeconds?: number;
 }
 
 export interface TabItem {

@@ -317,7 +317,6 @@ export function renderDesiredStateSection<Copy extends DesiredStateWorkspaceCopy
     selectedDatabaseJobs,
     selectedDatabaseAuditEvents,
     selectedBackupRun,
-    selectedBackupAuditEvents,
     selectedTenantLatestFailure,
     selectedTenantLatestSuccess,
     selectedNodeLatestFailure,
@@ -351,8 +350,7 @@ export function renderDesiredStateSection<Copy extends DesiredStateWorkspaceCopy
     selectedNodeActionPreviewItems,
     selectedZoneActionPreviewItems,
     selectedAppActionPreviewItems,
-    selectedDatabaseActionPreviewItems,
-    selectedBackupActionPreviewItems
+    selectedDatabaseActionPreviewItems
   } = buildDesiredStateModel({
     data,
     copy,
@@ -446,11 +444,9 @@ export function renderDesiredStateSection<Copy extends DesiredStateWorkspaceCopy
       selectedBackupPolicy,
       selectedBackupRun,
       selectedBackupRuns,
-      selectedBackupAuditEvents,
       selectedBackupLatestSuccessRun,
       selectedBackupLatestFailureRun,
       selectedBackupTargetHealth,
-      selectedBackupActionPreviewItems,
       selectedBackupTenantApps,
       selectedBackupTenantZones,
       selectedBackupTenantDatabases,
@@ -460,10 +456,8 @@ export function renderDesiredStateSection<Copy extends DesiredStateWorkspaceCopy
       renderers: {
         formatDate,
         renderActionFacts,
-        renderAuditPanel: (events) => renderAuditPanel(copy, locale, events),
         renderDetailGrid,
         renderPill,
-        renderRelatedPanel,
         renderSelectOptions
       }
     });
@@ -617,32 +611,6 @@ export function renderDesiredStateSection<Copy extends DesiredStateWorkspaceCopy
   const databaseActivityHtml = selectedDatabase
     ? renderResourceActivityStack(selectedDatabaseJobs, selectedDatabaseAuditEvents)
     : undefined;
-  const backupWorkspaceActivityHtml = selectedBackupPolicy
-    ? `<div class="stack">
-        ${renderRelatedPanel(
-          copy.backupsTitle,
-          copy.backupsDescription,
-          selectedBackupRuns.slice(0, 8).map((run) => ({
-            title: `<a class="detail-link" href="${escapeHtml(
-              buildDashboardViewUrl("backups", undefined, run.runId)
-            )}">${escapeHtml(run.runId)}</a>`,
-            meta: escapeHtml(
-              [run.policySlug, run.nodeId, formatDate(run.startedAt, locale)].join(" · ")
-            ),
-            summary: escapeHtml(run.summary),
-            tone:
-              run.status === "failed"
-                ? ("danger" as const)
-                : run.status === "succeeded"
-                  ? ("success" as const)
-                  : ("default" as const)
-          })),
-          copy.noBackups
-        )}
-        ${renderAuditPanel(copy, locale, selectedBackupAuditEvents)}
-      </div>`
-    : undefined;
-
   const desiredStateSections = buildDesiredStateLayoutSections({
     copy,
     data,
@@ -680,8 +648,7 @@ export function renderDesiredStateSection<Copy extends DesiredStateWorkspaceCopy
     databaseActivityHtml,
     databaseWorkspacePanel,
     backupDetailPanel,
-    backupEditorPanel,
-    backupActivityHtml: backupWorkspaceActivityHtml
+    backupEditorPanel
   });
 
   return renderDesiredStateLayout({

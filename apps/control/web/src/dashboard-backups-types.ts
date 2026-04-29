@@ -120,7 +120,8 @@ export type BackupsWorkspaceArgs<Copy extends BackupCopy> = {
   renderActiveFiltersPanel: (
     copy: Copy,
     items: Array<{ label: string; value: string }>,
-    clearHref: string
+    clearHref: string,
+    filterView?: string
   ) => string;
   renderAuditPanel: (
     copy: Copy,

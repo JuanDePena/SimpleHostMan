@@ -373,8 +373,12 @@ export function renderFirewallWorkspace(args: {
     ])}
     ${table}
     <div class="grid-two-desktop">
-      ${detailPanel}
-      ${actionsPanel}
+      <div class="stack">
+        ${detailPanel}
+      </div>
+      <div class="stack">
+        ${actionsPanel}
+      </div>
     </div>
   </section>`;
 }
@@ -574,8 +578,12 @@ export function renderFail2BanWorkspace(args: {
     ])}
     ${table}
     <div class="grid-two-desktop">
-      ${detailPanel}
-      ${actionsPanel}
+      <div class="stack">
+        ${detailPanel}
+      </div>
+      <div class="stack">
+        ${actionsPanel}
+      </div>
     </div>
   </section>`;
 }

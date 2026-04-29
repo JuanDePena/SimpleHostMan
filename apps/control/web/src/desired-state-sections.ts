@@ -99,7 +99,6 @@ export function buildDesiredStateLayoutSections<Copy extends DesiredStateSection
   databaseWorkspacePanel?: string;
   backupDetailPanel?: string;
   backupEditorPanel?: string;
-  backupActivityHtml?: string;
 }): DesiredStateLayoutSection[] {
   const {
     copy,
@@ -139,8 +138,7 @@ export function buildDesiredStateLayoutSections<Copy extends DesiredStateSection
     databaseActivityHtml,
     databaseWorkspacePanel,
     backupDetailPanel,
-    backupEditorPanel,
-    backupActivityHtml
+    backupEditorPanel
   } = args;
 
   const noTenantsPanel = renderEmptyDesiredStatePanel(copy.noTenants);
@@ -499,12 +497,6 @@ export function buildDesiredStateLayoutSections<Copy extends DesiredStateSection
           label: copy.tabSpec,
           href: buildDashboardViewUrl("backup-policies", "backup-policies-spec", focus),
           panelHtml: backupEditorPanel ?? createFormPanels.get("create-backup-form")
-        },
-        activity: {
-          id: "backup-policies-activity",
-          label: copy.tabActivity,
-          href: buildDashboardViewUrl("backup-policies", "backup-policies-activity", focus),
-          panelHtml: backupActivityHtml
         }
       }
     }

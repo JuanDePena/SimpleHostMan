@@ -121,7 +121,8 @@ export type JobHistoryWorkspaceArgs<Copy extends JobsCopy> = {
   renderActiveFiltersPanel: (
     copy: Copy,
     items: Array<{ label: string; value: string }>,
-    clearHref: string
+    clearHref: string,
+    filterView?: string
   ) => string;
   renderAuditPanel: (
     copy: Copy,
@@ -131,7 +132,7 @@ export type JobHistoryWorkspaceArgs<Copy extends JobsCopy> = {
   renderCodeBlock: (value: unknown) => string;
   renderDataTable: JobDataTableRenderer;
   renderDetailGrid: (
-    entries: Array<{ label: string; value: string }>,
+    entries: Array<{ label: string; value: string; className?: string }>,
     options?: { className?: string }
   ) => string;
   renderFocusLink: (label: string, href: string, active: boolean, activeLabel: string) => string;

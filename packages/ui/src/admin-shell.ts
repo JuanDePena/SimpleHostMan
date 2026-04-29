@@ -40,6 +40,11 @@ export function renderAdminShell(props: AdminShellProps): string {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    ${
+      props.autoRefreshSeconds && props.autoRefreshSeconds > 0
+        ? `<meta http-equiv="refresh" content="${escapeHtml(String(props.autoRefreshSeconds))}" />`
+        : ""
+    }
     <title>${escapeHtml(props.title)}</title>
     <style>
 ${renderBaseStyleBlock()}

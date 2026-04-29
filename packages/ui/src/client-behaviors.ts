@@ -6,6 +6,165 @@ export function renderAdminShellClientScript(): string {
           history.replaceState(null, "", historyReplaceUrl);
         }
 
+        const workspaceFilterStoragePrefix = "simplehost:workspace-filters:";
+        const workspaceFilterStorageKey = (view) =>
+          view ? workspaceFilterStoragePrefix + view : "";
+        const readWorkspaceFilters = (key) => {
+          if (!key) {
+            return {};
+          }
+
+          try {
+            const rawValue = window.localStorage.getItem(key);
+            const parsed = rawValue ? JSON.parse(rawValue) : {};
+            return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+              ? parsed
+              : {};
+          } catch (_error) {
+            return {};
+          }
+        };
+        const writeWorkspaceFilters = (key, values) => {
+          if (!key) {
+            return;
+          }
+
+          const normalized = {};
+          Object.entries(values).forEach(([name, value]) => {
+            const nextValue = typeof value === "string" ? value.trim() : "";
+            if (name && nextValue) {
+              normalized[name] = nextValue;
+            }
+          });
+
+          try {
+            if (Object.keys(normalized).length === 0) {
+              window.localStorage.removeItem(key);
+            } else {
+              window.localStorage.setItem(key, JSON.stringify(normalized));
+            }
+          } catch (_error) {
+            // Ignore storage failures and keep the request-driven filter flow.
+          }
+        };
+        const getWorkspaceFilterControls = (form) =>
+          Array.from(form.querySelectorAll("input[name], select[name], textarea[name]")).filter(
+            (control) => {
+              if (
+                !(
+                  control instanceof HTMLInputElement ||
+                  control instanceof HTMLSelectElement ||
+                  control instanceof HTMLTextAreaElement
+                )
+              ) {
+                return false;
+              }
+
+              if (control.name === "view") {
+                return false;
+              }
+
+              return !(
+                control instanceof HTMLInputElement &&
+                ["button", "hidden", "reset", "submit"].includes(control.type)
+              );
+            }
+          );
+        const collectWorkspaceFilterValues = (form) => {
+          const values = {};
+          getWorkspaceFilterControls(form).forEach((control) => {
+            const value = control.value.trim();
+            if (value) {
+              values[control.name] = value;
+            }
+          });
+          return values;
+        };
+        const resolveWorkspaceFilterView = (element) => {
+          const explicitView = element.getAttribute("data-filter-view") ?? "";
+          if (explicitView) {
+            return explicitView;
+          }
+
+          const viewInput = element.querySelector("input[name='view']");
+          return viewInput instanceof HTMLInputElement ? viewInput.value : "";
+        };
+
+        document.querySelectorAll("[data-workspace-filter-form]").forEach((form) => {
+          if (!(form instanceof HTMLFormElement)) {
+            return;
+          }
+
+          const filterView = resolveWorkspaceFilterView(form);
+          const storageKey = workspaceFilterStorageKey(filterView);
+          const controls = getWorkspaceFilterControls(form);
+          const fieldNames = Array.from(new Set(controls.map((control) => control.name)));
+
+          if (!storageKey || fieldNames.length === 0) {
+            return;
+          }
+
+          const currentUrl = new URL(window.location.href);
+          const urlHasFilterParam = fieldNames.some((name) => currentUrl.searchParams.has(name));
+
+          if (urlHasFilterParam) {
+            writeWorkspaceFilters(storageKey, collectWorkspaceFilterValues(form));
+          } else {
+            const savedFilters = readWorkspaceFilters(storageKey);
+            const savedEntries = Object.entries(savedFilters).filter(
+              ([name, value]) =>
+                fieldNames.includes(name) && typeof value === "string" && value.trim()
+            );
+
+            if (savedEntries.length > 0) {
+              const nextUrl = new URL(window.location.href);
+              const viewInput = form.querySelector("input[name='view']");
+              const targetView =
+                viewInput instanceof HTMLInputElement && viewInput.value
+                  ? viewInput.value
+                  : filterView;
+
+              if (targetView && targetView !== "overview") {
+                nextUrl.searchParams.set("view", targetView);
+              }
+
+              savedEntries.forEach(([name, value]) => {
+                nextUrl.searchParams.set(name, String(value).trim());
+              });
+
+              if (nextUrl.href !== currentUrl.href) {
+                window.location.replace(nextUrl.href);
+                return;
+              }
+            }
+          }
+
+          form.addEventListener("submit", () => {
+            writeWorkspaceFilters(storageKey, collectWorkspaceFilterValues(form));
+          });
+        });
+
+        document.querySelectorAll("[data-workspace-filter-clear]").forEach((trigger) => {
+          if (!(trigger instanceof HTMLElement)) {
+            return;
+          }
+
+          const filterView = resolveWorkspaceFilterView(trigger);
+          const storageKey = workspaceFilterStorageKey(filterView);
+
+          if (!storageKey) {
+            return;
+          }
+
+          trigger.addEventListener("click", () => {
+            try {
+              window.localStorage.removeItem(storageKey);
+            } catch (_error) {
+              // Ignore storage failures; the clear link still navigates to the unfiltered view.
+            }
+          });
+        });
+
         const sidebarSearch = document.querySelector("[data-sidebar-search]");
         const navItems = Array.from(document.querySelectorAll("[data-nav-item]"));
         const navGroups = Array.from(document.querySelectorAll("[data-nav-group]"));
@@ -257,6 +416,9 @@ export function renderAdminShellClientScript(): string {
           const pageSizeStorageKey = tableId
             ? "simplehost:data-table:" + tableId + ":page-size"
             : "";
+          const filterStorageKey = tableId
+            ? "simplehost:data-table:" + tableId + ":filter"
+            : "";
           const selectionStorageKey = tableId
             ? "simplehost:data-table:" + tableId + ":selected-row"
             : "";
@@ -370,6 +532,17 @@ export function renderAdminShellClientScript(): string {
             }
           }
 
+          if (filterStorageKey) {
+            try {
+              const savedFilter = window.localStorage.getItem(filterStorageKey);
+              if (savedFilter && !filterInput.value) {
+                filterInput.value = savedFilter;
+              }
+            } catch (_error) {
+              // Ignore storage failures and keep the server default.
+            }
+          }
+
           const updateTable = () => {
             const query = filterInput.value.trim().toLowerCase();
             const pageSize = Math.max(1, Number.parseInt(pageSizeSelect.value, 10) || 10);
@@ -458,6 +631,18 @@ export function renderAdminShellClientScript(): string {
 
           filterInput.addEventListener("input", () => {
             currentPage = 1;
+            if (filterStorageKey) {
+              try {
+                const nextFilter = filterInput.value.trim();
+                if (nextFilter) {
+                  window.localStorage.setItem(filterStorageKey, nextFilter);
+                } else {
+                  window.localStorage.removeItem(filterStorageKey);
+                }
+              } catch (_error) {
+                // Ignore storage failures and keep filtering in-memory.
+              }
+            }
             updateTable();
           });
 

@@ -475,17 +475,10 @@ export function renderDashboardPage(args: RenderDashboardArgs): string {
     auditActorFilter,
     auditEntityFilter,
     formatDate,
-    findRelatedJobs,
-    payloadContainsValue,
-    renderActionFacts,
-    renderActiveFiltersPanel,
     renderCodeBlock,
     renderDataTable,
     renderDetailGrid,
     renderFocusLink: renderFocusLinkWithPill,
-    renderJobFeedPanel: (nextCopy, nextLocale, jobs, title) =>
-      renderJobFeedPanel(nextCopy, nextLocale, jobs, formatDate, title),
-    renderRelatedPanel,
     renderSignalStrip,
     renderWorkspaceFilterForm
   });

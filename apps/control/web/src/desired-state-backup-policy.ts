@@ -6,8 +6,6 @@ import {
   type DesiredStateActionFactsRenderer,
   type DesiredStateDetailGridRenderer,
   type DesiredStatePillRenderer,
-  type DesiredStateRelatedPanelItem,
-  type DesiredStateRelatedPanelRenderer,
   type DesiredStateSelectOption,
   type DesiredStateSelectOptionsRenderer
 } from "./desired-state-shared.js";
@@ -18,7 +16,6 @@ type Zone = DashboardData["desiredState"]["spec"]["zones"][number];
 type Database = DashboardData["desiredState"]["spec"]["databases"][number];
 type BackupPolicy = DashboardData["desiredState"]["spec"]["backupPolicies"][number];
 type BackupRun = DashboardData["backups"]["latestRuns"][number];
-type AuditEvent = DashboardData["auditEvents"][number];
 type NodeHealth = DashboardData["nodeHealth"][number];
 
 export interface DesiredStateBackupPolicyCopy {
@@ -68,10 +65,8 @@ export interface DesiredStateBackupPolicyCopy {
 interface DesiredStateBackupPolicyRenderers {
   formatDate: (value: string | undefined, locale: WebLocale) => string;
   renderActionFacts: DesiredStateActionFactsRenderer;
-  renderAuditPanel: (events: AuditEvent[]) => string;
   renderDetailGrid: DesiredStateDetailGridRenderer;
   renderPill: DesiredStatePillRenderer;
-  renderRelatedPanel: DesiredStateRelatedPanelRenderer<DesiredStateRelatedPanelItem>;
   renderSelectOptions: DesiredStateSelectOptionsRenderer;
 }
 
@@ -81,11 +76,9 @@ export function renderBackupPolicyDesiredStatePanels(args: {
   selectedBackupPolicy: BackupPolicy | undefined;
   selectedBackupRun: BackupRun | undefined;
   selectedBackupRuns: BackupRun[];
-  selectedBackupAuditEvents: AuditEvent[];
   selectedBackupLatestSuccessRun: BackupRun | undefined;
   selectedBackupLatestFailureRun: BackupRun | undefined;
   selectedBackupTargetHealth: NodeHealth | undefined;
-  selectedBackupActionPreviewItems: DesiredStateRelatedPanelItem[];
   selectedBackupTenantApps: App[];
   selectedBackupTenantZones: Zone[];
   selectedBackupTenantDatabases: Database[];
@@ -100,11 +93,9 @@ export function renderBackupPolicyDesiredStatePanels(args: {
     selectedBackupPolicy,
     selectedBackupRun,
     selectedBackupRuns,
-    selectedBackupAuditEvents,
     selectedBackupLatestSuccessRun,
     selectedBackupLatestFailureRun,
     selectedBackupTargetHealth,
-    selectedBackupActionPreviewItems,
     selectedBackupTenantApps,
     selectedBackupTenantZones,
     selectedBackupTenantDatabases,
@@ -151,11 +142,13 @@ export function renderBackupPolicyDesiredStatePanels(args: {
       },
       {
         label: copy.storageRootLabel,
-        value: `<span class="mono">${escapeHtml(selectedBackupPolicy.storageLocation)}</span>`
+        value: `<span class="mono">${escapeHtml(selectedBackupPolicy.storageLocation)}</span>`,
+        className: "detail-item-span-two"
       },
       {
         label: copy.recordPreviewTitle,
-        value: escapeHtml(selectedBackupPolicy.resourceSelectors.join(", ") || copy.none)
+        value: escapeHtml(selectedBackupPolicy.resourceSelectors.join(", ") || copy.none),
+        className: "detail-item-span-two"
       },
       {
         label: copy.latestSuccessLabel,
@@ -163,7 +156,8 @@ export function renderBackupPolicyDesiredStatePanels(args: {
           ? `<a class="detail-link mono" href="${escapeHtml(
               buildDashboardViewUrl("backups", undefined, selectedBackupLatestSuccessRun.runId)
             )}">${escapeHtml(selectedBackupLatestSuccessRun.runId)}</a>`
-          : renderers.renderPill(copy.none, "muted")
+          : renderers.renderPill(copy.none, "muted"),
+        className: "detail-item-span-two"
       },
       {
         label: copy.latestFailureLabel,
@@ -171,9 +165,34 @@ export function renderBackupPolicyDesiredStatePanels(args: {
           ? `<a class="detail-link mono" href="${escapeHtml(
               buildDashboardViewUrl("backups", undefined, selectedBackupLatestFailureRun.runId)
             )}">${escapeHtml(selectedBackupLatestFailureRun.runId)}</a>`
+          : renderers.renderPill(copy.none, "muted"),
+        className: "detail-item-span-two"
+      },
+      {
+        label: copy.nodeHealthTitle,
+        value: selectedBackupTargetHealth?.latestJobStatus
+          ? renderers.renderPill(
+              selectedBackupTargetHealth.latestJobStatus,
+              selectedBackupTargetHealth.latestJobStatus === "applied"
+                ? "success"
+                : selectedBackupTargetHealth.latestJobStatus === "failed"
+                  ? "danger"
+                  : "muted"
+            )
           : renderers.renderPill(copy.none, "muted")
+      },
+      {
+        label: copy.relatedJobsTitle,
+        value: renderers.renderPill(
+          String(selectedBackupRuns.length),
+          selectedBackupRuns.some((run) => run.status === "failed")
+            ? "danger"
+            : selectedBackupRuns.length > 0
+              ? "success"
+              : "muted"
+        )
       }
-    ])}
+    ], { className: "detail-grid-compact" })}
     ${
       selectedBackupRun
         ? renderers.renderDetailGrid([
@@ -198,85 +217,12 @@ export function renderBackupPolicyDesiredStatePanels(args: {
             },
             {
               label: copy.backupColSummary,
-              value: escapeHtml(selectedBackupRun.summary)
+              value: escapeHtml(selectedBackupRun.summary),
+              className: "detail-item-span-two"
             }
-          ])
+          ], { className: "detail-grid-compact" })
         : `<p class="empty">${escapeHtml(copy.noBackups)}</p>`
     }
-    ${renderers.renderRelatedPanel(
-      copy.effectiveStateTitle,
-      copy.effectiveStateDescription,
-      [
-        {
-          title: escapeHtml(copy.nodeHealthTitle),
-          meta: escapeHtml(selectedBackupTargetHealth?.currentVersion ?? copy.none),
-          summary: escapeHtml(selectedBackupTargetHealth?.latestJobSummary ?? copy.none),
-          tone: selectedBackupTargetHealth?.latestJobStatus === "failed"
-            ? "danger"
-            : selectedBackupTargetHealth?.latestJobStatus === "applied"
-              ? "success"
-              : "default"
-        },
-        {
-          title: escapeHtml(copy.relatedJobsTitle),
-          meta: escapeHtml(`${selectedBackupRuns.length} run(s)`),
-          summary: escapeHtml(selectedBackupRun?.summary ?? copy.none),
-          tone: selectedBackupRuns.some((run) => run.status === "failed")
-            ? "danger"
-            : selectedBackupRuns.some((run) => run.status === "succeeded")
-              ? "success"
-              : "default"
-        }
-      ],
-      copy.noRelatedRecords
-    )}
-    ${renderers.renderRelatedPanel(
-      copy.plannedChangesTitle,
-      copy.plannedChangesDescription,
-      selectedBackupActionPreviewItems,
-      copy.noRelatedRecords
-    )}
-    ${renderers.renderRelatedPanel(
-      copy.failureFocusTitle,
-      copy.failureFocusDescription,
-      selectedBackupRuns
-        .filter((run) => run.status === "failed")
-        .slice(0, 4)
-        .map((run) => ({
-          title: `<a class="detail-link" href="${escapeHtml(
-            buildDashboardViewUrl("backups", undefined, run.runId)
-          )}">${escapeHtml(run.runId)}</a>`,
-          meta: escapeHtml(
-            [run.policySlug, renderers.formatDate(run.startedAt, locale)].join(" · ")
-          ),
-          summary: escapeHtml(run.summary),
-          tone: "danger" as const
-        })),
-      copy.noBackups
-    )}
-    ${renderers.renderRelatedPanel(
-      copy.relatedResourcesTitle,
-      copy.relatedResourcesDescription,
-      [
-        ...selectedBackupTenantApps.slice(0, 4).map((app) => ({
-          title: `<a class="detail-link" href="${escapeHtml(
-            buildDashboardViewUrl("desired-state", "desired-state-apps", app.slug)
-          )}">${escapeHtml(app.slug)}</a>`,
-          meta: escapeHtml(app.canonicalDomain),
-          summary: escapeHtml(app.primaryNodeId),
-          tone: "default" as const
-        })),
-        ...selectedBackupTenantZones.slice(0, 3).map((zone) => ({
-          title: `<a class="detail-link" href="${escapeHtml(
-            buildDashboardViewUrl("desired-state", "desired-state-zones", zone.zoneName)
-          )}">${escapeHtml(zone.zoneName)}</a>`,
-          meta: escapeHtml(zone.primaryNodeId),
-          summary: escapeHtml(zone.tenantSlug),
-          tone: "default" as const
-        }))
-      ],
-      copy.noRelatedRecords
-    )}
     <div class="toolbar">
       <a class="button-link secondary" href="${escapeHtml(
         buildDashboardViewUrl("backups", undefined, selectedBackupPolicy.policySlug)
@@ -285,7 +231,6 @@ export function renderBackupPolicyDesiredStatePanels(args: {
         buildDashboardViewUrl("node-health", undefined, selectedBackupPolicy.targetNodeId)
       )}">${escapeHtml(copy.openNodeHealth)}</a>
     </div>
-    ${renderers.renderAuditPanel(selectedBackupAuditEvents)}
   </article>`;
 
   const editorPanel = `<article class="panel detail-shell">
@@ -297,7 +242,7 @@ export function renderBackupPolicyDesiredStatePanels(args: {
     </div>
     <form method="post" action="/resources/backups/upsert" class="stack">
       <input type="hidden" name="originalPolicySlug" value="${escapeHtml(selectedBackupPolicy.policySlug)}" />
-      <div class="grid grid-two">
+      <div class="stack">
         <article class="panel panel-nested detail-shell">
           <div>
             <h3>${escapeHtml(copy.detailActionsTitle)}</h3>
@@ -387,32 +332,6 @@ export function renderBackupPolicyDesiredStatePanels(args: {
                 : renderers.renderPill(copy.none, "muted")
             }
           ])}
-          ${renderers.renderRelatedPanel(
-            copy.queuedWorkTitle,
-            copy.backupCoverageDescription,
-            [
-              {
-                title: `<span class="mono">${escapeHtml(selectedBackupPolicy.targetNodeId)}</span>`,
-                meta: escapeHtml(
-                  [
-                    selectedBackupPolicy.schedule,
-                    `${selectedBackupPolicy.retentionDays}d retention`
-                  ].join(" · ")
-                ),
-                summary: escapeHtml(
-                  `${selectedBackupPolicy.resourceSelectors.length || 0} selector(s), ${selectedBackupTenantApps.length} app(s), ${selectedBackupTenantZones.length} zone(s), ${selectedBackupTenantDatabases.length} database(s)`
-                ),
-                tone: "default"
-              }
-            ],
-            copy.noRelatedRecords
-          )}
-          ${renderers.renderRelatedPanel(
-            copy.plannedChangesTitle,
-            copy.plannedChangesDescription,
-            selectedBackupActionPreviewItems,
-            copy.noRelatedRecords
-          )}
         </article>
       </div>
       <div class="toolbar">

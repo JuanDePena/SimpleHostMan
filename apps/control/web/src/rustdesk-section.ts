@@ -532,7 +532,9 @@ export function renderRustDeskSection(
       defaultPageSize: 10
     })}
     <div class="grid grid-two">
-      ${rustdeskConnectionPanel}
+      <div class="stack">
+        ${rustdeskConnectionPanel}
+      </div>
       <div class="stack">
         ${rustdeskSelectedNodePanel}
         ${rustdeskFailoverPanel}

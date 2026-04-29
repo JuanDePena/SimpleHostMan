@@ -336,18 +336,18 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
           active: view === "fail2ban"
         },
         {
-          id: "audit",
-          label: copy.navAudit,
-          href: buildDashboardViewUrl("audit"),
-          badge: String(data.auditEvents.length),
-          active: view === "audit"
-        },
-        {
           id: "jobs",
           label: copy.navJobs,
           href: buildDashboardViewUrl("jobs"),
           badge: String(data.jobHistory.length),
           active: view === "jobs" || view === "job-history"
+        },
+        {
+          id: "audit",
+          label: copy.navAudit,
+          href: buildDashboardViewUrl("audit"),
+          badge: String(data.auditEvents.length),
+          active: view === "audit"
         }
       ]
     }
@@ -441,6 +441,7 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
     sidebarSearchPlaceholder: copy.sidebarSearchPlaceholder,
     sidebarGroups,
     body,
-    historyReplaceUrl
+    historyReplaceUrl,
+    autoRefreshSeconds: view === "overview" ? 60 : undefined
   });
 }

@@ -121,7 +121,8 @@ export function renderResourceDriftWorkspace<Copy extends DriftCopy>(args: {
   renderActiveFiltersPanel: (
     copy: Copy,
     items: Array<{ label: string; value: string }>,
-    clearHref: string
+    clearHref: string,
+    filterView?: string
   ) => string;
   renderAuditPanel: (
     copy: Copy,
@@ -542,7 +543,8 @@ export function renderResourceDriftWorkspace<Copy extends DriftCopy>(args: {
   const driftActiveFiltersPanel = renderActiveFiltersPanel(
     copy,
     activeDriftFilterItems,
-    buildDashboardViewUrl("resource-drift")
+    buildDashboardViewUrl("resource-drift"),
+    "resource-drift"
   );
   const selectedDriftJobsPanel = renderJobFeedPanel(copy, locale, selectedDriftJobs);
   const selectedDriftAuditPanel = renderAuditPanel(copy, locale, selectedDriftAuditEvents);
@@ -579,7 +581,9 @@ export function renderResourceDriftWorkspace<Copy extends DriftCopy>(args: {
       defaultPageSize: 10
     })}
     <div class="grid grid-two">
-      ${selectedDriftPanel}
+      <div class="stack">
+        ${selectedDriftPanel}
+      </div>
       <div class="stack">
         ${driftStatusesPanel}
         ${driftNodesPanel}

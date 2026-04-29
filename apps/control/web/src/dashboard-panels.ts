@@ -330,24 +330,15 @@ export function renderRelatedPanel(
 export function renderActiveFiltersPanel<Copy extends ActiveFiltersCopy>(
   copy: Copy,
   items: Array<{ label: string; value: string }>,
-  clearHref: string
+  clearHref: string,
+  filterView?: string
 ): string {
-  if (items.length === 0) {
-    return "";
-  }
+  void copy;
+  void items;
+  void clearHref;
+  void filterView;
 
-  return `<article class="panel detail-shell panel-nested">
-    <div class="section-head">
-      <div>
-        <h3>${escapeHtml(copy.activeFiltersTitle)}</h3>
-        <p class="muted section-description">${escapeHtml(copy.activeFiltersDescription)}</p>
-      </div>
-      <a class="button-link secondary" href="${escapeHtml(clearHref)}">${escapeHtml(
-        copy.clearFiltersLabel
-      )}</a>
-    </div>
-    ${renderActionFacts(items)}
-  </article>`;
+  return "";
 }
 
 export function renderWorkspaceFilterForm<Copy extends FilterWorkspaceCopy>(
@@ -364,11 +355,11 @@ export function renderWorkspaceFilterForm<Copy extends FilterWorkspaceCopy>(
         <h3>${escapeHtml(copy.filterWorkspaceTitle)}</h3>
         <p class="muted section-description">${escapeHtml(copy.filterWorkspaceDescription)}</p>
       </div>
-      <a class="button-link secondary" href="${escapeHtml(props.clearHref)}">${escapeHtml(
+      <a class="button-link secondary" href="${escapeHtml(props.clearHref)}" data-workspace-filter-clear data-filter-view="${escapeHtml(props.view)}">${escapeHtml(
         copy.clearFiltersLabel
       )}</a>
     </div>
-    <form method="get" action="/" class="stack">
+    <form method="get" action="/" class="stack" data-workspace-filter-form data-filter-view="${escapeHtml(props.view)}">
       <input type="hidden" name="view" value="${escapeHtml(props.view)}" />
       <div class="form-grid filter-form-grid">
         ${props.fields

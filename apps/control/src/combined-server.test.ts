@@ -40,6 +40,52 @@ test("combined runtime serves authenticated flow over a real HTTP server", async
     assert.equal(dashboardResponse.status, 200);
     const dashboardHtml = await dashboardResponse.text();
     assert.match(dashboardHtml, /SimpleHost/);
+    assert.match(
+      dashboardHtml,
+      /<meta http-equiv="refresh" content="60" \/>/,
+      "overview should auto-refresh every 60 seconds"
+    );
+
+    const jobsResponse = await fetch(new URL("/?view=jobs", runtime.origin), {
+      headers: {
+        cookie
+      }
+    });
+    assert.equal(jobsResponse.status, 200);
+    const jobsHtml = await jobsResponse.text();
+    assert.doesNotMatch(
+      jobsHtml,
+      /<meta http-equiv="refresh"/,
+      "non-overview workspaces should not auto-refresh"
+    );
+    assert.match(
+      jobsHtml,
+      /data-workspace-filter-form data-filter-view="job-history"/,
+      "job filters should be marked for localStorage persistence"
+    );
+    assert.match(
+      jobsHtml,
+      /simplehost:workspace-filters:/,
+      "dashboard shell should ship the workspace filter persistence script"
+    );
+
+    const packagesResponse = await fetch(new URL("/?view=packages", runtime.origin), {
+      headers: {
+        cookie
+      }
+    });
+    assert.equal(packagesResponse.status, 200);
+    const packagesHtml = await packagesResponse.text();
+    assert.match(
+      packagesHtml,
+      /data-workspace-filter-form data-filter-view="packages"/,
+      "package filters should be marked for localStorage persistence"
+    );
+    assert.match(
+      packagesHtml,
+      /data-workspace-filter-clear data-filter-view="packages"/,
+      "package clear-filter links should clear localStorage persistence"
+    );
 
     const vhostResponse = await fetch(
       new URL("/proxy-vhost?slug=adudoc&format=json", runtime.origin),

@@ -194,7 +194,8 @@ export function renderPackagesWorkspace(args: {
   renderActiveFiltersPanel: (
     copy: WebCopy,
     items: Array<{ label: string; value: string }>,
-    clearHref: string
+    clearHref: string,
+    filterView?: string
   ) => string;
   renderWorkspaceFilterForm: (
     copy: WebCopy,
@@ -473,11 +474,12 @@ export function renderPackagesWorkspace(args: {
     ${packageFilterForm}
     ${packageTable}
     <div class="grid-two-desktop">
-      ${selectedPackagePanel}
       <div class="stack">
-        ${renderActiveFiltersPanel(copy, activeFilterItems, buildDashboardViewUrl("packages"))}
-        ${packageActionsPanel}
+        ${selectedPackagePanel}
         ${packageInstallRepoPanel}
+      </div>
+      <div class="stack">
+        ${packageActionsPanel}
         ${packageInstallUrlPanel}
       </div>
     </div>
