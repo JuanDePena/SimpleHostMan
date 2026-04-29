@@ -26,7 +26,7 @@ The composite build boundary is:
 
 - `/opt/simplehostman/src/apps/control/tsconfig.json`
 
-This separation is temporary. The migration target is one control-plane app that serves UI and `/v1/*` from one process and one port.
+This separation is now a source-organization boundary. The packaged runtime default is the combined control-plane app that serves UI and `/v1/*` from one process and one port, while split mode remains available for validation and diagnostics.
 
 ## Current responsibilities
 
@@ -302,14 +302,14 @@ From this directory:
 - `apps/control/src/auth-gate.ts` now provides a cached combined auth/bootstrap gate, so the runtime can reuse resolved session and authenticated dashboard state inside one request.
 - `apps/control/src/request-context.ts` now exposes an explicit per-request cache object for auth/bootstrap memoization and health snapshot reuse.
 - `apps/control/src/route-surface.ts` now gives the combined runtime a more semantic routing surface over health, API, and web requests.
-- `apps/control/src/runtime-contract.ts` now makes the one-process runtime explicit as a source-level runtime contract before any deploy/runtime promotion.
+- `apps/control/src/runtime-contract.ts` keeps the one-process runtime explicit for packaged runtime operation and release-root rehearsal.
 - `apps/control/src/preflight-cli.ts` now prints a legible preflight report and exits non-zero on failure.
 - `control-web` now routes semantic mail/domain/mailbox/quota mutations through `ControlWebApi`, further shrinking direct transport-shaped coupling.
-- The remaining work is runtime unification and release normalization, not source ownership.
+- The remaining work is runtime refinement and release-root cutover discipline, not source ownership.
 
-## Combined pre-promotion checklist
+## Combined Runtime Checklist
 
-Before `combined` can move beyond source-only validation, all of these must continue to hold:
+Because `combined` is now the packaged runtime default, all of these checks must continue to hold before release-root staging, promotion, or cutover work advances:
 
 - `pnpm test:runtime-parity` passes for representative protected routes
 - `pnpm test:combined-smoke` passes against the real web surface and stubbed in-process API boundary
@@ -336,6 +336,6 @@ Before `combined` can move beyond source-only validation, all of these must cont
 - `pnpm check:release-target` stays green from `apps/control`
 - `pnpm check:release-root-staging` stays green from `apps/control`
 - `pnpm check:release-rehearsal` stays green from `apps/control`
-- source-level `release-root staging` is now the highest promoted state of `combined`
-- the release rehearsal now reaches `/opt/simplehostman/release/.staging/control` while keeping `/opt/simplehostman/release/current` untouched
-- split mode remains the documented and packaged runtime default under `scripts/` and `packaging/`
+- source-level release-root checks now cover staging, promotion, cutover planning, target rehearsal, rollback rehearsal, parity, and gate artifacts
+- the release rehearsal reaches `/opt/simplehostman/release/.staging/control` while keeping `/opt/simplehostman/release/current` untouched
+- combined mode is the documented and packaged runtime default under `scripts/` and `packaging/`; split mode is retained for validation and diagnostics

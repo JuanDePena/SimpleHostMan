@@ -38,7 +38,7 @@ The current canonical top-level layout is:
 Meaning:
 
 - `src/` is the canonical source workspace
-- `release/` is the neutral runtime root reserved for the later runtime/release migration phase
+- `release/` is the canonical runtime root for installed releases
 
 ## Canonical source layout
 
@@ -89,9 +89,9 @@ Responsibility:
 
 - unified source ownership for UI and API
 - transitional internal separation between `shared/`, `web/`, `api/`, and the canonical combined runtime subtree under `src/`
-- the current combined runtime already serves UI and `/v1/*` from one process
+- the current packaged combined runtime serves UI and `/v1/*` from one process
 - that same runtime is exercised by source-level routing and release-validation tests
-- eventual target is one control-plane runtime and one port
+- split mode remains available for validation and diagnostics, but combined mode is the runtime default
 
 ### `apps/worker`
 
@@ -227,20 +227,21 @@ Historical references may still appear in migration notes, but they are no longe
 
 ## Runtime and release direction
 
-Current runtime normalization target:
+Current runtime root:
 
 ```text
 /opt/simplehostman/release
   /releases
     /<version>
   /shared
+  /current -> /opt/simplehostman/release/releases/<version>
 ```
 
 Notes:
 
-- this root has already been reserved in the filesystem
-- final release structure is a later migration phase
-- imported control/agent packaging and deploy scripts may still reflect runtime-specific assumptions and should be treated as transitional until runtime migration is executed
+- this root is used by the current `simplehost-control`, `simplehost-worker`, and `simplehost-agent` services
+- source-level release-root staging, promotion, cutover, and rollback tooling still rehearses changes before the live `current` symlink is moved
+- older panel/manager runtime paths should not be reintroduced as canonical locations
 
 ## Rules
 
@@ -249,7 +250,7 @@ Notes:
 - Do not reintroduce repo-era source roots as active inputs.
 - Do not reintroduce old split runtime roots as canonical paths.
 - Keep mutable runtime state outside the source tree.
-- Keep runtime migration separate from source migration.
+- Keep source ownership changes separate from live release and cutover changes.
 
 ## Current transition direction
 
@@ -259,7 +260,7 @@ The source-unification phase is complete:
 2. the former split roots have been absorbed and removed
 3. `control`, `worker`, `agent`, and shared packages now build from one workspace
 
-Current work is no longer monorepo migration. It is runtime refinement:
+Current work is no longer monorepo migration or first runtime-root adoption. It is runtime refinement:
 
 1. harden `apps/control` as the single control-plane runtime boundary
 2. keep `worker` and `agent` independently deployable

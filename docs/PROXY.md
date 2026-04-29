@@ -32,12 +32,16 @@ Ingress platform:
 
 ## Selected platform
 
-As of 2026-03-11, the latest Apache HTTP Server stable release is `2.4.66`.
+Verified on `2026-04-29` against the official Apache HTTP Server download page, the latest Apache HTTP Server stable release is `2.4.66`.
 
 Target platform:
 
 - Apache HTTP Server `2.4.66`
 - Let's Encrypt for certificate issuance and renewal
+
+Reference:
+
+- https://httpd.apache.org/download.cgi
 
 Why Apache runs on the host:
 

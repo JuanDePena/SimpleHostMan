@@ -35,7 +35,7 @@ Major-version execution planning now lives in:
 
 ### PostgreSQL
 
-As of 2026-03-11, the current supported major release is PostgreSQL `18`, and the current supported minor release is `18.3`.
+Verified on `2026-04-29` against the official PostgreSQL release notes, the current supported major release is PostgreSQL `18`, and the current supported minor release is `18.3`.
 
 Target version:
 
@@ -54,10 +54,16 @@ Source policy:
 
 ### MariaDB
 
-As of 2026-03-11:
+Verified on `2026-04-29` against the official MariaDB release listings:
 
 - Latest stable rolling release: MariaDB `12.2.2`
 - Latest LTS series release: MariaDB `11.8.6`
+
+Reference pages:
+
+- https://www.postgresql.org/docs/current/release.html
+- https://mariadb.org/mariadb/all-releases/
+- https://mariadb.org/about/maintenance-policy/
 
 Target version policy:
 

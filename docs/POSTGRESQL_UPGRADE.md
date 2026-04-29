@@ -452,5 +452,6 @@ This TODO is considered closed only under this policy:
 - each window includes fresh backups, a defined rollback point, explicit HA loss
   during standby rebuild, and post-upgrade validation
 
-Until the windows are executed, PostgreSQL `18.x` remains the target policy and
-not the current live runtime.
+As of the current recorded baseline, both live PostgreSQL clusters have already
+been upgraded to PostgreSQL `18.3`; this runbook remains the template for the
+next major-version window.

@@ -130,9 +130,12 @@ That means the repository does not stop at application code. It also owns:
 - rollback semantics
 - release-root rehearsal
 
-The runtime normalization target is:
+The active runtime root is:
 
 - `/opt/simplehostman/release`
+
+Installed releases live under `/opt/simplehostman/release/releases/<version>` and
+the active runtime is selected through `/opt/simplehostman/release/current`.
 
 This keeps the platform closer to an auditable appliance than to a loose collection of apps and scripts.
 
@@ -156,10 +159,10 @@ Helper commands:
 
 This repository already acts as the single source of truth for the platform.
 
-The major ongoing transition is no longer source unification. It is runtime convergence:
+The major ongoing transition is no longer source unification or first runtime-root adoption. It is runtime refinement:
 
 - consolidating the control plane into a cleaner runtime model
-- normalizing the release root
+- hardening the release-root staging, promotion, cutover, and rollback checks
 - and promoting the combined control runtime through staged, rehearsed cutover flows
 
 ## For Engineers And Operators

@@ -10,6 +10,6 @@ Responsibilities:
 
 - local registration and claim helpers
 - operator maintenance commands
-- transitional diagnostics while the monorepo migration is still in progress
+- source and runtime diagnostics for operator workflows
 
 This app remains separate from both `apps/control` and `apps/agent`.

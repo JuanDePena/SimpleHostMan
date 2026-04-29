@@ -12,8 +12,8 @@ Current scope:
 - shared runtime context creation for the control-plane boundary
 - shared server shutdown helpers used by standalone and combined entrypoints
 - mock HTTP invocation helpers used by the combined runtime to call the API boundary in-process
-- control-plane process seams that support convergence toward one runtime
+- control-plane process seams that support the combined runtime and split-mode validation
 - shared auth/session resolution and dashboard-bootstrap helpers used by `control-web` and the combined control runtime
 - transitional glue that belongs to the unified `apps/control` boundary but should not live in `packages/*`
 
-This package is intentionally narrow. It exists to reduce duplication between `api/` and `web/` while `apps/control` still runs with two entrypoints.
+This package is intentionally narrow. It reduces duplication between `api/` and `web/` while the packaged runtime runs combined and split mode remains available for validation and diagnostics.

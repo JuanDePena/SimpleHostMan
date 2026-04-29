@@ -23,7 +23,7 @@ Do not reintroduce `/home/server`, `/opt/server`, or `/opt/simplehost`.
 - `/opt/simplehostman/src` is the canonical source tree.
 - `/opt/simplehostman/src/docs` is the canonical shared documentation tree.
 - the former split source trees are now historical only and should not be treated as live inputs.
-- runtime and release normalization under `/opt/simplehostman/release` is a later migration phase.
+- `/opt/simplehostman/release` is the canonical runtime root for installed releases.
 
 ## Product direction
 
@@ -67,21 +67,22 @@ Ownership:
 - `packages/*`: shared contracts, config, UI, persistence, renderers, drivers, and testing helpers
 - `platform`: host and container templates
 - `bootstrap`: bootstrap inventory and seed material
-- `packaging`: release and install artifacts still organized by legacy owner during transition
+- `packaging`: release and install artifacts organized by artifact type for the unified runtime
 - `scripts`: install, deploy, rollback, bootstrap, and migration helpers
 - `docs`: integrated architecture, operational guides, and migration plans
 
 ## Runtime direction
 
-Current runtime normalization target:
+Current runtime root:
 
 - `/opt/simplehostman/release`
 
 Important note:
 
-- source migration is happening before runtime migration
-- the runtime now uses `simplehost-control`, `simplehost-worker`, and `simplehost-agent` together with `/etc/simplehost/*`
-- do not assume that imported panel/manager release scripts already represent the final runtime layout
+- installed releases live under `/opt/simplehostman/release/releases/<version>`
+- `/opt/simplehostman/release/current` selects the active release
+- the runtime uses `simplehost-control`, `simplehost-worker`, and `simplehost-agent` together with `/etc/simplehost/*`
+- source-level release-root rehearsal tooling still stages and emulates cutovers before anything should touch the live `current` symlink
 
 ## Working rules
 
@@ -91,7 +92,7 @@ Important note:
 - Update docs in the same turn when architecture or ownership changes.
 - Avoid parallel competing source layouts for the same concern.
 - Keep `worker` and `agent` separate from `control`.
-- Do not mix source migration and live runtime migration in the same cut unless explicitly required.
+- Do not mix source ownership changes with live release, systemd, or cutover changes unless explicitly required.
 
 ## Priority order
 
@@ -144,4 +145,4 @@ Read these when working on service-specific behavior:
 - If bootstrapping the codebase, start with `/opt/simplehostman/src`.
 - If changing bootstrap inventory, work in `/opt/simplehostman/src/bootstrap/apps.bootstrap.yaml`.
 - If a change affects both source layout and architecture, update the migration docs in the same turn.
-- If a task touches releases or systemd, verify whether it belongs to the later runtime-migration phase before changing anything live.
+- If a task touches releases or systemd, verify whether it is only source-level rehearsal work or a live runtime change before changing anything live.

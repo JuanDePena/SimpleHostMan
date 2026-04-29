@@ -187,13 +187,19 @@ Applied state:
   - strict `SPF`, `DMARC`, `TLS-RPT`, and `mail._domainkey`
 - direct authoritative queries against `vps-1926167b.vps.ovh.ca` already answer with the new values
 
-Propagation note:
+Propagation note from `2026-04-25`:
 
 - some recursive resolvers may still return the old `51.161.11.249` answers until the previous `14400` second TTL window fully expires
 - local validation from the new platform already resolves the public names to `51.222.204.86`
 
+Follow-up observed on `2026-04-29`:
+
+- the local resolver on the primary resolves `gomezrosado.com.do`, `mail.gomezrosado.com.do`, and `webmail.gomezrosado.com.do` to `51.222.204.86`
+- `http://gomezrosado.com.do/` redirects to HTTPS from the new Apache stack
+- `http://webmail.gomezrosado.com.do/` returns the Roundcube login surface from the new stack
+
 ## Remaining Follow-ups
 
-- monitor recursive DNS propagation until old cached answers disappear
-- run one more delta Maildir sync only if any late mail still lands on `vps-old` during cache expiry
+- spot-check external recursive DNS if a user reports stale answers
+- run one more delta Maildir sync only if logs show late mail still landing on `vps-old`
 - confirm each mailbox owner can log in and rotate any password that should not keep the migration secret

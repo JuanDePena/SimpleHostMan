@@ -12,6 +12,6 @@ Current role:
 - expose control-plane HTTP endpoints
 - own auth, sessions, API routing, and request handling for the control plane
 
-This entrypoint remains separate only as a transitional source boundary inside `apps/control`.
+This entrypoint remains separate as a source boundary inside `apps/control`.
 Common process and runtime helpers now live in `/opt/simplehostman/src/apps/control/shared`.
-The long-term target is one control-plane runtime process serving both UI and API.
+The packaged runtime default is now the combined control-plane process serving both UI and API; this API entrypoint remains useful for split-mode validation and diagnostics.

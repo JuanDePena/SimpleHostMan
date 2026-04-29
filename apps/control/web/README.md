@@ -13,7 +13,7 @@ Current role:
 - expose the current web server boundary for the control plane
 - organize web routing through a shared `WebRouteContext` plus route slices for core pages, session flows, and action POST handlers
 
-This entrypoint remains separate only as a transitional source boundary inside `apps/control`.
+This entrypoint remains separate as a source boundary inside `apps/control`.
 Common process and runtime helpers now live in `/opt/simplehostman/src/apps/control/shared`.
 `createControlWebSurface()` now acts as the reusable UI-side equivalent of the API surface boundary.
 `WebRouteContext` now carries `sessionToken`, so dashboard, desired-state, mail, and action handlers all share one per-request auth/session boundary.
@@ -25,6 +25,6 @@ Login redirects, cookie clearing, and login-error rendering now flow through a s
 `ControlWebApi` now also exposes semantic mail/domain/mailbox/quota mutations, continuing the shift away from route-shaped `request()` calls inside web handlers.
 The generic `request()` primitive is now internal to the API-client implementation rather than part of the `ControlWebApi` interface, so the web layer depends on semantic methods instead of a transport-shaped escape hatch.
 `WebRouteContext` now caches `resolveSession()`, `requireSession()`, and `loadAuthenticatedDashboard()` per request, which makes protected web routes a closer match to the combined control runtime.
-That same semantic web boundary is now what the source-level `combined preflight`, `combined release-candidate`, and `combined release-sandbox` checks exercise before any runtime promotion work.
+That same semantic web boundary is now what the source-level `combined preflight`, `combined release-candidate`, release-sandbox, release-shadow, release-root staging, and release-root cutover checks exercise before any live release-root mutation.
 That bootstrap seam is now backed by a reusable dashboard-bootstrap service in `control-shared`, rather than being assembled inline inside a route handler.
-The long-term target is one control-plane runtime process serving both UI and API.
+The packaged runtime default is now one combined control-plane process serving both UI and API; this web entrypoint remains useful for split-mode validation and diagnostics.

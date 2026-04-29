@@ -62,7 +62,7 @@ The published mail DNS model for `adudoc.com` now includes:
 
 Current caveat:
 
-- the policy is declared in `SimpleHostMan`, but backup-run evidence is still pending a live backup executor on this platform, so migration closure here reflects successful mail cutover rather than completed backup rehearsal evidence
+- the policy is declared in `SimpleHostMan`, and the platform now ships the live backup runner; this closure note does not itself record a successful adudoc backup run or restore rehearsal, so confirm current evidence in the `Backups` workspace before treating recovery readiness as closed
 
 ## Related references
 

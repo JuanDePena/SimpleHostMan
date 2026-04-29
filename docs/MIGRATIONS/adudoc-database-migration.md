@@ -17,15 +17,17 @@ Use the migration audit script against a live control plane:
 ```bash
 export SIMPLEHOST_API_BASE_URL=http://127.0.0.1:3200
 export SIMPLEHOST_API_TOKEN=replace-with-session-token
-pnpm audit:migration -- --app adudoc
+node scripts/control/check-database-migration.mjs --app adudoc
 ```
+
+Older workspaces may also expose this as `pnpm audit:migration -- --app adudoc`.
 
 If you do not have a token, the script can also log in with:
 
 ```bash
 export SIMPLEHOST_BOOTSTRAP_ADMIN_EMAIL=webmaster@example.com
 export SIMPLEHOST_BOOTSTRAP_ADMIN_PASSWORD=replace-with-password
-pnpm audit:migration -- --app adudoc
+node scripts/control/check-database-migration.mjs --app adudoc
 ```
 
 Expected checkpoints:

@@ -191,11 +191,16 @@ The container platform artifacts are documented in:
 
 ## Database model
 
-Per application:
+Per stateful application:
 
 - One database
 - One least-privilege application role or user
 - Credentials stored only in the application environment file and database secret handling path
+
+Static applications do not need a database in live desired state. The current
+bootstrap inventory schema still expects a `database` block for every app, so a
+DB-less static workload should be confirmed from `SimpleHost Control` desired
+state rather than inferred only from the bootstrap YAML.
 
 Recommended defaults:
 
@@ -232,7 +237,8 @@ Illustrative mapping for the current domains:
   - canonical domain: `gomezrosado.com.do`
   - aliases: `www.gomezrosado.com.do`
   - backend port: `10201`
-  - engine: PostgreSQL
+  - engine: none in live desired state
+  - workload: static website plus mail domain
 
 - `adudoc` application
   - zone: `adudoc.com`

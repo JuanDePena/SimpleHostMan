@@ -24,7 +24,9 @@ function parseArgs(argv) {
   }
 
   if (!appSlug) {
-    throw new Error("Usage: pnpm audit:migration -- --app <slug> [--json]");
+    throw new Error(
+      "Usage: node scripts/control/check-database-migration.mjs --app <slug> [--json]"
+    );
   }
 
   return { appSlug, json };
