@@ -177,6 +177,18 @@ test("combined runtime serves authenticated flow over a real HTTP server", async
       "selinux workspace should render SELinux posture"
     );
 
+    const sshResponse = await fetch(new URL("/?view=ssh", runtime.origin), {
+      headers: {
+        cookie
+      }
+    });
+    assert.equal(sshResponse.status, 200);
+    assert.match(
+      await sshResponse.text(),
+      /SSH/,
+      "ssh workspace should render SSH posture"
+    );
+
     const packagesResponse = await fetch(new URL("/?view=packages", runtime.origin), {
       headers: {
         cookie

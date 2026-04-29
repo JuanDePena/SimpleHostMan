@@ -30,6 +30,7 @@ import { renderProcessesWorkspace } from "./dashboard-processes.js";
 import { renderContainersWorkspace } from "./dashboard-containers.js";
 import { renderTimersWorkspace } from "./dashboard-timers.js";
 import { renderSelinuxWorkspace } from "./dashboard-selinux.js";
+import { renderSshWorkspace } from "./dashboard-ssh.js";
 import { renderDashboardShell } from "./dashboard-shell.js";
 import { buildDashboardViewModel } from "./dashboard-view-model.js";
 import {
@@ -672,6 +673,15 @@ export function renderDashboardPage(args: RenderDashboardArgs): string {
     renderPill,
     renderSignalStrip
   });
+  const sshSection = renderSshWorkspace({
+    copy,
+    data,
+    locale,
+    focus,
+    formatDate,
+    renderPill,
+    renderSignalStrip
+  });
   const rustdeskSection = renderRustDeskSection(data, copy, locale, focus, {
     formatDate,
     renderActionFacts,
@@ -805,6 +815,7 @@ export function renderDashboardPage(args: RenderDashboardArgs): string {
       containersSection,
       timersSection,
       selinuxSection,
+      sshSection,
       packagesSection,
       firewallSection,
       fail2banSection,

@@ -405,6 +405,26 @@ export interface SelinuxSnapshot {
   checkedAt: string;
 }
 
+export interface SshEffectiveConfigSnapshot {
+  port?: number;
+  permitRootLogin?: string;
+  passwordAuthentication?: string;
+  pubkeyAuthentication?: string;
+  allowTcpForwarding?: string;
+  allowAgentForwarding?: string;
+  x11Forwarding?: string;
+  permitOpen: string[];
+}
+
+export interface SshAccessSnapshot {
+  serviceName: string;
+  enabled?: boolean;
+  active?: boolean;
+  effective: SshEffectiveConfigSnapshot;
+  rootAuthorizedKeyCount?: number;
+  checkedAt: string;
+}
+
 export interface NodeRuntimeSnapshot {
   appServices?: AppServiceSnapshot[];
   codeServer?: CodeServerServiceSnapshot;
@@ -420,6 +440,7 @@ export interface NodeRuntimeSnapshot {
   containers?: ContainerRuntimeSnapshot;
   timers?: SystemTimersSnapshot;
   selinux?: SelinuxSnapshot;
+  ssh?: SshAccessSnapshot;
   mail?: MailServiceSnapshot;
 }
 
@@ -460,6 +481,7 @@ export interface NodeHealthSnapshot {
   containers?: ContainerRuntimeSnapshot;
   timers?: SystemTimersSnapshot;
   selinux?: SelinuxSnapshot;
+  ssh?: SshAccessSnapshot;
   mail?: MailServiceSnapshot;
 }
 

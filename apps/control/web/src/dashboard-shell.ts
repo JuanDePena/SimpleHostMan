@@ -133,6 +133,7 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
     containersSection: string;
     timersSection: string;
     selinuxSection: string;
+    sshSection: string;
     packagesSection: string;
     firewallSection: string;
     fail2banSection: string;
@@ -396,6 +397,13 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
           active: view === "selinux"
         },
         {
+          id: "ssh",
+          label: copy.navSsh,
+          href: buildDashboardViewUrl("ssh"),
+          badge: String(data.nodeHealth.filter((node) => node.ssh).length),
+          active: view === "ssh"
+        },
+        {
           id: "packages",
           label: copy.navPackages,
           href: buildDashboardViewUrl("packages"),
@@ -498,6 +506,8 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
         return sections.timersSection;
       case "selinux":
         return sections.selinuxSection;
+      case "ssh":
+        return sections.sshSection;
       case "packages":
         return sections.packagesSection;
       case "firewall":

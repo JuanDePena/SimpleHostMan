@@ -156,3 +156,21 @@ The control UI shows:
 
 The view is read-only. Mode changes and policy edits should stay outside the UI
 until they are represented as explicit audited maintenance jobs.
+
+## SSH
+
+The SSH view reports node-local `sshd` access posture. The agent collects the
+`sshd.service` active/enabled state, runs `sshd -T` to read the effective daemon
+configuration, and counts non-comment entries in `/root/.ssh/authorized_keys`
+when the file is present.
+
+The control UI shows:
+
+- per-node SSH inventory with service state, port, root login, password auth,
+  root key count and collection timestamp
+- counters for reported nodes, active daemons, password auth exposure and direct
+  root login exposure
+- selected-node details for public-key auth, forwarding controls and `PermitOpen`
+
+The view is read-only. SSH configuration edits, key rotation and daemon reloads
+should be modeled as explicit audited jobs before becoming UI actions.

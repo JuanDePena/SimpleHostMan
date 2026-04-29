@@ -31,6 +31,7 @@ import {
   type RustDeskListenerSnapshot,
   type RustDeskServiceSnapshot,
   type SelinuxSnapshot,
+  type SshEffectiveConfigSnapshot,
   type FilesystemUsageSnapshot,
   type JournalLogEntrySnapshot,
   type StoragePathUsageSnapshot,
@@ -1268,6 +1269,65 @@ async function inspectSelinux(): Promise<AgentNodeRuntimeSnapshot["selinux"]> {
   };
 }
 
+function parseSshdEffectiveConfig(value: string | undefined): SshEffectiveConfigSnapshot {
+  const fields = new Map<string, string[]>();
+
+  for (const rawLine of (value ?? "").split(/\r?\n/g)) {
+    const [key, ...rest] = rawLine.trim().split(/\s+/g);
+
+    if (!key || rest.length === 0) {
+      continue;
+    }
+
+    const normalizedKey = key.toLowerCase();
+    fields.set(normalizedKey, [...(fields.get(normalizedKey) ?? []), rest.join(" ")]);
+  }
+
+  const first = (key: string): string | undefined => fields.get(key)?.[0];
+
+  return {
+    port: parseOptionalNumber(first("port")),
+    permitRootLogin: first("permitrootlogin"),
+    passwordAuthentication: first("passwordauthentication"),
+    pubkeyAuthentication: first("pubkeyauthentication"),
+    allowTcpForwarding: first("allowtcpforwarding"),
+    allowAgentForwarding: first("allowagentforwarding"),
+    x11Forwarding: first("x11forwarding"),
+    permitOpen: fields.get("permitopen") ?? []
+  };
+}
+
+function countAuthorizedKeys(value: string | undefined): number | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  return value
+    .split(/\r?\n/g)
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("#")).length;
+}
+
+async function inspectSshAccess(): Promise<AgentNodeRuntimeSnapshot["ssh"]> {
+  const checkedAt = new Date().toISOString();
+  const serviceName = "sshd.service";
+  const [enabledState, activeState, effectiveConfig, rootAuthorizedKeys] = await Promise.all([
+    commandOutput("systemctl", ["is-enabled", serviceName]),
+    commandOutput("systemctl", ["is-active", serviceName]),
+    commandOutput("sshd", ["-T"]),
+    readFile("/root/.ssh/authorized_keys", "utf8").catch(() => undefined)
+  ]);
+
+  return {
+    serviceName,
+    enabled: enabledState === undefined ? undefined : enabledState !== "disabled",
+    active: activeState === undefined ? undefined : activeState === "active",
+    effective: parseSshdEffectiveConfig(effectiveConfig),
+    rootAuthorizedKeyCount: countAuthorizedKeys(rootAuthorizedKeys),
+    checkedAt
+  };
+}
+
 async function inspectFail2BanJail(jail: string): Promise<Fail2BanJailSnapshot> {
   const [status, actions, bantime, findtime, maxRetry] = await Promise.all([
     commandOutput("fail2ban-client", ["status", jail]),
@@ -2405,6 +2465,7 @@ async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
     containers,
     timers,
     selinux,
+    ssh,
     mail
   ] = await Promise.all([
     inspectAppServices(),
@@ -2421,6 +2482,7 @@ async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
     inspectContainers(),
     inspectSystemTimers(),
     inspectSelinux(),
+    inspectSshAccess(),
     inspectMail()
   ]);
 
@@ -2439,6 +2501,7 @@ async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
     containers,
     timers,
     selinux,
+    ssh,
     mail
   };
 }

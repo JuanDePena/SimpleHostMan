@@ -21,6 +21,7 @@ export const navigationCopyByLocale = {
     navContainers: "Containers",
     navTimers: "Timers",
     navSelinux: "SELinux",
+    navSsh: "SSH",
     navResources: "Resources",
     navDesiredState: "Spec",
     navCreate: "Create",
@@ -63,6 +64,8 @@ export const navigationCopyByLocale = {
       "Systemd timer schedule inventory and activation targets by node.",
     selinuxWorkspaceDescription:
       "SELinux effective mode, configured mode and loaded policy by node.",
+    sshWorkspaceDescription:
+      "SSH daemon posture, effective access policy and root key exposure by node.",
     firewallWorkspaceDescription:
       "Monitor firewalld posture and apply the SimpleHost baseline without leaving the control plane.",
     fail2banWorkspaceDescription:
@@ -89,6 +92,7 @@ export const navigationCopyByLocale = {
     navContainers: "Containers",
     navTimers: "Timers",
     navSelinux: "SELinux",
+    navSsh: "SSH",
     navResources: "Recursos",
     navDesiredState: "Especificación",
     navCreate: "Crear",
@@ -136,6 +140,8 @@ export const navigationCopyByLocale = {
       "Inventario de timers systemd, horarios y unidades activadas por nodo.",
     selinuxWorkspaceDescription:
       "Modo efectivo, modo configurado y política SELinux cargada por nodo.",
+    sshWorkspaceDescription:
+      "Postura del daemon SSH, política efectiva de acceso y exposición de llaves root por nodo.",
     firewallWorkspaceDescription:
       "Monitorea la postura de firewalld y aplica el baseline SimpleHost sin salir del plano de control.",
     fail2banWorkspaceDescription:

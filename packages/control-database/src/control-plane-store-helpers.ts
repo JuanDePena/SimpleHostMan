@@ -47,6 +47,8 @@ import type {
   RustDeskListenerSnapshot,
   RustDeskServiceSnapshot,
   SelinuxSnapshot,
+  SshAccessSnapshot,
+  SshEffectiveConfigSnapshot,
   FilesystemUsageSnapshot,
   ServiceUnitSnapshot,
   StoragePathUsageSnapshot,
@@ -1023,6 +1025,62 @@ function normalizeSelinuxSnapshot(value: unknown): SelinuxSnapshot | undefined {
   };
 }
 
+function normalizeSshEffectiveConfigSnapshot(value: unknown): SshEffectiveConfigSnapshot {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return { permitOpen: [] };
+  }
+
+  const record = value as Record<string, unknown>;
+
+  return {
+    port: typeof record.port === "number" ? Number(record.port) : undefined,
+    permitRootLogin:
+      typeof record.permitRootLogin === "string" ? record.permitRootLogin : undefined,
+    passwordAuthentication:
+      typeof record.passwordAuthentication === "string"
+        ? record.passwordAuthentication
+        : undefined,
+    pubkeyAuthentication:
+      typeof record.pubkeyAuthentication === "string"
+        ? record.pubkeyAuthentication
+        : undefined,
+    allowTcpForwarding:
+      typeof record.allowTcpForwarding === "string" ? record.allowTcpForwarding : undefined,
+    allowAgentForwarding:
+      typeof record.allowAgentForwarding === "string"
+        ? record.allowAgentForwarding
+        : undefined,
+    x11Forwarding: typeof record.x11Forwarding === "string" ? record.x11Forwarding : undefined,
+    permitOpen: Array.isArray(record.permitOpen)
+      ? record.permitOpen.filter((entry): entry is string => typeof entry === "string")
+      : []
+  };
+}
+
+function normalizeSshAccessSnapshot(value: unknown): SshAccessSnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  if (typeof record.serviceName !== "string") {
+    return undefined;
+  }
+
+  return {
+    serviceName: record.serviceName,
+    enabled: typeof record.enabled === "boolean" ? record.enabled : undefined,
+    active: typeof record.active === "boolean" ? record.active : undefined,
+    effective: normalizeSshEffectiveConfigSnapshot(record.effective),
+    rootAuthorizedKeyCount:
+      typeof record.rootAuthorizedKeyCount === "number"
+        ? Number(record.rootAuthorizedKeyCount)
+        : undefined,
+    checkedAt: typeof record.checkedAt === "string" ? record.checkedAt : new Date(0).toISOString()
+  };
+}
+
 function normalizeRustDeskListenerSnapshot(
   value: unknown
 ): RustDeskListenerSnapshot | undefined {
@@ -1624,6 +1682,9 @@ export function toNodeHealthSnapshot(row: NodeHealthRow): NodeHealthSnapshot {
     ),
     selinux: normalizeSelinuxSnapshot(
       (runtimeSnapshot as Record<string, unknown>).selinux
+    ),
+    ssh: normalizeSshAccessSnapshot(
+      (runtimeSnapshot as Record<string, unknown>).ssh
     ),
     mail: normalizeMailSnapshot((runtimeSnapshot as Record<string, unknown>).mail)
   };
