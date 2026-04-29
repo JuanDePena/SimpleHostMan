@@ -36,6 +36,7 @@ import type {
   NetworkRouteSnapshot,
   NetworkSnapshot,
   NodeHealthSnapshot,
+  ProcessEntrySnapshot,
   ReconciliationRunSummary,
   RegisteredNodeState,
   ReportedJobResult,
@@ -46,6 +47,7 @@ import type {
   ServiceUnitSnapshot,
   StoragePathUsageSnapshot,
   StorageSnapshot,
+  SystemProcessesSnapshot,
   SystemLogsSnapshot,
   SystemServicesSnapshot,
   TlsCertificateSnapshot,
@@ -830,6 +832,67 @@ function normalizeNetworkSnapshot(value: unknown): NetworkSnapshot | undefined {
   };
 }
 
+function normalizeProcessEntrySnapshot(value: unknown): ProcessEntrySnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  if (typeof record.pid !== "number" || typeof record.command !== "string") {
+    return undefined;
+  }
+
+  return {
+    pid: Number(record.pid),
+    user: typeof record.user === "string" ? record.user : undefined,
+    command: record.command,
+    cpuPercent:
+      typeof record.cpuPercent === "number" ? Number(record.cpuPercent) : undefined,
+    memoryPercent:
+      typeof record.memoryPercent === "number" ? Number(record.memoryPercent) : undefined,
+    residentMemoryBytes:
+      typeof record.residentMemoryBytes === "number"
+        ? Number(record.residentMemoryBytes)
+        : undefined,
+    elapsedSeconds:
+      typeof record.elapsedSeconds === "number" ? Number(record.elapsedSeconds) : undefined
+  };
+}
+
+function normalizeSystemProcessesSnapshot(
+  value: unknown
+): SystemProcessesSnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  return {
+    loadAverage1m:
+      typeof record.loadAverage1m === "number" ? Number(record.loadAverage1m) : undefined,
+    loadAverage5m:
+      typeof record.loadAverage5m === "number" ? Number(record.loadAverage5m) : undefined,
+    loadAverage15m:
+      typeof record.loadAverage15m === "number" ? Number(record.loadAverage15m) : undefined,
+    uptimeSeconds:
+      typeof record.uptimeSeconds === "number" ? Number(record.uptimeSeconds) : undefined,
+    totalMemoryBytes:
+      typeof record.totalMemoryBytes === "number" ? Number(record.totalMemoryBytes) : undefined,
+    availableMemoryBytes:
+      typeof record.availableMemoryBytes === "number"
+        ? Number(record.availableMemoryBytes)
+        : undefined,
+    processes: Array.isArray(record.processes)
+      ? record.processes
+          .map(normalizeProcessEntrySnapshot)
+          .filter((entry): entry is ProcessEntrySnapshot => Boolean(entry))
+      : [],
+    checkedAt: typeof record.checkedAt === "string" ? record.checkedAt : new Date(0).toISOString()
+  };
+}
+
 function normalizeRustDeskListenerSnapshot(
   value: unknown
 ): RustDeskListenerSnapshot | undefined {
@@ -1419,6 +1482,9 @@ export function toNodeHealthSnapshot(row: NodeHealthRow): NodeHealthSnapshot {
     ),
     network: normalizeNetworkSnapshot(
       (runtimeSnapshot as Record<string, unknown>).network
+    ),
+    processes: normalizeSystemProcessesSnapshot(
+      (runtimeSnapshot as Record<string, unknown>).processes
     ),
     mail: normalizeMailSnapshot((runtimeSnapshot as Record<string, unknown>).mail)
   };

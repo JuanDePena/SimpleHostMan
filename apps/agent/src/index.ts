@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { lstat, readFile, readdir } from "node:fs/promises";
 import { realpathSync } from "node:fs";
+import { loadavg, totalmem, uptime } from "node:os";
 import path from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
@@ -26,6 +27,7 @@ import {
   type NetworkInterfaceSnapshot,
   type NetworkListenerSnapshot,
   type NetworkRouteSnapshot,
+  type ProcessEntrySnapshot,
   type RustDeskListenerSnapshot,
   type RustDeskServiceSnapshot,
   type FilesystemUsageSnapshot,
@@ -967,6 +969,82 @@ async function inspectNetwork(): Promise<AgentNodeRuntimeSnapshot["network"]> {
       ...parseNetworkRoutes(ipv6RoutesOutput, "inet6")
     ],
     listeners: parseNetworkListeners(listenersOutput),
+    checkedAt
+  };
+}
+
+function parseOptionalFloat(value: string | undefined): number | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function parseProcessRows(value: string | undefined): ProcessEntrySnapshot[] {
+  return (value ?? "")
+    .split(/\r?\n/g)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line): ProcessEntrySnapshot | undefined => {
+      const parts = line.split(/\s+/g);
+      const pid = parseOptionalNumber(parts[0]);
+      const command = parts.slice(6).join(" ");
+
+      if (pid === undefined || !command) {
+        return undefined;
+      }
+
+      const rssKb = parseOptionalNumber(parts[4]);
+
+      return {
+        pid,
+        user: parts[1],
+        cpuPercent: parseOptionalFloat(parts[2]),
+        memoryPercent: parseOptionalFloat(parts[3]),
+        residentMemoryBytes: rssKb === undefined ? undefined : rssKb * 1024,
+        elapsedSeconds: parseOptionalNumber(parts[5]),
+        command
+      };
+    })
+    .filter((entry): entry is ProcessEntrySnapshot => Boolean(entry))
+    .slice(0, 30);
+}
+
+function parseMemAvailableBytes(value: string | undefined): number | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const match = /^MemAvailable:\s+(\d+)\s+kB$/m.exec(value);
+  const kibibytes = match?.[1] ? Number.parseInt(match[1], 10) : undefined;
+
+  return kibibytes === undefined || !Number.isFinite(kibibytes)
+    ? undefined
+    : kibibytes * 1024;
+}
+
+async function inspectProcesses(): Promise<AgentNodeRuntimeSnapshot["processes"]> {
+  const checkedAt = new Date().toISOString();
+  const [oneMinute, fiveMinutes, fifteenMinutes] = loadavg();
+  const [processOutput, memInfo] = await Promise.all([
+    commandOutput("ps", [
+      "-eo",
+      "pid=,user=,pcpu=,pmem=,rss=,etimes=,args=",
+      "--sort=-pcpu"
+    ]),
+    readFile("/proc/meminfo", "utf8").catch(() => undefined)
+  ]);
+
+  return {
+    loadAverage1m: oneMinute,
+    loadAverage5m: fiveMinutes,
+    loadAverage15m: fifteenMinutes,
+    uptimeSeconds: Math.floor(uptime()),
+    totalMemoryBytes: totalmem(),
+    availableMemoryBytes: parseMemAvailableBytes(memInfo),
+    processes: parseProcessRows(processOutput),
     checkedAt
   };
 }
@@ -2104,6 +2182,7 @@ async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
     tls,
     storage,
     network,
+    processes,
     mail
   ] = await Promise.all([
     inspectAppServices(),
@@ -2116,6 +2195,7 @@ async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
     inspectTlsCertificates(),
     inspectStorage(),
     inspectNetwork(),
+    inspectProcesses(),
     inspectMail()
   ]);
 
@@ -2130,6 +2210,7 @@ async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
     tls,
     storage,
     network,
+    processes,
     mail
   };
 }

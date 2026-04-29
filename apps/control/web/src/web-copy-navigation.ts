@@ -17,6 +17,7 @@ export const navigationCopyByLocale = {
     navCertificates: "TLS",
     navStorage: "Storage",
     navNetwork: "Network",
+    navProcesses: "Processes",
     navResources: "Resources",
     navDesiredState: "Spec",
     navCreate: "Create",
@@ -51,6 +52,8 @@ export const navigationCopyByLocale = {
       "Filesystem, inode and important-path usage reported by managed nodes.",
     networkWorkspaceDescription:
       "Interfaces, routes and listening sockets reported by managed nodes.",
+    processesWorkspaceDescription:
+      "Load, memory and top process usage reported by managed nodes.",
     firewallWorkspaceDescription:
       "Monitor firewalld posture and apply the SimpleHost baseline without leaving the control plane.",
     fail2banWorkspaceDescription:
@@ -73,6 +76,7 @@ export const navigationCopyByLocale = {
     navCertificates: "TLS",
     navStorage: "Storage",
     navNetwork: "Red",
+    navProcesses: "Procesos",
     navResources: "Recursos",
     navDesiredState: "Especificación",
     navCreate: "Crear",
@@ -112,6 +116,8 @@ export const navigationCopyByLocale = {
       "Uso de filesystems, inodes y rutas importantes reportado por los nodos gestionados.",
     networkWorkspaceDescription:
       "Interfaces, rutas y sockets en escucha reportados por los nodos gestionados.",
+    processesWorkspaceDescription:
+      "Carga, memoria y top de procesos reportados por los nodos gestionados.",
     firewallWorkspaceDescription:
       "Monitorea la postura de firewalld y aplica el baseline SimpleHost sin salir del plano de control.",
     fail2banWorkspaceDescription:

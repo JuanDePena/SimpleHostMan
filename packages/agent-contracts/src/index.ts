@@ -580,6 +580,27 @@ export interface NetworkSnapshot {
   checkedAt: string;
 }
 
+export interface ProcessEntrySnapshot {
+  pid: number;
+  user?: string;
+  command: string;
+  cpuPercent?: number;
+  memoryPercent?: number;
+  residentMemoryBytes?: number;
+  elapsedSeconds?: number;
+}
+
+export interface SystemProcessesSnapshot {
+  loadAverage1m?: number;
+  loadAverage5m?: number;
+  loadAverage15m?: number;
+  uptimeSeconds?: number;
+  totalMemoryBytes?: number;
+  availableMemoryBytes?: number;
+  processes: ProcessEntrySnapshot[];
+  checkedAt: string;
+}
+
 export interface AgentNodeRuntimeSnapshot {
   appServices?: AppServiceSnapshot[];
   codeServer?: CodeServerServiceSnapshot;
@@ -591,6 +612,7 @@ export interface AgentNodeRuntimeSnapshot {
   tls?: TlsCertificatesSnapshot;
   storage?: StorageSnapshot;
   network?: NetworkSnapshot;
+  processes?: SystemProcessesSnapshot;
   mail?: MailServiceSnapshot;
 }
 

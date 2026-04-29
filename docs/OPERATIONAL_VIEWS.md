@@ -89,3 +89,19 @@ The control UI shows:
 This first iteration is read-only. Network changes should continue to flow
 through desired-state resources, firewall baselines, or audited jobs rather than
 ad hoc shell edits.
+
+## Processes
+
+The Processes view reports a bounded process and resource snapshot per managed
+node. The agent combines `ps` output with host load average, uptime, total
+memory, and `/proc/meminfo` available memory so operators can triage obvious
+resource pressure without opening a terminal.
+
+The control UI shows:
+
+- cross-node top CPU processes with PID, user, CPU, memory, RSS, and command
+- selected-node load averages, uptime, total memory, and available memory
+- selected-node process cards for the highest CPU consumers
+
+The process list is intentionally sampled and read-only. It is meant for
+triage, not for killing processes or replacing deeper observability tooling.
