@@ -43,6 +43,7 @@ import type {
   PackageUpdatesSnapshot,
   ProcessEntrySnapshot,
   ReconciliationRunSummary,
+  RebootStateSnapshot,
   RegisteredNodeState,
   ReportedJobResult,
   ResourceDriftSummary,
@@ -611,6 +612,30 @@ function normalizePackageUpdatesSnapshot(value: unknown): PackageUpdatesSnapshot
 
   return {
     updates,
+    checkedAt: typeof record.checkedAt === "string" ? record.checkedAt : new Date(0).toISOString()
+  };
+}
+
+function normalizeRebootStateSnapshot(value: unknown): RebootStateSnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  return {
+    kernelRelease:
+      typeof record.kernelRelease === "string" ? record.kernelRelease : undefined,
+    latestKernelRelease:
+      typeof record.latestKernelRelease === "string" ? record.latestKernelRelease : undefined,
+    bootId: typeof record.bootId === "string" ? record.bootId : undefined,
+    bootedAt: typeof record.bootedAt === "string" ? record.bootedAt : undefined,
+    uptimeSeconds:
+      typeof record.uptimeSeconds === "number" ? Number(record.uptimeSeconds) : undefined,
+    needsReboot:
+      typeof record.needsReboot === "boolean" ? record.needsReboot : undefined,
+    needsRebootReason:
+      typeof record.needsRebootReason === "string" ? record.needsRebootReason : undefined,
     checkedAt: typeof record.checkedAt === "string" ? record.checkedAt : new Date(0).toISOString()
   };
 }
@@ -1714,6 +1739,9 @@ export function toNodeHealthSnapshot(row: NodeHealthRow): NodeHealthSnapshot {
     ),
     packageUpdates: normalizePackageUpdatesSnapshot(
       (runtimeSnapshot as Record<string, unknown>).packageUpdates
+    ),
+    rebootState: normalizeRebootStateSnapshot(
+      (runtimeSnapshot as Record<string, unknown>).rebootState
     ),
     logs: normalizeSystemLogsSnapshot(
       (runtimeSnapshot as Record<string, unknown>).logs

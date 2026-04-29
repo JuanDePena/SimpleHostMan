@@ -39,6 +39,25 @@ This view is read-only in the first iteration. Applying updates should be added
 as audited jobs with explicit node targeting, package scope and confirmation so
 patch rollout does not bypass the existing dispatch history.
 
+## Reboots
+
+The Reboots view reports kernel and boot posture per managed node. The agent
+collects `uname -r`, `/proc/sys/kernel/random/boot_id`, host uptime, the latest
+installed kernel package from RPM metadata, and `needs-restarting -r` when that
+tool is available.
+
+The control UI shows:
+
+- per-node reboot inventory with running kernel, latest installed kernel, boot
+  timestamp and uptime
+- counters for nodes that report a required reboot and nodes whose running
+  kernel differs from the latest installed kernel
+- selected-node details with boot ID and the first reboot-required reason
+
+This view is read-only in the first iteration. Reboot actions should be queued
+as audited maintenance jobs with explicit confirmation and HA awareness before
+they become available from the dashboard.
+
 ## Services
 
 The Services view reports critical `systemd` units per managed node. The agent

@@ -228,6 +228,21 @@ export const operationsCopyByLocale = {
     updateSecurityLabel: "Security updates",
     nodesWithUpdatesLabel: "Nodes with updates",
     noUpdates: "No available package updates.",
+    rebootsInventoryTitle: "Reboot posture",
+    rebootsInventoryDescription:
+      "Kernel, boot and reboot-required state reported by each managed node.",
+    rebootsSelectedNodeTitle: "Selected node reboot state",
+    rebootsSelectedNodeDescription:
+      "Review the running kernel, latest installed kernel and boot identity for the selected node.",
+    rebootRequiredLabel: "Reboot required",
+    rebootNotRequiredLabel: "No reboot required",
+    rebootsReportedLabel: "Reported nodes",
+    kernelMismatchLabel: "Kernel mismatch",
+    kernelLabel: "Running kernel",
+    latestKernelLabel: "Latest kernel",
+    bootIdLabel: "Boot ID",
+    bootedAtLabel: "Booted",
+    noReboots: "No reboot records.",
     packagesInventoryTitle: "Installed packages",
     packagesInventoryDescription:
       "Review the latest collected RPM inventory snapshot across managed nodes.",
@@ -687,6 +702,21 @@ export const operationsCopyByLocale = {
     updateSecurityLabel: "Updates de seguridad",
     nodesWithUpdatesLabel: "Nodos con updates",
     noUpdates: "No hay updates de paquetes disponibles.",
+    rebootsInventoryTitle: "Postura de reboot",
+    rebootsInventoryDescription:
+      "Estado de kernel, boot y reboot requerido reportado por cada nodo gestionado.",
+    rebootsSelectedNodeTitle: "Reboot del nodo seleccionado",
+    rebootsSelectedNodeDescription:
+      "Revisa el kernel en ejecución, último kernel instalado e identidad de boot del nodo seleccionado.",
+    rebootRequiredLabel: "Reboot requerido",
+    rebootNotRequiredLabel: "Sin reboot requerido",
+    rebootsReportedLabel: "Nodos reportados",
+    kernelMismatchLabel: "Kernel distinto",
+    kernelLabel: "Kernel actual",
+    latestKernelLabel: "Último kernel",
+    bootIdLabel: "Boot ID",
+    bootedAtLabel: "Boot",
+    noReboots: "No hay registros de reboot.",
     packagesInventoryTitle: "Paquetes instalados",
     packagesInventoryDescription:
       "Revisa el último snapshot recolectado del inventario RPM en los nodos gestionados.",

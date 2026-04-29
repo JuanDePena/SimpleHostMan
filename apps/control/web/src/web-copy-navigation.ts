@@ -13,6 +13,7 @@ export const navigationCopyByLocale = {
     navBackups: "Backups",
     navRustDesk: "RustDesk",
     navUpdates: "Updates",
+    navReboots: "Reboots",
     navServices: "Services",
     navLogs: "Logs",
     navCertificates: "TLS",
@@ -49,6 +50,8 @@ export const navigationCopyByLocale = {
     backupWorkspaceDescription: "Policy definition, retention and coverage before backup runs.",
     updatesWorkspaceDescription:
       "Available RPM updates and security advisories reported by managed nodes.",
+    rebootsWorkspaceDescription:
+      "Kernel, uptime and reboot-required posture reported by managed nodes.",
     servicesWorkspaceDescription:
       "Systemd posture for critical platform services across managed nodes.",
     logsWorkspaceDescription:
@@ -87,6 +90,7 @@ export const navigationCopyByLocale = {
     navBackups: "Backups",
     navRustDesk: "RustDesk",
     navUpdates: "Updates",
+    navReboots: "Reboots",
     navServices: "Servicios",
     navLogs: "Logs",
     navCertificates: "TLS",
@@ -128,6 +132,8 @@ export const navigationCopyByLocale = {
       "Definición de políticas, retención y cobertura antes de las ejecuciones.",
     updatesWorkspaceDescription:
       "Actualizaciones RPM disponibles y advisories de seguridad reportados por los nodos gestionados.",
+    rebootsWorkspaceDescription:
+      "Postura de kernel, uptime y reboot requerido reportada por los nodos gestionados.",
     servicesWorkspaceDescription:
       "Postura systemd de servicios críticos de plataforma en los nodos gestionados.",
     logsWorkspaceDescription:

@@ -500,6 +500,17 @@ export interface PackageUpdatesSnapshot {
   checkedAt: string;
 }
 
+export interface RebootStateSnapshot {
+  kernelRelease?: string;
+  latestKernelRelease?: string;
+  bootId?: string;
+  bootedAt?: string;
+  uptimeSeconds?: number;
+  needsReboot?: boolean;
+  needsRebootReason?: string;
+  checkedAt: string;
+}
+
 export interface JournalLogEntrySnapshot {
   unit?: string;
   priority?: number;
@@ -697,6 +708,7 @@ export interface AgentNodeRuntimeSnapshot {
   fail2ban?: Fail2BanSnapshot;
   services?: SystemServicesSnapshot;
   packageUpdates?: PackageUpdatesSnapshot;
+  rebootState?: RebootStateSnapshot;
   logs?: SystemLogsSnapshot;
   tls?: TlsCertificatesSnapshot;
   storage?: StorageSnapshot;

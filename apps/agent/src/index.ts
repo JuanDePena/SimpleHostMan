@@ -125,6 +125,12 @@ interface MailboxUsageCachePayload {
   entries: MailboxUsageEntry[];
 }
 
+interface CommandResult {
+  stdout: string;
+  stderr: string;
+  exitCode: number;
+}
+
 async function writeLastAppliedState(
   desiredStateVersion: string,
   lastCompletedJobId?: string
@@ -234,21 +240,39 @@ async function commandOutputWithExitCodes(
   allowedExitCodes: number[],
   timeoutMs?: number
 ): Promise<string | undefined> {
+  const result = await commandResultWithExitCodes(command, args, allowedExitCodes, timeoutMs);
+  return result?.stdout;
+}
+
+async function commandResultWithExitCodes(
+  command: string,
+  args: string[],
+  allowedExitCodes: number[],
+  timeoutMs?: number
+): Promise<CommandResult | undefined> {
   try {
     const result = await execFileAsync(command, args, {
       encoding: "utf8",
       timeout: timeoutMs
     });
-    return result.stdout.trim();
+    return {
+      stdout: result.stdout.trim(),
+      stderr: result.stderr.trim(),
+      exitCode: 0
+    };
   } catch (error) {
-    const candidate = error as { code?: unknown; stdout?: unknown };
+    const candidate = error as { code?: unknown; stdout?: unknown; stderr?: unknown };
 
     if (
       typeof candidate.code === "number" &&
       allowedExitCodes.includes(candidate.code) &&
       typeof candidate.stdout === "string"
     ) {
-      return candidate.stdout.trim();
+      return {
+        stdout: candidate.stdout.trim(),
+        stderr: typeof candidate.stderr === "string" ? candidate.stderr.trim() : "",
+        exitCode: candidate.code
+      };
     }
 
     return undefined;
@@ -779,6 +803,84 @@ async function inspectPackageUpdates(): Promise<AgentNodeRuntimeSnapshot["packag
 
   return {
     updates: applyPackageAdvisories(updates, parsePackageAdvisories(updateInfoOutput)),
+    checkedAt
+  };
+}
+
+function parseLatestKernelRelease(output: string | undefined, packageName: string): string | undefined {
+  const firstLine = output
+    ?.split(/\r?\n/g)
+    .map((line) => line.trim())
+    .find(Boolean);
+  const packageToken = firstLine?.split(/\s+/g)[0];
+
+  if (!packageToken?.startsWith(`${packageName}-`)) {
+    return undefined;
+  }
+
+  return packageToken.slice(packageName.length + 1);
+}
+
+async function readLatestKernelRelease(): Promise<string | undefined> {
+  const kernelCoreOutput = await commandOutput("rpm", ["-q", "--last", "kernel-core"]);
+  const kernelCoreRelease = parseLatestKernelRelease(kernelCoreOutput, "kernel-core");
+
+  if (kernelCoreRelease) {
+    return kernelCoreRelease;
+  }
+
+  const kernelOutput = await commandOutput("rpm", ["-q", "--last", "kernel"]);
+  return parseLatestKernelRelease(kernelOutput, "kernel");
+}
+
+function summarizeNeedsRestartingResult(
+  result: CommandResult | undefined
+): string | undefined {
+  if (!result || result.exitCode === 0) {
+    return undefined;
+  }
+
+  return (
+    result.stdout
+      .split(/\r?\n/g)
+      .map((line) => line.trim())
+      .find(Boolean) ??
+    result.stderr
+      .split(/\r?\n/g)
+      .map((line) => line.trim())
+      .find(Boolean) ??
+    "needs-restarting reported that a reboot is required"
+  );
+}
+
+async function inspectRebootState(): Promise<AgentNodeRuntimeSnapshot["rebootState"]> {
+  const checkedAt = new Date().toISOString();
+  const uptimeSeconds = Math.round(uptime());
+  const [kernelRelease, latestKernelRelease, bootIdContent, needsRestartingResult] =
+    await Promise.all([
+      commandOutput("uname", ["-r"]),
+      readLatestKernelRelease(),
+      readFile("/proc/sys/kernel/random/boot_id", "utf8").catch(() => undefined),
+      commandResultWithExitCodes("needs-restarting", ["-r"], [0, 1], 30000)
+    ]);
+  const kernelMismatch = Boolean(
+    kernelRelease && latestKernelRelease && kernelRelease !== latestKernelRelease
+  );
+  const needsRestartingReason = summarizeNeedsRestartingResult(needsRestartingResult);
+  const needsReboot = needsRestartingResult?.exitCode === 1 || kernelMismatch;
+
+  return {
+    kernelRelease,
+    latestKernelRelease,
+    bootId: bootIdContent?.trim() || undefined,
+    bootedAt: new Date(Date.now() - uptimeSeconds * 1000).toISOString(),
+    uptimeSeconds,
+    needsReboot,
+    needsRebootReason:
+      needsRestartingReason ??
+      (kernelMismatch
+        ? `Running kernel ${kernelRelease} differs from latest installed kernel ${latestKernelRelease}.`
+        : undefined),
     checkedAt
   };
 }
@@ -2769,6 +2871,7 @@ async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
     fail2ban,
     services,
     packageUpdates,
+    rebootState,
     logs,
     tls,
     storage,
@@ -2787,6 +2890,7 @@ async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
     inspectFail2Ban(),
     inspectSystemServices(),
     inspectPackageUpdates(),
+    inspectRebootState(),
     inspectSystemLogs(),
     inspectTlsCertificates(),
     inspectStorage(),
@@ -2807,6 +2911,7 @@ async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
     fail2ban,
     services,
     packageUpdates,
+    rebootState,
     logs,
     tls,
     storage,

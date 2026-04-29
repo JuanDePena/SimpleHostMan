@@ -151,6 +151,42 @@ test("runtime workspaces select one row and render only that row detail", () => 
       }
     },
     {
+      name: "reboots",
+      view: "reboots",
+      focus: "mail-a",
+      marker: "Selected node reboot state",
+      selectedText: "6.12.0-selected.el10.x86_64",
+      otherText: "6.12.0-other.el10.x86_64",
+      arrange: (data) => {
+        data.nodeHealth[0] = {
+          ...data.nodeHealth[0]!,
+          rebootState: {
+            kernelRelease: "6.12.0-selected.el10.x86_64",
+            latestKernelRelease: "6.12.0-selected.el10.x86_64",
+            bootId: "boot-selected",
+            bootedAt: "2026-04-29T00:00:00.000Z",
+            uptimeSeconds: 3600,
+            needsReboot: false,
+            checkedAt: "2026-04-29T00:00:00.000Z"
+          }
+        };
+        data.nodeHealth[1] = {
+          ...data.nodeHealth[0]!,
+          nodeId: "mail-b",
+          hostname: "mail-b.example.com",
+          rebootState: {
+            kernelRelease: "6.12.0-other.el10.x86_64",
+            latestKernelRelease: "6.12.0-newer.el10.x86_64",
+            bootId: "boot-other",
+            bootedAt: "2026-04-29T00:00:00.000Z",
+            uptimeSeconds: 7200,
+            needsReboot: true,
+            checkedAt: "2026-04-29T00:00:00.000Z"
+          }
+        };
+      }
+    },
+    {
       name: "services",
       view: "services",
       focus: "mail-a:httpd.service",
