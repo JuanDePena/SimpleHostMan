@@ -39,6 +39,8 @@ import type {
   NetworkRouteSnapshot,
   NetworkSnapshot,
   NodeHealthSnapshot,
+  PackageUpdateSnapshot,
+  PackageUpdatesSnapshot,
   ProcessEntrySnapshot,
   ReconciliationRunSummary,
   RegisteredNodeState,
@@ -558,6 +560,57 @@ function normalizeSystemServicesSnapshot(value: unknown): SystemServicesSnapshot
 
   return {
     units,
+    checkedAt: typeof record.checkedAt === "string" ? record.checkedAt : new Date(0).toISOString()
+  };
+}
+
+function normalizePackageUpdateSnapshot(value: unknown): PackageUpdateSnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  if (typeof record.packageName !== "string") {
+    return undefined;
+  }
+
+  return {
+    packageName: record.packageName,
+    arch: typeof record.arch === "string" ? record.arch : undefined,
+    epoch: typeof record.epoch === "string" ? record.epoch : undefined,
+    currentVersion:
+      typeof record.currentVersion === "string" ? record.currentVersion : undefined,
+    currentRelease:
+      typeof record.currentRelease === "string" ? record.currentRelease : undefined,
+    availableVersion:
+      typeof record.availableVersion === "string" ? record.availableVersion : undefined,
+    availableRelease:
+      typeof record.availableRelease === "string" ? record.availableRelease : undefined,
+    repository: typeof record.repository === "string" ? record.repository : undefined,
+    advisoryId: typeof record.advisoryId === "string" ? record.advisoryId : undefined,
+    advisorySeverity:
+      typeof record.advisorySeverity === "string" ? record.advisorySeverity : undefined,
+    advisoryType:
+      typeof record.advisoryType === "string" ? record.advisoryType : undefined,
+    summary: typeof record.summary === "string" ? record.summary : undefined
+  };
+}
+
+function normalizePackageUpdatesSnapshot(value: unknown): PackageUpdatesSnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+  const updates = Array.isArray(record.updates)
+    ? record.updates
+        .map(normalizePackageUpdateSnapshot)
+        .filter((entry): entry is PackageUpdateSnapshot => Boolean(entry))
+    : [];
+
+  return {
+    updates,
     checkedAt: typeof record.checkedAt === "string" ? record.checkedAt : new Date(0).toISOString()
   };
 }
@@ -1658,6 +1711,9 @@ export function toNodeHealthSnapshot(row: NodeHealthRow): NodeHealthSnapshot {
     ),
     services: normalizeSystemServicesSnapshot(
       (runtimeSnapshot as Record<string, unknown>).services
+    ),
+    packageUpdates: normalizePackageUpdatesSnapshot(
+      (runtimeSnapshot as Record<string, unknown>).packageUpdates
     ),
     logs: normalizeSystemLogsSnapshot(
       (runtimeSnapshot as Record<string, unknown>).logs

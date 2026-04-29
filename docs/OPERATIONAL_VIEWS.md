@@ -21,6 +21,24 @@ needed for sidebar counts and cross-workspace navigation. Future per-view API
 loading can reduce data transfer further, but the present contract is that only
 the selected workspace renderer should execute for a dashboard request.
 
+## Updates
+
+The Updates view reports available RPM updates per managed node. The agent uses
+`dnf check-update` and `dnf updateinfo list updates`, tolerating the normal DNF
+`100` exit code used when updates are available, then enriches each package with
+the currently installed RPM version when `rpm -qa` can provide it.
+
+The control UI shows:
+
+- cross-node package update inventory with current version, available version,
+  repository and advisory metadata
+- counters for nodes with pending updates and security-related advisories
+- selected-update detail with quick navigation to the installed Packages view
+
+This view is read-only in the first iteration. Applying updates should be added
+as audited jobs with explicit node targeting, package scope and confirmation so
+patch rollout does not bypass the existing dispatch history.
+
 ## Services
 
 The Services view reports critical `systemd` units per managed node. The agent

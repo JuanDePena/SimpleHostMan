@@ -113,6 +113,44 @@ test("runtime workspaces select one row and render only that row detail", () => 
     arrange: (data: DashboardData) => void;
   }> = [
     {
+      name: "updates",
+      view: "updates",
+      focus: "mail-a:httpd:x86_64",
+      marker: "Selected update",
+      selectedText: "httpd",
+      otherText: "dovecot",
+      arrange: (data) => {
+        data.nodeHealth[0] = {
+          ...data.nodeHealth[0]!,
+          packageUpdates: {
+            checkedAt: "2026-04-29T00:00:00.000Z",
+            updates: [
+              {
+                packageName: "httpd",
+                arch: "x86_64",
+                currentVersion: "2.4.57",
+                currentRelease: "1.el10",
+                availableVersion: "2.4.58",
+                availableRelease: "1.el10",
+                repository: "appstream",
+                advisoryType: "security",
+                advisoryId: "ELSA-2026:0001"
+              },
+              {
+                packageName: "dovecot",
+                arch: "x86_64",
+                currentVersion: "2.3.21",
+                currentRelease: "1.el10",
+                availableVersion: "2.3.22",
+                availableRelease: "1.el10",
+                repository: "appstream"
+              }
+            ]
+          }
+        };
+      }
+    },
+    {
       name: "services",
       view: "services",
       focus: "mail-a:httpd.service",

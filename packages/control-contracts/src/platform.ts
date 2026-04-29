@@ -236,6 +236,26 @@ export interface SystemServicesSnapshot {
   checkedAt: string;
 }
 
+export interface PackageUpdateSnapshot {
+  packageName: string;
+  arch?: string;
+  epoch?: string;
+  currentVersion?: string;
+  currentRelease?: string;
+  availableVersion?: string;
+  availableRelease?: string;
+  repository?: string;
+  advisoryId?: string;
+  advisorySeverity?: string;
+  advisoryType?: string;
+  summary?: string;
+}
+
+export interface PackageUpdatesSnapshot {
+  updates: PackageUpdateSnapshot[];
+  checkedAt: string;
+}
+
 export interface JournalLogEntrySnapshot {
   unit?: string;
   priority?: number;
@@ -432,6 +452,7 @@ export interface NodeRuntimeSnapshot {
   firewall?: HostFirewallSnapshot;
   fail2ban?: Fail2BanSnapshot;
   services?: SystemServicesSnapshot;
+  packageUpdates?: PackageUpdatesSnapshot;
   logs?: SystemLogsSnapshot;
   tls?: TlsCertificatesSnapshot;
   storage?: StorageSnapshot;
@@ -473,6 +494,7 @@ export interface NodeHealthSnapshot {
   firewall?: HostFirewallSnapshot;
   fail2ban?: Fail2BanSnapshot;
   services?: SystemServicesSnapshot;
+  packageUpdates?: PackageUpdatesSnapshot;
   logs?: SystemLogsSnapshot;
   tls?: TlsCertificatesSnapshot;
   storage?: StorageSnapshot;

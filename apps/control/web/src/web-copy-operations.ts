@@ -215,6 +215,19 @@ export const operationsCopyByLocale = {
       "Fail2Ban service state, jail counters, banned IPs and baseline apply controls by node.",
     backupsTitle: "Backups",
     backupsDescription: "Latest runs and current backup policy coverage.",
+    updatesInventoryTitle: "Available updates",
+    updatesInventoryDescription:
+      "RPM updates and security advisories collected from managed nodes.",
+    updatesSelectedPackageTitle: "Selected update",
+    updatesSelectedPackageDescription:
+      "Inspect the available version, repository and advisory metadata for the focused package.",
+    updateCurrentLabel: "Current",
+    updateAvailableLabel: "Available",
+    updateRepositoryLabel: "Repository",
+    updateAdvisoryLabel: "Advisory",
+    updateSecurityLabel: "Security updates",
+    nodesWithUpdatesLabel: "Nodes with updates",
+    noUpdates: "No available package updates.",
     packagesInventoryTitle: "Installed packages",
     packagesInventoryDescription:
       "Review the latest collected RPM inventory snapshot across managed nodes.",
@@ -661,6 +674,19 @@ export const operationsCopyByLocale = {
       "Estado de Fail2Ban, contadores de jails, IPs baneadas y controles de baseline por nodo.",
     backupsTitle: "Backups",
     backupsDescription: "Últimas ejecuciones y cobertura actual de políticas.",
+    updatesInventoryTitle: "Updates disponibles",
+    updatesInventoryDescription:
+      "Actualizaciones RPM y advisories de seguridad recolectados desde los nodos gestionados.",
+    updatesSelectedPackageTitle: "Update seleccionado",
+    updatesSelectedPackageDescription:
+      "Inspecciona versión disponible, repositorio y metadatos de advisory del paquete enfocado.",
+    updateCurrentLabel: "Actual",
+    updateAvailableLabel: "Disponible",
+    updateRepositoryLabel: "Repositorio",
+    updateAdvisoryLabel: "Advisory",
+    updateSecurityLabel: "Updates de seguridad",
+    nodesWithUpdatesLabel: "Nodos con updates",
+    noUpdates: "No hay updates de paquetes disponibles.",
     packagesInventoryTitle: "Paquetes instalados",
     packagesInventoryDescription:
       "Revisa el último snapshot recolectado del inventario RPM en los nodos gestionados.",

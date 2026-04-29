@@ -27,6 +27,7 @@ import {
   type NetworkInterfaceSnapshot,
   type NetworkListenerSnapshot,
   type NetworkRouteSnapshot,
+  type PackageUpdateSnapshot,
   type ProcessEntrySnapshot,
   type RustDeskListenerSnapshot,
   type RustDeskServiceSnapshot,
@@ -93,6 +94,7 @@ const trackedSystemServices = [
 ] as const;
 const journalEntriesPerService = 8;
 const journalEntryLimit = 120;
+const packageUpdateLimit = 500;
 const letsEncryptLiveDir = "/etc/letsencrypt/live";
 const trackedStoragePaths = [
   "/",
@@ -222,6 +224,33 @@ async function commandOutput(
     });
     return result.stdout.trim();
   } catch {
+    return undefined;
+  }
+}
+
+async function commandOutputWithExitCodes(
+  command: string,
+  args: string[],
+  allowedExitCodes: number[],
+  timeoutMs?: number
+): Promise<string | undefined> {
+  try {
+    const result = await execFileAsync(command, args, {
+      encoding: "utf8",
+      timeout: timeoutMs
+    });
+    return result.stdout.trim();
+  } catch (error) {
+    const candidate = error as { code?: unknown; stdout?: unknown };
+
+    if (
+      typeof candidate.code === "number" &&
+      allowedExitCodes.includes(candidate.code) &&
+      typeof candidate.stdout === "string"
+    ) {
+      return candidate.stdout.trim();
+    }
+
     return undefined;
   }
 }
@@ -486,6 +515,270 @@ async function inspectSystemServices(): Promise<AgentNodeRuntimeSnapshot["servic
 
   return {
     units,
+    checkedAt
+  };
+}
+
+interface InstalledPackageVersion {
+  packageName: string;
+  arch: string;
+  epoch?: string;
+  version: string;
+  release: string;
+}
+
+interface PackageAdvisoryInfo {
+  packageToken: string;
+  advisoryId?: string;
+  advisorySeverity?: string;
+  advisoryType?: string;
+  summary?: string;
+}
+
+function normalizeRpmEpoch(value: string | undefined): string | undefined {
+  const normalized = value?.trim();
+  return normalized && normalized !== "0" && normalized !== "(none)" ? normalized : undefined;
+}
+
+function splitPackageArch(value: string): { packageName: string; arch?: string } {
+  const index = value.lastIndexOf(".");
+
+  if (index <= 0 || index === value.length - 1) {
+    return { packageName: value };
+  }
+
+  return {
+    packageName: value.slice(0, index),
+    arch: value.slice(index + 1)
+  };
+}
+
+function parseRpmVersionRelease(value: string): {
+  epoch?: string;
+  version?: string;
+  release?: string;
+} {
+  const epochMatch = /^([0-9]+):(.+)$/.exec(value);
+  const epoch = normalizeRpmEpoch(epochMatch?.[1]);
+  const versionRelease = epochMatch?.[2] ?? value;
+  const releaseIndex = versionRelease.lastIndexOf("-");
+
+  if (releaseIndex <= 0 || releaseIndex === versionRelease.length - 1) {
+    return {
+      epoch,
+      version: versionRelease || undefined
+    };
+  }
+
+  return {
+    epoch,
+    version: versionRelease.slice(0, releaseIndex),
+    release: versionRelease.slice(releaseIndex + 1)
+  };
+}
+
+function parseInstalledPackageVersions(output: string | undefined): Map<string, InstalledPackageVersion> {
+  const packages = new Map<string, InstalledPackageVersion>();
+
+  for (const line of (output ?? "").split(/\r?\n/g)) {
+    const [packageName, rawEpoch, version, release, arch] = line.split("\t");
+
+    if (!packageName || !version || !release || !arch) {
+      continue;
+    }
+
+    packages.set(`${packageName}:${arch}`, {
+      packageName,
+      arch,
+      epoch: normalizeRpmEpoch(rawEpoch),
+      version,
+      release
+    });
+  }
+
+  return packages;
+}
+
+function parseAvailablePackageUpdates(
+  output: string | undefined,
+  installedPackages: Map<string, InstalledPackageVersion>
+): PackageUpdateSnapshot[] {
+  const updates: PackageUpdateSnapshot[] = [];
+
+  for (const line of (output ?? "").split(/\r?\n/g)) {
+    const trimmed = line.trim();
+
+    if (
+      !trimmed ||
+      trimmed.startsWith("Last metadata") ||
+      trimmed.startsWith("Obsoleting Packages")
+    ) {
+      continue;
+    }
+
+    const parts = trimmed.split(/\s+/g);
+    const packageArch = parts[0];
+    const versionRelease = parts[1];
+    const repository = parts.slice(2).join(" ");
+
+    if (!packageArch || !versionRelease || !repository) {
+      continue;
+    }
+
+    const { packageName, arch } = splitPackageArch(packageArch);
+    const available = parseRpmVersionRelease(versionRelease);
+    const installed = arch ? installedPackages.get(`${packageName}:${arch}`) : undefined;
+
+    updates.push({
+      packageName,
+      arch,
+      epoch: available.epoch ?? installed?.epoch,
+      currentVersion: installed?.version,
+      currentRelease: installed?.release,
+      availableVersion: available.version,
+      availableRelease: available.release,
+      repository
+    });
+  }
+
+  return updates
+    .sort((left, right) =>
+      `${left.packageName}:${left.arch ?? ""}`.localeCompare(
+        `${right.packageName}:${right.arch ?? ""}`
+      )
+    )
+    .slice(0, packageUpdateLimit);
+}
+
+function classifyPackageAdvisory(value: string | undefined, advisoryId: string | undefined): {
+  advisorySeverity?: string;
+  advisoryType?: string;
+} {
+  const normalized = value?.trim();
+  const lower = `${normalized ?? ""} ${advisoryId ?? ""}`.toLowerCase();
+  const advisoryType =
+    lower.includes("sec") || lower.includes("elsa") || lower.includes("alsa")
+      ? "security"
+      : lower.includes("bug")
+        ? "bugfix"
+        : lower.includes("enhancement")
+          ? "enhancement"
+          : undefined;
+  const advisorySeverity = normalized
+    ?.replace(/\/?sec\.?/i, "")
+    .replace(/bugfix/i, "")
+    .replace(/enhancement/i, "")
+    .trim();
+
+  return {
+    advisorySeverity: advisorySeverity || undefined,
+    advisoryType
+  };
+}
+
+function parsePackageAdvisories(output: string | undefined): PackageAdvisoryInfo[] {
+  const advisories: PackageAdvisoryInfo[] = [];
+
+  for (const line of (output ?? "").split(/\r?\n/g)) {
+    const trimmed = line.trim();
+
+    if (!trimmed || trimmed.startsWith("Last metadata")) {
+      continue;
+    }
+
+    const parts = trimmed.split(/\s+/g);
+    const advisoryId = parts[0];
+    const classifier = parts[1];
+    const packageToken = parts.at(-1);
+
+    if (!advisoryId || !packageToken || parts.length < 2) {
+      continue;
+    }
+
+    const { advisorySeverity, advisoryType } = classifyPackageAdvisory(
+      classifier,
+      advisoryId
+    );
+
+    advisories.push({
+      packageToken,
+      advisoryId,
+      advisorySeverity,
+      advisoryType,
+      summary: parts.slice(1, -1).join(" ") || undefined
+    });
+  }
+
+  return advisories;
+}
+
+function packageTokenMatchesUpdate(token: string, update: PackageUpdateSnapshot): boolean {
+  const packageName = update.packageName;
+
+  return (
+    token === packageName ||
+    token.startsWith(`${packageName}.`) ||
+    token.startsWith(`${packageName}-`) ||
+    token.includes(` ${packageName}.`) ||
+    token.includes(` ${packageName}-`)
+  );
+}
+
+function applyPackageAdvisories(
+  updates: PackageUpdateSnapshot[],
+  advisories: PackageAdvisoryInfo[]
+): PackageUpdateSnapshot[] {
+  return updates.map((update) => {
+    const advisory =
+      advisories.find(
+        (candidate) =>
+          candidate.advisoryType === "security" &&
+          packageTokenMatchesUpdate(candidate.packageToken, update)
+      ) ??
+      advisories.find((candidate) => packageTokenMatchesUpdate(candidate.packageToken, update));
+
+    if (!advisory) {
+      return update;
+    }
+
+    return {
+      ...update,
+      advisoryId: advisory.advisoryId,
+      advisorySeverity: advisory.advisorySeverity,
+      advisoryType: advisory.advisoryType,
+      summary: advisory.summary
+    };
+  });
+}
+
+async function inspectPackageUpdates(): Promise<AgentNodeRuntimeSnapshot["packageUpdates"]> {
+  const checkedAt = new Date().toISOString();
+  const installedOutputPromise = commandOutput("rpm", [
+    "-qa",
+    "--qf",
+    "%{NAME}\t%{EPOCHNUM}\t%{VERSION}\t%{RELEASE}\t%{ARCH}\n"
+  ]);
+  const checkUpdateOutput = await commandOutputWithExitCodes(
+    "dnf",
+    ["-q", "check-update"],
+    [0, 100],
+    45000
+  );
+  const updateInfoOutput =
+    checkUpdateOutput === undefined
+      ? undefined
+      : await commandOutputWithExitCodes(
+          "dnf",
+          ["-q", "updateinfo", "list", "updates"],
+          [0, 100],
+          45000
+        );
+  const installedOutput = await installedOutputPromise;
+  const installedPackages = parseInstalledPackageVersions(installedOutput);
+  const updates = parseAvailablePackageUpdates(checkUpdateOutput, installedPackages);
+
+  return {
+    updates: applyPackageAdvisories(updates, parsePackageAdvisories(updateInfoOutput)),
     checkedAt
   };
 }
@@ -2475,6 +2768,7 @@ async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
     firewall,
     fail2ban,
     services,
+    packageUpdates,
     logs,
     tls,
     storage,
@@ -2492,6 +2786,7 @@ async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
     inspectFirewall(),
     inspectFail2Ban(),
     inspectSystemServices(),
+    inspectPackageUpdates(),
     inspectSystemLogs(),
     inspectTlsCertificates(),
     inspectStorage(),
@@ -2511,6 +2806,7 @@ async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
     firewall,
     fail2ban,
     services,
+    packageUpdates,
     logs,
     tls,
     storage,

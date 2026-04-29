@@ -21,6 +21,7 @@ import {
   renderFail2BanWorkspace,
   renderFirewallWorkspace
 } from "./dashboard-security.js";
+import { renderUpdatesWorkspace } from "./dashboard-updates.js";
 import { renderServicesWorkspace } from "./dashboard-services.js";
 import { renderLogsWorkspace } from "./dashboard-logs.js";
 import { renderCertificatesWorkspace } from "./dashboard-certificates.js";
@@ -563,6 +564,17 @@ export function renderDashboardPage(args: RenderDashboardArgs): string {
           focus,
           backupPolicyWorkspaceTab
         );
+      case "updates":
+        return renderUpdatesWorkspace({
+          copy,
+          data,
+          locale,
+          focus,
+          formatDate,
+          renderFocusLink: renderFocusLinkWithPill,
+          renderPill,
+          renderSignalStrip
+        });
       case "services":
         return renderServicesWorkspace({
           copy,

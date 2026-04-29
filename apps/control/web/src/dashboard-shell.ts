@@ -48,6 +48,7 @@ type DashboardShellCopy = DashboardCopyLabels & {
   navApps: string;
   navBackups: string;
   navBackupPolicies: string;
+  navUpdates: string;
   navServices: string;
   navLogs: string;
   navCertificates: string;
@@ -303,6 +304,13 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
           href: buildDashboardViewUrl("rustdesk"),
           badge: String(data.rustdesk.nodes.length),
           active: view === "rustdesk"
+        },
+        {
+          id: "updates",
+          label: copy.navUpdates,
+          href: buildDashboardViewUrl("updates"),
+          badge: String(data.nodeHealth.reduce((count, node) => count + (node.packageUpdates?.updates.length ?? 0), 0)),
+          active: view === "updates"
         },
         {
           id: "services",

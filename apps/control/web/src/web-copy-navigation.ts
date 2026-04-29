@@ -12,6 +12,7 @@ export const navigationCopyByLocale = {
     navJobs: "Jobs",
     navBackups: "Backups",
     navRustDesk: "RustDesk",
+    navUpdates: "Updates",
     navServices: "Services",
     navLogs: "Logs",
     navCertificates: "TLS",
@@ -46,6 +47,8 @@ export const navigationCopyByLocale = {
     mailWorkspaceDescription:
       "Mail domains, mailboxes, aliases, quotas and delivery topology for the platform mail stack.",
     backupWorkspaceDescription: "Policy definition, retention and coverage before backup runs.",
+    updatesWorkspaceDescription:
+      "Available RPM updates and security advisories reported by managed nodes.",
     servicesWorkspaceDescription:
       "Systemd posture for critical platform services across managed nodes.",
     logsWorkspaceDescription:
@@ -83,6 +86,7 @@ export const navigationCopyByLocale = {
     navJobs: "Jobs",
     navBackups: "Backups",
     navRustDesk: "RustDesk",
+    navUpdates: "Updates",
     navServices: "Servicios",
     navLogs: "Logs",
     navCertificates: "TLS",
@@ -122,6 +126,8 @@ export const navigationCopyByLocale = {
       "Dominios mail, buzones, aliases, quotas y topología de entrega para el stack de correo de la plataforma.",
     backupWorkspaceDescription:
       "Definición de políticas, retención y cobertura antes de las ejecuciones.",
+    updatesWorkspaceDescription:
+      "Actualizaciones RPM disponibles y advisories de seguridad reportados por los nodos gestionados.",
     servicesWorkspaceDescription:
       "Postura systemd de servicios críticos de plataforma en los nodos gestionados.",
     logsWorkspaceDescription:
