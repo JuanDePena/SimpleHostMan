@@ -511,6 +511,34 @@ export interface TlsCertificatesSnapshot {
   checkedAt: string;
 }
 
+export interface FilesystemUsageSnapshot {
+  filesystem: string;
+  mountpoint: string;
+  type?: string;
+  totalBytes: number;
+  usedBytes: number;
+  availableBytes: number;
+  usedPercent?: number;
+  totalInodes?: number;
+  usedInodes?: number;
+  availableInodes?: number;
+  inodeUsedPercent?: number;
+}
+
+export interface StoragePathUsageSnapshot {
+  path: string;
+  usedBytes?: number;
+  filesystem?: string;
+  mountpoint?: string;
+  checkedAt: string;
+}
+
+export interface StorageSnapshot {
+  filesystems: FilesystemUsageSnapshot[];
+  paths: StoragePathUsageSnapshot[];
+  checkedAt: string;
+}
+
 export interface AgentNodeRuntimeSnapshot {
   appServices?: AppServiceSnapshot[];
   codeServer?: CodeServerServiceSnapshot;
@@ -520,6 +548,7 @@ export interface AgentNodeRuntimeSnapshot {
   services?: SystemServicesSnapshot;
   logs?: SystemLogsSnapshot;
   tls?: TlsCertificatesSnapshot;
+  storage?: StorageSnapshot;
   mail?: MailServiceSnapshot;
 }
 

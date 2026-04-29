@@ -105,6 +105,18 @@ test("combined runtime serves authenticated flow over a real HTTP server", async
       "certificates workspace should render TLS inventory"
     );
 
+    const storageResponse = await fetch(new URL("/?view=storage", runtime.origin), {
+      headers: {
+        cookie
+      }
+    });
+    assert.equal(storageResponse.status, 200);
+    assert.match(
+      await storageResponse.text(),
+      /Storage inventory|Inventario de storage/,
+      "storage workspace should render filesystem inventory"
+    );
+
     const packagesResponse = await fetch(new URL("/?view=packages", runtime.origin), {
       headers: {
         cookie

@@ -37,7 +37,10 @@ import type {
   ResourceDriftSummary,
   RustDeskListenerSnapshot,
   RustDeskServiceSnapshot,
+  FilesystemUsageSnapshot,
   ServiceUnitSnapshot,
+  StoragePathUsageSnapshot,
+  StorageSnapshot,
   SystemLogsSnapshot,
   SystemServicesSnapshot,
   TlsCertificateSnapshot,
@@ -630,6 +633,82 @@ function normalizeTlsCertificatesSnapshot(value: unknown): TlsCertificatesSnapsh
   };
 }
 
+function normalizeFilesystemUsageSnapshot(value: unknown): FilesystemUsageSnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  if (
+    typeof record.filesystem !== "string" ||
+    typeof record.mountpoint !== "string" ||
+    typeof record.totalBytes !== "number" ||
+    typeof record.usedBytes !== "number" ||
+    typeof record.availableBytes !== "number"
+  ) {
+    return undefined;
+  }
+
+  return {
+    filesystem: record.filesystem,
+    mountpoint: record.mountpoint,
+    type: typeof record.type === "string" ? record.type : undefined,
+    totalBytes: Number(record.totalBytes),
+    usedBytes: Number(record.usedBytes),
+    availableBytes: Number(record.availableBytes),
+    usedPercent: typeof record.usedPercent === "number" ? Number(record.usedPercent) : undefined,
+    totalInodes: typeof record.totalInodes === "number" ? Number(record.totalInodes) : undefined,
+    usedInodes: typeof record.usedInodes === "number" ? Number(record.usedInodes) : undefined,
+    availableInodes:
+      typeof record.availableInodes === "number" ? Number(record.availableInodes) : undefined,
+    inodeUsedPercent:
+      typeof record.inodeUsedPercent === "number" ? Number(record.inodeUsedPercent) : undefined
+  };
+}
+
+function normalizeStoragePathUsageSnapshot(value: unknown): StoragePathUsageSnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  if (typeof record.path !== "string") {
+    return undefined;
+  }
+
+  return {
+    path: record.path,
+    usedBytes: typeof record.usedBytes === "number" ? Number(record.usedBytes) : undefined,
+    filesystem: typeof record.filesystem === "string" ? record.filesystem : undefined,
+    mountpoint: typeof record.mountpoint === "string" ? record.mountpoint : undefined,
+    checkedAt: typeof record.checkedAt === "string" ? record.checkedAt : new Date(0).toISOString()
+  };
+}
+
+function normalizeStorageSnapshot(value: unknown): StorageSnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  return {
+    filesystems: Array.isArray(record.filesystems)
+      ? record.filesystems
+          .map(normalizeFilesystemUsageSnapshot)
+          .filter((entry): entry is FilesystemUsageSnapshot => Boolean(entry))
+      : [],
+    paths: Array.isArray(record.paths)
+      ? record.paths
+          .map(normalizeStoragePathUsageSnapshot)
+          .filter((entry): entry is StoragePathUsageSnapshot => Boolean(entry))
+      : [],
+    checkedAt: typeof record.checkedAt === "string" ? record.checkedAt : new Date(0).toISOString()
+  };
+}
+
 function normalizeRustDeskListenerSnapshot(
   value: unknown
 ): RustDeskListenerSnapshot | undefined {
@@ -1213,6 +1292,9 @@ export function toNodeHealthSnapshot(row: NodeHealthRow): NodeHealthSnapshot {
     ),
     tls: normalizeTlsCertificatesSnapshot(
       (runtimeSnapshot as Record<string, unknown>).tls
+    ),
+    storage: normalizeStorageSnapshot(
+      (runtimeSnapshot as Record<string, unknown>).storage
     ),
     mail: normalizeMailSnapshot((runtimeSnapshot as Record<string, unknown>).mail)
   };

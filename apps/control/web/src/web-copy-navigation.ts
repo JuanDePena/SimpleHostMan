@@ -15,6 +15,7 @@ export const navigationCopyByLocale = {
     navServices: "Services",
     navLogs: "Logs",
     navCertificates: "TLS",
+    navStorage: "Storage",
     navResources: "Resources",
     navDesiredState: "Spec",
     navCreate: "Create",
@@ -45,6 +46,8 @@ export const navigationCopyByLocale = {
       "Recent journal entries for critical platform services across managed nodes.",
     certificatesWorkspaceDescription:
       "Certificate inventory, SAN coverage and expiration posture across managed nodes.",
+    storageWorkspaceDescription:
+      "Filesystem, inode and important-path usage reported by managed nodes.",
     firewallWorkspaceDescription:
       "Monitor firewalld posture and apply the SimpleHost baseline without leaving the control plane.",
     fail2banWorkspaceDescription:
@@ -65,6 +68,7 @@ export const navigationCopyByLocale = {
     navServices: "Servicios",
     navLogs: "Logs",
     navCertificates: "TLS",
+    navStorage: "Storage",
     navResources: "Recursos",
     navDesiredState: "Especificación",
     navCreate: "Crear",
@@ -100,6 +104,8 @@ export const navigationCopyByLocale = {
       "Entradas recientes de journal para servicios críticos de plataforma en los nodos gestionados.",
     certificatesWorkspaceDescription:
       "Inventario de certificados, cobertura SAN y postura de expiración en los nodos gestionados.",
+    storageWorkspaceDescription:
+      "Uso de filesystems, inodes y rutas importantes reportado por los nodos gestionados.",
     firewallWorkspaceDescription:
       "Monitorea la postura de firewalld y aplica el baseline SimpleHost sin salir del plano de control.",
     fail2banWorkspaceDescription:

@@ -24,7 +24,9 @@ import {
   type MailSyncPayload,
   type RustDeskListenerSnapshot,
   type RustDeskServiceSnapshot,
+  type FilesystemUsageSnapshot,
   type JournalLogEntrySnapshot,
+  type StoragePathUsageSnapshot,
   type ServiceUnitSnapshot,
   type TlsCertificateSnapshot,
   type AgentBufferedReport,
@@ -81,6 +83,15 @@ const trackedSystemServices = [
 const journalEntriesPerService = 8;
 const journalEntryLimit = 120;
 const letsEncryptLiveDir = "/etc/letsencrypt/live";
+const trackedStoragePaths = [
+  "/",
+  "/var",
+  "/var/log",
+  "/srv",
+  "/srv/backups",
+  "/opt/simplehostman",
+  "/opt/simplehostman/release"
+] as const;
 
 type MailboxUsageEntry = NonNullable<MailServiceSnapshot["mailboxUsage"]>[number];
 
@@ -648,6 +659,115 @@ async function inspectTlsCertificates(): Promise<AgentNodeRuntimeSnapshot["tls"]
 
   return {
     certificates,
+    checkedAt
+  };
+}
+
+function parsePercent(value: string | undefined): number | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const parsed = Number.parseInt(value.replace("%", ""), 10);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function parseDfBytes(output: string | undefined): FilesystemUsageSnapshot[] {
+  const lines = (output ?? "").split(/\r?\n/g).slice(1);
+
+  return lines
+    .map((line) => line.trim().split(/\s+/g))
+    .filter((parts) => parts.length >= 7)
+    .map((parts) => ({
+      filesystem: parts[0] ?? "",
+      type: parts[1],
+      totalBytes: Number.parseInt(parts[2] ?? "0", 10),
+      usedBytes: Number.parseInt(parts[3] ?? "0", 10),
+      availableBytes: Number.parseInt(parts[4] ?? "0", 10),
+      usedPercent: parsePercent(parts[5]),
+      mountpoint: parts.slice(6).join(" ")
+    }))
+    .filter((entry) => entry.filesystem && entry.mountpoint && Number.isFinite(entry.totalBytes));
+}
+
+function applyDfInodes(
+  filesystems: FilesystemUsageSnapshot[],
+  output: string | undefined
+): FilesystemUsageSnapshot[] {
+  const inodeRows = new Map(
+    (output ?? "")
+      .split(/\r?\n/g)
+      .slice(1)
+      .map((line) => line.trim().split(/\s+/g))
+      .filter((parts) => parts.length >= 6)
+      .map((parts) => [
+        parts.slice(5).join(" "),
+        {
+          totalInodes: Number.parseInt(parts[1] ?? "0", 10),
+          usedInodes: Number.parseInt(parts[2] ?? "0", 10),
+          availableInodes: Number.parseInt(parts[3] ?? "0", 10),
+          inodeUsedPercent: parsePercent(parts[4])
+        }
+      ] as const)
+  );
+
+  return filesystems.map((filesystem) => ({
+    ...filesystem,
+    ...inodeRows.get(filesystem.mountpoint)
+  }));
+}
+
+function findFilesystemForPath(
+  filesystems: FilesystemUsageSnapshot[],
+  targetPath: string
+): FilesystemUsageSnapshot | undefined {
+  return [...filesystems]
+    .filter((filesystem) =>
+      targetPath === filesystem.mountpoint ||
+      targetPath.startsWith(`${filesystem.mountpoint.replace(/\/$/, "")}/`)
+    )
+    .sort((left, right) => right.mountpoint.length - left.mountpoint.length)[0];
+}
+
+async function inspectStoragePath(
+  targetPath: string,
+  filesystems: FilesystemUsageSnapshot[]
+): Promise<StoragePathUsageSnapshot | undefined> {
+  const checkedAt = new Date().toISOString();
+
+  if (!(await pathExists(targetPath))) {
+    return undefined;
+  }
+
+  const output = await commandOutput("du", ["-sB1", "-x", targetPath]);
+  const usedBytes = output ? Number.parseInt(output.split(/\s+/g)[0] ?? "", 10) : undefined;
+  const filesystem = findFilesystemForPath(filesystems, targetPath);
+
+  return {
+    path: targetPath,
+    usedBytes: Number.isFinite(usedBytes) ? usedBytes : undefined,
+    filesystem: filesystem?.filesystem,
+    mountpoint: filesystem?.mountpoint,
+    checkedAt
+  };
+}
+
+async function inspectStorage(): Promise<AgentNodeRuntimeSnapshot["storage"]> {
+  const checkedAt = new Date().toISOString();
+  const [dfBytes, dfInodes] = await Promise.all([
+    commandOutput("df", ["-B1", "-PT", "-x", "tmpfs", "-x", "devtmpfs"]),
+    commandOutput("df", ["-Pi", "-x", "tmpfs", "-x", "devtmpfs"])
+  ]);
+  const filesystems = applyDfInodes(parseDfBytes(dfBytes), dfInodes);
+  const paths = (
+    await Promise.all(trackedStoragePaths.map((targetPath) => inspectStoragePath(targetPath, filesystems)))
+  )
+    .filter((entry): entry is StoragePathUsageSnapshot => Boolean(entry))
+    .sort((left, right) => left.path.localeCompare(right.path));
+
+  return {
+    filesystems,
+    paths,
     checkedAt
   };
 }
@@ -1774,7 +1894,7 @@ async function inspectAppServices(): Promise<AppServiceSnapshot[]> {
 }
 
 async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
-  const [appServices, codeServer, rustdesk, firewall, fail2ban, services, logs, tls, mail] = await Promise.all([
+  const [appServices, codeServer, rustdesk, firewall, fail2ban, services, logs, tls, storage, mail] = await Promise.all([
     inspectAppServices(),
     inspectCodeServer(),
     inspectRustDesk(),
@@ -1783,6 +1903,7 @@ async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
     inspectSystemServices(),
     inspectSystemLogs(),
     inspectTlsCertificates(),
+    inspectStorage(),
     inspectMail()
   ]);
 
@@ -1795,6 +1916,7 @@ async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
     services,
     logs,
     tls,
+    storage,
     mail
   };
 }

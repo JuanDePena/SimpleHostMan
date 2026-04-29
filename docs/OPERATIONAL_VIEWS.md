@@ -54,3 +54,20 @@ The control UI shows:
 Renewal actions are intentionally outside the first read-only implementation.
 They should be introduced as audited jobs after the renewal path is explicit for
 the active certificate authority and web ingress layout.
+
+## Storage
+
+The Storage view reports filesystem capacity, inode pressure and a bounded set
+of important platform paths. The agent uses `df` for mounted filesystems and
+`du -x` for selected paths so the reported size stays on the same filesystem.
+
+The control UI shows:
+
+- cross-node filesystem inventory with byte and inode usage
+- pressure counters for filesystems above the warning threshold
+- selected-node cards for mounts and tracked paths such as logs, backups and the
+  active release root
+
+This view is for triage and capacity awareness. Destructive cleanup operations
+should remain outside the UI until they can be modeled as audited, reversible
+jobs with explicit path constraints.
