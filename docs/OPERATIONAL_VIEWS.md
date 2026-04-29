@@ -112,6 +112,25 @@ The control UI shows:
 This view is read-only. Resolver changes should remain in node configuration or
 audited maintenance jobs so DNS changes stay explicit and reversible.
 
+## Accounts
+
+The Accounts view reports local account and sudo posture per managed node. The
+agent reads `getent passwd`, checks account status with `passwd -S -a` when
+available, collects common administrative groups (`wheel`, `sudo`, `admin`),
+and validates sudoers syntax with `visudo -c` when present.
+
+The control UI shows:
+
+- cross-node account inventory with UID, GID, login shell and system-account
+  classification
+- counters for login-enabled accounts, UID 0 accounts and sudoers failures
+- selected-account detail with home directory, password status, admin groups
+  and sudoers validation summary
+
+This view intentionally avoids password hashes or secret material. Account and
+sudo changes should be implemented through explicit audited jobs before becoming
+interactive dashboard actions.
+
 ## Services
 
 The Services view reports critical `systemd` units per managed node. The agent

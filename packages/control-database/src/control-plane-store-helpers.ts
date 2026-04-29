@@ -7,6 +7,7 @@ import {
 } from "node:crypto";
 
 import type {
+  AccountsSnapshot,
   AppServiceSnapshot,
   AuditEventSummary,
   BackupsOverview,
@@ -32,6 +33,8 @@ import type {
   InventoryZoneSummary,
   JobHistoryEntry,
   JournalLogEntrySnapshot,
+  LocalAccountSnapshot,
+  LocalGroupSnapshot,
   MailDeliveryFailureSnapshot,
   MailManagedDomainSnapshot,
   MailQueueSnapshot,
@@ -772,6 +775,80 @@ function normalizeDnsResolverSnapshot(value: unknown): DnsResolverSnapshot | und
       typeof record.systemdResolvedActive === "boolean"
         ? record.systemdResolvedActive
         : undefined,
+    checkedAt: typeof record.checkedAt === "string" ? record.checkedAt : new Date(0).toISOString()
+  };
+}
+
+function normalizeLocalAccountSnapshot(value: unknown): LocalAccountSnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  if (
+    typeof record.username !== "string" ||
+    typeof record.uid !== "number" ||
+    typeof record.gid !== "number"
+  ) {
+    return undefined;
+  }
+
+  return {
+    username: record.username,
+    uid: Number(record.uid),
+    gid: Number(record.gid),
+    gecos: typeof record.gecos === "string" ? record.gecos : undefined,
+    homeDirectory:
+      typeof record.homeDirectory === "string" ? record.homeDirectory : undefined,
+    shell: typeof record.shell === "string" ? record.shell : undefined,
+    systemAccount: Boolean(record.systemAccount),
+    loginEnabled: Boolean(record.loginEnabled),
+    passwordStatus:
+      typeof record.passwordStatus === "string" ? record.passwordStatus : undefined
+  };
+}
+
+function normalizeLocalGroupSnapshot(value: unknown): LocalGroupSnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  if (typeof record.groupName !== "string") {
+    return undefined;
+  }
+
+  return {
+    groupName: record.groupName,
+    gid: typeof record.gid === "number" ? Number(record.gid) : undefined,
+    members: normalizeStringArray(record.members)
+  };
+}
+
+function normalizeAccountsSnapshot(value: unknown): AccountsSnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  return {
+    users: Array.isArray(record.users)
+      ? record.users
+          .map(normalizeLocalAccountSnapshot)
+          .filter((entry): entry is LocalAccountSnapshot => Boolean(entry))
+      : [],
+    adminGroups: Array.isArray(record.adminGroups)
+      ? record.adminGroups
+          .map(normalizeLocalGroupSnapshot)
+          .filter((entry): entry is LocalGroupSnapshot => Boolean(entry))
+      : [],
+    sudoersValid:
+      typeof record.sudoersValid === "boolean" ? record.sudoersValid : undefined,
+    sudoersSummary:
+      typeof record.sudoersSummary === "string" ? record.sudoersSummary : undefined,
     checkedAt: typeof record.checkedAt === "string" ? record.checkedAt : new Date(0).toISOString()
   };
 }
@@ -1887,6 +1964,9 @@ export function toNodeHealthSnapshot(row: NodeHealthRow): NodeHealthSnapshot {
     ),
     dnsResolver: normalizeDnsResolverSnapshot(
       (runtimeSnapshot as Record<string, unknown>).dnsResolver
+    ),
+    accounts: normalizeAccountsSnapshot(
+      (runtimeSnapshot as Record<string, unknown>).accounts
     ),
     logs: normalizeSystemLogsSnapshot(
       (runtimeSnapshot as Record<string, unknown>).logs

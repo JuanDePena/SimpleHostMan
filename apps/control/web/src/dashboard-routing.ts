@@ -13,6 +13,7 @@ export type DashboardView =
   | "config"
   | "time"
   | "resolver"
+  | "accounts"
   | "services"
   | "logs"
   | "certificates"
@@ -90,6 +91,7 @@ export interface DashboardCopyLabels {
   navConfig: string;
   navTime: string;
   navResolver: string;
+  navAccounts: string;
   navServices: string;
   navLogs: string;
   navCertificates: string;
@@ -119,6 +121,7 @@ export interface DashboardCopyLabels {
   configWorkspaceDescription: string;
   timeWorkspaceDescription: string;
   resolverWorkspaceDescription: string;
+  accountsWorkspaceDescription: string;
   servicesWorkspaceDescription: string;
   logsWorkspaceDescription: string;
   certificatesWorkspaceDescription: string;
@@ -164,6 +167,7 @@ export function normalizeDashboardView(value: string | null | undefined): Dashbo
     case "config":
     case "time":
     case "resolver":
+    case "accounts":
     case "services":
     case "logs":
     case "certificates":
@@ -262,6 +266,8 @@ function getObjectViewLabel(
       return copy.navTime;
     case "resolver":
       return copy.navResolver;
+    case "accounts":
+      return copy.navAccounts;
     case "services":
       return copy.navServices;
     case "logs":
@@ -436,6 +442,8 @@ export function getDashboardSubheading(copy: DashboardCopyLabels, view: Dashboar
       return copy.timeWorkspaceDescription;
     case "resolver":
       return copy.resolverWorkspaceDescription;
+    case "accounts":
+      return copy.accountsWorkspaceDescription;
     case "services":
       return copy.servicesWorkspaceDescription;
     case "logs":

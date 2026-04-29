@@ -316,6 +316,32 @@ export interface DnsResolverSnapshot {
   checkedAt: string;
 }
 
+export interface LocalAccountSnapshot {
+  username: string;
+  uid: number;
+  gid: number;
+  gecos?: string;
+  homeDirectory?: string;
+  shell?: string;
+  systemAccount: boolean;
+  loginEnabled: boolean;
+  passwordStatus?: string;
+}
+
+export interface LocalGroupSnapshot {
+  groupName: string;
+  gid?: number;
+  members: string[];
+}
+
+export interface AccountsSnapshot {
+  users: LocalAccountSnapshot[];
+  adminGroups: LocalGroupSnapshot[];
+  sudoersValid?: boolean;
+  sudoersSummary?: string;
+  checkedAt: string;
+}
+
 export interface JournalLogEntrySnapshot {
   unit?: string;
   priority?: number;
@@ -517,6 +543,7 @@ export interface NodeRuntimeSnapshot {
   configValidation?: ConfigValidationSnapshot;
   timeSync?: TimeSyncSnapshot;
   dnsResolver?: DnsResolverSnapshot;
+  accounts?: AccountsSnapshot;
   logs?: SystemLogsSnapshot;
   tls?: TlsCertificatesSnapshot;
   storage?: StorageSnapshot;
@@ -563,6 +590,7 @@ export interface NodeHealthSnapshot {
   configValidation?: ConfigValidationSnapshot;
   timeSync?: TimeSyncSnapshot;
   dnsResolver?: DnsResolverSnapshot;
+  accounts?: AccountsSnapshot;
   logs?: SystemLogsSnapshot;
   tls?: TlsCertificatesSnapshot;
   storage?: StorageSnapshot;

@@ -22,6 +22,8 @@ import {
   type Fail2BanSnapshot,
   type FirewalldZoneSnapshot,
   type HostFirewallSnapshot,
+  type LocalAccountSnapshot,
+  type LocalGroupSnapshot,
   type MailServiceSnapshot,
   type MailSyncPayload,
   type NetworkInterfaceAddressSnapshot,
@@ -1161,6 +1163,133 @@ async function inspectDnsResolver(): Promise<AgentNodeRuntimeSnapshot["dnsResolv
     resolvedDomains: parseResolvectlValues(resolvedDomainsOutput),
     systemdResolvedActive:
       systemdResolvedState === undefined ? undefined : systemdResolvedState === "active",
+    checkedAt
+  };
+}
+
+function loginShellEnabled(shell: string | undefined): boolean {
+  if (!shell) {
+    return false;
+  }
+
+  return !/(?:^|\/)(nologin|false|sync|shutdown|halt)$/.test(shell);
+}
+
+function parsePasswordStatusOutput(output: string | undefined): Map<string, string> {
+  const statuses = new Map<string, string>();
+
+  for (const line of (output ?? "").split(/\r?\n/g)) {
+    const parts = line.trim().split(/\s+/g);
+    const username = parts[0];
+    const status = parts[1];
+
+    if (!username || !status) {
+      continue;
+    }
+
+    statuses.set(username, status);
+  }
+
+  return statuses;
+}
+
+function parseLocalAccounts(
+  passwdOutput: string | undefined,
+  passwordStatuses: Map<string, string>
+): LocalAccountSnapshot[] {
+  return (passwdOutput ?? "")
+    .split(/\r?\n/g)
+    .map((line): LocalAccountSnapshot | undefined => {
+      const [username, , rawUid, rawGid, gecos, homeDirectory, shell] = line.split(":");
+      const uid = Number.parseInt(rawUid ?? "", 10);
+      const gid = Number.parseInt(rawGid ?? "", 10);
+
+      if (!username || !Number.isInteger(uid) || !Number.isInteger(gid)) {
+        return undefined;
+      }
+
+      return {
+        username,
+        uid,
+        gid,
+        gecos: gecos || undefined,
+        homeDirectory: homeDirectory || undefined,
+        shell: shell || undefined,
+        systemAccount: uid < 1000 && uid !== 0,
+        loginEnabled: loginShellEnabled(shell),
+        passwordStatus: passwordStatuses.get(username)
+      };
+    })
+    .filter((entry): entry is LocalAccountSnapshot => Boolean(entry))
+    .sort((left, right) => left.uid - right.uid || left.username.localeCompare(right.username));
+}
+
+function parseLocalGroup(output: string | undefined): LocalGroupSnapshot | undefined {
+  const [groupName, , rawGid, rawMembers] = (output ?? "").trim().split(":");
+  const gid = Number.parseInt(rawGid ?? "", 10);
+
+  if (!groupName) {
+    return undefined;
+  }
+
+  return {
+    groupName,
+    gid: Number.isInteger(gid) ? gid : undefined,
+    members: uniqueOrderedStrings((rawMembers ?? "").split(","))
+  };
+}
+
+function summarizeSudoersResult(result: CommandResult | undefined): {
+  sudoersValid?: boolean;
+  sudoersSummary?: string;
+} {
+  if (!result) {
+    return {
+      sudoersSummary: "visudo is not available on this node."
+    };
+  }
+
+  const summary = [result.stdout, result.stderr]
+    .join("\n")
+    .split(/\r?\n/g)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 3)
+    .join("; ");
+
+  return {
+    sudoersValid: result.exitCode === 0,
+    sudoersSummary:
+      truncateValidationSummary(summary || `visudo exited with code ${result.exitCode}.`)
+  };
+}
+
+async function inspectAccounts(): Promise<AgentNodeRuntimeSnapshot["accounts"]> {
+  const checkedAt = new Date().toISOString();
+  const [
+    passwdOutput,
+    passwordStatusOutput,
+    wheelGroup,
+    sudoGroup,
+    adminGroup,
+    sudoersResult
+  ] = await Promise.all([
+    commandOutput("getent", ["passwd"]),
+    commandOutput("passwd", ["-S", "-a"]),
+    commandOutput("getent", ["group", "wheel"]),
+    commandOutput("getent", ["group", "sudo"]),
+    commandOutput("getent", ["group", "admin"]),
+    commandResultWithExitCodes("visudo", ["-c"], [0, 1], 30000)
+  ]);
+  const passwordStatuses = parsePasswordStatusOutput(passwordStatusOutput);
+  const sudoers = summarizeSudoersResult(sudoersResult);
+
+  return {
+    users: parseLocalAccounts(passwdOutput, passwordStatuses),
+    adminGroups: [wheelGroup, sudoGroup, adminGroup]
+      .map(parseLocalGroup)
+      .filter((entry): entry is LocalGroupSnapshot => Boolean(entry)),
+    ...sudoers,
     checkedAt
   };
 }
@@ -3155,6 +3284,7 @@ async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
     configValidation,
     timeSync,
     dnsResolver,
+    accounts,
     logs,
     tls,
     storage,
@@ -3177,6 +3307,7 @@ async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
     inspectConfigValidation(),
     inspectTimeSync(),
     inspectDnsResolver(),
+    inspectAccounts(),
     inspectSystemLogs(),
     inspectTlsCertificates(),
     inspectStorage(),
@@ -3201,6 +3332,7 @@ async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
     configValidation,
     timeSync,
     dnsResolver,
+    accounts,
     logs,
     tls,
     storage,

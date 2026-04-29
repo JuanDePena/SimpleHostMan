@@ -53,6 +53,7 @@ type DashboardShellCopy = DashboardCopyLabels & {
   navConfig: string;
   navTime: string;
   navResolver: string;
+  navAccounts: string;
   navServices: string;
   navLogs: string;
   navCertificates: string;
@@ -343,6 +344,13 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
           href: buildDashboardViewUrl("resolver"),
           badge: String(data.nodeHealth.filter((node) => node.dnsResolver && node.dnsResolver.nameservers.length === 0 && node.dnsResolver.resolvedServers.length === 0).length),
           active: view === "resolver"
+        },
+        {
+          id: "accounts",
+          label: copy.navAccounts,
+          href: buildDashboardViewUrl("accounts"),
+          badge: String(data.nodeHealth.reduce((count, node) => count + (node.accounts?.users.filter((user) => user.loginEnabled).length ?? 0), 0)),
+          active: view === "accounts"
         },
         {
           id: "services",

@@ -26,6 +26,7 @@ import { renderRebootsWorkspace } from "./dashboard-reboots.js";
 import { renderConfigValidationWorkspace } from "./dashboard-config-validation.js";
 import { renderTimeWorkspace } from "./dashboard-time.js";
 import { renderResolverWorkspace } from "./dashboard-resolver.js";
+import { renderAccountsWorkspace } from "./dashboard-accounts.js";
 import { renderServicesWorkspace } from "./dashboard-services.js";
 import { renderLogsWorkspace } from "./dashboard-logs.js";
 import { renderCertificatesWorkspace } from "./dashboard-certificates.js";
@@ -614,6 +615,17 @@ export function renderDashboardPage(args: RenderDashboardArgs): string {
         });
       case "resolver":
         return renderResolverWorkspace({
+          copy,
+          data,
+          locale,
+          focus,
+          formatDate,
+          renderFocusLink: renderFocusLinkWithPill,
+          renderPill,
+          renderSignalStrip
+        });
+      case "accounts":
+        return renderAccountsWorkspace({
           copy,
           data,
           locale,

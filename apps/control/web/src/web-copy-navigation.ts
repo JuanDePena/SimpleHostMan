@@ -17,6 +17,7 @@ export const navigationCopyByLocale = {
     navConfig: "Config",
     navTime: "Time",
     navResolver: "Resolver",
+    navAccounts: "Accounts",
     navServices: "Services",
     navLogs: "Logs",
     navCertificates: "TLS",
@@ -61,6 +62,8 @@ export const navigationCopyByLocale = {
       "Clock, timezone and NTP synchronization posture reported by managed nodes.",
     resolverWorkspaceDescription:
       "DNS resolver configuration and systemd-resolved posture reported by managed nodes.",
+    accountsWorkspaceDescription:
+      "Local account, login shell and sudo posture reported by managed nodes.",
     servicesWorkspaceDescription:
       "Systemd posture for critical platform services across managed nodes.",
     logsWorkspaceDescription:
@@ -103,6 +106,7 @@ export const navigationCopyByLocale = {
     navConfig: "Config",
     navTime: "Hora",
     navResolver: "Resolver DNS",
+    navAccounts: "Cuentas",
     navServices: "Servicios",
     navLogs: "Logs",
     navCertificates: "TLS",
@@ -152,6 +156,8 @@ export const navigationCopyByLocale = {
       "Postura de reloj, zona horaria y sincronización NTP reportada por los nodos gestionados.",
     resolverWorkspaceDescription:
       "Configuración de resolución DNS y postura de systemd-resolved reportada por los nodos gestionados.",
+    accountsWorkspaceDescription:
+      "Postura de cuentas locales, shells de login y sudo reportada por los nodos gestionados.",
     servicesWorkspaceDescription:
       "Postura systemd de servicios críticos de plataforma en los nodos gestionados.",
     logsWorkspaceDescription:

@@ -307,6 +307,53 @@ test("runtime workspaces select one row and render only that row detail", () => 
       }
     },
     {
+      name: "accounts",
+      view: "accounts",
+      focus: "mail-a:root",
+      marker: "Selected account",
+      selectedText: "/root",
+      otherText: "/srv/appuser",
+      arrange: (data) => {
+        data.nodeHealth[0] = {
+          ...data.nodeHealth[0]!,
+          accounts: {
+            checkedAt: "2026-04-29T00:00:00.000Z",
+            sudoersValid: true,
+            sudoersSummary: "/etc/sudoers: parsed OK",
+            adminGroups: [
+              {
+                groupName: "wheel",
+                gid: 10,
+                members: ["ops"]
+              }
+            ],
+            users: [
+              {
+                username: "root",
+                uid: 0,
+                gid: 0,
+                homeDirectory: "/root",
+                shell: "/bin/bash",
+                systemAccount: false,
+                loginEnabled: true,
+                passwordStatus: "LK"
+              },
+              {
+                username: "appuser",
+                uid: 1001,
+                gid: 1001,
+                homeDirectory: "/srv/appuser",
+                shell: "/sbin/nologin",
+                systemAccount: false,
+                loginEnabled: false,
+                passwordStatus: "LK"
+              }
+            ]
+          }
+        };
+      }
+    },
+    {
       name: "services",
       view: "services",
       focus: "mail-a:httpd.service",
