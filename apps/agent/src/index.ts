@@ -22,6 +22,10 @@ import {
   type HostFirewallSnapshot,
   type MailServiceSnapshot,
   type MailSyncPayload,
+  type NetworkInterfaceAddressSnapshot,
+  type NetworkInterfaceSnapshot,
+  type NetworkListenerSnapshot,
+  type NetworkRouteSnapshot,
   type RustDeskListenerSnapshot,
   type RustDeskServiceSnapshot,
   type FilesystemUsageSnapshot,
@@ -768,6 +772,201 @@ async function inspectStorage(): Promise<AgentNodeRuntimeSnapshot["storage"]> {
   return {
     filesystems,
     paths,
+    checkedAt
+  };
+}
+
+function parseJsonArray(value: string | undefined): unknown[] {
+  if (!value) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function readStringField(record: Record<string, unknown>, key: string): string | undefined {
+  return typeof record[key] === "string" ? record[key] : undefined;
+}
+
+function readNumberField(record: Record<string, unknown>, key: string): number | undefined {
+  return typeof record[key] === "number" && Number.isFinite(record[key])
+    ? Number(record[key])
+    : undefined;
+}
+
+function parseNetworkInterfaces(value: string | undefined): NetworkInterfaceSnapshot[] {
+  return parseJsonArray(value)
+    .map((entry): NetworkInterfaceSnapshot | undefined => {
+      if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+        return undefined;
+      }
+
+      const record = entry as Record<string, unknown>;
+      const name = readStringField(record, "ifname");
+
+      if (!name) {
+        return undefined;
+      }
+
+      const addresses = Array.isArray(record.addr_info)
+        ? record.addr_info
+            .map((addressEntry): NetworkInterfaceAddressSnapshot | undefined => {
+              if (
+                !addressEntry ||
+                typeof addressEntry !== "object" ||
+                Array.isArray(addressEntry)
+              ) {
+                return undefined;
+              }
+
+              const addressRecord = addressEntry as Record<string, unknown>;
+              const family = readStringField(addressRecord, "family");
+              const address = readStringField(addressRecord, "local");
+
+              if (!family || !address) {
+                return undefined;
+              }
+
+              return {
+                family,
+                address,
+                prefixLength: readNumberField(addressRecord, "prefixlen"),
+                scope: readStringField(addressRecord, "scope")
+              };
+            })
+            .filter((address): address is NetworkInterfaceAddressSnapshot => Boolean(address))
+        : [];
+
+      return {
+        name,
+        state: readStringField(record, "operstate"),
+        mtu: readNumberField(record, "mtu"),
+        macAddress: readStringField(record, "address"),
+        addresses: addresses.sort((left, right) =>
+          `${left.family}:${left.address}`.localeCompare(`${right.family}:${right.address}`)
+        )
+      } satisfies NetworkInterfaceSnapshot;
+    })
+    .filter((entry): entry is NetworkInterfaceSnapshot => Boolean(entry))
+    .sort((left, right) => left.name.localeCompare(right.name));
+}
+
+function parseNetworkRoutes(
+  value: string | undefined,
+  family: "inet" | "inet6"
+): NetworkRouteSnapshot[] {
+  return parseJsonArray(value)
+    .map((entry): NetworkRouteSnapshot | undefined => {
+      if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+        return undefined;
+      }
+
+      const record = entry as Record<string, unknown>;
+
+      return {
+        destination: readStringField(record, "dst") ?? "default",
+        gateway: readStringField(record, "gateway"),
+        device: readStringField(record, "dev"),
+        protocol: readStringField(record, "protocol") ?? readStringField(record, "proto"),
+        scope: readStringField(record, "scope"),
+        source: readStringField(record, "prefsrc"),
+        metric: readNumberField(record, "metric"),
+        family
+      } satisfies NetworkRouteSnapshot;
+    })
+    .filter((entry): entry is NetworkRouteSnapshot => Boolean(entry))
+    .sort((left, right) =>
+      `${left.family}:${left.destination}:${left.device ?? ""}`.localeCompare(
+        `${right.family}:${right.destination}:${right.device ?? ""}`
+      )
+    );
+}
+
+function parseListenerAddress(value: string | undefined): {
+  localAddress: string;
+  port?: number;
+} {
+  if (!value) {
+    return { localAddress: "" };
+  }
+
+  const bracketMatch = /^\[(.*)\]:(\d+|\*)$/.exec(value);
+
+  if (bracketMatch?.[1] && bracketMatch[2]) {
+    return {
+      localAddress: bracketMatch[1],
+      port: bracketMatch[2] === "*" ? undefined : Number.parseInt(bracketMatch[2], 10)
+    };
+  }
+
+  const separatorIndex = value.lastIndexOf(":");
+
+  if (separatorIndex > -1) {
+    const portValue = value.slice(separatorIndex + 1);
+
+    if (portValue === "*" || /^\d+$/.test(portValue)) {
+      return {
+        localAddress: value.slice(0, separatorIndex),
+        port: portValue === "*" ? undefined : Number.parseInt(portValue, 10)
+      };
+    }
+  }
+
+  return { localAddress: value };
+}
+
+function parseNetworkListeners(value: string | undefined): NetworkListenerSnapshot[] {
+  return (value ?? "")
+    .split(/\r?\n/g)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line): NetworkListenerSnapshot | undefined => {
+      const parts = line.split(/\s+/g);
+      const protocol = parts[0]?.toLowerCase();
+      const state = parts[1];
+      const local = parseListenerAddress(parts[4]);
+
+      if (!protocol || !local.localAddress) {
+        return undefined;
+      }
+
+      return {
+        protocol,
+        state,
+        localAddress: local.localAddress,
+        port: local.port,
+        process: parts.slice(6).join(" ") || undefined
+      } satisfies NetworkListenerSnapshot;
+    })
+    .filter((entry): entry is NetworkListenerSnapshot => Boolean(entry))
+    .sort((left, right) =>
+      `${left.protocol}:${left.port ?? 0}:${left.localAddress}`.localeCompare(
+        `${right.protocol}:${right.port ?? 0}:${right.localAddress}`
+      )
+    );
+}
+
+async function inspectNetwork(): Promise<AgentNodeRuntimeSnapshot["network"]> {
+  const checkedAt = new Date().toISOString();
+  const [addressOutput, ipv4RoutesOutput, ipv6RoutesOutput, listenersOutput] = await Promise.all([
+    commandOutput("ip", ["-j", "address", "show"]),
+    commandOutput("ip", ["-j", "route", "show"]),
+    commandOutput("ip", ["-6", "-j", "route", "show"]),
+    commandOutput("ss", ["-H", "-lntup"])
+  ]);
+
+  return {
+    interfaces: parseNetworkInterfaces(addressOutput),
+    routes: [
+      ...parseNetworkRoutes(ipv4RoutesOutput, "inet"),
+      ...parseNetworkRoutes(ipv6RoutesOutput, "inet6")
+    ],
+    listeners: parseNetworkListeners(listenersOutput),
     checkedAt
   };
 }
@@ -1894,7 +2093,19 @@ async function inspectAppServices(): Promise<AppServiceSnapshot[]> {
 }
 
 async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
-  const [appServices, codeServer, rustdesk, firewall, fail2ban, services, logs, tls, storage, mail] = await Promise.all([
+  const [
+    appServices,
+    codeServer,
+    rustdesk,
+    firewall,
+    fail2ban,
+    services,
+    logs,
+    tls,
+    storage,
+    network,
+    mail
+  ] = await Promise.all([
     inspectAppServices(),
     inspectCodeServer(),
     inspectRustDesk(),
@@ -1904,6 +2115,7 @@ async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
     inspectSystemLogs(),
     inspectTlsCertificates(),
     inspectStorage(),
+    inspectNetwork(),
     inspectMail()
   ]);
 
@@ -1917,6 +2129,7 @@ async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
     logs,
     tls,
     storage,
+    network,
     mail
   };
 }

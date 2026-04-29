@@ -539,6 +539,47 @@ export interface StorageSnapshot {
   checkedAt: string;
 }
 
+export interface NetworkInterfaceAddressSnapshot {
+  family: string;
+  address: string;
+  prefixLength?: number;
+  scope?: string;
+}
+
+export interface NetworkInterfaceSnapshot {
+  name: string;
+  state?: string;
+  mtu?: number;
+  macAddress?: string;
+  addresses: NetworkInterfaceAddressSnapshot[];
+}
+
+export interface NetworkRouteSnapshot {
+  destination: string;
+  gateway?: string;
+  device?: string;
+  protocol?: string;
+  scope?: string;
+  source?: string;
+  metric?: number;
+  family?: string;
+}
+
+export interface NetworkListenerSnapshot {
+  protocol: string;
+  state?: string;
+  localAddress: string;
+  port?: number;
+  process?: string;
+}
+
+export interface NetworkSnapshot {
+  interfaces: NetworkInterfaceSnapshot[];
+  routes: NetworkRouteSnapshot[];
+  listeners: NetworkListenerSnapshot[];
+  checkedAt: string;
+}
+
 export interface AgentNodeRuntimeSnapshot {
   appServices?: AppServiceSnapshot[];
   codeServer?: CodeServerServiceSnapshot;
@@ -549,6 +590,7 @@ export interface AgentNodeRuntimeSnapshot {
   logs?: SystemLogsSnapshot;
   tls?: TlsCertificatesSnapshot;
   storage?: StorageSnapshot;
+  network?: NetworkSnapshot;
   mail?: MailServiceSnapshot;
 }
 

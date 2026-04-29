@@ -117,6 +117,18 @@ test("combined runtime serves authenticated flow over a real HTTP server", async
       "storage workspace should render filesystem inventory"
     );
 
+    const networkResponse = await fetch(new URL("/?view=network", runtime.origin), {
+      headers: {
+        cookie
+      }
+    });
+    assert.equal(networkResponse.status, 200);
+    assert.match(
+      await networkResponse.text(),
+      /Network listeners|Listeners de red/,
+      "network workspace should render listener inventory"
+    );
+
     const packagesResponse = await fetch(new URL("/?view=packages", runtime.origin), {
       headers: {
         cookie

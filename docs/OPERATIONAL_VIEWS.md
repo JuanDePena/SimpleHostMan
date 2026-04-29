@@ -71,3 +71,21 @@ The control UI shows:
 This view is for triage and capacity awareness. Destructive cleanup operations
 should remain outside the UI until they can be modeled as audited, reversible
 jobs with explicit path constraints.
+
+## Network
+
+The Network view reports node-local interface, route, and listener posture. The
+agent uses `ip -j address`, `ip -j route`, `ip -6 -j route`, and `ss -lntup` to
+collect a bounded snapshot without requiring an operator to open an SSH session.
+
+The control UI shows:
+
+- cross-node TCP and UDP listening sockets with protocol, bind address, port,
+  state, and reported process context
+- selected-node interface cards with addresses, state, MTU, and MAC address
+- selected-node route cards with destination, gateway, device, protocol, and
+  source address
+
+This first iteration is read-only. Network changes should continue to flow
+through desired-state resources, firewall baselines, or audited jobs rather than
+ad hoc shell edits.

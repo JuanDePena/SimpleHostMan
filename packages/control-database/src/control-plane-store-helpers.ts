@@ -30,6 +30,11 @@ import type {
   MailManagedDomainSnapshot,
   MailQueueSnapshot,
   MailServiceSnapshot,
+  NetworkInterfaceAddressSnapshot,
+  NetworkInterfaceSnapshot,
+  NetworkListenerSnapshot,
+  NetworkRouteSnapshot,
+  NetworkSnapshot,
   NodeHealthSnapshot,
   ReconciliationRunSummary,
   RegisteredNodeState,
@@ -709,6 +714,122 @@ function normalizeStorageSnapshot(value: unknown): StorageSnapshot | undefined {
   };
 }
 
+function normalizeNetworkInterfaceAddressSnapshot(
+  value: unknown
+): NetworkInterfaceAddressSnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  if (typeof record.family !== "string" || typeof record.address !== "string") {
+    return undefined;
+  }
+
+  return {
+    family: record.family,
+    address: record.address,
+    prefixLength:
+      typeof record.prefixLength === "number" ? Number(record.prefixLength) : undefined,
+    scope: typeof record.scope === "string" ? record.scope : undefined
+  };
+}
+
+function normalizeNetworkInterfaceSnapshot(value: unknown): NetworkInterfaceSnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  if (typeof record.name !== "string") {
+    return undefined;
+  }
+
+  return {
+    name: record.name,
+    state: typeof record.state === "string" ? record.state : undefined,
+    mtu: typeof record.mtu === "number" ? Number(record.mtu) : undefined,
+    macAddress: typeof record.macAddress === "string" ? record.macAddress : undefined,
+    addresses: Array.isArray(record.addresses)
+      ? record.addresses
+          .map(normalizeNetworkInterfaceAddressSnapshot)
+          .filter((entry): entry is NetworkInterfaceAddressSnapshot => Boolean(entry))
+      : []
+  };
+}
+
+function normalizeNetworkRouteSnapshot(value: unknown): NetworkRouteSnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  if (typeof record.destination !== "string") {
+    return undefined;
+  }
+
+  return {
+    destination: record.destination,
+    gateway: typeof record.gateway === "string" ? record.gateway : undefined,
+    device: typeof record.device === "string" ? record.device : undefined,
+    protocol: typeof record.protocol === "string" ? record.protocol : undefined,
+    scope: typeof record.scope === "string" ? record.scope : undefined,
+    source: typeof record.source === "string" ? record.source : undefined,
+    metric: typeof record.metric === "number" ? Number(record.metric) : undefined,
+    family: typeof record.family === "string" ? record.family : undefined
+  };
+}
+
+function normalizeNetworkListenerSnapshot(value: unknown): NetworkListenerSnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  if (typeof record.protocol !== "string" || typeof record.localAddress !== "string") {
+    return undefined;
+  }
+
+  return {
+    protocol: record.protocol,
+    state: typeof record.state === "string" ? record.state : undefined,
+    localAddress: record.localAddress,
+    port: typeof record.port === "number" ? Number(record.port) : undefined,
+    process: typeof record.process === "string" ? record.process : undefined
+  };
+}
+
+function normalizeNetworkSnapshot(value: unknown): NetworkSnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  return {
+    interfaces: Array.isArray(record.interfaces)
+      ? record.interfaces
+          .map(normalizeNetworkInterfaceSnapshot)
+          .filter((entry): entry is NetworkInterfaceSnapshot => Boolean(entry))
+      : [],
+    routes: Array.isArray(record.routes)
+      ? record.routes
+          .map(normalizeNetworkRouteSnapshot)
+          .filter((entry): entry is NetworkRouteSnapshot => Boolean(entry))
+      : [],
+    listeners: Array.isArray(record.listeners)
+      ? record.listeners
+          .map(normalizeNetworkListenerSnapshot)
+          .filter((entry): entry is NetworkListenerSnapshot => Boolean(entry))
+      : [],
+    checkedAt: typeof record.checkedAt === "string" ? record.checkedAt : new Date(0).toISOString()
+  };
+}
+
 function normalizeRustDeskListenerSnapshot(
   value: unknown
 ): RustDeskListenerSnapshot | undefined {
@@ -1295,6 +1416,9 @@ export function toNodeHealthSnapshot(row: NodeHealthRow): NodeHealthSnapshot {
     ),
     storage: normalizeStorageSnapshot(
       (runtimeSnapshot as Record<string, unknown>).storage
+    ),
+    network: normalizeNetworkSnapshot(
+      (runtimeSnapshot as Record<string, unknown>).network
     ),
     mail: normalizeMailSnapshot((runtimeSnapshot as Record<string, unknown>).mail)
   };

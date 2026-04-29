@@ -12,6 +12,7 @@ export type DashboardView =
   | "logs"
   | "certificates"
   | "storage"
+  | "network"
   | "packages"
   | "firewall"
   | "fail2ban"
@@ -78,6 +79,7 @@ export interface DashboardCopyLabels {
   navLogs: string;
   navCertificates: string;
   navStorage: string;
+  navNetwork: string;
   navPackages: string;
   navFirewall: string;
   navFail2Ban: string;
@@ -96,6 +98,7 @@ export interface DashboardCopyLabels {
   logsWorkspaceDescription: string;
   certificatesWorkspaceDescription: string;
   storageWorkspaceDescription: string;
+  networkWorkspaceDescription: string;
   firewallWorkspaceDescription: string;
   fail2banWorkspaceDescription: string;
   rustdeskWorkspaceDescription: string;
@@ -130,6 +133,7 @@ export function normalizeDashboardView(value: string | null | undefined): Dashbo
     case "logs":
     case "certificates":
     case "storage":
+    case "network":
     case "packages":
     case "firewall":
     case "fail2ban":
@@ -216,6 +220,8 @@ function getObjectViewLabel(
       return copy.navCertificates;
     case "storage":
       return copy.navStorage;
+    case "network":
+      return copy.navNetwork;
     case "packages":
       return copy.navPackages;
     case "firewall":
@@ -368,6 +374,8 @@ export function getDashboardSubheading(copy: DashboardCopyLabels, view: Dashboar
       return copy.certificatesWorkspaceDescription;
     case "storage":
       return copy.storageWorkspaceDescription;
+    case "network":
+      return copy.networkWorkspaceDescription;
     case "packages":
       return copy.packagesDescription;
     case "firewall":
