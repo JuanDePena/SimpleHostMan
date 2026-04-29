@@ -12,6 +12,7 @@ export const navigationCopyByLocale = {
     navJobs: "Jobs",
     navBackups: "Backups",
     navRustDesk: "RustDesk",
+    navServices: "Services",
     navResources: "Resources",
     navDesiredState: "Spec",
     navCreate: "Create",
@@ -36,6 +37,8 @@ export const navigationCopyByLocale = {
     mailWorkspaceDescription:
       "Mail domains, mailboxes, aliases, quotas and delivery topology for the platform mail stack.",
     backupWorkspaceDescription: "Policy definition, retention and coverage before backup runs.",
+    servicesWorkspaceDescription:
+      "Systemd posture for critical platform services across managed nodes.",
     firewallWorkspaceDescription:
       "Monitor firewalld posture and apply the SimpleHost baseline without leaving the control plane.",
     fail2banWorkspaceDescription:
@@ -53,6 +56,7 @@ export const navigationCopyByLocale = {
     navJobs: "Jobs",
     navBackups: "Backups",
     navRustDesk: "RustDesk",
+    navServices: "Servicios",
     navResources: "Recursos",
     navDesiredState: "Especificación",
     navCreate: "Crear",
@@ -82,6 +86,8 @@ export const navigationCopyByLocale = {
       "Dominios mail, buzones, aliases, quotas y topología de entrega para el stack de correo de la plataforma.",
     backupWorkspaceDescription:
       "Definición de políticas, retención y cobertura antes de las ejecuciones.",
+    servicesWorkspaceDescription:
+      "Postura systemd de servicios críticos de plataforma en los nodos gestionados.",
     firewallWorkspaceDescription:
       "Monitorea la postura de firewalld y aplica el baseline SimpleHost sin salir del plano de control.",
     fail2banWorkspaceDescription:

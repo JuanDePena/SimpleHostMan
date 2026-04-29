@@ -69,6 +69,18 @@ test("combined runtime serves authenticated flow over a real HTTP server", async
       "dashboard shell should ship the workspace filter persistence script"
     );
 
+    const servicesResponse = await fetch(new URL("/?view=services", runtime.origin), {
+      headers: {
+        cookie
+      }
+    });
+    assert.equal(servicesResponse.status, 200);
+    assert.match(
+      await servicesResponse.text(),
+      /Service inventory|Inventario de servicios/,
+      "services workspace should render systemd service inventory"
+    );
+
     const packagesResponse = await fetch(new URL("/?view=packages", runtime.origin), {
       headers: {
         cookie

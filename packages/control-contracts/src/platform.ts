@@ -216,12 +216,33 @@ export interface AppServiceSnapshot {
   checkedAt: string;
 }
 
+export interface ServiceUnitSnapshot {
+  serviceName: string;
+  description?: string;
+  loadState?: string;
+  activeState?: string;
+  subState?: string;
+  unitFileState?: string;
+  fragmentPath?: string;
+  mainPid?: number;
+  restartCount?: number;
+  exitStatus?: number;
+  activeEnterTimestamp?: string;
+  checkedAt: string;
+}
+
+export interface SystemServicesSnapshot {
+  units: ServiceUnitSnapshot[];
+  checkedAt: string;
+}
+
 export interface NodeRuntimeSnapshot {
   appServices?: AppServiceSnapshot[];
   codeServer?: CodeServerServiceSnapshot;
   rustdesk?: RustDeskServiceSnapshot;
   firewall?: HostFirewallSnapshot;
   fail2ban?: Fail2BanSnapshot;
+  services?: SystemServicesSnapshot;
   mail?: MailServiceSnapshot;
 }
 
@@ -253,6 +274,7 @@ export interface NodeHealthSnapshot {
   rustdesk?: RustDeskServiceSnapshot;
   firewall?: HostFirewallSnapshot;
   fail2ban?: Fail2BanSnapshot;
+  services?: SystemServicesSnapshot;
   mail?: MailServiceSnapshot;
 }
 

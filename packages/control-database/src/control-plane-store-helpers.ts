@@ -35,7 +35,9 @@ import type {
   ReportedJobResult,
   ResourceDriftSummary,
   RustDeskListenerSnapshot,
-  RustDeskServiceSnapshot
+  RustDeskServiceSnapshot,
+  ServiceUnitSnapshot,
+  SystemServicesSnapshot
 } from "@simplehost/control-contracts";
 
 import type {
@@ -483,6 +485,58 @@ function normalizeAppServiceSnapshot(
       typeof record.quadletPath === "string" ? record.quadletPath : undefined,
     checkedAt:
       typeof record.checkedAt === "string" ? record.checkedAt : new Date(0).toISOString()
+  };
+}
+
+function normalizeServiceUnitSnapshot(value: unknown): ServiceUnitSnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  if (typeof record.serviceName !== "string") {
+    return undefined;
+  }
+
+  return {
+    serviceName: record.serviceName,
+    description: typeof record.description === "string" ? record.description : undefined,
+    loadState: typeof record.loadState === "string" ? record.loadState : undefined,
+    activeState: typeof record.activeState === "string" ? record.activeState : undefined,
+    subState: typeof record.subState === "string" ? record.subState : undefined,
+    unitFileState:
+      typeof record.unitFileState === "string" ? record.unitFileState : undefined,
+    fragmentPath: typeof record.fragmentPath === "string" ? record.fragmentPath : undefined,
+    mainPid: typeof record.mainPid === "number" ? Number(record.mainPid) : undefined,
+    restartCount:
+      typeof record.restartCount === "number" ? Number(record.restartCount) : undefined,
+    exitStatus:
+      typeof record.exitStatus === "number" ? Number(record.exitStatus) : undefined,
+    activeEnterTimestamp:
+      typeof record.activeEnterTimestamp === "string"
+        ? record.activeEnterTimestamp
+        : undefined,
+    checkedAt:
+      typeof record.checkedAt === "string" ? record.checkedAt : new Date(0).toISOString()
+  };
+}
+
+function normalizeSystemServicesSnapshot(value: unknown): SystemServicesSnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+  const units = Array.isArray(record.units)
+    ? record.units
+        .map(normalizeServiceUnitSnapshot)
+        .filter((entry): entry is ServiceUnitSnapshot => Boolean(entry))
+    : [];
+
+  return {
+    units,
+    checkedAt: typeof record.checkedAt === "string" ? record.checkedAt : new Date(0).toISOString()
   };
 }
 
@@ -1060,6 +1114,9 @@ export function toNodeHealthSnapshot(row: NodeHealthRow): NodeHealthSnapshot {
     ),
     fail2ban: normalizeFail2BanSnapshot(
       (runtimeSnapshot as Record<string, unknown>).fail2ban
+    ),
+    services: normalizeSystemServicesSnapshot(
+      (runtimeSnapshot as Record<string, unknown>).services
     ),
     mail: normalizeMailSnapshot((runtimeSnapshot as Record<string, unknown>).mail)
   };

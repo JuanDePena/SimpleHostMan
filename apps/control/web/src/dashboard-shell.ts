@@ -48,6 +48,7 @@ type DashboardShellCopy = DashboardCopyLabels & {
   navApps: string;
   navBackups: string;
   navBackupPolicies: string;
+  navServices: string;
   navPackages: string;
   navFirewall: string;
   navFail2Ban: string;
@@ -115,6 +116,7 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
     databasesSection: string;
     mailSection: string;
     backupPoliciesSection: string;
+    servicesSection: string;
     packagesSection: string;
     firewallSection: string;
     fail2banSection: string;
@@ -315,6 +317,13 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
           active: view === "rustdesk"
         },
         {
+          id: "services",
+          label: copy.navServices,
+          href: buildDashboardViewUrl("services"),
+          badge: String(data.nodeHealth.reduce((count, node) => count + (node.services?.units.length ?? 0), 0)),
+          active: view === "services"
+        },
+        {
           id: "packages",
           label: copy.navPackages,
           href: buildDashboardViewUrl("packages"),
@@ -399,6 +408,8 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
         return sections.mailSection;
       case "backup-policies":
         return sections.backupPoliciesSection;
+      case "services":
+        return sections.servicesSection;
       case "packages":
         return sections.packagesSection;
       case "firewall":

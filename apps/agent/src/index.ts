@@ -24,6 +24,7 @@ import {
   type MailSyncPayload,
   type RustDeskListenerSnapshot,
   type RustDeskServiceSnapshot,
+  type ServiceUnitSnapshot,
   type AgentBufferedReport,
   type AgentJobEnvelope,
   type AgentJobReportRequest,
@@ -58,6 +59,23 @@ const expectedLocalMailPorts = [
 ];
 const mailboxUsageCacheSchemaVersion = 1;
 const mailboxUsageCacheTtlMs = 5 * 60 * 1000;
+const trackedSystemServices = [
+  "simplehost-agent.service",
+  "simplehost-control.service",
+  "simplehost-worker.service",
+  "httpd.service",
+  "podman.service",
+  "firewalld.service",
+  "fail2ban.service",
+  "postfix.service",
+  "dovecot.service",
+  "rspamd.service",
+  "redis.service",
+  "postgresql.service",
+  "mariadb.service",
+  "pdns.service",
+  "named.service"
+] as const;
 
 type MailboxUsageEntry = NonNullable<MailServiceSnapshot["mailboxUsage"]>[number];
 
@@ -355,6 +373,75 @@ function parseFail2BanStatusLine(value: string, label: string): string | undefin
   }
 
   return undefined;
+}
+
+function parseSystemctlShowOutput(value: string | undefined): Record<string, string> {
+  const result: Record<string, string> = {};
+
+  for (const rawLine of (value ?? "").split(/\r?\n/g)) {
+    const separatorIndex = rawLine.indexOf("=");
+
+    if (separatorIndex <= 0) {
+      continue;
+    }
+
+    result[rawLine.slice(0, separatorIndex)] = rawLine.slice(separatorIndex + 1);
+  }
+
+  return result;
+}
+
+function parseOptionalNumber(value: string | undefined): number | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+async function inspectServiceUnit(serviceName: string): Promise<ServiceUnitSnapshot | undefined> {
+  const checkedAt = new Date().toISOString();
+  const output = await commandOutput("systemctl", [
+    "show",
+    serviceName,
+    "--no-page",
+    "--property=Id,Description,LoadState,ActiveState,SubState,UnitFileState,FragmentPath,MainPID,NRestarts,ExecMainStatus,ActiveEnterTimestamp"
+  ]);
+  const fields = parseSystemctlShowOutput(output);
+
+  if (!fields.Id && !fields.LoadState) {
+    return undefined;
+  }
+
+  return {
+    serviceName: fields.Id || serviceName,
+    description: fields.Description || undefined,
+    loadState: fields.LoadState || undefined,
+    activeState: fields.ActiveState || undefined,
+    subState: fields.SubState || undefined,
+    unitFileState: fields.UnitFileState || undefined,
+    fragmentPath: fields.FragmentPath || undefined,
+    mainPid: parseOptionalNumber(fields.MainPID),
+    restartCount: parseOptionalNumber(fields.NRestarts),
+    exitStatus: parseOptionalNumber(fields.ExecMainStatus),
+    activeEnterTimestamp: fields.ActiveEnterTimestamp || undefined,
+    checkedAt
+  };
+}
+
+async function inspectSystemServices(): Promise<AgentNodeRuntimeSnapshot["services"]> {
+  const checkedAt = new Date().toISOString();
+  const units = (
+    await Promise.all(trackedSystemServices.map((serviceName) => inspectServiceUnit(serviceName)))
+  )
+    .filter((entry): entry is ServiceUnitSnapshot => Boolean(entry))
+    .sort((left, right) => left.serviceName.localeCompare(right.serviceName));
+
+  return {
+    units,
+    checkedAt
+  };
 }
 
 async function inspectFail2BanJail(jail: string): Promise<Fail2BanJailSnapshot> {
@@ -1479,12 +1566,13 @@ async function inspectAppServices(): Promise<AppServiceSnapshot[]> {
 }
 
 async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
-  const [appServices, codeServer, rustdesk, firewall, fail2ban, mail] = await Promise.all([
+  const [appServices, codeServer, rustdesk, firewall, fail2ban, services, mail] = await Promise.all([
     inspectAppServices(),
     inspectCodeServer(),
     inspectRustDesk(),
     inspectFirewall(),
     inspectFail2Ban(),
+    inspectSystemServices(),
     inspectMail()
   ]);
 
@@ -1494,6 +1582,7 @@ async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
     rustdesk,
     firewall,
     fail2ban,
+    services,
     mail
   };
 }

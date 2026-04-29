@@ -8,6 +8,7 @@ export type DashboardView =
   | "databases"
   | "mail"
   | "backup-policies"
+  | "services"
   | "packages"
   | "firewall"
   | "fail2ban"
@@ -51,8 +52,7 @@ export const databaseWorkspaceTabIds = [
 ] as const;
 export const backupPolicyWorkspaceTabIds = [
   "backup-policies-summary",
-  "backup-policies-spec",
-  "backup-policies-activity"
+  "backup-policies-spec"
 ] as const;
 
 export type TenantWorkspaceTabId = (typeof tenantWorkspaceTabIds)[number];
@@ -71,6 +71,7 @@ export interface DashboardCopyLabels {
   navDatabases: string;
   navMail: string;
   navBackupPolicies: string;
+  navServices: string;
   navPackages: string;
   navFirewall: string;
   navFail2Ban: string;
@@ -85,6 +86,7 @@ export interface DashboardCopyLabels {
   databaseWorkspaceDescription: string;
   mailWorkspaceDescription: string;
   backupWorkspaceDescription: string;
+  servicesWorkspaceDescription: string;
   firewallWorkspaceDescription: string;
   fail2banWorkspaceDescription: string;
   rustdeskWorkspaceDescription: string;
@@ -115,6 +117,7 @@ export function normalizeDashboardView(value: string | null | undefined): Dashbo
     case "databases":
     case "mail":
     case "backup-policies":
+    case "services":
     case "packages":
     case "firewall":
     case "fail2ban":
@@ -193,6 +196,8 @@ function getObjectViewLabel(
       return copy.navMail;
     case "backup-policies":
       return copy.navBackupPolicies;
+    case "services":
+      return copy.navServices;
     case "packages":
       return copy.navPackages;
     case "firewall":
@@ -337,6 +342,8 @@ export function getDashboardSubheading(copy: DashboardCopyLabels, view: Dashboar
       return copy.mailWorkspaceDescription;
     case "backup-policies":
       return copy.backupWorkspaceDescription;
+    case "services":
+      return copy.servicesWorkspaceDescription;
     case "packages":
       return copy.packagesDescription;
     case "firewall":

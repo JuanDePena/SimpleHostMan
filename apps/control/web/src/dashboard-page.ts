@@ -21,6 +21,7 @@ import {
   renderFail2BanWorkspace,
   renderFirewallWorkspace
 } from "./dashboard-security.js";
+import { renderServicesWorkspace } from "./dashboard-services.js";
 import { renderDashboardShell } from "./dashboard-shell.js";
 import { buildDashboardViewModel } from "./dashboard-view-model.js";
 import {
@@ -577,6 +578,16 @@ export function renderDashboardPage(args: RenderDashboardArgs): string {
     renderPill,
     renderSignalStrip
   });
+  const servicesSection = renderServicesWorkspace({
+    copy,
+    data,
+    locale,
+    focus,
+    formatDate,
+    renderFocusLink: renderFocusLinkWithPill,
+    renderPill,
+    renderSignalStrip
+  });
   const rustdeskSection = renderRustDeskSection(data, copy, locale, focus, {
     formatDate,
     renderActionFacts,
@@ -701,6 +712,7 @@ export function renderDashboardPage(args: RenderDashboardArgs): string {
       databasesSection,
       mailSection,
       backupPoliciesSection,
+      servicesSection,
       packagesSection,
       firewallSection,
       fail2banSection,
