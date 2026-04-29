@@ -38,3 +38,19 @@ The control UI shows:
 
 The snapshot is intentionally bounded. It is meant for incident triage and
 context switching reduction, not as a full log archive or SIEM replacement.
+
+## TLS
+
+The TLS view inventories certificates from `/etc/letsencrypt/live` on each node.
+The agent uses `openssl x509` to report subject, issuer, serial, SHA-256
+fingerprint, validity dates and SAN DNS names.
+
+The control UI shows:
+
+- cross-node certificate inventory with expiration posture
+- DNS name coverage for each certificate
+- selected-node certificate detail cards with issuer and fingerprint context
+
+Renewal actions are intentionally outside the first read-only implementation.
+They should be introduced as audited jobs after the renewal path is explicit for
+the active certificate authority and web ingress layout.

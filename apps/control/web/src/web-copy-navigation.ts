@@ -14,6 +14,7 @@ export const navigationCopyByLocale = {
     navRustDesk: "RustDesk",
     navServices: "Services",
     navLogs: "Logs",
+    navCertificates: "TLS",
     navResources: "Resources",
     navDesiredState: "Spec",
     navCreate: "Create",
@@ -42,6 +43,8 @@ export const navigationCopyByLocale = {
       "Systemd posture for critical platform services across managed nodes.",
     logsWorkspaceDescription:
       "Recent journal entries for critical platform services across managed nodes.",
+    certificatesWorkspaceDescription:
+      "Certificate inventory, SAN coverage and expiration posture across managed nodes.",
     firewallWorkspaceDescription:
       "Monitor firewalld posture and apply the SimpleHost baseline without leaving the control plane.",
     fail2banWorkspaceDescription:
@@ -61,6 +64,7 @@ export const navigationCopyByLocale = {
     navRustDesk: "RustDesk",
     navServices: "Servicios",
     navLogs: "Logs",
+    navCertificates: "TLS",
     navResources: "Recursos",
     navDesiredState: "Especificación",
     navCreate: "Crear",
@@ -94,6 +98,8 @@ export const navigationCopyByLocale = {
       "Postura systemd de servicios críticos de plataforma en los nodos gestionados.",
     logsWorkspaceDescription:
       "Entradas recientes de journal para servicios críticos de plataforma en los nodos gestionados.",
+    certificatesWorkspaceDescription:
+      "Inventario de certificados, cobertura SAN y postura de expiración en los nodos gestionados.",
     firewallWorkspaceDescription:
       "Monitorea la postura de firewalld y aplica el baseline SimpleHost sin salir del plano de control.",
     fail2banWorkspaceDescription:

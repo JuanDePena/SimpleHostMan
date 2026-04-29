@@ -249,6 +249,24 @@ export interface SystemLogsSnapshot {
   checkedAt: string;
 }
 
+export interface TlsCertificateSnapshot {
+  name: string;
+  path: string;
+  subject?: string;
+  issuer?: string;
+  serial?: string;
+  fingerprintSha256?: string;
+  notBefore?: string;
+  notAfter?: string;
+  dnsNames: string[];
+  checkedAt: string;
+}
+
+export interface TlsCertificatesSnapshot {
+  certificates: TlsCertificateSnapshot[];
+  checkedAt: string;
+}
+
 export interface NodeRuntimeSnapshot {
   appServices?: AppServiceSnapshot[];
   codeServer?: CodeServerServiceSnapshot;
@@ -257,6 +275,7 @@ export interface NodeRuntimeSnapshot {
   fail2ban?: Fail2BanSnapshot;
   services?: SystemServicesSnapshot;
   logs?: SystemLogsSnapshot;
+  tls?: TlsCertificatesSnapshot;
   mail?: MailServiceSnapshot;
 }
 
@@ -290,6 +309,7 @@ export interface NodeHealthSnapshot {
   fail2ban?: Fail2BanSnapshot;
   services?: SystemServicesSnapshot;
   logs?: SystemLogsSnapshot;
+  tls?: TlsCertificatesSnapshot;
   mail?: MailServiceSnapshot;
 }
 

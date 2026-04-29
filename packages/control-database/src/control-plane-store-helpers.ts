@@ -39,7 +39,9 @@ import type {
   RustDeskServiceSnapshot,
   ServiceUnitSnapshot,
   SystemLogsSnapshot,
-  SystemServicesSnapshot
+  SystemServicesSnapshot,
+  TlsCertificateSnapshot,
+  TlsCertificatesSnapshot
 } from "@simplehost/control-contracts";
 
 import type {
@@ -577,6 +579,53 @@ function normalizeSystemLogsSnapshot(value: unknown): SystemLogsSnapshot | undef
 
   return {
     entries,
+    checkedAt: typeof record.checkedAt === "string" ? record.checkedAt : new Date(0).toISOString()
+  };
+}
+
+function normalizeTlsCertificateSnapshot(value: unknown): TlsCertificateSnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  if (typeof record.name !== "string" || typeof record.path !== "string") {
+    return undefined;
+  }
+
+  return {
+    name: record.name,
+    path: record.path,
+    subject: typeof record.subject === "string" ? record.subject : undefined,
+    issuer: typeof record.issuer === "string" ? record.issuer : undefined,
+    serial: typeof record.serial === "string" ? record.serial : undefined,
+    fingerprintSha256:
+      typeof record.fingerprintSha256 === "string" ? record.fingerprintSha256 : undefined,
+    notBefore: typeof record.notBefore === "string" ? record.notBefore : undefined,
+    notAfter: typeof record.notAfter === "string" ? record.notAfter : undefined,
+    dnsNames: Array.isArray(record.dnsNames)
+      ? record.dnsNames.filter((entry): entry is string => typeof entry === "string")
+      : [],
+    checkedAt:
+      typeof record.checkedAt === "string" ? record.checkedAt : new Date(0).toISOString()
+  };
+}
+
+function normalizeTlsCertificatesSnapshot(value: unknown): TlsCertificatesSnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+  const certificates = Array.isArray(record.certificates)
+    ? record.certificates
+        .map(normalizeTlsCertificateSnapshot)
+        .filter((entry): entry is TlsCertificateSnapshot => Boolean(entry))
+    : [];
+
+  return {
+    certificates,
     checkedAt: typeof record.checkedAt === "string" ? record.checkedAt : new Date(0).toISOString()
   };
 }
@@ -1161,6 +1210,9 @@ export function toNodeHealthSnapshot(row: NodeHealthRow): NodeHealthSnapshot {
     ),
     logs: normalizeSystemLogsSnapshot(
       (runtimeSnapshot as Record<string, unknown>).logs
+    ),
+    tls: normalizeTlsCertificatesSnapshot(
+      (runtimeSnapshot as Record<string, unknown>).tls
     ),
     mail: normalizeMailSnapshot((runtimeSnapshot as Record<string, unknown>).mail)
   };

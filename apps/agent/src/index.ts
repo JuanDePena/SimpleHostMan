@@ -26,6 +26,7 @@ import {
   type RustDeskServiceSnapshot,
   type JournalLogEntrySnapshot,
   type ServiceUnitSnapshot,
+  type TlsCertificateSnapshot,
   type AgentBufferedReport,
   type AgentJobEnvelope,
   type AgentJobReportRequest,
@@ -79,6 +80,7 @@ const trackedSystemServices = [
 ] as const;
 const journalEntriesPerService = 8;
 const journalEntryLimit = 120;
+const letsEncryptLiveDir = "/etc/letsencrypt/live";
 
 type MailboxUsageEntry = NonNullable<MailServiceSnapshot["mailboxUsage"]>[number];
 
@@ -544,6 +546,108 @@ async function inspectSystemLogs(): Promise<AgentNodeRuntimeSnapshot["logs"]> {
 
   return {
     entries,
+    checkedAt
+  };
+}
+
+function parseOpenSslCertificateOutput(
+  name: string,
+  certPath: string,
+  output: string | undefined,
+  checkedAt: string
+): TlsCertificateSnapshot | undefined {
+  if (!output) {
+    return undefined;
+  }
+
+  const dnsNames: string[] = [];
+  let subject: string | undefined;
+  let issuer: string | undefined;
+  let serial: string | undefined;
+  let fingerprintSha256: string | undefined;
+  let notBefore: string | undefined;
+  let notAfter: string | undefined;
+
+  for (const rawLine of output.split(/\r?\n/g)) {
+    const line = rawLine.trim();
+
+    if (line.startsWith("subject=")) {
+      subject = line.slice("subject=".length).trim();
+    } else if (line.startsWith("issuer=")) {
+      issuer = line.slice("issuer=".length).trim();
+    } else if (line.startsWith("serial=")) {
+      serial = line.slice("serial=".length).trim();
+    } else if (line.startsWith("sha256 Fingerprint=")) {
+      fingerprintSha256 = line.slice("sha256 Fingerprint=".length).trim();
+    } else if (line.startsWith("notBefore=")) {
+      const parsed = new Date(line.slice("notBefore=".length).trim());
+      notBefore = Number.isFinite(parsed.getTime()) ? parsed.toISOString() : undefined;
+    } else if (line.startsWith("notAfter=")) {
+      const parsed = new Date(line.slice("notAfter=".length).trim());
+      notAfter = Number.isFinite(parsed.getTime()) ? parsed.toISOString() : undefined;
+    } else if (line.includes("DNS:")) {
+      for (const match of line.matchAll(/DNS:([^,\s]+)/g)) {
+        if (match[1]) {
+          dnsNames.push(match[1]);
+        }
+      }
+    }
+  }
+
+  return {
+    name,
+    path: certPath,
+    subject,
+    issuer,
+    serial,
+    fingerprintSha256,
+    notBefore,
+    notAfter,
+    dnsNames: [...new Set(dnsNames)].sort((left, right) => left.localeCompare(right)),
+    checkedAt
+  };
+}
+
+async function inspectTlsCertificate(
+  name: string,
+  certPath: string
+): Promise<TlsCertificateSnapshot | undefined> {
+  const checkedAt = new Date().toISOString();
+  const output = await commandOutput("openssl", [
+    "x509",
+    "-in",
+    certPath,
+    "-noout",
+    "-subject",
+    "-issuer",
+    "-serial",
+    "-dates",
+    "-fingerprint",
+    "-sha256",
+    "-ext",
+    "subjectAltName"
+  ]);
+
+  return parseOpenSslCertificateOutput(name, certPath, output, checkedAt);
+}
+
+async function inspectTlsCertificates(): Promise<AgentNodeRuntimeSnapshot["tls"]> {
+  const checkedAt = new Date().toISOString();
+  const entries = await readdir(letsEncryptLiveDir, { withFileTypes: true }).catch(() => []);
+  const certificates = (
+    await Promise.all(
+      entries
+        .filter((entry) => entry.isDirectory() && !entry.name.startsWith("."))
+        .map((entry) =>
+          inspectTlsCertificate(entry.name, path.join(letsEncryptLiveDir, entry.name, "cert.pem"))
+        )
+    )
+  )
+    .filter((entry): entry is TlsCertificateSnapshot => Boolean(entry))
+    .sort((left, right) => left.name.localeCompare(right.name));
+
+  return {
+    certificates,
     checkedAt
   };
 }
@@ -1670,7 +1774,7 @@ async function inspectAppServices(): Promise<AppServiceSnapshot[]> {
 }
 
 async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
-  const [appServices, codeServer, rustdesk, firewall, fail2ban, services, logs, mail] = await Promise.all([
+  const [appServices, codeServer, rustdesk, firewall, fail2ban, services, logs, tls, mail] = await Promise.all([
     inspectAppServices(),
     inspectCodeServer(),
     inspectRustDesk(),
@@ -1678,6 +1782,7 @@ async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
     inspectFail2Ban(),
     inspectSystemServices(),
     inspectSystemLogs(),
+    inspectTlsCertificates(),
     inspectMail()
   ]);
 
@@ -1689,6 +1794,7 @@ async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
     fail2ban,
     services,
     logs,
+    tls,
     mail
   };
 }

@@ -93,6 +93,18 @@ test("combined runtime serves authenticated flow over a real HTTP server", async
       "logs workspace should render recent journal entries"
     );
 
+    const certificatesResponse = await fetch(new URL("/?view=certificates", runtime.origin), {
+      headers: {
+        cookie
+      }
+    });
+    assert.equal(certificatesResponse.status, 200);
+    assert.match(
+      await certificatesResponse.text(),
+      /TLS certificates|Certificados TLS/,
+      "certificates workspace should render TLS inventory"
+    );
+
     const packagesResponse = await fetch(new URL("/?view=packages", runtime.origin), {
       headers: {
         cookie
