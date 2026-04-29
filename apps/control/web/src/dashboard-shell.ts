@@ -98,6 +98,7 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
   filteredBackupRuns: DashboardData["backups"]["latestRuns"];
   actionBar: string;
   bootstrapInventoryPanel: string;
+  bodySection: string;
   topbarUserPanelHtml: string;
   userToggleIconHtml: string;
   renderSignalStrip: (
@@ -114,36 +115,6 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
     locale: WebLocale
   ) => string;
   renderStats: (overview: DashboardData["overview"], copy: Copy, locale: WebLocale) => string;
-  sections: {
-    desiredStateSection: string;
-    tenantsSection: string;
-    nodesSection: string;
-    zonesSection: string;
-    proxiesSection: string;
-    appsSection: string;
-    databasesSection: string;
-    mailSection: string;
-    backupPoliciesSection: string;
-    servicesSection: string;
-    logsSection: string;
-    certificatesSection: string;
-    storageSection: string;
-    networkSection: string;
-    processesSection: string;
-    containersSection: string;
-    timersSection: string;
-    selinuxSection: string;
-    sshSection: string;
-    packagesSection: string;
-    firewallSection: string;
-    fail2banSection: string;
-    auditSection: string;
-    jobHistorySection: string;
-    nodeHealthSection: string;
-    resourceDriftSection: string;
-    backupsSection: string;
-    rustdeskSection: string;
-  };
 }): string {
   const {
     copy,
@@ -160,13 +131,13 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
     filteredBackupRuns,
     actionBar,
     bootstrapInventoryPanel,
+    bodySection,
     topbarUserPanelHtml,
     userToggleIconHtml,
     overviewMetrics,
     renderSignalStrip,
     renderOverviewMetrics,
-    renderStats,
-    sections
+    renderStats
   } = args;
 
   const now = Date.now();
@@ -442,7 +413,7 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
     }
   ];
 
-  const overviewSection = `<section id="section-overview" class="panel section-panel">
+  const renderOverviewSection = (): string => `<section id="section-overview" class="panel section-panel">
     <div class="section-head">
       <div>
         <h2>${escapeHtml(copy.overviewTitle)}</h2>
@@ -470,71 +441,7 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
     </div>
   </section>`;
 
-  const body = (() => {
-    switch (view) {
-      case "tenants":
-        return sections.tenantsSection;
-      case "nodes":
-        return sections.nodesSection;
-      case "zones":
-        return sections.zonesSection;
-      case "proxies":
-        return sections.proxiesSection;
-      case "apps":
-        return sections.appsSection;
-      case "databases":
-        return sections.databasesSection;
-      case "mail":
-        return sections.mailSection;
-      case "backup-policies":
-        return sections.backupPoliciesSection;
-      case "services":
-        return sections.servicesSection;
-      case "logs":
-        return sections.logsSection;
-      case "certificates":
-        return sections.certificatesSection;
-      case "storage":
-        return sections.storageSection;
-      case "network":
-        return sections.networkSection;
-      case "processes":
-        return sections.processesSection;
-      case "containers":
-        return sections.containersSection;
-      case "timers":
-        return sections.timersSection;
-      case "selinux":
-        return sections.selinuxSection;
-      case "ssh":
-        return sections.sshSection;
-      case "packages":
-        return sections.packagesSection;
-      case "firewall":
-        return sections.firewallSection;
-      case "fail2ban":
-        return sections.fail2banSection;
-      case "audit":
-        return sections.auditSection;
-      case "jobs":
-        return sections.jobHistorySection;
-      case "node-health":
-        return sections.nodeHealthSection;
-      case "resource-drift":
-        return sections.resourceDriftSection;
-      case "job-history":
-        return sections.jobHistorySection;
-      case "backups":
-        return sections.backupsSection;
-      case "rustdesk":
-        return sections.rustdeskSection;
-      case "desired-state":
-        return sections.desiredStateSection;
-      case "overview":
-      default:
-        return overviewSection;
-    }
-  })();
+  const body = view === "overview" ? renderOverviewSection() : bodySection;
 
   return renderAdminShell({
     lang: locale,

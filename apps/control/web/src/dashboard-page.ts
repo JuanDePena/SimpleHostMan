@@ -415,7 +415,7 @@ export function renderDashboardPage(args: RenderDashboardArgs): string {
       </form>
     </div>
   </div>`;
-  const { nodeHealthSection, nodesSection } = renderNodeHealthWorkspace({
+  const renderNodeWorkspaceSections = () => renderNodeHealthWorkspace({
     copy,
     data,
     locale,
@@ -440,7 +440,7 @@ export function renderDashboardPage(args: RenderDashboardArgs): string {
     renderSignalStrip,
     formatDate
   });
-  const jobHistorySection = renderJobHistoryWorkspace({
+  const renderJobHistorySection = () => renderJobHistoryWorkspace({
     copy,
     data,
     locale,
@@ -474,306 +474,347 @@ export function renderDashboardPage(args: RenderDashboardArgs): string {
     renderSignalStrip,
     renderWorkspaceFilterForm
   });
-  const auditSection = renderAuditWorkspace({
-    copy,
-    data,
-    locale,
-    filteredAuditEvents,
-    selectedAuditEvent,
-    currentAuditFilters,
-    auditTypeFilter,
-    auditActorFilter,
-    auditEntityFilter,
-    formatDate,
-    renderCodeBlock,
-    renderDataTable,
-    renderDetailGrid,
-    renderFocusLink: renderFocusLinkWithPill,
-    renderSignalStrip,
-    renderWorkspaceFilterForm
-  });
-  const resourceDriftSection = renderResourceDriftWorkspace({
-    copy,
-    data,
-    locale,
-    filteredDrift,
-    selectedDrift,
-    currentDriftFilters,
-    driftStatusFilter,
-    driftKindFilter,
-    driftNodeFilter,
-    findRelatedAuditEvents,
-    findRelatedJobs,
-    parseDriftResourceReference,
-    renderActionFacts,
-    renderActionForm,
-    renderActiveFiltersPanel,
-    renderAuditPanel: (nextCopy, nextLocale, events) =>
-      renderAuditPanel(nextCopy, nextLocale, events, formatDate),
-    renderDataTable,
-    renderDetailGrid,
-    renderFocusLink: renderFocusLinkWithPill,
-    renderJobFeedPanel: (nextCopy, nextLocale, jobs, title) =>
-      renderJobFeedPanel(nextCopy, nextLocale, jobs, formatDate, title),
-    renderPill,
-    renderRelatedPanel,
-    renderSignalStrip,
-    renderWorkspaceFilterForm
-  });
-  const backupsSection = renderBackupsWorkspace({
-    copy,
-    data,
-    locale,
-    filteredBackupPolicies,
-    filteredBackupRuns,
-    selectedBackupViewRun,
-    selectedBackupPolicySummary,
-    currentBackupFilters,
-    backupStatusFilter,
-    backupNodeFilter,
-    backupTenantFilter,
-    backupPolicyFilter,
-    findRelatedAuditEvents,
-    formatDate,
-    renderActionFacts,
-    renderActiveFiltersPanel,
-    renderAuditPanel: (nextCopy, nextLocale, events) =>
-      renderAuditPanel(nextCopy, nextLocale, events, formatDate),
-    renderDataTable,
-    renderDetailGrid,
-    renderFocusLink: renderFocusLinkWithPill,
-    renderPill,
-    renderRelatedPanel,
-    renderSignalStrip,
-    renderWorkspaceFilterForm
-  });
-  const packagesSection = renderPackagesWorkspace({
-    copy,
-    data,
-    locale,
-    filteredPackages,
-    selectedPackage,
-    currentPackageFilters,
-    packageNodeFilter,
-    packageNameFilter,
-    packageArchFilter,
-    formatDate,
-    findRelatedJobs,
-    findRelatedAuditEvents,
-    renderActiveFiltersPanel,
-    renderWorkspaceFilterForm,
-    renderSignalStrip,
-    renderFocusLink: renderFocusLinkWithPill
-  });
-  const firewallSection = renderFirewallWorkspace({
-    copy,
-    data,
-    locale,
-    currentPath,
-    focus,
-    formatDate,
-    renderFocusLink: renderFocusLinkWithPill,
-    renderPill,
-    renderSignalStrip
-  });
-  const fail2banSection = renderFail2BanWorkspace({
-    copy,
-    data,
-    locale,
-    currentPath,
-    focus,
-    formatDate,
-    renderFocusLink: renderFocusLinkWithPill,
-    renderPill,
-    renderSignalStrip
-  });
-  const servicesSection = renderServicesWorkspace({
-    copy,
-    data,
-    locale,
-    focus,
-    formatDate,
-    renderFocusLink: renderFocusLinkWithPill,
-    renderPill,
-    renderSignalStrip
-  });
-  const logsSection = renderLogsWorkspace({
-    copy,
-    data,
-    locale,
-    focus,
-    formatDate,
-    renderFocusLink: renderFocusLinkWithPill,
-    renderPill,
-    renderSignalStrip
-  });
-  const certificatesSection = renderCertificatesWorkspace({
-    copy,
-    data,
-    locale,
-    focus,
-    formatDate,
-    renderFocusLink: renderFocusLinkWithPill,
-    renderPill,
-    renderSignalStrip
-  });
-  const storageSection = renderStorageWorkspace({
-    copy,
-    data,
-    focus,
-    renderFocusLink: renderFocusLinkWithPill,
-    renderPill,
-    renderSignalStrip
-  });
-  const networkSection = renderNetworkWorkspace({
-    copy,
-    data,
-    locale,
-    focus,
-    formatDate,
-    renderFocusLink: renderFocusLinkWithPill,
-    renderPill,
-    renderSignalStrip
-  });
-  const processesSection = renderProcessesWorkspace({
-    copy,
-    data,
-    locale,
-    focus,
-    formatDate,
-    renderFocusLink: renderFocusLinkWithPill,
-    renderPill,
-    renderSignalStrip
-  });
-  const containersSection = renderContainersWorkspace({
-    copy,
-    data,
-    locale,
-    focus,
-    formatDate,
-    renderFocusLink: renderFocusLinkWithPill,
-    renderPill,
-    renderSignalStrip
-  });
-  const timersSection = renderTimersWorkspace({
-    copy,
-    data,
-    locale,
-    focus,
-    formatDate,
-    renderPill,
-    renderSignalStrip
-  });
-  const selinuxSection = renderSelinuxWorkspace({
-    copy,
-    data,
-    locale,
-    focus,
-    formatDate,
-    renderPill,
-    renderSignalStrip
-  });
-  const sshSection = renderSshWorkspace({
-    copy,
-    data,
-    locale,
-    focus,
-    formatDate,
-    renderPill,
-    renderSignalStrip
-  });
-  const rustdeskSection = renderRustDeskSection(data, copy, locale, focus, {
-    formatDate,
-    renderActionFacts,
-    renderDetailGrid,
-    renderFocusLink: renderFocusLinkWithPill,
-    renderPill,
-    renderSignalStrip
-  });
-  const mailSection = renderMailSection(data, copy, locale, focus, currentPath, mailCredentialReveal
-    ? {
-        historyReplaceUrl,
-        reveal: mailCredentialReveal
-      }
-    : undefined, {
-    formatDate,
-    renderActionForm,
-    renderDetailGrid,
-    renderFocusLink: renderFocusLinkWithPill,
-    renderPill,
-    renderSelectOptions,
-    renderSignalStrip
-  });
-
-  const desiredStateSection = renderDesiredStateSection(
-    data,
-    copy,
-    locale,
-    resolvedDesiredStateTab,
-    defaultImportPath,
-    focus
-  );
-  const tenantsSection = renderDesiredStateObjectWorkspaceView(
-    data,
-    copy,
-    locale,
-    "desired-state-tenants",
-    defaultImportPath,
-    focus,
-    tenantWorkspaceTab
-  );
-
-  const zonesSection = renderDesiredStateObjectWorkspaceView(
-    data,
-    copy,
-    locale,
-    "desired-state-zones",
-    defaultImportPath,
-    focus,
-    zoneWorkspaceTab
-  );
-
-  const proxiesSection = renderDesiredStateObjectWorkspaceView(
-    data,
-    copy,
-    locale,
-    "desired-state-apps",
-    defaultImportPath,
-    focus,
-    proxyWorkspaceTab,
-    "proxies"
-  );
-
-  const appsSection = renderDesiredStateObjectWorkspaceView(
-    data,
-    copy,
-    locale,
-    "desired-state-apps",
-    defaultImportPath,
-    focus,
-    appWorkspaceTab,
-    "apps"
-  );
-
-  const databasesSection = renderDesiredStateObjectWorkspaceView(
-    data,
-    copy,
-    locale,
-    "desired-state-databases",
-    defaultImportPath,
-    focus,
-    databaseWorkspaceTab
-  );
-
-  const backupPoliciesSection = renderDesiredStateObjectWorkspaceView(
-    data,
-    copy,
-    locale,
-    "desired-state-backups",
-    defaultImportPath,
-    focus,
-    backupPolicyWorkspaceTab
-  );
+  const bodySection = (() => {
+    switch (view) {
+      case "tenants":
+        return renderDesiredStateObjectWorkspaceView(
+          data,
+          copy,
+          locale,
+          "desired-state-tenants",
+          defaultImportPath,
+          focus,
+          tenantWorkspaceTab
+        );
+      case "nodes":
+        return renderNodeWorkspaceSections().nodesSection;
+      case "zones":
+        return renderDesiredStateObjectWorkspaceView(
+          data,
+          copy,
+          locale,
+          "desired-state-zones",
+          defaultImportPath,
+          focus,
+          zoneWorkspaceTab
+        );
+      case "proxies":
+        return renderDesiredStateObjectWorkspaceView(
+          data,
+          copy,
+          locale,
+          "desired-state-apps",
+          defaultImportPath,
+          focus,
+          proxyWorkspaceTab,
+          "proxies"
+        );
+      case "apps":
+        return renderDesiredStateObjectWorkspaceView(
+          data,
+          copy,
+          locale,
+          "desired-state-apps",
+          defaultImportPath,
+          focus,
+          appWorkspaceTab,
+          "apps"
+        );
+      case "databases":
+        return renderDesiredStateObjectWorkspaceView(
+          data,
+          copy,
+          locale,
+          "desired-state-databases",
+          defaultImportPath,
+          focus,
+          databaseWorkspaceTab
+        );
+      case "mail":
+        return renderMailSection(
+          data,
+          copy,
+          locale,
+          focus,
+          currentPath,
+          mailCredentialReveal
+            ? {
+                historyReplaceUrl,
+                reveal: mailCredentialReveal
+              }
+            : undefined,
+          {
+            formatDate,
+            renderActionForm,
+            renderDetailGrid,
+            renderFocusLink: renderFocusLinkWithPill,
+            renderPill,
+            renderSelectOptions,
+            renderSignalStrip
+          }
+        );
+      case "backup-policies":
+        return renderDesiredStateObjectWorkspaceView(
+          data,
+          copy,
+          locale,
+          "desired-state-backups",
+          defaultImportPath,
+          focus,
+          backupPolicyWorkspaceTab
+        );
+      case "services":
+        return renderServicesWorkspace({
+          copy,
+          data,
+          locale,
+          focus,
+          formatDate,
+          renderFocusLink: renderFocusLinkWithPill,
+          renderPill,
+          renderSignalStrip
+        });
+      case "logs":
+        return renderLogsWorkspace({
+          copy,
+          data,
+          locale,
+          focus,
+          formatDate,
+          renderFocusLink: renderFocusLinkWithPill,
+          renderPill,
+          renderSignalStrip
+        });
+      case "certificates":
+        return renderCertificatesWorkspace({
+          copy,
+          data,
+          locale,
+          focus,
+          formatDate,
+          renderFocusLink: renderFocusLinkWithPill,
+          renderPill,
+          renderSignalStrip
+        });
+      case "storage":
+        return renderStorageWorkspace({
+          copy,
+          data,
+          focus,
+          renderFocusLink: renderFocusLinkWithPill,
+          renderPill,
+          renderSignalStrip
+        });
+      case "network":
+        return renderNetworkWorkspace({
+          copy,
+          data,
+          locale,
+          focus,
+          formatDate,
+          renderFocusLink: renderFocusLinkWithPill,
+          renderPill,
+          renderSignalStrip
+        });
+      case "processes":
+        return renderProcessesWorkspace({
+          copy,
+          data,
+          locale,
+          focus,
+          formatDate,
+          renderFocusLink: renderFocusLinkWithPill,
+          renderPill,
+          renderSignalStrip
+        });
+      case "containers":
+        return renderContainersWorkspace({
+          copy,
+          data,
+          locale,
+          focus,
+          formatDate,
+          renderFocusLink: renderFocusLinkWithPill,
+          renderPill,
+          renderSignalStrip
+        });
+      case "timers":
+        return renderTimersWorkspace({
+          copy,
+          data,
+          locale,
+          focus,
+          formatDate,
+          renderPill,
+          renderSignalStrip
+        });
+      case "selinux":
+        return renderSelinuxWorkspace({
+          copy,
+          data,
+          locale,
+          focus,
+          formatDate,
+          renderPill,
+          renderSignalStrip
+        });
+      case "ssh":
+        return renderSshWorkspace({
+          copy,
+          data,
+          locale,
+          focus,
+          formatDate,
+          renderPill,
+          renderSignalStrip
+        });
+      case "packages":
+        return renderPackagesWorkspace({
+          copy,
+          data,
+          locale,
+          filteredPackages,
+          selectedPackage,
+          currentPackageFilters,
+          packageNodeFilter,
+          packageNameFilter,
+          packageArchFilter,
+          formatDate,
+          findRelatedJobs,
+          findRelatedAuditEvents,
+          renderActiveFiltersPanel,
+          renderWorkspaceFilterForm,
+          renderSignalStrip,
+          renderFocusLink: renderFocusLinkWithPill
+        });
+      case "firewall":
+        return renderFirewallWorkspace({
+          copy,
+          data,
+          locale,
+          currentPath,
+          focus,
+          formatDate,
+          renderFocusLink: renderFocusLinkWithPill,
+          renderPill,
+          renderSignalStrip
+        });
+      case "fail2ban":
+        return renderFail2BanWorkspace({
+          copy,
+          data,
+          locale,
+          currentPath,
+          focus,
+          formatDate,
+          renderFocusLink: renderFocusLinkWithPill,
+          renderPill,
+          renderSignalStrip
+        });
+      case "audit":
+        return renderAuditWorkspace({
+          copy,
+          data,
+          locale,
+          filteredAuditEvents,
+          selectedAuditEvent,
+          currentAuditFilters,
+          auditTypeFilter,
+          auditActorFilter,
+          auditEntityFilter,
+          formatDate,
+          renderCodeBlock,
+          renderDataTable,
+          renderDetailGrid,
+          renderFocusLink: renderFocusLinkWithPill,
+          renderSignalStrip,
+          renderWorkspaceFilterForm
+        });
+      case "jobs":
+      case "job-history":
+        return renderJobHistorySection();
+      case "node-health":
+        return renderNodeWorkspaceSections().nodeHealthSection;
+      case "resource-drift":
+        return renderResourceDriftWorkspace({
+          copy,
+          data,
+          locale,
+          filteredDrift,
+          selectedDrift,
+          currentDriftFilters,
+          driftStatusFilter,
+          driftKindFilter,
+          driftNodeFilter,
+          findRelatedAuditEvents,
+          findRelatedJobs,
+          parseDriftResourceReference,
+          renderActionFacts,
+          renderActionForm,
+          renderActiveFiltersPanel,
+          renderAuditPanel: (nextCopy, nextLocale, events) =>
+            renderAuditPanel(nextCopy, nextLocale, events, formatDate),
+          renderDataTable,
+          renderDetailGrid,
+          renderFocusLink: renderFocusLinkWithPill,
+          renderJobFeedPanel: (nextCopy, nextLocale, jobs, title) =>
+            renderJobFeedPanel(nextCopy, nextLocale, jobs, formatDate, title),
+          renderPill,
+          renderRelatedPanel,
+          renderSignalStrip,
+          renderWorkspaceFilterForm
+        });
+      case "backups":
+        return renderBackupsWorkspace({
+          copy,
+          data,
+          locale,
+          filteredBackupPolicies,
+          filteredBackupRuns,
+          selectedBackupViewRun,
+          selectedBackupPolicySummary,
+          currentBackupFilters,
+          backupStatusFilter,
+          backupNodeFilter,
+          backupTenantFilter,
+          backupPolicyFilter,
+          findRelatedAuditEvents,
+          formatDate,
+          renderActionFacts,
+          renderActiveFiltersPanel,
+          renderAuditPanel: (nextCopy, nextLocale, events) =>
+            renderAuditPanel(nextCopy, nextLocale, events, formatDate),
+          renderDataTable,
+          renderDetailGrid,
+          renderFocusLink: renderFocusLinkWithPill,
+          renderPill,
+          renderRelatedPanel,
+          renderSignalStrip,
+          renderWorkspaceFilterForm
+        });
+      case "rustdesk":
+        return renderRustDeskSection(data, copy, locale, focus, {
+          formatDate,
+          renderActionFacts,
+          renderDetailGrid,
+          renderFocusLink: renderFocusLinkWithPill,
+          renderPill,
+          renderSignalStrip
+        });
+      case "desired-state":
+        return renderDesiredStateSection(
+          data,
+          copy,
+          locale,
+          resolvedDesiredStateTab,
+          defaultImportPath,
+          focus
+        );
+      case "overview":
+      default:
+        return "";
+    }
+  })();
 
   return renderDashboardShell({
     copy,
@@ -790,41 +831,12 @@ export function renderDashboardPage(args: RenderDashboardArgs): string {
     filteredBackupRuns,
     actionBar,
     bootstrapInventoryPanel,
+    bodySection,
     topbarUserPanelHtml,
     userToggleIconHtml: renderUserIconSvg(),
     overviewMetrics,
     renderSignalStrip,
     renderOverviewMetrics,
-    renderStats,
-    sections: {
-      desiredStateSection,
-      tenantsSection,
-      nodesSection,
-      zonesSection,
-      proxiesSection,
-      appsSection,
-      databasesSection,
-      mailSection,
-      backupPoliciesSection,
-      servicesSection,
-      logsSection,
-      certificatesSection,
-      storageSection,
-      networkSection,
-      processesSection,
-      containersSection,
-      timersSection,
-      selinuxSection,
-      sshSection,
-      packagesSection,
-      firewallSection,
-      fail2banSection,
-      auditSection,
-      jobHistorySection,
-      nodeHealthSection,
-      resourceDriftSection,
-      backupsSection,
-      rustdeskSection
-    }
+    renderStats
   });
 }
