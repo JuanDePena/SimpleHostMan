@@ -5,6 +5,22 @@ of SSH sessions and into the control plane. They consume node runtime snapshots
 reported by the agent and present them alongside existing inventory, jobs and
 audit context.
 
+## Dashboard render model
+
+The dashboard shell renders shared chrome, sidebar badges, top-bar controls and
+Overview metrics for every authenticated page. The heavier workspace HTML is
+rendered only for the active view selected by the route.
+
+This keeps the common Overview path from paying the server-side cost of building
+inactive operational workspaces such as Logs, Services, Packages, Jobs or
+Backups. It also prevents malformed data in an inactive workspace from blocking
+unrelated navigation or login redirect flows.
+
+The current bootstrap payload is still broad: it loads the runtime snapshots
+needed for sidebar counts and cross-workspace navigation. Future per-view API
+loading can reduce data transfer further, but the present contract is that only
+the selected workspace renderer should execute for a dashboard request.
+
 ## Services
 
 The Services view reports critical `systemd` units per managed node. The agent
