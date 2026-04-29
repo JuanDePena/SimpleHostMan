@@ -418,6 +418,21 @@ function parseSystemctlShowOutput(value: string | undefined): Record<string, str
   return result;
 }
 
+function normalizeDateTimeValue(value: string | undefined): string | undefined {
+  if (!value || value === "n/a") {
+    return undefined;
+  }
+
+  const parsed = Date.parse(value);
+  const parsedWithoutWeekday = Number.isFinite(parsed)
+    ? parsed
+    : Date.parse(value.replace(/^[A-Za-z]{3}\s+/, ""));
+
+  return Number.isFinite(parsedWithoutWeekday)
+    ? new Date(parsedWithoutWeekday).toISOString()
+    : undefined;
+}
+
 function parseOptionalNumber(value: string | undefined): number | undefined {
   if (!value) {
     return undefined;
@@ -452,7 +467,7 @@ async function inspectServiceUnit(serviceName: string): Promise<ServiceUnitSnaps
     mainPid: parseOptionalNumber(fields.MainPID),
     restartCount: parseOptionalNumber(fields.NRestarts),
     exitStatus: parseOptionalNumber(fields.ExecMainStatus),
-    activeEnterTimestamp: fields.ActiveEnterTimestamp || undefined,
+    activeEnterTimestamp: normalizeDateTimeValue(fields.ActiveEnterTimestamp),
     checkedAt
   };
 }
@@ -1084,7 +1099,7 @@ function readNumberLikeValue(value: unknown): number | undefined {
 
 function readPodmanTimestamp(record: Record<string, unknown>, ...keys: string[]): string | undefined {
   for (const key of keys) {
-    const value = readStringField(record, key);
+    const value = normalizeDateTimeValue(readStringField(record, key));
 
     if (value && !value.startsWith("0001-01-01")) {
       return value;
@@ -1171,8 +1186,7 @@ function parseSystemTimerTimestamp(value: unknown): string | undefined {
     return undefined;
   }
 
-  const parsed = Date.parse(value);
-  return Number.isFinite(parsed) ? new Date(parsed).toISOString() : value;
+  return normalizeDateTimeValue(value);
 }
 
 function parseSystemTimers(value: string | undefined): SystemTimerSnapshot[] {

@@ -44,11 +44,24 @@ export function formatDate(value: string | undefined, locale: WebLocale): string
     return "-";
   }
 
+  if (value.toLowerCase() === "n/a") {
+    return "-";
+  }
+
+  const parsed = Date.parse(value);
+  const parsedWithoutWeekday = Number.isFinite(parsed)
+    ? parsed
+    : Date.parse(value.replace(/^[A-Za-z]{3}\s+/, ""));
+
+  if (!Number.isFinite(parsedWithoutWeekday)) {
+    return value;
+  }
+
   return new Intl.DateTimeFormat(locale === "es" ? "es-DO" : "en-GB", {
     dateStyle: "medium",
     timeStyle: "short",
     timeZone: "UTC"
-  }).format(new Date(value));
+  }).format(new Date(parsedWithoutWeekday));
 }
 
 export function formatList(values: string[], emptyValue = "-"): string {
