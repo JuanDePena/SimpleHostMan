@@ -151,6 +151,48 @@ test("runtime workspaces select one row and render only that row detail", () => 
       }
     },
     {
+      name: "repositories",
+      view: "repositories",
+      focus: "mail-a:baseos",
+      marker: "Selected repository",
+      selectedText: "selected-baseos-key",
+      otherText: "other-appstream-key",
+      arrange: (data) => {
+        data.nodeHealth[0] = {
+          ...data.nodeHealth[0]!,
+          packageRepositories: {
+            checkedAt: "2026-04-29T00:00:00.000Z",
+            repositories: [
+              {
+                repoId: "baseos",
+                name: "BaseOS selected",
+                enabled: true,
+                status: "enabled",
+                packageCount: 1200,
+                baseUrl: "https://repo.example.com/baseos",
+                repoFile: "/etc/yum.repos.d/baseos.repo",
+                gpgCheck: true,
+                repoGpgCheck: false,
+                gpgKeys: ["selected-baseos-key"]
+              },
+              {
+                repoId: "appstream",
+                name: "AppStream other",
+                enabled: true,
+                status: "enabled",
+                packageCount: 2400,
+                baseUrl: "https://repo.example.com/appstream",
+                repoFile: "/etc/yum.repos.d/appstream.repo",
+                gpgCheck: true,
+                repoGpgCheck: false,
+                gpgKeys: ["other-appstream-key"]
+              }
+            ]
+          }
+        };
+      }
+    },
+    {
       name: "reboots",
       view: "reboots",
       focus: "mail-a",

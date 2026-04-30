@@ -500,6 +500,29 @@ export interface PackageUpdatesSnapshot {
   checkedAt: string;
 }
 
+export interface PackageRepositorySnapshot {
+  repoId: string;
+  name?: string;
+  enabled?: boolean;
+  status?: string;
+  revision?: string;
+  updated?: string;
+  packageCount?: number;
+  size?: string;
+  baseUrl?: string;
+  metalink?: string;
+  mirrorList?: string;
+  repoFile?: string;
+  gpgCheck?: boolean;
+  repoGpgCheck?: boolean;
+  gpgKeys: string[];
+}
+
+export interface PackageRepositoriesSnapshot {
+  repositories: PackageRepositorySnapshot[];
+  checkedAt: string;
+}
+
 export interface RebootStateSnapshot {
   kernelRelease?: string;
   latestKernelRelease?: string;
@@ -783,6 +806,7 @@ export interface AgentNodeRuntimeSnapshot {
   fail2ban?: Fail2BanSnapshot;
   services?: SystemServicesSnapshot;
   packageUpdates?: PackageUpdatesSnapshot;
+  packageRepositories?: PackageRepositoriesSnapshot;
   rebootState?: RebootStateSnapshot;
   configValidation?: ConfigValidationSnapshot;
   timeSync?: TimeSyncSnapshot;

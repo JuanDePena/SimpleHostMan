@@ -39,6 +39,24 @@ This view is read-only in the first iteration. Applying updates should be added
 as audited jobs with explicit node targeting, package scope and confirmation so
 patch rollout does not bypass the existing dispatch history.
 
+## Repositories
+
+The Repositories view reports configured DNF/YUM repositories per managed node.
+The agent collects `dnf repoinfo --all` when available, falling back to
+`dnf repolist --all`, and records repository enablement, package counts, repo
+files, URL sources and GPG policy.
+
+The control UI shows:
+
+- cross-node repository inventory with status, package count, repo file and GPG
+  check state
+- counters for enabled, disabled and package-GPG-disabled repositories
+- selected-repository detail with source URLs, metadata revision and GPG keys
+
+This view is read-only. Repository enablement, base URL changes and GPG policy
+changes should be made through explicit audited jobs or desired node
+configuration so package supply-chain changes stay traceable.
+
 ## Reboots
 
 The Reboots view reports kernel and boot posture per managed node. The agent

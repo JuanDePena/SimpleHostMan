@@ -22,6 +22,7 @@ import {
   renderFirewallWorkspace
 } from "./dashboard-security.js";
 import { renderUpdatesWorkspace } from "./dashboard-updates.js";
+import { renderRepositoriesWorkspace } from "./dashboard-repositories.js";
 import { renderRebootsWorkspace } from "./dashboard-reboots.js";
 import { renderConfigValidationWorkspace } from "./dashboard-config-validation.js";
 import { renderTimeWorkspace } from "./dashboard-time.js";
@@ -571,6 +572,17 @@ export function renderDashboardPage(args: RenderDashboardArgs): string {
         );
       case "updates":
         return renderUpdatesWorkspace({
+          copy,
+          data,
+          locale,
+          focus,
+          formatDate,
+          renderFocusLink: renderFocusLinkWithPill,
+          renderPill,
+          renderSignalStrip
+        });
+      case "repositories":
+        return renderRepositoriesWorkspace({
           copy,
           data,
           locale,

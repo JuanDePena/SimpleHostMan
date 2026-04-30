@@ -30,6 +30,7 @@ import {
   type NetworkInterfaceSnapshot,
   type NetworkListenerSnapshot,
   type NetworkRouteSnapshot,
+  type PackageRepositorySnapshot,
   type PackageUpdateSnapshot,
   type ProcessEntrySnapshot,
   type RustDeskListenerSnapshot,
@@ -817,6 +818,213 @@ async function inspectPackageUpdates(): Promise<AgentNodeRuntimeSnapshot["packag
 
   return {
     updates: applyPackageAdvisories(updates, parsePackageAdvisories(updateInfoOutput)),
+    checkedAt
+  };
+}
+
+function parseRepositoryBoolean(value: string | undefined): boolean | undefined {
+  const normalized = value?.trim().toLowerCase();
+
+  if (!normalized) {
+    return undefined;
+  }
+
+  if (["1", "yes", "true", "enabled"].includes(normalized)) {
+    return true;
+  }
+
+  if (["0", "no", "false", "disabled"].includes(normalized)) {
+    return false;
+  }
+
+  return undefined;
+}
+
+function parseRepositoryPackageCount(value: string | undefined): number | undefined {
+  const normalized = value?.replace(/,/g, "").trim();
+
+  if (!normalized) {
+    return undefined;
+  }
+
+  const parsed = Number.parseInt(normalized, 10);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function splitRepositoryValues(value: string | undefined): string[] {
+  return uniqueOrderedStrings((value ?? "").split(/[\s,]+/g));
+}
+
+function pushRepositoryRecord(
+  repositories: PackageRepositorySnapshot[],
+  record: Partial<PackageRepositorySnapshot>
+): void {
+  if (!record.repoId) {
+    return;
+  }
+
+  repositories.push({
+    repoId: record.repoId,
+    name: record.name,
+    enabled: record.enabled,
+    status: record.status,
+    revision: record.revision,
+    updated: record.updated,
+    packageCount: record.packageCount,
+    size: record.size,
+    baseUrl: record.baseUrl,
+    metalink: record.metalink,
+    mirrorList: record.mirrorList,
+    repoFile: record.repoFile,
+    gpgCheck: record.gpgCheck,
+    repoGpgCheck: record.repoGpgCheck,
+    gpgKeys: record.gpgKeys ?? []
+  });
+}
+
+function parseDnfRepoInfo(output: string | undefined): PackageRepositorySnapshot[] {
+  const repositories: PackageRepositorySnapshot[] = [];
+  let current: Partial<PackageRepositorySnapshot> = {};
+
+  for (const rawLine of (output ?? "").split(/\r?\n/g)) {
+    const line = rawLine.trim();
+
+    if (!line) {
+      continue;
+    }
+
+    const match = /^Repo-([A-Za-z-]+)\s*:\s*(.*)$/.exec(line);
+
+    if (!match) {
+      continue;
+    }
+
+    const field = match[1]?.toLowerCase();
+    const value = match[2]?.trim();
+
+    if (field === "id") {
+      pushRepositoryRecord(repositories, current);
+      current = {
+        repoId: value,
+        gpgKeys: []
+      };
+      continue;
+    }
+
+    if (!current.repoId) {
+      continue;
+    }
+
+    switch (field) {
+      case "name":
+        current.name = value || undefined;
+        break;
+      case "status":
+        current.status = value || undefined;
+        current.enabled = parseRepositoryBoolean(value);
+        break;
+      case "revision":
+        current.revision = value || undefined;
+        break;
+      case "updated":
+        current.updated = value || undefined;
+        break;
+      case "pkgs":
+        current.packageCount = parseRepositoryPackageCount(value);
+        break;
+      case "size":
+        current.size = value || undefined;
+        break;
+      case "baseurl":
+        current.baseUrl = value || undefined;
+        break;
+      case "metalink":
+        current.metalink = value || undefined;
+        break;
+      case "mirrors":
+      case "mirrorlist":
+        current.mirrorList = value || undefined;
+        break;
+      case "filename":
+        current.repoFile = value || undefined;
+        break;
+      case "gpgcheck":
+        current.gpgCheck = parseRepositoryBoolean(value);
+        break;
+      case "repo-gpgcheck":
+        current.repoGpgCheck = parseRepositoryBoolean(value);
+        break;
+      case "gpgkey":
+        current.gpgKeys = uniqueOrderedStrings([
+          ...(current.gpgKeys ?? []),
+          ...splitRepositoryValues(value)
+        ]);
+        break;
+      default:
+        break;
+    }
+  }
+
+  pushRepositoryRecord(repositories, current);
+
+  return repositories.sort((left, right) => left.repoId.localeCompare(right.repoId));
+}
+
+function parseDnfRepoList(output: string | undefined): PackageRepositorySnapshot[] {
+  const repositories: PackageRepositorySnapshot[] = [];
+
+  for (const rawLine of (output ?? "").split(/\r?\n/g)) {
+    const line = rawLine.trim();
+
+    if (!line || /^repo\s+id/i.test(line)) {
+      continue;
+    }
+
+    const columns = line.split(/\s{2,}/g);
+
+    if (columns.length < 2 || !columns[0]) {
+      continue;
+    }
+
+    const status = columns.at(-1);
+    const name = columns.slice(1, -1).join(" ") || undefined;
+
+    repositories.push({
+      repoId: columns[0],
+      name,
+      enabled: parseRepositoryBoolean(status),
+      status,
+      gpgKeys: []
+    });
+  }
+
+  return repositories.sort((left, right) => left.repoId.localeCompare(right.repoId));
+}
+
+async function inspectPackageRepositories(): Promise<
+  AgentNodeRuntimeSnapshot["packageRepositories"]
+> {
+  const checkedAt = new Date().toISOString();
+  const repoInfoOutput = await commandOutputWithExitCodes(
+    "dnf",
+    ["-q", "repoinfo", "--all"],
+    [0],
+    60000
+  );
+  let repositories = parseDnfRepoInfo(repoInfoOutput);
+
+  if (repositories.length === 0) {
+    const repoListOutput = await commandOutputWithExitCodes(
+      "dnf",
+      ["-q", "repolist", "--all"],
+      [0],
+      30000
+    );
+    repositories = parseDnfRepoList(repoListOutput);
+  }
+
+  return {
+    repositories,
     checkedAt
   };
 }
@@ -3280,6 +3488,7 @@ async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
     fail2ban,
     services,
     packageUpdates,
+    packageRepositories,
     rebootState,
     configValidation,
     timeSync,
@@ -3303,6 +3512,7 @@ async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
     inspectFail2Ban(),
     inspectSystemServices(),
     inspectPackageUpdates(),
+    inspectPackageRepositories(),
     inspectRebootState(),
     inspectConfigValidation(),
     inspectTimeSync(),
@@ -3328,6 +3538,7 @@ async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
     fail2ban,
     services,
     packageUpdates,
+    packageRepositories,
     rebootState,
     configValidation,
     timeSync,

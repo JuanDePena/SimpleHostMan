@@ -45,6 +45,8 @@ import type {
   NetworkRouteSnapshot,
   NetworkSnapshot,
   NodeHealthSnapshot,
+  PackageRepositoriesSnapshot,
+  PackageRepositorySnapshot,
   PackageUpdateSnapshot,
   PackageUpdatesSnapshot,
   ProcessEntrySnapshot,
@@ -620,6 +622,60 @@ function normalizePackageUpdatesSnapshot(value: unknown): PackageUpdatesSnapshot
 
   return {
     updates,
+    checkedAt: typeof record.checkedAt === "string" ? record.checkedAt : new Date(0).toISOString()
+  };
+}
+
+function normalizePackageRepositorySnapshot(
+  value: unknown
+): PackageRepositorySnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  if (typeof record.repoId !== "string") {
+    return undefined;
+  }
+
+  return {
+    repoId: record.repoId,
+    name: typeof record.name === "string" ? record.name : undefined,
+    enabled: typeof record.enabled === "boolean" ? record.enabled : undefined,
+    status: typeof record.status === "string" ? record.status : undefined,
+    revision: typeof record.revision === "string" ? record.revision : undefined,
+    updated: typeof record.updated === "string" ? record.updated : undefined,
+    packageCount:
+      typeof record.packageCount === "number" ? Number(record.packageCount) : undefined,
+    size: typeof record.size === "string" ? record.size : undefined,
+    baseUrl: typeof record.baseUrl === "string" ? record.baseUrl : undefined,
+    metalink: typeof record.metalink === "string" ? record.metalink : undefined,
+    mirrorList: typeof record.mirrorList === "string" ? record.mirrorList : undefined,
+    repoFile: typeof record.repoFile === "string" ? record.repoFile : undefined,
+    gpgCheck: typeof record.gpgCheck === "boolean" ? record.gpgCheck : undefined,
+    repoGpgCheck:
+      typeof record.repoGpgCheck === "boolean" ? record.repoGpgCheck : undefined,
+    gpgKeys: normalizeStringArray(record.gpgKeys)
+  };
+}
+
+function normalizePackageRepositoriesSnapshot(
+  value: unknown
+): PackageRepositoriesSnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+  const repositories = Array.isArray(record.repositories)
+    ? record.repositories
+        .map(normalizePackageRepositorySnapshot)
+        .filter((entry): entry is PackageRepositorySnapshot => Boolean(entry))
+    : [];
+
+  return {
+    repositories,
     checkedAt: typeof record.checkedAt === "string" ? record.checkedAt : new Date(0).toISOString()
   };
 }
@@ -1952,6 +2008,9 @@ export function toNodeHealthSnapshot(row: NodeHealthRow): NodeHealthSnapshot {
     ),
     packageUpdates: normalizePackageUpdatesSnapshot(
       (runtimeSnapshot as Record<string, unknown>).packageUpdates
+    ),
+    packageRepositories: normalizePackageRepositoriesSnapshot(
+      (runtimeSnapshot as Record<string, unknown>).packageRepositories
     ),
     rebootState: normalizeRebootStateSnapshot(
       (runtimeSnapshot as Record<string, unknown>).rebootState

@@ -13,6 +13,7 @@ export const navigationCopyByLocale = {
     navBackups: "Backups",
     navRustDesk: "RustDesk",
     navUpdates: "Updates",
+    navRepositories: "Repositories",
     navReboots: "Reboots",
     navConfig: "Config",
     navTime: "Time",
@@ -54,6 +55,8 @@ export const navigationCopyByLocale = {
     backupWorkspaceDescription: "Policy definition, retention and coverage before backup runs.",
     updatesWorkspaceDescription:
       "Available RPM updates and security advisories reported by managed nodes.",
+    repositoriesWorkspaceDescription:
+      "DNF/YUM repository posture and GPG policy reported by managed nodes.",
     rebootsWorkspaceDescription:
       "Kernel, uptime and reboot-required posture reported by managed nodes.",
     configWorkspaceDescription:
@@ -102,6 +105,7 @@ export const navigationCopyByLocale = {
     navBackups: "Backups",
     navRustDesk: "RustDesk",
     navUpdates: "Updates",
+    navRepositories: "Repositorios",
     navReboots: "Reboots",
     navConfig: "Config",
     navTime: "Hora",
@@ -148,6 +152,8 @@ export const navigationCopyByLocale = {
       "Definición de políticas, retención y cobertura antes de las ejecuciones.",
     updatesWorkspaceDescription:
       "Actualizaciones RPM disponibles y advisories de seguridad reportados por los nodos gestionados.",
+    repositoriesWorkspaceDescription:
+      "Postura de repositorios DNF/YUM y política GPG reportada por los nodos gestionados.",
     rebootsWorkspaceDescription:
       "Postura de kernel, uptime y reboot requerido reportada por los nodos gestionados.",
     configWorkspaceDescription:
