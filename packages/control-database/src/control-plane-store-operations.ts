@@ -204,47 +204,44 @@ export async function buildMailSyncPlans(
   client: PoolClient,
   payloadKey: Buffer | null
 ): Promise<Array<{ nodeId: string; payload: MailSyncPayload }>> {
-  const [mailDomainResult, mailboxResult, aliasResult, quotaResult, mailPolicyResult] =
-    await Promise.all([
-    client.query<MailDomainRow>(
-      `SELECT
-         domains.domain_name,
-         tenants.slug AS tenant_slug,
-         zones.zone_name,
-         domains.primary_node_id,
-         domains.standby_node_id,
-         domains.mail_host,
-         domains.dkim_selector
-       FROM shp_mail_domains domains
-       INNER JOIN shp_tenants tenants
-         ON tenants.tenant_id = domains.tenant_id
-       INNER JOIN shp_dns_zones zones
-         ON zones.zone_id = domains.zone_id
-       ORDER BY domains.domain_name ASC`
-    ),
-    queryMailboxRows(client),
-    client.query<MailAliasRow>(
-      `SELECT
-         aliases.address,
-         domains.domain_name,
-         aliases.local_part,
-         aliases.destinations
-       FROM shp_mail_aliases aliases
-       INNER JOIN shp_mail_domains domains
-         ON domains.mail_domain_id = aliases.mail_domain_id
-       ORDER BY aliases.address ASC`
-    ),
-    client.query<MailboxQuotaRow>(
-      `SELECT
-         mailboxes.address AS mailbox_address,
-         quotas.storage_bytes
-       FROM shp_mailbox_quotas quotas
-       INNER JOIN shp_mailboxes mailboxes
-         ON mailboxes.mailbox_id = quotas.mailbox_id
-       ORDER BY mailboxes.address ASC`
-    ),
-    queryMailPolicyRows(client)
-  ]);
+  const mailDomainResult = await client.query<MailDomainRow>(
+    `SELECT
+       domains.domain_name,
+       tenants.slug AS tenant_slug,
+       zones.zone_name,
+       domains.primary_node_id,
+       domains.standby_node_id,
+       domains.mail_host,
+       domains.dkim_selector
+     FROM shp_mail_domains domains
+     INNER JOIN shp_tenants tenants
+       ON tenants.tenant_id = domains.tenant_id
+     INNER JOIN shp_dns_zones zones
+       ON zones.zone_id = domains.zone_id
+     ORDER BY domains.domain_name ASC`
+  );
+  const mailboxResult = await queryMailboxRows(client);
+  const aliasResult = await client.query<MailAliasRow>(
+    `SELECT
+       aliases.address,
+       domains.domain_name,
+       aliases.local_part,
+       aliases.destinations
+     FROM shp_mail_aliases aliases
+     INNER JOIN shp_mail_domains domains
+       ON domains.mail_domain_id = aliases.mail_domain_id
+     ORDER BY aliases.address ASC`
+  );
+  const quotaResult = await client.query<MailboxQuotaRow>(
+    `SELECT
+       mailboxes.address AS mailbox_address,
+       quotas.storage_bytes
+     FROM shp_mailbox_quotas quotas
+     INNER JOIN shp_mailboxes mailboxes
+       ON mailboxes.mailbox_id = quotas.mailbox_id
+     ORDER BY mailboxes.address ASC`
+  );
+  const mailPolicyResult = await queryMailPolicyRows(client);
 
   const defaultMailPolicy = createDefaultMailPolicy();
   const mailPolicyRow = mailPolicyResult[0];
@@ -2410,37 +2407,35 @@ export function createControlPlaneOperationsMethods(
           "platform_admin",
           "platform_operator"
         ]);
-        const [policyResult, runResult] = await Promise.all([
-          client.query<BackupPolicyRow>(
-            `SELECT
-               policies.policy_slug,
-               tenants.slug AS tenant_slug,
-               policies.target_node_id,
-               policies.schedule,
-               policies.retention_days,
-               policies.storage_location,
-               policies.resource_selectors
-             FROM shp_backup_policies policies
-             INNER JOIN shp_tenants tenants
-               ON tenants.tenant_id = policies.tenant_id
-             ORDER BY policies.policy_slug ASC`
-          ),
-          client.query<BackupRunRow>(
-            `SELECT DISTINCT ON (policies.policy_slug)
-               runs.run_id,
-               policies.policy_slug,
-               runs.node_id,
-               runs.status,
-               runs.summary,
-               runs.started_at,
-               runs.completed_at,
-               runs.details
-             FROM shp_backup_runs runs
-             INNER JOIN shp_backup_policies policies
-               ON policies.policy_id = runs.policy_id
-             ORDER BY policies.policy_slug ASC, runs.started_at DESC`
-          )
-        ]);
+        const policyResult = await client.query<BackupPolicyRow>(
+          `SELECT
+             policies.policy_slug,
+             tenants.slug AS tenant_slug,
+             policies.target_node_id,
+             policies.schedule,
+             policies.retention_days,
+             policies.storage_location,
+             policies.resource_selectors
+           FROM shp_backup_policies policies
+           INNER JOIN shp_tenants tenants
+             ON tenants.tenant_id = policies.tenant_id
+           ORDER BY policies.policy_slug ASC`
+        );
+        const runResult = await client.query<BackupRunRow>(
+          `SELECT DISTINCT ON (policies.policy_slug)
+             runs.run_id,
+             policies.policy_slug,
+             runs.node_id,
+             runs.status,
+             runs.summary,
+             runs.started_at,
+             runs.completed_at,
+             runs.details
+           FROM shp_backup_runs runs
+           INNER JOIN shp_backup_policies policies
+             ON policies.policy_id = runs.policy_id
+           ORDER BY policies.policy_slug ASC, runs.started_at DESC`
+        );
 
         return {
           policies: policyResult.rows.map(toBackupPolicySummary),
