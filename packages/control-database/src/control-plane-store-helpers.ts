@@ -39,6 +39,8 @@ import type {
   MailManagedDomainSnapshot,
   MailQueueSnapshot,
   MailServiceSnapshot,
+  MountEntrySnapshot,
+  MountsSnapshot,
   NetworkInterfaceAddressSnapshot,
   NetworkInterfaceSnapshot,
   NetworkListenerSnapshot,
@@ -1071,6 +1073,50 @@ function normalizeStorageSnapshot(value: unknown): StorageSnapshot | undefined {
   };
 }
 
+function normalizeMountEntrySnapshot(value: unknown): MountEntrySnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  if (typeof record.mountpoint !== "string") {
+    return undefined;
+  }
+
+  return {
+    mountpoint: record.mountpoint,
+    source: typeof record.source === "string" ? record.source : undefined,
+    filesystemType:
+      typeof record.filesystemType === "string" ? record.filesystemType : undefined,
+    options: normalizeStringArray(record.options),
+    mounted: Boolean(record.mounted),
+    inFstab: Boolean(record.inFstab),
+    fstabSource: typeof record.fstabSource === "string" ? record.fstabSource : undefined,
+    fstabType: typeof record.fstabType === "string" ? record.fstabType : undefined,
+    fstabOptions: normalizeStringArray(record.fstabOptions),
+    fstabDump: typeof record.fstabDump === "string" ? record.fstabDump : undefined,
+    fstabPass: typeof record.fstabPass === "string" ? record.fstabPass : undefined
+  };
+}
+
+function normalizeMountsSnapshot(value: unknown): MountsSnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  return {
+    entries: Array.isArray(record.entries)
+      ? record.entries
+          .map(normalizeMountEntrySnapshot)
+          .filter((entry): entry is MountEntrySnapshot => Boolean(entry))
+      : [],
+    checkedAt: typeof record.checkedAt === "string" ? record.checkedAt : new Date(0).toISOString()
+  };
+}
+
 function normalizeNetworkInterfaceAddressSnapshot(
   value: unknown
 ): NetworkInterfaceAddressSnapshot | undefined {
@@ -2036,6 +2082,7 @@ export function toNodeHealthSnapshot(row: NodeHealthRow): NodeHealthSnapshot {
     storage: normalizeStorageSnapshot(
       (runtimeSnapshot as Record<string, unknown>).storage
     ),
+    mounts: normalizeMountsSnapshot((runtimeSnapshot as Record<string, unknown>).mounts),
     network: normalizeNetworkSnapshot(
       (runtimeSnapshot as Record<string, unknown>).network
     ),

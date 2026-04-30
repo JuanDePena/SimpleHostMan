@@ -216,6 +216,25 @@ This view is for triage and capacity awareness. Destructive cleanup operations
 should remain outside the UI until they can be modeled as audited, reversible
 jobs with explicit path constraints.
 
+## Mounts
+
+The Mounts view reports mounted filesystems and persistent `/etc/fstab`
+configuration per managed node. The agent collects `findmnt -P` output, reads
+`/etc/fstab`, merges both sources by mountpoint, and filters pseudo-filesystems
+unless they are explicitly declared in fstab.
+
+The control UI shows:
+
+- cross-node mount inventory with mountpoint, source, filesystem type, active
+  state and fstab presence
+- counters for active mounts, fstab-backed mounts and fstab entries that are not
+  currently mounted
+- selected-mount detail with live mount options and persisted fstab options
+
+The view is read-only. Mount, unmount and fstab edit operations should be
+implemented as audited jobs with strong confirmation because they can affect
+running services and boot behavior.
+
 ## Network
 
 The Network view reports node-local interface, route, and listener posture. The

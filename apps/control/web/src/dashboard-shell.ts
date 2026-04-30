@@ -59,6 +59,7 @@ type DashboardShellCopy = DashboardCopyLabels & {
   navLogs: string;
   navCertificates: string;
   navStorage: string;
+  navMounts: string;
   navNetwork: string;
   navProcesses: string;
   navContainers: string;
@@ -387,6 +388,13 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
           href: buildDashboardViewUrl("storage"),
           badge: String(data.nodeHealth.reduce((count, node) => count + (node.storage?.filesystems.length ?? 0), 0)),
           active: view === "storage"
+        },
+        {
+          id: "mounts",
+          label: copy.navMounts,
+          href: buildDashboardViewUrl("mounts"),
+          badge: String(data.nodeHealth.reduce((count, node) => count + (node.mounts?.entries.length ?? 0), 0)),
+          active: view === "mounts"
         },
         {
           id: "network",

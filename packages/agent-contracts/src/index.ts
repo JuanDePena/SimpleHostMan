@@ -668,6 +668,25 @@ export interface StorageSnapshot {
   checkedAt: string;
 }
 
+export interface MountEntrySnapshot {
+  mountpoint: string;
+  source?: string;
+  filesystemType?: string;
+  options: string[];
+  mounted: boolean;
+  inFstab: boolean;
+  fstabSource?: string;
+  fstabType?: string;
+  fstabOptions: string[];
+  fstabDump?: string;
+  fstabPass?: string;
+}
+
+export interface MountsSnapshot {
+  entries: MountEntrySnapshot[];
+  checkedAt: string;
+}
+
 export interface NetworkInterfaceAddressSnapshot {
   family: string;
   address: string;
@@ -815,6 +834,7 @@ export interface AgentNodeRuntimeSnapshot {
   logs?: SystemLogsSnapshot;
   tls?: TlsCertificatesSnapshot;
   storage?: StorageSnapshot;
+  mounts?: MountsSnapshot;
   network?: NetworkSnapshot;
   processes?: SystemProcessesSnapshot;
   containers?: ContainerRuntimeSnapshot;

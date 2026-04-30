@@ -19,6 +19,7 @@ export type DashboardView =
   | "logs"
   | "certificates"
   | "storage"
+  | "mounts"
   | "network"
   | "processes"
   | "containers"
@@ -98,6 +99,7 @@ export interface DashboardCopyLabels {
   navLogs: string;
   navCertificates: string;
   navStorage: string;
+  navMounts: string;
   navNetwork: string;
   navProcesses: string;
   navContainers: string;
@@ -129,6 +131,7 @@ export interface DashboardCopyLabels {
   logsWorkspaceDescription: string;
   certificatesWorkspaceDescription: string;
   storageWorkspaceDescription: string;
+  mountsWorkspaceDescription: string;
   networkWorkspaceDescription: string;
   processesWorkspaceDescription: string;
   containersWorkspaceDescription: string;
@@ -176,6 +179,7 @@ export function normalizeDashboardView(value: string | null | undefined): Dashbo
     case "logs":
     case "certificates":
     case "storage":
+    case "mounts":
     case "network":
     case "processes":
     case "containers":
@@ -282,6 +286,8 @@ function getObjectViewLabel(
       return copy.navCertificates;
     case "storage":
       return copy.navStorage;
+    case "mounts":
+      return copy.navMounts;
     case "network":
       return copy.navNetwork;
     case "processes":
@@ -460,6 +466,8 @@ export function getDashboardSubheading(copy: DashboardCopyLabels, view: Dashboar
       return copy.certificatesWorkspaceDescription;
     case "storage":
       return copy.storageWorkspaceDescription;
+    case "mounts":
+      return copy.mountsWorkspaceDescription;
     case "network":
       return copy.networkWorkspaceDescription;
     case "processes":

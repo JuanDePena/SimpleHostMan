@@ -533,6 +533,50 @@ test("runtime workspaces select one row and render only that row detail", () => 
       }
     },
     {
+      name: "mounts",
+      view: "mounts",
+      focus: "mail-a:/srv",
+      marker: "Selected mount",
+      selectedText: "selected-fstab-source",
+      otherText: "other-fstab-source",
+      arrange: (data) => {
+        data.nodeHealth[0] = {
+          ...data.nodeHealth[0]!,
+          mounts: {
+            checkedAt: "2026-04-29T00:00:00.000Z",
+            entries: [
+              {
+                mountpoint: "/srv",
+                source: "/dev/vdb1",
+                filesystemType: "xfs",
+                options: ["rw", "relatime"],
+                mounted: true,
+                inFstab: true,
+                fstabSource: "selected-fstab-source",
+                fstabType: "xfs",
+                fstabOptions: ["defaults"],
+                fstabDump: "0",
+                fstabPass: "2"
+              },
+              {
+                mountpoint: "/var",
+                source: "/dev/vdc1",
+                filesystemType: "xfs",
+                options: ["rw"],
+                mounted: true,
+                inFstab: true,
+                fstabSource: "other-fstab-source",
+                fstabType: "xfs",
+                fstabOptions: ["defaults"],
+                fstabDump: "0",
+                fstabPass: "2"
+              }
+            ]
+          }
+        };
+      }
+    },
+    {
       name: "network",
       view: "network",
       focus: "mail-a:tcp:0.0.0.0:8080:selected-listener",

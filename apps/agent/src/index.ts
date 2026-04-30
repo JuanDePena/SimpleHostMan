@@ -26,6 +26,7 @@ import {
   type LocalGroupSnapshot,
   type MailServiceSnapshot,
   type MailSyncPayload,
+  type MountEntrySnapshot,
   type NetworkInterfaceAddressSnapshot,
   type NetworkInterfaceSnapshot,
   type NetworkListenerSnapshot,
@@ -1814,6 +1815,198 @@ async function inspectStorage(): Promise<AgentNodeRuntimeSnapshot["storage"]> {
   };
 }
 
+interface FstabEntry {
+  source: string;
+  mountpoint: string;
+  filesystemType: string;
+  options: string[];
+  dump?: string;
+  pass?: string;
+}
+
+const ignoredMountTypes = new Set([
+  "autofs",
+  "bpf",
+  "binfmt_misc",
+  "cgroup",
+  "cgroup2",
+  "configfs",
+  "debugfs",
+  "devpts",
+  "devtmpfs",
+  "fusectl",
+  "hugetlbfs",
+  "mqueue",
+  "nsfs",
+  "overlay",
+  "proc",
+  "pstore",
+  "rpc_pipefs",
+  "securityfs",
+  "squashfs",
+  "sysfs",
+  "tmpfs",
+  "tracefs"
+]);
+const ignoredMountPrefixes = ["/dev", "/proc", "/run", "/sys"];
+
+function decodeFstabToken(value: string): string {
+  return value
+    .replace(/\\040/g, " ")
+    .replace(/\\011/g, "\t")
+    .replace(/\\012/g, "\n")
+    .replace(/\\134/g, "\\");
+}
+
+function splitMountOptions(value: string | undefined): string[] {
+  return uniqueOrderedStrings((value ?? "").split(","));
+}
+
+function parseFstab(content: string | undefined): FstabEntry[] {
+  const entries: FstabEntry[] = [];
+
+  for (const rawLine of (content ?? "").split(/\r?\n/g)) {
+    const line = rawLine.replace(/\s+#.*$/, "").trim();
+
+    if (!line || line.startsWith("#")) {
+      continue;
+    }
+
+    const parts = line.split(/\s+/g);
+
+    if (parts.length < 3 || !parts[0] || !parts[1] || !parts[2]) {
+      continue;
+    }
+
+    entries.push({
+      source: decodeFstabToken(parts[0]),
+      mountpoint: decodeFstabToken(parts[1]),
+      filesystemType: parts[2],
+      options: splitMountOptions(parts[3]),
+      dump: parts[4],
+      pass: parts[5]
+    });
+  }
+
+  return entries;
+}
+
+function parseFindmntPairs(line: string): Record<string, string> {
+  const pairs: Record<string, string> = {};
+
+  for (const match of line.matchAll(/([A-Z0-9_]+)="((?:\\.|[^"])*)"/g)) {
+    if (!match[1]) {
+      continue;
+    }
+
+    pairs[match[1]] = (match[2] ?? "")
+      .replace(/\\"/g, "\"")
+      .replace(/\\\\/g, "\\");
+  }
+
+  return pairs;
+}
+
+function parseFindmntOutput(output: string | undefined): MountEntrySnapshot[] {
+  const entries: MountEntrySnapshot[] = [];
+
+  for (const rawLine of (output ?? "").split(/\r?\n/g)) {
+    const line = rawLine.trim();
+
+    if (!line) {
+      continue;
+    }
+
+    const pairs = parseFindmntPairs(line);
+    const mountpoint = pairs.TARGET;
+
+    if (!mountpoint) {
+      continue;
+    }
+
+    entries.push({
+      mountpoint,
+      source: pairs.SOURCE || undefined,
+      filesystemType: pairs.FSTYPE || undefined,
+      options: splitMountOptions(pairs.OPTIONS),
+      mounted: true,
+      inFstab: false,
+      fstabOptions: []
+    });
+  }
+
+  return entries;
+}
+
+function shouldReportMount(
+  entry: MountEntrySnapshot,
+  fstabMountpoints: Set<string>
+): boolean {
+  if (fstabMountpoints.has(entry.mountpoint) || entry.mountpoint === "/") {
+    return true;
+  }
+
+  if (entry.filesystemType && ignoredMountTypes.has(entry.filesystemType)) {
+    return false;
+  }
+
+  return !ignoredMountPrefixes.some(
+    (prefix) => entry.mountpoint === prefix || entry.mountpoint.startsWith(`${prefix}/`)
+  );
+}
+
+function mergeMountEntries(
+  mountedEntries: MountEntrySnapshot[],
+  fstabEntries: FstabEntry[]
+): MountEntrySnapshot[] {
+  const merged = new Map<string, MountEntrySnapshot>();
+  const fstabMountpoints = new Set(fstabEntries.map((entry) => entry.mountpoint));
+
+  for (const entry of mountedEntries) {
+    merged.set(entry.mountpoint, entry);
+  }
+
+  for (const entry of fstabEntries) {
+    const existing = merged.get(entry.mountpoint);
+
+    merged.set(entry.mountpoint, {
+      ...(existing ?? {
+        mountpoint: entry.mountpoint,
+        options: [],
+        mounted: false
+      }),
+      inFstab: true,
+      fstabSource: entry.source,
+      fstabType: entry.filesystemType,
+      fstabOptions: entry.options,
+      fstabDump: entry.dump,
+      fstabPass: entry.pass
+    });
+  }
+
+  return [...merged.values()]
+    .filter((entry) => shouldReportMount(entry, fstabMountpoints))
+    .sort((left, right) => left.mountpoint.localeCompare(right.mountpoint));
+}
+
+async function inspectMounts(): Promise<AgentNodeRuntimeSnapshot["mounts"]> {
+  const checkedAt = new Date().toISOString();
+  const [findmntOutput, fstabContent] = await Promise.all([
+    commandOutputWithExitCodes(
+      "findmnt",
+      ["-P", "-o", "TARGET,SOURCE,FSTYPE,OPTIONS"],
+      [0],
+      30000
+    ),
+    readFile("/etc/fstab", "utf8").catch(() => undefined)
+  ]);
+
+  return {
+    entries: mergeMountEntries(parseFindmntOutput(findmntOutput), parseFstab(fstabContent)),
+    checkedAt
+  };
+}
+
 function parseJsonArray(value: string | undefined): unknown[] {
   if (!value) {
     return [];
@@ -3497,6 +3690,7 @@ async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
     logs,
     tls,
     storage,
+    mounts,
     network,
     processes,
     containers,
@@ -3521,6 +3715,7 @@ async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
     inspectSystemLogs(),
     inspectTlsCertificates(),
     inspectStorage(),
+    inspectMounts(),
     inspectNetwork(),
     inspectProcesses(),
     inspectContainers(),
@@ -3547,6 +3742,7 @@ async function collectRuntimeSnapshot(): Promise<AgentNodeRuntimeSnapshot> {
     logs,
     tls,
     storage,
+    mounts,
     network,
     processes,
     containers,

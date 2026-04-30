@@ -23,6 +23,7 @@ export const navigationCopyByLocale = {
     navLogs: "Logs",
     navCertificates: "TLS",
     navStorage: "Storage",
+    navMounts: "Mounts",
     navNetwork: "Network",
     navProcesses: "Processes",
     navContainers: "Containers",
@@ -75,6 +76,8 @@ export const navigationCopyByLocale = {
       "Certificate inventory, SAN coverage and expiration posture across managed nodes.",
     storageWorkspaceDescription:
       "Filesystem, inode and important-path usage reported by managed nodes.",
+    mountsWorkspaceDescription:
+      "Mounted filesystems and fstab persistence posture reported by managed nodes.",
     networkWorkspaceDescription:
       "Interfaces, routes and listening sockets reported by managed nodes.",
     processesWorkspaceDescription:
@@ -115,6 +118,7 @@ export const navigationCopyByLocale = {
     navLogs: "Logs",
     navCertificates: "TLS",
     navStorage: "Storage",
+    navMounts: "Mounts",
     navNetwork: "Red",
     navProcesses: "Procesos",
     navContainers: "Containers",
@@ -172,6 +176,8 @@ export const navigationCopyByLocale = {
       "Inventario de certificados, cobertura SAN y postura de expiración en los nodos gestionados.",
     storageWorkspaceDescription:
       "Uso de filesystems, inodes y rutas importantes reportado por los nodos gestionados.",
+    mountsWorkspaceDescription:
+      "Filesystems montados y postura de persistencia en fstab reportados por los nodos gestionados.",
     networkWorkspaceDescription:
       "Interfaces, rutas y sockets en escucha reportados por los nodos gestionados.",
     processesWorkspaceDescription:
