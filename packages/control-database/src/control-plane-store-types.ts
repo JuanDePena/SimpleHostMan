@@ -559,7 +559,11 @@ export interface ControlPlaneStore {
   ): Promise<MailOverview>;
   listJobHistory(
     presentedToken: string | null,
-    limit?: number
+    limit?: number,
+    options?: {
+      includePayload?: boolean;
+      includeDetails?: boolean;
+    }
   ): Promise<JobHistoryEntry[]>;
   listAuditEvents(
     presentedToken: string | null,

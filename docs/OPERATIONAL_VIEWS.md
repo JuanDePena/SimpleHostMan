@@ -32,6 +32,11 @@ and the Drift workspace both depend on the same reconciliation projection, so
 sharing that short-lived result avoids recalculating desired-state drift twice
 during one dashboard bootstrap while keeping operator-facing counts fresh.
 
+Dashboard bootstraps request compact job history outside the Jobs workspace.
+Those compact rows keep timestamps, status, resource keys and summaries for
+navigation badges and related-job panels, but omit large payload/result detail
+documents until the operator opens Jobs.
+
 ## Overview and Reconciliation
 
 Overview is the lightweight landing workspace. It keeps platform status in a

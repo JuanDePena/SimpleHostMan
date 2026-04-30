@@ -2266,13 +2266,17 @@ export function createControlPlaneOperationsMethods(
       return result.rows.map(toNodeHealthSnapshot);
     },
 
-    async listJobHistory(presentedToken, limit = 50) {
+    async listJobHistory(presentedToken, limit = 50, options = {}) {
       return withTransaction(pool, async (client) => {
         await requireAuthorizedUser(client, presentedToken, [
           "platform_admin",
           "platform_operator"
         ]);
         const boundedLimit = Math.max(1, Math.min(limit, 200));
+        const payloadSelection =
+          options.includePayload === false ? "'{}'::jsonb AS payload" : "jobs.payload";
+        const detailsSelection =
+          options.includeDetails === false ? "NULL::jsonb AS details" : "results.details";
         const recentResult = await client.query<JobHistoryRow>(
           `SELECT
              jobs.id,
@@ -2282,10 +2286,10 @@ export function createControlPlaneOperationsMethods(
              jobs.created_at,
              jobs.claimed_at,
              jobs.completed_at,
-             jobs.payload,
+             ${payloadSelection},
              results.status,
              results.summary,
-             results.details,
+             ${detailsSelection},
              jobs.dispatch_reason,
              jobs.resource_key
            FROM control_plane_jobs jobs
@@ -2305,10 +2309,10 @@ export function createControlPlaneOperationsMethods(
              jobs.created_at,
              jobs.claimed_at,
              jobs.completed_at,
-             jobs.payload,
+             ${payloadSelection},
              results.status,
              results.summary,
-             results.details,
+             ${detailsSelection},
              jobs.dispatch_reason,
              jobs.resource_key
            FROM control_plane_jobs jobs

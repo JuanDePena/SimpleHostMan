@@ -8,7 +8,7 @@ import type {
 } from "@simplehost/control-shared";
 import { ControlSessionRequiredError } from "@simplehost/control-shared";
 
-import type { ControlWebApi } from "./api-client.js";
+import type { ControlWebApi, DashboardLoadOptions } from "./api-client.js";
 import { readLocale, readSessionToken } from "./request.js";
 import type { ControlWebRuntimeConfig } from "./web-routes.js";
 import type { WebLocale } from "./request.js";
@@ -21,7 +21,9 @@ export interface WebRouteContext {
   sessionToken: string | null;
   resolveSession: () => Promise<ControlResolvedSession>;
   requireSession: () => Promise<ControlAuthenticatedSession>;
-  loadAuthenticatedDashboard: () => Promise<ControlAuthenticatedDashboardBootstrap>;
+  loadAuthenticatedDashboard: (
+    options?: DashboardLoadOptions
+  ) => Promise<ControlAuthenticatedDashboardBootstrap>;
   api: ControlWebApi;
   config: ControlWebRuntimeConfig;
   startedAt: number;
@@ -63,10 +65,10 @@ export function createWebRouteContext(args: {
     return requiredSessionPromise;
   };
   const loadAuthenticatedDashboard =
-    async (): Promise<ControlAuthenticatedDashboardBootstrap> => {
+    async (options?: DashboardLoadOptions): Promise<ControlAuthenticatedDashboardBootstrap> => {
       if (!authenticatedDashboardPromise) {
         authenticatedDashboardPromise = args.api
-          .loadAuthenticatedDashboard(sessionToken)
+          .loadAuthenticatedDashboard(sessionToken, options)
           .then((result) => {
             resolvedSessionPromise = Promise.resolve(result.session);
             requiredSessionPromise = Promise.resolve(result.session);

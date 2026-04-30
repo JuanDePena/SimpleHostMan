@@ -74,7 +74,9 @@ export function createDashboardHandler(args: {
     }
 
     try {
-      const { dashboard } = await loadAuthenticatedDashboard();
+      const { dashboard } = await loadAuthenticatedDashboard({
+        jobHistoryMode: view === "jobs" || view === "job-history" ? "full" : "compact"
+      });
       const historyReplaceUrl = (() => {
         if (!mailCredentialRevealId) {
           return undefined;

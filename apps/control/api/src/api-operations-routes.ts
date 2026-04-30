@@ -148,7 +148,10 @@ export const handleOperationsRoutes: ApiRouteHandler = async (context) => {
       200,
       await controlPlaneStore.listJobHistory(
         bearerToken,
-        readIntegerSearchParam(url, "limit", 50)
+        readIntegerSearchParam(url, "limit", 50),
+        url.searchParams.get("compact") === "true"
+          ? { includePayload: false, includeDetails: false }
+          : undefined
       )
     );
     return true;

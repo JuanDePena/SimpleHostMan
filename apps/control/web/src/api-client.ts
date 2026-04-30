@@ -55,6 +55,10 @@ import { sanitizeReturnTo } from "./request.js";
 export type DashboardData = ControlDashboardBootstrap;
 export type DashboardBootstrap = ControlDashboardBootstrap;
 
+export interface DashboardLoadOptions {
+  jobHistoryMode?: "full" | "compact";
+}
+
 export class WebApiError extends Error {
   constructor(
     public readonly statusCode: number,
@@ -71,9 +75,13 @@ export interface ControlWebApi extends ControlAuthSurface {
   getCurrentUser(token: string | null): Promise<AuthenticatedUserSummary>;
   resolveSession(token: string | null): Promise<ControlResolvedSession>;
   loadAuthenticatedDashboard(
-    token: string | null
+    token: string | null,
+    options?: DashboardLoadOptions
   ): Promise<ControlAuthenticatedDashboardBootstrap>;
-  loadDashboardBootstrap(token: string): Promise<DashboardBootstrap>;
+  loadDashboardBootstrap(
+    token: string,
+    options?: DashboardLoadOptions
+  ): Promise<DashboardBootstrap>;
   loadDashboardData(token: string): Promise<DashboardData>;
   loadRustDeskPublicConnection(): Promise<RustDeskPublicConnectionInfo>;
   exportInventory(token: string): Promise<string>;
@@ -208,7 +216,7 @@ async function requestWithBaseUrl<T>(
 }
 
 export function createControlWebApiFromRequest(request: ControlWebApiRequest): ControlWebApi {
-  const createDashboardLoaders = () => ({
+  const createDashboardLoaders = (options: DashboardLoadOptions = {}) => ({
     getOverview: (token: string) =>
       request<OperationsOverview>("/v1/operations/overview", { token }),
     getInventory: (token: string) =>
@@ -220,7 +228,12 @@ export function createControlWebApiFromRequest(request: ControlWebApiRequest): C
     getNodeHealth: (token: string) =>
       request<NodeHealthSnapshot[]>("/v1/nodes/health", { token }),
     getJobHistory: (token: string) =>
-      request<JobHistoryEntry[]>("/v1/jobs/history?limit=30", { token }),
+      request<JobHistoryEntry[]>(
+        `/v1/jobs/history?limit=30${
+          options.jobHistoryMode === "compact" ? "&compact=true" : ""
+        }`,
+        { token }
+      ),
     getAuditEvents: (token: string) =>
       request<AuditEventSummary[]>("/v1/audit/events?limit=30", { token }),
     getBackups: (token: string) =>
@@ -253,14 +266,22 @@ export function createControlWebApiFromRequest(request: ControlWebApiRequest): C
       throw new Error("resolveSession not initialized");
     },
     loadAuthenticatedDashboard(
-      token: string | null
+      token: string | null,
+      options?: DashboardLoadOptions
     ): Promise<ControlAuthenticatedDashboardBootstrap> {
-      return loadAuthenticatedControlDashboardBootstrap(token, api, createDashboardLoaders());
+      return loadAuthenticatedControlDashboardBootstrap(
+        token,
+        api,
+        createDashboardLoaders(options)
+      );
     },
-    async loadDashboardBootstrap(token: string): Promise<DashboardBootstrap> {
+    async loadDashboardBootstrap(
+      token: string,
+      options?: DashboardLoadOptions
+    ): Promise<DashboardBootstrap> {
       return loadControlDashboardBootstrap(token, {
         getCurrentUser: (nextToken) => api.getCurrentUser(nextToken),
-        ...createDashboardLoaders()
+        ...createDashboardLoaders(options)
       });
     },
     async loadDashboardData(token: string): Promise<DashboardData> {
@@ -556,8 +577,11 @@ export function loadDashboardData(token: string): Promise<DashboardData> {
   return defaultControlWebApi.loadDashboardData(token);
 }
 
-export function loadDashboardBootstrap(token: string): Promise<DashboardBootstrap> {
-  return defaultControlWebApi.loadDashboardBootstrap(token);
+export function loadDashboardBootstrap(
+  token: string,
+  options?: DashboardLoadOptions
+): Promise<DashboardBootstrap> {
+  return defaultControlWebApi.loadDashboardBootstrap(token, options);
 }
 
 export function resolveSession(token: string | null): Promise<ControlResolvedSession> {
@@ -565,9 +589,10 @@ export function resolveSession(token: string | null): Promise<ControlResolvedSes
 }
 
 export function loadAuthenticatedDashboard(
-  token: string | null
+  token: string | null,
+  options?: DashboardLoadOptions
 ): Promise<ControlAuthenticatedDashboardBootstrap> {
-  return defaultControlWebApi.loadAuthenticatedDashboard(token);
+  return defaultControlWebApi.loadAuthenticatedDashboard(token, options);
 }
 
 export function loadRustDeskPublicConnection(): Promise<RustDeskPublicConnectionInfo> {
