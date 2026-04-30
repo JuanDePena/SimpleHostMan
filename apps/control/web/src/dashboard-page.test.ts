@@ -131,6 +131,12 @@ test("dashboard sidebar renders logical collapsible groups", () => {
   assert.ok(controlPlaneGroup.indexOf(">Overview<") < controlPlaneGroup.indexOf(">Audit<"));
   assert.ok(controlPlaneGroup.indexOf(">Audit<") < controlPlaneGroup.indexOf(">Jobs<"));
 
+  const continuityGroup = html.slice(
+    html.indexOf('data-nav-group-id="continuity"'),
+    html.indexOf('data-nav-group-id="observability"')
+  );
+  assert.doesNotMatch(continuityGroup, />RustDesk</);
+
   const packageGroup = html.slice(
     html.indexOf('data-nav-group-id="package-management"'),
     html.indexOf('data-nav-group-id="resources"')
@@ -138,6 +144,13 @@ test("dashboard sidebar renders logical collapsible groups", () => {
   assert.ok(packageGroup.indexOf(">Packages<") < packageGroup.indexOf(">Reboots<"));
   assert.ok(packageGroup.indexOf(">Reboots<") < packageGroup.indexOf(">Repositories<"));
   assert.ok(packageGroup.indexOf(">Repositories<") < packageGroup.indexOf(">Updates<"));
+
+  const resourcesGroup = html.slice(
+    html.indexOf('data-nav-group-id="resources"'),
+    html.indexOf('data-nav-group-id="security"')
+  );
+  assert.ok(resourcesGroup.indexOf(">Proxies<") < resourcesGroup.indexOf(">RustDesk<"));
+  assert.ok(resourcesGroup.indexOf(">RustDesk<") < resourcesGroup.indexOf(">Tenants<"));
 });
 
 test("runtime workspaces select one row and render only that row detail", () => {

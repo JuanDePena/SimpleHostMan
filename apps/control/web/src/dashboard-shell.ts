@@ -302,6 +302,13 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
           href: buildDashboardViewUrl("mail", undefined, focus),
           badge: String(data.mail.domains.length),
           active: view === "mail"
+        },
+        {
+          id: "rustdesk",
+          label: copy.navRustDesk,
+          href: buildDashboardViewUrl("rustdesk"),
+          badge: String(data.rustdesk.nodes.length),
+          active: view === "rustdesk"
         }
       ]
     },
@@ -324,13 +331,6 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
           href: buildDashboardViewUrl("backups"),
           badge: String(data.backups.latestRuns.length),
           active: view === "backups"
-        },
-        {
-          id: "rustdesk",
-          label: copy.navRustDesk,
-          href: buildDashboardViewUrl("rustdesk"),
-          badge: String(data.rustdesk.nodes.length),
-          active: view === "rustdesk"
         }
       ]
     },
