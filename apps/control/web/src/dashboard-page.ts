@@ -330,7 +330,7 @@ export function renderDashboardPage(args: RenderDashboardArgs): string {
        }))}</p>`
     : `<p class="muted">${escapeHtml(copy.noReconciliationRun)}</p>`;
 
-  const actionBar = `<div class="action-grid">
+  const reconciliationPanel = `<div class="action-grid">
       <article class="action-card action-card-strong">
         <span class="action-eyebrow">Planner</span>
         <h3>${escapeHtml(copy.actionsRunReconciliation)}</h3>
@@ -350,47 +350,15 @@ export function renderDashboardPage(args: RenderDashboardArgs): string {
       </article>
     </div>`;
 
-  const bootstrapInventoryPanel = `<details class="panel panel-muted detail-shell">
-    <summary>${escapeHtml(copy.bootstrapInventoryTitle)}</summary>
-    <p class="muted section-description">${escapeHtml(copy.bootstrapInventoryDescription)}</p>
-    <p class="muted">${escapeHtml(copy.dailyOperationsSourceNote)}</p>
-    ${renderActionFacts(
-      [
-        {
-          label: copy.latestImport,
-          value:
-            data.inventory.latestImport
-              ? escapeHtml(
-                  `${formatDate(data.inventory.latestImport.importedAt, locale)} · ${data.inventory.latestImport.sourcePath}`
-                )
-              : escapeHtml(copy.never)
-        },
-        {
-          label: copy.latestExport,
-          value: data.inventory.latestExport
-            ? escapeHtml(formatDate(data.inventory.latestExport.exportedAt, locale))
-            : escapeHtml(copy.never)
-        },
-        {
-          label: copy.records,
-          value: escapeHtml(
-            interpolateCopy(copy.latestImportCounts, {
-              nodes: data.desiredState.summary.nodeCount,
-              zones: data.desiredState.summary.zoneCount,
-              apps: data.desiredState.summary.appCount,
-              databases: data.desiredState.summary.databaseCount
-            })
-          )
-        }
-      ],
-      { className: "action-card-facts-wide-labels" }
-    )}
-    <div class="toolbar">
-      <a class="button-link secondary" href="/inventory/export">${escapeHtml(
-        copy.actionsDownloadYaml
-      )}</a>
+  const renderReconciliationSection = (): string => `<section id="section-reconciliation" class="panel section-panel">
+    <div class="section-head">
+      <div>
+        <h2>${escapeHtml(copy.navReconciliation)}</h2>
+        <p class="muted section-description">${escapeHtml(copy.reconciliationWorkspaceDescription)}</p>
+      </div>
     </div>
-  </details>`;
+    ${reconciliationPanel}
+  </section>`;
 
   const topbarUserPanelHtml = `<div class="profile-sheet">
     <div class="profile-sheet-head">
@@ -819,6 +787,8 @@ export function renderDashboardPage(args: RenderDashboardArgs): string {
           renderPill,
           renderSignalStrip
         });
+      case "reconciliation":
+        return renderReconciliationSection();
       case "audit":
         return renderAuditWorkspace({
           copy,
@@ -937,8 +907,6 @@ export function renderDashboardPage(args: RenderDashboardArgs): string {
     notice,
     filteredDrift,
     filteredBackupRuns,
-    actionBar,
-    bootstrapInventoryPanel,
     bodySection,
     topbarUserPanelHtml,
     userToggleIconHtml: renderUserIconSvg(),

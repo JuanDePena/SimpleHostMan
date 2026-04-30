@@ -21,6 +21,16 @@ needed for sidebar counts and cross-workspace navigation. Future per-view API
 loading can reduce data transfer further, but the present contract is that only
 the selected workspace renderer should execute for a dashboard request.
 
+## Overview and Reconciliation
+
+Overview is the lightweight landing workspace. It keeps platform status in a
+dedicated Status panel with headline counts first and operational signals below,
+then leaves execution controls to specialized workspaces.
+
+The Reconciliation workspace lives under Control plane and owns the explicit
+`Run reconciliation` action. This keeps the landing view focused on posture
+while still keeping catalog comparison and missing-work dispatch one click away.
+
 ## Updates
 
 The Updates view reports available RPM updates per managed node. The agent uses

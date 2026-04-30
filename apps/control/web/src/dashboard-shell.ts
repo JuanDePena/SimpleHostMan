@@ -23,7 +23,6 @@ type DashboardShellCopy = DashboardCopyLabels & {
   driftMissingSecrets: string;
   failedBackups: string;
   healthyNodes: string;
-  inventoryImport: string;
   languageLabel: string;
   latestReconciliation: string;
   managedNodes: string;
@@ -83,12 +82,14 @@ type DashboardShellCopy = DashboardCopyLabels & {
   navGroupSystem: string;
   navOverview: string;
   navProxies: string;
+  navReconciliation: string;
   navResources: string;
   navRustDesk: string;
   navTenants: string;
   navZones: string;
   operationalSignalsTitle: string;
   overviewDescription: string;
+  overviewStatusTitle: string;
   overviewTitle: string;
   pendingJobs: string;
   sidebarSearchPlaceholder: string;
@@ -110,8 +111,6 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
   notice?: PanelNotice;
   filteredDrift: DashboardData["drift"];
   filteredBackupRuns: DashboardData["backups"]["latestRuns"];
-  actionBar: string;
-  bootstrapInventoryPanel: string;
   bodySection: string;
   topbarUserPanelHtml: string;
   userToggleIconHtml: string;
@@ -143,8 +142,6 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
     notice,
     filteredDrift,
     filteredBackupRuns,
-    actionBar,
-    bootstrapInventoryPanel,
     bodySection,
     topbarUserPanelHtml,
     userToggleIconHtml,
@@ -221,10 +218,17 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
             copy.managedNodes,
             copy.pendingJobs,
             copy.usersAndScope,
-            copy.inventoryImport,
-            copy.latestReconciliation
+            copy.overviewStatusTitle,
+            copy.operationalSignalsTitle
           ],
           active: view === "overview"
+        },
+        {
+          id: "reconciliation",
+          label: copy.navReconciliation,
+          href: buildDashboardViewUrl("reconciliation"),
+          keywords: [copy.latestReconciliation],
+          active: view === "reconciliation"
         },
         {
           id: "jobs",
@@ -557,20 +561,21 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
     </div>
     <div class="overview-layout">
       <div class="overview-main">
-        ${renderStats(data.overview, copy, locale)}
-        <div class="stack">
-          <div>
-            <h3>${escapeHtml(copy.operationalSignalsTitle)}</h3>
+        <article class="overview-metric-panel overview-status-card">
+          <h3>${escapeHtml(copy.overviewStatusTitle)}</h3>
+          <div class="overview-status-content">
+            ${renderStats(data.overview, copy, locale)}
+            <div class="overview-signal-card">
+              <h4>${escapeHtml(copy.operationalSignalsTitle)}</h4>
+              ${renderSignalStrip([
+                { label: copy.healthyNodes, value: String(healthyNodeCount), tone: healthyNodeCount > 0 ? "success" : "muted" },
+                { label: copy.staleNodes, value: String(staleNodeCount), tone: staleNodeCount > 0 ? "danger" : "success" },
+                { label: copy.driftMissingSecrets, value: String(driftMissingSecretCount), tone: driftMissingSecretCount > 0 ? "danger" : "success" },
+                { label: copy.failedBackups, value: String(backupFailedCount), tone: backupFailedCount > 0 ? "danger" : "success" }
+              ])}
+            </div>
           </div>
-          ${renderSignalStrip([
-            { label: copy.healthyNodes, value: String(healthyNodeCount), tone: healthyNodeCount > 0 ? "success" : "muted" },
-            { label: copy.staleNodes, value: String(staleNodeCount), tone: staleNodeCount > 0 ? "danger" : "success" },
-            { label: copy.driftMissingSecrets, value: String(driftMissingSecretCount), tone: driftMissingSecretCount > 0 ? "danger" : "success" },
-            { label: copy.failedBackups, value: String(backupFailedCount), tone: backupFailedCount > 0 ? "danger" : "success" }
-          ])}
-        </div>
-        ${actionBar}
-        ${bootstrapInventoryPanel}
+        </article>
       </div>
       ${renderOverviewMetrics(overviewMetrics, copy, locale)}
     </div>

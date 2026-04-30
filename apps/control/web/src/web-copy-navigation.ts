@@ -5,6 +5,7 @@ export const navigationCopyByLocale = {
   en: {
     navControlPlane: "Control plane",
     navOverview: "Overview",
+    navReconciliation: "Reconciliation",
     navContext: "Context",
     navOperations: "Operations",
     navGroupContinuity: "Continuity",
@@ -102,12 +103,15 @@ export const navigationCopyByLocale = {
       "Monitor firewalld posture and apply the SimpleHost baseline without leaving the control plane.",
     fail2banWorkspaceDescription:
       "Monitor jails, failed attempts and bans, then apply the managed SSH jail baseline.",
+    reconciliationWorkspaceDescription:
+      "Compare desired resources with the latest applied state and dispatch missing platform work.",
     rustdeskWorkspaceDescription:
       "Operator-facing RustDesk connection details, node runtime status and manual failover guidance."
   },
   es: {
     navControlPlane: "Plano de control",
     navOverview: "Resumen",
+    navReconciliation: "Reconciliación",
     navContext: "Contexto",
     navOperations: "Operaciones",
     navGroupContinuity: "Continuidad",
@@ -210,6 +214,8 @@ export const navigationCopyByLocale = {
       "Monitorea la postura de firewalld y aplica el baseline SimpleHost sin salir del plano de control.",
     fail2banWorkspaceDescription:
       "Monitorea jails, intentos fallidos y bans, y aplica el baseline SSH gestionado.",
+    reconciliationWorkspaceDescription:
+      "Compara recursos deseados con el último estado aplicado y despacha trabajo faltante de plataforma.",
     rustdeskWorkspaceDescription:
       "Detalles operator-facing de conexión RustDesk, estado runtime por nodo y guía de failover manual."
   }

@@ -6,7 +6,8 @@ export const operationsCopyByLocale = {
     dashboardHeading: "Control plane",
     dashboardSubheading:
       "Operate nodes, jobs, backups, and platform resources from a single control surface.",
-    overviewDescription: "Live platform counts plus the main control-plane actions.",
+    overviewDescription: "Live platform counts plus high-signal control-plane status.",
+    overviewStatusTitle: "Status",
     actionsRunReconciliation: "Run reconciliation",
     actionsImportInventory: "Bootstrap YAML import",
     actionsDownloadYaml: "Download resource YAML",
@@ -592,7 +593,8 @@ export const operationsCopyByLocale = {
     dashboardSubheading:
       "Opera nodos, jobs, backups y recursos de plataforma desde una sola consola.",
     overviewDescription:
-      "Conteos vivos de la plataforma y las acciones principales del control plane.",
+      "Conteos vivos y estado clave del control plane.",
+    overviewStatusTitle: "Estado",
     actionsRunReconciliation: "Ejecutar reconciliación",
     actionsImportInventory: "Importar YAML bootstrap",
     actionsDownloadYaml: "Descargar YAML de recursos",

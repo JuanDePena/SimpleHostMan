@@ -102,6 +102,22 @@ test("renderDashboardPage renders only the active workspace body", () => {
   assert.doesNotMatch(html, /id="section-logs"/);
 });
 
+test("overview keeps status focused and reconciliation lives in its own workspace", () => {
+  const data = createDashboardData();
+  const overviewHtml = renderView(data, "overview");
+  assert.match(overviewHtml, /id="section-overview"/);
+  assert.match(overviewHtml, /overview-status-card/);
+  assert.match(overviewHtml, /overview-signal-card/);
+  assert.doesNotMatch(overviewHtml, />Run reconciliation</);
+  assert.doesNotMatch(overviewHtml, /Catalog import\/export/);
+
+  const reconciliationHtml = renderView(data, "reconciliation");
+  assert.match(reconciliationHtml, /id="section-reconciliation"/);
+  assert.match(reconciliationHtml, />Run reconciliation</);
+  assert.match(reconciliationHtml, /Latest reconciliation/);
+  assert.doesNotMatch(reconciliationHtml, /id="section-overview"/);
+});
+
 test("dashboard sidebar renders logical collapsible groups", () => {
   const html = renderView(createDashboardData(), "overview");
   const groupIds = [
@@ -131,6 +147,7 @@ test("dashboard sidebar renders logical collapsible groups", () => {
   );
   assert.ok(controlPlaneGroup.indexOf(">Overview<") < controlPlaneGroup.indexOf(">Audit<"));
   assert.ok(controlPlaneGroup.indexOf(">Audit<") < controlPlaneGroup.indexOf(">Jobs<"));
+  assert.ok(controlPlaneGroup.indexOf(">Jobs<") < controlPlaneGroup.indexOf(">Reconciliation<"));
 
   const continuityGroup = html.slice(
     html.indexOf('data-nav-group-id="continuity"'),
