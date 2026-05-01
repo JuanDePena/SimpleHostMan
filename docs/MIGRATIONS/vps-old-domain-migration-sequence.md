@@ -20,7 +20,7 @@ pilot migrations that established the current SimpleHostMan pattern.
 | `zcrmt.com` | migrated WordPress runtime on `app-zcrmt` | Zoho preserved | WordPress kept on MariaDB `app_zcrmt_wp` | closed |
 | `merlelaw.com` | migrated blank static runtime on `app-merlelaw` | SimpleHostMan mail live | none | closed |
 | `engilum.com` | external web targets preserved | Zoho preserved | none | DNS-only staged |
-| `pyrosa.com.do` | `pyrosa-wp`, `pyrosa-demoportal`, `pyrosa-repos`, `pyrosa-demoerp`, `pyrosa-api`, `pyrosa-demosync`, `pyrosa-erp`, and `pyrosa-portal` runtimes active; `sync`/`helpers` still on `vps-old` | Microsoft 365 preserved, no legacy mail migration planned | WordPress, demoportal, and demosync migrated to MariaDB; demoerp migrated to PostgreSQL; `repos`, `api`, `erp`, and `portal` have no local database | phase 7 complete |
+| `pyrosa.com.do` | `pyrosa-wp`, `pyrosa-demoportal`, `pyrosa-repos`, `pyrosa-demoerp`, `pyrosa-api`, `pyrosa-demosync`, `pyrosa-erp`, and `pyrosa-portal` runtimes active; second-level `www` aliases active; `sync`/`helpers` still on `vps-old` | Microsoft 365 preserved, no legacy mail migration planned | WordPress, demoportal, and demosync migrated to MariaDB; demoerp migrated to PostgreSQL; `repos`, `api`, `erp`, and `portal` have no local database | phase 8 complete |
 | `solucionesmercantilnr.com` | not migrated | retired | none | out of scope: expired, not renewing |
 | `pyrosa.net` | not migrated | retired | none | out of scope: expired, not renewing |
 
@@ -814,6 +814,53 @@ Validation:
   the new `erp` and `portal` A records
 - public checks from `1.1.1.1` and `8.8.8.8` returned the new `erp` and `portal` A records
 - public `www.erp.pyrosa.com.do` and `www.portal.pyrosa.com.do` remained on `51.161.11.249`
+
+### 2026-05-01: pyrosa.com.do second-level www aliases phase 8
+
+The four second-level `www` aliases that were previously deferred for TLS coverage were moved to
+SimpleHostMan:
+
+- `www.api.pyrosa.com.do`
+- `www.demosync.pyrosa.com.do`
+- `www.erp.pyrosa.com.do`
+- `www.portal.pyrosa.com.do`
+
+TLS and vhost outcome:
+
+- issued Let's Encrypt ECDSA cert `pyrosa-www-subdomains`
+- certificate SANs cover all four `www` aliases
+- certificate expires `2026-07-30 02:31:52 UTC`
+- Apache vhosts installed on `primary` and `secondary`
+- `www.api` proxies to backend `10106`
+- `www.demosync` proxies to backend `10107`
+- `www.erp` proxies to backend `10108`
+- `www.portal` proxies to backend `10109`
+- renewal deploy hook `simplehost-pyrosa-www-sync.sh` replicates renewed certificate material and
+  the vhost file to `secondary`
+
+DNS outcome:
+
+- SimpleHostMan PowerDNS serves all four aliases as `A -> 51.222.204.86` with TTL `300`
+- the legacy DNS zone on `vps-old` also serves all four aliases as `A -> 51.222.204.86` with TTL
+  `300` for resolvers that still have old nameserver delegation cached
+
+Validation:
+
+- all four aliases validate cleanly against both nodes with the new certificate
+- `https://www.api.pyrosa.com.do/` returns `403 Forbidden`
+- `https://www.api.pyrosa.com.do/node.js/export_to_zoho/.env` returns `403 Forbidden`
+- `https://www.demosync.pyrosa.com.do/` returns the blank legacy placeholder page
+- `https://www.demosync.pyrosa.com.do/dis/public/login` returns `200 OK`
+- `https://www.erp.pyrosa.com.do/` returns `403 Forbidden`
+- `https://www.portal.pyrosa.com.do/` returns `403 Forbidden`
+- authoritative checks from `51.222.204.86`, `51.222.206.196`, and legacy `51.161.11.249` returned
+  the new A records for all four aliases
+- public `1.1.1.1` returned the new A records for all four aliases
+- public `8.8.8.8` was still draining a short cache for `www.demosync` during final validation;
+  target `--resolve` checks were green on both nodes
+- the local resolver still had a stale `www.portal` answer during final validation; authoritative DNS
+  already returned the target and the stale old-host response still served a valid HTTPS
+  `403 Forbidden`
 
 ### 2026-04-30: ppdpr.us web runtime cutover
 

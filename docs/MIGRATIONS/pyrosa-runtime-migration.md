@@ -29,10 +29,10 @@ Live desired state currently includes:
 | `pyrosa-demoportal` | `demoportal.pyrosa.com.do` | `10103` | MariaDB `app_pyrosa_demoportal` | phase 2 runtime active on primary and secondary |
 | `pyrosa-repos` | `repos.pyrosa.com.do` | `10104` | none | phase 3 RPM repository runtime active on primary and secondary |
 | `pyrosa-demoerp` | `demoerp.pyrosa.com.do` | `10105` | PostgreSQL `app_pyrosa_demoerp` | phase 4 Dolibarr runtime active on primary and secondary |
-| `pyrosa-api` | `api.pyrosa.com.do` | `10106` | none | phase 5 PHP API runtime active on primary and secondary |
-| `pyrosa-demosync` | `demosync.pyrosa.com.do` | `10107` | MariaDB `app_pyrosa_demosync`, `app_pyrosa_demosync_qbo` | phase 6 DIS/QBO demo runtime active on primary and secondary |
-| `pyrosa-erp` | `erp.pyrosa.com.do` | `10108` | none | phase 7 empty placeholder runtime active on primary and secondary |
-| `pyrosa-portal` | `portal.pyrosa.com.do` | `10109` | none | phase 7 empty placeholder runtime active on primary and secondary |
+| `pyrosa-api` | `api.pyrosa.com.do`, `www.api.pyrosa.com.do` | `10106` | none | phase 5 PHP API runtime active on primary and secondary; `www` alias cut over in phase 8 |
+| `pyrosa-demosync` | `demosync.pyrosa.com.do`, `www.demosync.pyrosa.com.do` | `10107` | MariaDB `app_pyrosa_demosync`, `app_pyrosa_demosync_qbo` | phase 6 DIS/QBO demo runtime active on primary and secondary; `www` alias cut over in phase 8 |
+| `pyrosa-erp` | `erp.pyrosa.com.do`, `www.erp.pyrosa.com.do` | `10108` | none | phase 7 empty placeholder runtime active on primary and secondary; `www` alias cut over in phase 8 |
+| `pyrosa-portal` | `portal.pyrosa.com.do`, `www.portal.pyrosa.com.do` | `10109` | none | phase 7 empty placeholder runtime active on primary and secondary; `www` alias cut over in phase 8 |
 | `pyrosa-sync` | `sync.pyrosa.com.do` | `10102` | MariaDB `app_pyrosa_sync`, pending PostgreSQL | desired only; do not migrate now |
 
 `pyrosa-wp`, `pyrosa-demoportal`, and `pyrosa-sync` are also present in
@@ -951,3 +951,80 @@ DNS validation at `2026-05-01 03:21 UTC`:
 - `8.8.8.8` returned both placeholder A records pointing to `51.222.204.86`
 - `1.1.1.1` returned both placeholder A records pointing to `51.222.204.86`
 - public `www.erp.pyrosa.com.do` and `www.portal.pyrosa.com.do` remained on `51.161.11.249`
+
+## Phase 8 Execution Record
+
+Completed on `2026-05-01` and scoped only to the four `www` aliases that had been deferred because
+`*.pyrosa.com.do` does not cover two-label names:
+
+- `www.api.pyrosa.com.do`
+- `www.demosync.pyrosa.com.do`
+- `www.erp.pyrosa.com.do`
+- `www.portal.pyrosa.com.do`
+
+The following hostnames remain intentionally on `vps-old`:
+
+- `sync.pyrosa.com.do`
+- `helpers.pyrosa.com.do`
+- `code.pyrosa.com.do`
+- `pgadmin.pyrosa.com.do`
+- `ldap.pyrosa.com.do`
+
+### TLS And Runtime
+
+Issued a dedicated Let's Encrypt ECDSA certificate:
+
+- cert name `pyrosa-www-subdomains`
+- names `www.api.pyrosa.com.do`, `www.demosync.pyrosa.com.do`, `www.erp.pyrosa.com.do`,
+  `www.portal.pyrosa.com.do`
+- expires `2026-07-30 02:31:52 UTC`
+
+Apache vhosts were installed on `primary` and `secondary` to serve the aliases over HTTPS and proxy
+them to the already-migrated app backends:
+
+- `www.api.pyrosa.com.do` -> `127.0.0.1:10106`
+- `www.demosync.pyrosa.com.do` -> `127.0.0.1:10107`
+- `www.erp.pyrosa.com.do` -> `127.0.0.1:10108`
+- `www.portal.pyrosa.com.do` -> `127.0.0.1:10109`
+
+The certificate archive and live lineage were replicated to `secondary`. A deploy hook at
+`/etc/letsencrypt/renewal-hooks/deploy/simplehost-pyrosa-www-sync.sh` now copies renewed certificate
+material and the vhost file to `secondary`, then reloads Apache on both nodes.
+
+### DNS
+
+SimpleHostMan PowerDNS now serves:
+
+- `www.api.pyrosa.com.do A -> 51.222.204.86` with TTL `300`
+- `www.demosync.pyrosa.com.do A -> 51.222.204.86` with TTL `300`
+- `www.erp.pyrosa.com.do A -> 51.222.204.86` with TTL `300`
+- `www.portal.pyrosa.com.do A -> 51.222.204.86` with TTL `300`
+
+The legacy DNS zone on `vps-old` was also updated so cached old delegations answer the same target
+A records with TTL `300`.
+
+### Validation
+
+TLS and HTTP validation:
+
+- all four aliases validate with `ssl_verify_result 0` on `primary`
+- all four aliases validate with `ssl_verify_result 0` on `secondary`
+- `https://www.api.pyrosa.com.do/` returns `403 Forbidden`
+- `https://www.api.pyrosa.com.do/node.js/export_to_zoho/.env` returns `403 Forbidden`
+- `https://www.demosync.pyrosa.com.do/` returns the blank legacy placeholder page
+- `https://www.demosync.pyrosa.com.do/dis/public/login` returns `200 OK`
+- `https://www.erp.pyrosa.com.do/` returns `403 Forbidden`
+- `https://www.portal.pyrosa.com.do/` returns `403 Forbidden`
+
+DNS validation at `2026-05-01 03:31 UTC`:
+
+- authoritative `51.222.204.86` returned all four `www` aliases pointing to `51.222.204.86`
+- authoritative `51.222.206.196` returned all four `www` aliases pointing to `51.222.204.86`
+- legacy authoritative `51.161.11.249` returned all four `www` aliases pointing to `51.222.204.86`
+- `1.1.1.1` returned all four `www` aliases pointing to `51.222.204.86`
+- `8.8.8.8` was already updated for `www.api`, `www.erp`, and `www.portal`; `www.demosync` was
+  still draining a short recursive cache during final validation, while target `--resolve` TLS checks
+  were green on both nodes.
+- The local resolver still had a stale `www.portal` answer during final validation; the stale old-host
+  response also served a valid HTTPS `403 Forbidden`, and authoritative DNS already returned the
+  target.
