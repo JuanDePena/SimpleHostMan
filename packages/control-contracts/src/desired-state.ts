@@ -34,6 +34,7 @@ export interface DesiredStateAppInput {
 }
 
 export interface DesiredStateDatabaseInput {
+  databaseId?: string;
   appSlug: string;
   engine: "postgresql" | "mariadb";
   databaseName: string;
@@ -41,7 +42,7 @@ export interface DesiredStateDatabaseInput {
   primaryNodeId: string;
   standbyNodeId?: string;
   pendingMigrationTo?: "postgresql" | "mariadb";
-  migrationCompletedFrom?: "postgresql" | "mariadb";
+  migrationCompletedFrom?: string;
   migrationCompletedAt?: string;
   desiredPassword?: string;
 }

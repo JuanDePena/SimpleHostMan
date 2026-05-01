@@ -198,15 +198,30 @@ test("purgeOperationalHistoryRows preserves latest resource jobs while deleting 
         };
       }
 
+      if (statement.includes("latest_reconciliation_run")) {
+        assert.match(statement, /FROM shp_reconciliation_runs/);
+        assert.match(statement, /runs\.completed_at < \$1::timestamptz/);
+        assert.match(statement, /NOT EXISTS/);
+
+        return {
+          rows: [
+            {
+              deleted_reconciliation_run_count: "7"
+            }
+          ]
+        };
+      }
+
       throw new Error(`Unexpected purge query: ${statement}`);
     }
   } as unknown as PoolClient;
 
   const summary = await purgeOperationalHistoryRows(client, "2026-01-30T00:00:00.000Z");
 
-  assert.equal(statements.length, 2);
+  assert.equal(statements.length, 3);
   assert.deepEqual(summary, {
     deletedAuditEventCount: 2,
+    deletedReconciliationRunCount: 7,
     deletedJobCount: 3,
     deletedJobResultCount: 3,
     keptLatestResourceJobCount: 5
@@ -459,4 +474,78 @@ test("buildDesiredStateSpecFromInventory supports apps without databases", () =>
   assert.equal(spec.apps[0]?.standbyNodeId, "secondary");
   assert.equal(spec.databases.length, 0);
   assert.equal(spec.zones[0]?.zoneName, "pyrosa.com.do");
+});
+
+test("buildDesiredStateSpecFromInventory supports multiple managed databases per app", () => {
+  const spec = buildDesiredStateSpecFromInventory({
+    nodes: {
+      primary: {
+        hostname: "vps-3dbbfb0b.vps.ovh.ca",
+        public_ipv4: "51.222.204.86",
+        wireguard_address: "10.89.0.1/24"
+      },
+      secondary: {
+        hostname: "vps-16535090.vps.ovh.ca",
+        public_ipv4: "51.222.206.196",
+        wireguard_address: "10.89.0.2/24"
+      }
+    },
+    platform: {
+      postgresql_apps: {
+        primary_node: "primary",
+        standby_node: "secondary",
+        primary_port: 5432
+      },
+      postgresql_control: {
+        primary_node: "primary",
+        standby_node: "secondary",
+        primary_port: 5433,
+        database: "simplehost_control",
+        user: "simplehost_control"
+      },
+      mariadb_apps: {
+        primary_node: "primary",
+        replica_node: "secondary",
+        primary_port: 3306
+      }
+    },
+    apps: [
+      {
+        slug: "pyrosa-sync",
+        client: "pyrosa",
+        zone: "pyrosa.com.do",
+        canonical_domain: "sync.pyrosa.com.do",
+        aliases: [],
+        backend_port: 10102,
+        runtime_image: "registry.example.com/pyrosa-sync:stable",
+        databases: [
+          {
+            id: "database-pyrosa-sync",
+            role: "dis",
+            engine: "mariadb",
+            name: "app_pyrosa_sync",
+            user: "app_pyrosa_sync"
+          },
+          {
+            id: "database-pyrosa-sync-qbo",
+            role: "qbo",
+            engine: "mariadb",
+            name: "app_pyrosa_sync_qbo",
+            user: "app_pyrosa_sync_qbo"
+          }
+        ],
+        storage_root: "/srv/containers/apps/pyrosa-sync",
+        mode: "active-passive"
+      }
+    ]
+  });
+
+  assert.deepEqual(
+    spec.databases.map((database) => database.databaseId),
+    ["database-pyrosa-sync", "database-pyrosa-sync-qbo"]
+  );
+  assert.deepEqual(
+    spec.databases.map((database) => database.databaseName),
+    ["app_pyrosa_sync", "app_pyrosa_sync_qbo"]
+  );
 });

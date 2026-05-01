@@ -25,7 +25,12 @@ import {
   minimumMailboxQuotaBytes
 } from "@simplehost/control-contracts";
 
-import { readPlatformInventory, type PlatformInventoryApp, type PlatformInventoryDocument } from "./inventory.js";
+import {
+  readPlatformInventory,
+  type PlatformInventoryApp,
+  type PlatformInventoryAppDatabase,
+  type PlatformInventoryDocument
+} from "./inventory.js";
 import { requireAuthorizedUser } from "./control-plane-store-auth.js";
 import { insertAuditEvent, withTransaction } from "./control-plane-store-db.js";
 import {
@@ -784,6 +789,7 @@ export async function buildDesiredStateSpecFromDatabase(
       mode: row.mode
     })),
     databases: databaseResult.rows.map((row) => ({
+      databaseId: row.database_id,
       appSlug: row.app_slug,
       engine: row.engine,
       databaseName: row.database_name,
@@ -870,7 +876,7 @@ export async function applyDesiredStateSpec(
   const desiredZoneIds = resolvedSpec.zones.map((zone) => `zone-${zone.zoneName}`);
   const desiredAppIds = resolvedSpec.apps.map((app) => `app-${app.slug}`);
   const desiredDatabaseIds = resolvedSpec.databases.map(
-    (database) => `database-${database.appSlug}`
+    (database) => resolveDesiredDatabaseId(database)
   );
   const desiredBackupPolicyIds = resolvedSpec.backupPolicies.map(
     (policy) => `backup-policy-${policy.policySlug}`
@@ -1183,7 +1189,7 @@ export async function applyDesiredStateSpec(
   }
 
   for (const database of resolvedSpec.databases) {
-    const databaseId = `database-${database.appSlug}`;
+    const databaseId = resolveDesiredDatabaseId(database);
 
     await client.query(
       `INSERT INTO shp_databases (
@@ -1786,15 +1792,15 @@ function resolveAppStandbyNodeId(
 
 function resolveDatabaseStandbyNodeId(
   inventory: PlatformInventoryDocument,
-  app: PlatformInventoryApp
+  database: PlatformInventoryAppDatabase
 ): string | null {
-  if (!app.database) {
-    return null;
-  }
-
-  return app.database.engine === "postgresql"
+  return database.engine === "postgresql"
     ? inventory.platform.postgresql_apps.standby_node
     : inventory.platform.mariadb_apps.replica_node;
+}
+
+function resolveDesiredDatabaseId(database: DesiredStateDatabaseInput): string {
+  return database.databaseId ?? `database-${database.appSlug}`;
 }
 
 export function normalizeDnsRecords(records: DnsRecordPayload[]): DnsRecordPayload[] {
@@ -1883,22 +1889,28 @@ export function buildDesiredStateSpecFromInventory(
     })
     .sort((left, right) => left.zoneName.localeCompare(right.zoneName));
   const databases: DesiredStateDatabaseInput[] = inventory.apps
-    .filter((app) => app.database)
-    .map((app) => ({
-      appSlug: app.slug,
-      engine: app.database!.engine,
-      databaseName: app.database!.name,
-      databaseUser: app.database!.user,
-      primaryNodeId:
-        app.database!.engine === "postgresql"
-          ? inventory.platform.postgresql_apps.primary_node
-          : inventory.platform.mariadb_apps.primary_node,
-      standbyNodeId: resolveDatabaseStandbyNodeId(inventory, app) ?? undefined,
-      pendingMigrationTo: app.database!.pending_migration_to,
-      migrationCompletedFrom: app.database!.migration_completed_from,
-      migrationCompletedAt: app.database!.migration_completed_at
-    }))
-    .sort((left, right) => left.appSlug.localeCompare(right.appSlug));
+    .flatMap((app) =>
+      (app.databases ?? (app.database ? [app.database] : [])).map((database) => ({
+        databaseId: database.id,
+        appSlug: app.slug,
+        engine: database.engine,
+        databaseName: database.name,
+        databaseUser: database.user,
+        primaryNodeId:
+          database.engine === "postgresql"
+            ? inventory.platform.postgresql_apps.primary_node
+            : inventory.platform.mariadb_apps.primary_node,
+        standbyNodeId: resolveDatabaseStandbyNodeId(inventory, database) ?? undefined,
+        pendingMigrationTo: database.pending_migration_to,
+        migrationCompletedFrom: database.migration_completed_from,
+        migrationCompletedAt: database.migration_completed_at
+      }))
+    )
+    .sort((left, right) =>
+      `${left.appSlug}:${left.databaseName}`.localeCompare(
+        `${right.appSlug}:${right.databaseName}`
+      )
+    );
 
   return {
     tenants,
@@ -1970,6 +1982,10 @@ export function validateDesiredStateSpec(spec: DesiredStateSpec): void {
   ensureUnique(
     spec.databases.map((database) => `${database.engine}:${database.databaseName}`),
     "database name"
+  );
+  ensureUnique(
+    spec.databases.map((database) => resolveDesiredDatabaseId(database)),
+    "database id"
   );
   ensureUnique(
     spec.databases.map((database) => `${database.engine}:${database.databaseUser}`),
@@ -2329,12 +2345,6 @@ export function validateDesiredStateSpec(spec: DesiredStateSpec): void {
     if (database.migrationCompletedFrom && database.migrationCompletedFrom === database.engine) {
       throw new Error(
         `Database ${database.databaseName} migration completed source matches the current engine.`
-      );
-    }
-
-    if (database.pendingMigrationTo && database.migrationCompletedFrom) {
-      throw new Error(
-        `Database ${database.databaseName} cannot be pending migration and completed migration at the same time.`
       );
     }
 

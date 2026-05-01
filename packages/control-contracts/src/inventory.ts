@@ -53,6 +53,7 @@ export interface InventoryAppSummary {
 }
 
 export interface InventoryDatabaseSummary {
+  databaseId?: string;
   appSlug: string;
   engine: "postgresql" | "mariadb";
   databaseName: string;
@@ -60,7 +61,7 @@ export interface InventoryDatabaseSummary {
   primaryNodeId: string;
   standbyNodeId?: string;
   pendingMigrationTo?: "postgresql" | "mariadb";
-  migrationCompletedFrom?: "postgresql" | "mariadb";
+  migrationCompletedFrom?: string;
   migrationCompletedAt?: string;
 }
 

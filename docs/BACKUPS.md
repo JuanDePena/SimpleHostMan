@@ -95,6 +95,14 @@ Mail:
 - storage: `/srv/backups/mail-gomezrosado`
 - selectors: `mail-stack`, `mail-domain:gomezrosado.com.do`, `tenant:gomezrosado`
 
+Phase 4 retention review on `2026-05-01`:
+
+- `/srv/backups/mail-gomezrosado` used about `7.7G`.
+- The oldest observed retained run was from `2026-04-25`, so the `14` day
+  retention window had not started expiring this backup set yet.
+- Keep the policy at `14` days unless a restore requirement explicitly needs a
+  longer mail-history window.
+
 `gomezrosado` is currently treated as a static website workload. If a live
 application database is added again, declare a separate database policy rather
 than folding it into the file policy.

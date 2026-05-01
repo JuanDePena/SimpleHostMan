@@ -57,9 +57,9 @@ The Reconciliation workspace lives under Control plane and owns the explicit
 while still keeping catalog comparison and missing-work dispatch one click away.
 It also exposes operational history retention. The worker and manual purge
 action use the `SIMPLEHOST_HISTORY_RETENTION_DAYS` parameter, defaulting to 90
-days, to remove old audit events and completed job history rows while preserving
-the latest job per resource so drift and dispatch decisions keep their current
-state.
+days, to remove old audit events, completed reconciliation runs and completed
+job history rows while preserving the latest job per resource so drift and
+dispatch decisions keep their current state.
 
 ## Updates
 

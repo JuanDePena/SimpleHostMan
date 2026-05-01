@@ -378,6 +378,7 @@ export function createStubApiSurface(args: {
             cutoffAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
             source: "ui",
             deletedAuditEventCount: 0,
+            deletedReconciliationRunCount: 0,
             deletedJobCount: 0,
             deletedJobResultCount: 0,
             keptLatestResourceJobCount: 0

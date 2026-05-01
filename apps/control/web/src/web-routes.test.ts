@@ -287,6 +287,7 @@ test("parameter and history actions call the authenticated API and return to the
           cutoffAt: "2026-01-30T00:00:00.000Z",
           source: "ui",
           deletedAuditEventCount: 2,
+          deletedReconciliationRunCount: 5,
           deletedJobCount: 3,
           deletedJobResultCount: 3,
           keptLatestResourceJobCount: 4

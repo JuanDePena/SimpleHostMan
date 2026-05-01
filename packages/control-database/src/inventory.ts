@@ -9,11 +9,13 @@ export interface PlatformInventoryNode {
 }
 
 export interface PlatformInventoryAppDatabase {
+  id?: string;
+  role?: string;
   engine: "postgresql" | "mariadb";
   name: string;
   user: string;
   pending_migration_to?: "postgresql" | "mariadb";
-  migration_completed_from?: "postgresql" | "mariadb";
+  migration_completed_from?: string;
   migration_completed_at?: string;
 }
 
@@ -26,6 +28,7 @@ export interface PlatformInventoryApp {
   backend_port: number;
   runtime_image: string;
   database?: PlatformInventoryAppDatabase;
+  databases?: PlatformInventoryAppDatabase[];
   storage_root: string;
   mode: string;
 }
@@ -87,6 +90,41 @@ function expectStringArray(value: unknown, path: string): string[] {
   return value;
 }
 
+function readAppDatabase(
+  value: unknown,
+  path: string
+): PlatformInventoryAppDatabase {
+  const databaseRecord = expectRecord(value, path);
+
+  return {
+    id:
+      typeof databaseRecord.id === "string" && databaseRecord.id.trim().length > 0
+        ? databaseRecord.id
+        : undefined,
+    role:
+      typeof databaseRecord.role === "string" && databaseRecord.role.trim().length > 0
+        ? databaseRecord.role
+        : undefined,
+    engine: expectString(databaseRecord.engine, `${path}.engine`) as
+      | "postgresql"
+      | "mariadb",
+    name: expectString(databaseRecord.name, `${path}.name`),
+    user: expectString(databaseRecord.user, `${path}.user`),
+    pending_migration_to:
+      typeof databaseRecord.pending_migration_to === "string"
+        ? (databaseRecord.pending_migration_to as "postgresql" | "mariadb")
+        : undefined,
+    migration_completed_from:
+      typeof databaseRecord.migration_completed_from === "string"
+        ? databaseRecord.migration_completed_from
+        : undefined,
+    migration_completed_at:
+      typeof databaseRecord.migration_completed_at === "string"
+        ? databaseRecord.migration_completed_at
+        : undefined
+  };
+}
+
 export async function readPlatformInventory(
   sourcePath: string
 ): Promise<PlatformInventoryDocument> {
@@ -128,10 +166,28 @@ export async function readPlatformInventory(
 
   const apps = appsValue.map((candidate, index) => {
     const appRecord = expectRecord(candidate, `apps[${index}]`);
-    const databaseRecord =
+    const singularDatabase =
       appRecord.database === undefined || appRecord.database === null
         ? undefined
-        : expectRecord(appRecord.database, `apps[${index}].database`);
+        : readAppDatabase(appRecord.database, `apps[${index}].database`);
+    const pluralDatabases =
+      appRecord.databases === undefined || appRecord.databases === null
+        ? undefined
+        : Array.isArray(appRecord.databases)
+          ? appRecord.databases.map((database, databaseIndex) =>
+              readAppDatabase(database, `apps[${index}].databases[${databaseIndex}]`)
+            )
+          : (() => {
+              throw new Error(`Expected array at apps[${index}].databases.`);
+            })();
+
+    if (singularDatabase && pluralDatabases) {
+      throw new Error(
+        `App ${expectString(appRecord.slug, `apps[${index}].slug`)} cannot define both database and databases.`
+      );
+    }
+
+    const databases = pluralDatabases ?? (singularDatabase ? [singularDatabase] : []);
     const aliases =
       appRecord.aliases === undefined
         ? []
@@ -148,27 +204,8 @@ export async function readPlatformInventory(
       aliases,
       backend_port: expectNumber(appRecord.backend_port, `apps[${index}].backend_port`),
       runtime_image: expectString(appRecord.runtime_image, `apps[${index}].runtime_image`),
-      database: databaseRecord
-        ? {
-            engine: expectString(databaseRecord.engine, `apps[${index}].database.engine`) as
-              | "postgresql"
-              | "mariadb",
-            name: expectString(databaseRecord.name, `apps[${index}].database.name`),
-            user: expectString(databaseRecord.user, `apps[${index}].database.user`),
-            pending_migration_to:
-              typeof databaseRecord.pending_migration_to === "string"
-                ? (databaseRecord.pending_migration_to as "postgresql" | "mariadb")
-                : undefined,
-            migration_completed_from:
-              typeof databaseRecord.migration_completed_from === "string"
-                ? (databaseRecord.migration_completed_from as "postgresql" | "mariadb")
-                : undefined,
-            migration_completed_at:
-              typeof databaseRecord.migration_completed_at === "string"
-                ? databaseRecord.migration_completed_at
-                : undefined
-          }
-        : undefined,
+      database: databases[0],
+      databases,
       storage_root: expectString(appRecord.storage_root, `apps[${index}].storage_root`),
       mode: expectString(appRecord.mode, `apps[${index}].mode`)
     } satisfies PlatformInventoryApp;

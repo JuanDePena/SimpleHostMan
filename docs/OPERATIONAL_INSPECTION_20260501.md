@@ -573,6 +573,8 @@ Completion evidence:
 
 ### Phase 4: Data Growth And Retention Controls
 
+Status: completed on `2026-05-01`.
+
 Goal: prevent control-plane history from becoming the next capacity problem.
 
 Actions:
@@ -607,6 +609,75 @@ Rollback:
 - pause pruning jobs
 - restore from pgBackRest or logical backup if pruning is accidentally too
   aggressive
+
+Completion evidence:
+
+- Operational history retention is standardized on
+  `SIMPLEHOST_HISTORY_RETENTION_DAYS = 90`.
+- The purge implementation now covers:
+  - `shp_audit_events`
+  - `shp_reconciliation_runs`
+  - completed `control_plane_jobs`
+  - matching `control_plane_job_results`
+- The purge still preserves:
+  - the latest job per resource
+  - the latest inventory export audit event
+  - the latest reconciliation run
+- The live parameter description in `shp_environment_parameters` now states
+  that audit events, reconciliation runs, and completed job history rows share
+  the same retention window.
+- A live cutoff check for the current 90-day window reported `0` purgeable
+  audit, reconciliation, job, and job-result rows because the oldest current
+  operational rows are from `2026-03-12`.
+- Partitioning is not needed yet. The 90-day retention window bounds the
+  current high-volume tables before they justify partition maintenance.
+- Large index review found the largest current candidates:
+  - `shp_audit_events_entity_idx`: about `154 MB`, `0` scans in the current
+    stats window
+  - `shp_reconciliation_runs_pkey`: about `55 MB`, `0` scans in the current
+    stats window
+  No index was dropped in this phase; these should be rechecked after a longer
+  `pg_stat_statements` and retention window.
+- `/srv/backups/mail-gomezrosado` retention is documented in
+  [`BACKUPS.md`](/opt/simplehostman/src/docs/BACKUPS.md). The policy remains
+  `14` days; the path currently uses about `7.7G`, with the oldest observed
+  retained run from `2026-04-25`.
+- `apps.bootstrap.yaml` now supports multi-database apps with explicit
+  `databases` entries and stable database ids.
+- The Pyrosa DIS/QBO pairings are now represented in bootstrap inventory:
+  - `database-pyrosa-sync`
+  - `database-pyrosa-sync-qbo`
+  - `database-pyrosa-demosync`
+  - `database-pyrosa-demosync-qbo`
+- The bootstrap parser and desired-state builder validate the current YAML as
+  `14` apps and `10` managed database entries.
+- `pyrosa-helpers-dfr` no longer carries same-engine migration metadata in the
+  live desired state or bootstrap YAML.
+- `repos.pyrosa.com.do` publication workflow is documented in
+  [`REPOSITORY_PUBLISHING.md`](/opt/simplehostman/src/docs/REPOSITORY_PUBLISHING.md).
+  It remains a static repository until an explicit audited publishing workflow
+  is activated.
+- Validation commands passed:
+  - `pnpm --filter @simplehost/control-database test`
+  - `pnpm --filter @simplehost/control-contracts typecheck`
+  - `pnpm --filter @simplehost/worker typecheck`
+  - `pnpm --dir apps/control typecheck:web`
+  - `pnpm build:control-runtime`
+  - `pnpm build:agent-runtime`
+  - `pgbackrest --stanza=control check`
+  - `pgbackrest --stanza=apps check`
+- Release `2604.28.18` was rebuilt and redeployed for control, worker, and
+  agent runtime on the primary. The secondary was updated with the same bundle;
+  `simplehost-control` and `simplehost-worker` remain inactive there, and
+  `simplehost-agent` is active.
+- Post-deploy validation showed:
+  - primary `simplehost-control`, `simplehost-worker`, and `simplehost-agent`
+    active
+  - secondary `simplehost-agent` active
+  - `systemctl --failed` reporting no failed units on both nodes
+  - the worker history-retention log includes
+    `deletedReconciliationRunCount`
+  - `https://vps-prd.pyrosa.com.do/` returned `200 OK`
 
 ### Phase 5: Resilience And Failover Improvements
 

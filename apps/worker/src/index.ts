@@ -57,6 +57,7 @@ export async function runWorkerIteration(
               cutoffAt: historyPurge.cutoffAt,
               deletedJobCount: historyPurge.deletedJobCount,
               deletedJobResultCount: historyPurge.deletedJobResultCount,
+              deletedReconciliationRunCount: historyPurge.deletedReconciliationRunCount,
               deletedAuditEventCount: historyPurge.deletedAuditEventCount
             }
           }

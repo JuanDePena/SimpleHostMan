@@ -278,7 +278,17 @@ async function resolveOperationHistoryRetention(
   client: PoolClient,
   runtimeEnv: NodeJS.ProcessEnv,
   now = new Date()
-): Promise<Omit<OperationHistoryPurgeSummary, "generatedAt" | "deletedAuditEventCount" | "deletedJobCount" | "deletedJobResultCount" | "keptLatestResourceJobCount">> {
+): Promise<
+  Omit<
+    OperationHistoryPurgeSummary,
+    | "generatedAt"
+    | "deletedAuditEventCount"
+    | "deletedReconciliationRunCount"
+    | "deletedJobCount"
+    | "deletedJobResultCount"
+    | "keptLatestResourceJobCount"
+  >
+> {
   const result = await client.query<{ parameter_value: string }>(
     `SELECT parameter_value
      FROM shp_environment_parameters
@@ -306,7 +316,16 @@ async function resolveOperationHistoryRetention(
 export async function purgeOperationalHistoryRows(
   client: PoolClient,
   cutoffAt: string
-): Promise<Pick<OperationHistoryPurgeSummary, "deletedAuditEventCount" | "deletedJobCount" | "deletedJobResultCount" | "keptLatestResourceJobCount">> {
+): Promise<
+  Pick<
+    OperationHistoryPurgeSummary,
+    | "deletedAuditEventCount"
+    | "deletedReconciliationRunCount"
+    | "deletedJobCount"
+    | "deletedJobResultCount"
+    | "keptLatestResourceJobCount"
+  >
+> {
   const jobResult = await client.query<{
     deleted_job_count: string;
     deleted_job_result_count: string;
@@ -368,11 +387,36 @@ export async function purgeOperationalHistoryRows(
      FROM deleted_events`,
     [cutoffAt]
   );
+  const reconciliationResult = await client.query<{ deleted_reconciliation_run_count: string }>(
+    `WITH latest_reconciliation_run AS (
+       SELECT run_id
+       FROM shp_reconciliation_runs
+       ORDER BY completed_at DESC
+       LIMIT 1
+     ),
+     deleted_reconciliation_runs AS (
+       DELETE FROM shp_reconciliation_runs runs
+       WHERE runs.completed_at < $1::timestamptz
+         AND NOT EXISTS (
+           SELECT 1
+           FROM latest_reconciliation_run latest
+           WHERE latest.run_id = runs.run_id
+         )
+       RETURNING runs.run_id
+     )
+     SELECT COUNT(*)::text AS deleted_reconciliation_run_count
+     FROM deleted_reconciliation_runs`,
+    [cutoffAt]
+  );
   const jobRow = jobResult.rows[0];
   const auditRow = auditResult.rows[0];
+  const reconciliationRow = reconciliationResult.rows[0];
 
   return {
     deletedAuditEventCount: Number(auditRow?.deleted_audit_event_count ?? 0),
+    deletedReconciliationRunCount: Number(
+      reconciliationRow?.deleted_reconciliation_run_count ?? 0
+    ),
     deletedJobCount: Number(jobRow?.deleted_job_count ?? 0),
     deletedJobResultCount: Number(jobRow?.deleted_job_result_count ?? 0),
     keptLatestResourceJobCount: Number(jobRow?.kept_latest_resource_job_count ?? 0)
@@ -1091,7 +1135,10 @@ export async function buildAppContainerPlans(
        ON nodes.node_id = databases.primary_node_id
      LEFT JOIN shp_database_credentials credentials
        ON credentials.database_id = databases.database_id
-     WHERE apps.slug = $1`,
+     WHERE apps.slug = $1
+     ORDER BY
+       CASE WHEN databases.database_id = ('database-' || apps.slug) THEN 0 ELSE 1 END,
+       databases.database_name ASC`,
     [appSlug]
   );
   const app = result.rows[0];
@@ -1231,7 +1278,10 @@ export async function buildDatabasePayload(
        ON apps.app_id = databases.app_id
      LEFT JOIN shp_database_credentials credentials
        ON credentials.database_id = databases.database_id
-     WHERE apps.slug = $1`,
+     WHERE apps.slug = $1
+     ORDER BY
+       CASE WHEN databases.database_id = ('database-' || apps.slug) THEN 0 ELSE 1 END,
+       databases.database_name ASC`,
     [appSlug]
   );
   const database = result.rows[0];

@@ -51,7 +51,7 @@ export const operationsCopyByLocale = {
     latestReconciliation: "Latest reconciliation",
     historyRetentionTitle: "History retention",
     historyRetentionDescription:
-      "Purge audit events and completed job rows older than the configured retention while keeping the latest job for each resource.",
+      "Purge audit events, reconciliation runs and completed job rows older than the configured retention while keeping the latest job for each resource.",
     historyRetentionParameterLabel: "Retention parameter",
     historyRetentionDaysLabel: "Retention days",
     historyRetentionCutoffLabel: "Purge older than",
@@ -674,7 +674,7 @@ export const operationsCopyByLocale = {
     latestReconciliation: "Última reconciliación",
     historyRetentionTitle: "Retención de historial",
     historyRetentionDescription:
-      "Purga auditorías y jobs completados más antiguos que la retención configurada, conservando el último job por recurso.",
+      "Purga auditorías, reconciliaciones y jobs completados más antiguos que la retención configurada, conservando el último job por recurso.",
     historyRetentionParameterLabel: "Parámetro de retención",
     historyRetentionDaysLabel: "Días de retención",
     historyRetentionCutoffLabel: "Purgar antes de",

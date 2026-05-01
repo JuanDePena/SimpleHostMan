@@ -73,7 +73,7 @@ export const handleActionWebRoutes: WebRouteHandler = async ({
       response,
       noticeReturnTo(
         returnTo,
-        `Purged ${result.deletedJobCount} job(s), ${result.deletedJobResultCount} result(s), and ${result.deletedAuditEventCount} audit event(s) older than ${result.retentionDays} day(s).`,
+        `Purged ${result.deletedJobCount} job(s), ${result.deletedJobResultCount} result(s), ${result.deletedReconciliationRunCount} reconciliation run(s), and ${result.deletedAuditEventCount} audit event(s) older than ${result.retentionDays} day(s).`,
         "success"
       )
     );

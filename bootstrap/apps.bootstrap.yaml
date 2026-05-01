@@ -66,13 +66,22 @@ apps:
     aliases: []
     backend_port: 10102
     runtime_image: registry.example.com/pyrosa-sync:stable
-    database:
-      engine: mariadb
-      name: app_pyrosa_sync
-      user: app_pyrosa_sync
-      pending_migration_to: postgresql
-      migration_completed_from: cpanel-mysql
-      migration_completed_at: "2026-05-01T05:15:53Z"
+    databases:
+      - id: database-pyrosa-sync
+        role: dis
+        engine: mariadb
+        name: app_pyrosa_sync
+        user: app_pyrosa_sync
+        pending_migration_to: postgresql
+        migration_completed_from: cpanel-mysql
+        migration_completed_at: "2026-05-01T05:15:53Z"
+      - id: database-pyrosa-sync-qbo
+        role: qbo
+        engine: mariadb
+        name: app_pyrosa_sync_qbo
+        user: app_pyrosa_sync_qbo
+        migration_completed_from: cpanel-mysql
+        migration_completed_at: "2026-05-01T05:15:53Z"
     storage_root: /srv/containers/apps/pyrosa-sync
     mode: active-passive
 
@@ -117,12 +126,21 @@ apps:
     aliases: []
     backend_port: 10107
     runtime_image: registry.example.com/pyrosa-demosync:stable
-    database:
-      engine: mariadb
-      name: app_pyrosa_demosync
-      user: app_pyrosa_demosync
-      migration_completed_from: cpanel-mysql
-      migration_completed_at: "2026-05-01T02:46:39Z"
+    databases:
+      - id: database-pyrosa-demosync
+        role: dis
+        engine: mariadb
+        name: app_pyrosa_demosync
+        user: app_pyrosa_demosync
+        migration_completed_from: cpanel-mysql
+        migration_completed_at: "2026-05-01T02:46:39Z"
+      - id: database-pyrosa-demosync-qbo
+        role: qbo
+        engine: mariadb
+        name: app_pyrosa_demosync_qbo
+        user: app_pyrosa_demosync_qbo
+        migration_completed_from: cpanel-mysql
+        migration_completed_at: "2026-05-01T02:46:39Z"
     storage_root: /srv/containers/apps/pyrosa-demosync
     mode: active-passive
 
@@ -173,12 +191,12 @@ apps:
     aliases: []
     backend_port: 10112
     runtime_image: registry.example.com/pyrosa-helpers:stable
-    database:
-      engine: postgresql
-      name: app_pyrosa_helpers_dfr
-      user: app_pyrosa_helpers_dfr
-      migration_completed_from: postgresql
-      migration_completed_at: "2026-05-01T05:44:20Z"
+    databases:
+      - id: database-pyrosa-helpers-dfr
+        role: dfr
+        engine: postgresql
+        name: app_pyrosa_helpers_dfr
+        user: app_pyrosa_helpers_dfr
     storage_root: /srv/containers/apps/pyrosa-helpers
     mode: active-passive
 

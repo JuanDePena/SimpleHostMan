@@ -120,6 +120,7 @@ export interface OperationHistoryRetentionSummary {
 export interface OperationHistoryPurgeSummary extends OperationHistoryRetentionSummary {
   generatedAt: string;
   deletedAuditEventCount: number;
+  deletedReconciliationRunCount: number;
   deletedJobCount: number;
   deletedJobResultCount: number;
   keptLatestResourceJobCount: number;

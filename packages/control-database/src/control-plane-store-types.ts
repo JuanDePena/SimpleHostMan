@@ -194,7 +194,7 @@ export interface InventoryDatabaseRow {
   primary_node_id: string;
   standby_node_id: string | null;
   pending_migration_to: "postgresql" | "mariadb" | null;
-  migration_completed_from: "postgresql" | "mariadb" | null;
+  migration_completed_from: string | null;
   migration_completed_at: Date | string | null;
   desired_password: Record<string, unknown> | null;
 }

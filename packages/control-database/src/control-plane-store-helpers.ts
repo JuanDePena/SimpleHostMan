@@ -386,6 +386,7 @@ export function toInventoryDatabaseSummary(
   row: InventoryDatabaseRow
 ): InventoryDatabaseSummary {
   return {
+    databaseId: row.database_id,
     appSlug: row.app_slug,
     engine: row.engine,
     databaseName: row.database_name,

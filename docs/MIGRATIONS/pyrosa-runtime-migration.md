@@ -1630,18 +1630,16 @@ Validation:
 - `pnpm --filter @simplehost/control-database test` passed with `26` tests
 - `pnpm build:control-runtime` and `pnpm build:agent-runtime` passed
 - release `2604.28.18` was redeployed for control, worker, and agents on both SimpleHostMan nodes
-- bootstrap inventory reads successfully and builds a desired-state spec with `14` apps, `8`
+- bootstrap inventory reads successfully and builds a desired-state spec with `14` apps, `10`
   managed database entries, and `12` Pyrosa apps
 - post-deploy forced HTTPS checks for `helpers.pyrosa.com.do/dfr/health`, helpers QR scanner,
   pgAdmin, LDAP/LAM, and the Pyrosa apex returned `200 OK` on `primary` and `secondary`
 
-Known inventory limitation:
+Inventory limitation closure:
 
-- the transitional bootstrap format still represents one managed database per app; live desired
-  state contains secondary QBO databases for `pyrosa-sync` and `pyrosa-demosync` that remain in
-  PostgreSQL desired state but are not expressible in `apps.bootstrap.yaml` yet
-- follow-up for this inventory model limitation is tracked in
-  [`OPERATIONAL_INSPECTION_20260501.md`](/opt/simplehostman/src/docs/OPERATIONAL_INSPECTION_20260501.md)
+- phase 4 of the operational plan added plural `databases` support to bootstrap
+  inventory, so the secondary QBO databases for `pyrosa-sync` and
+  `pyrosa-demosync` are now expressible in `apps.bootstrap.yaml`.
 
 ## Timers And Publishing Review
 
