@@ -155,11 +155,11 @@ async function replaceNodeInstalledPackages(
   collectedAt: string,
   packages: ReportedInstalledPackage[]
 ): Promise<void> {
-  await client.query(`DELETE FROM shp_node_installed_packages WHERE node_id = $1`, [nodeId]);
+  await client.query(`DELETE FROM control_plane_node_installed_packages WHERE node_id = $1`, [nodeId]);
 
   for (const pkg of packages) {
     await client.query(
-      `INSERT INTO shp_node_installed_packages (
+      `INSERT INTO control_plane_node_installed_packages (
          node_id,
          package_name,
          epoch,
@@ -194,7 +194,7 @@ export async function getNodeCredential(
 ): Promise<NodeCredentialRow | null> {
   const result = await client.query<NodeCredentialRow>(
     `SELECT node_id, token_hash
-     FROM control_plane_node_credentials
+     FROM control_plane_agent_node_credentials
      WHERE node_id = $1`,
     [nodeId]
   );
@@ -209,7 +209,7 @@ export async function touchNodeCredential(
   timestamp: string
 ): Promise<void> {
   await client.query(
-    `UPDATE control_plane_node_credentials
+    `UPDATE control_plane_agent_node_credentials
      SET last_used_at = $3
      WHERE node_id = $1
        AND token_hash = $2`,
@@ -224,7 +224,7 @@ export async function upsertNodeCredential(
   timestamp: string
 ): Promise<void> {
   await client.query(
-    `INSERT INTO control_plane_node_credentials (
+    `INSERT INTO control_plane_agent_node_credentials (
        node_id,
        token_hash,
        issued_at,
@@ -271,7 +271,7 @@ export async function getUserByEmail(
 ): Promise<UserRow | null> {
   const result = await client.query<UserRow>(
     `SELECT user_id, email, display_name, status
-     FROM shp_users
+     FROM control_plane_users
      WHERE email = $1`,
     [normalizeEmail(email)]
   );
@@ -282,7 +282,7 @@ export async function getUserByEmail(
 export async function getUserById(client: PoolClient, userId: string): Promise<UserRow | null> {
   const result = await client.query<UserRow>(
     `SELECT user_id, email, display_name, status
-     FROM shp_users
+     FROM control_plane_users
      WHERE user_id = $1`,
     [userId]
   );
@@ -296,7 +296,7 @@ export async function getUserCredential(
 ): Promise<UserCredentialRow | null> {
   const result = await client.query<UserCredentialRow>(
     `SELECT user_id, password_hash, password_salt, password_params
-     FROM shp_user_credentials
+     FROM control_plane_user_credentials
      WHERE user_id = $1`,
     [userId]
   );
@@ -312,7 +312,7 @@ export async function upsertUserCredential(
   const hashed = await createPasswordHash(password);
 
   await client.query(
-    `INSERT INTO shp_user_credentials (
+    `INSERT INTO control_plane_user_credentials (
        user_id,
        password_hash,
        password_salt,
@@ -335,11 +335,11 @@ export async function replaceUserGlobalRoles(
   userId: string,
   roles: ControlGlobalRole[]
 ): Promise<void> {
-  await client.query(`DELETE FROM shp_user_global_roles WHERE user_id = $1`, [userId]);
+  await client.query(`DELETE FROM control_plane_user_global_roles WHERE user_id = $1`, [userId]);
 
   for (const role of roles) {
     await client.query(
-      `INSERT INTO shp_user_global_roles (user_id, role)
+      `INSERT INTO control_plane_user_global_roles (user_id, role)
        VALUES ($1, $2)
        ON CONFLICT (user_id, role) DO NOTHING`,
       [userId, role]
@@ -352,12 +352,12 @@ export async function replaceUserTenantMemberships(
   userId: string,
   memberships: Array<{ tenantSlug: string; role: TenantMembershipRole }>
 ): Promise<void> {
-  await client.query(`DELETE FROM shp_memberships WHERE user_id = $1`, [userId]);
+  await client.query(`DELETE FROM control_plane_memberships WHERE user_id = $1`, [userId]);
 
   for (const membership of memberships) {
     const tenantResult = await client.query<{ tenant_id: string }>(
       `SELECT tenant_id
-       FROM shp_tenants
+       FROM control_plane_tenants
        WHERE slug = $1`,
       [membership.tenantSlug]
     );
@@ -368,7 +368,7 @@ export async function replaceUserTenantMemberships(
     }
 
     await client.query(
-      `INSERT INTO shp_memberships (tenant_id, user_id, role)
+      `INSERT INTO control_plane_memberships (tenant_id, user_id, role)
        VALUES ($1, $2, $3)`,
       [tenant.tenant_id, userId, membership.role]
     );
@@ -381,7 +381,7 @@ export async function getUserGlobalRoles(
 ): Promise<ControlGlobalRole[]> {
   const result = await client.query<UserGlobalRoleRow>(
     `SELECT role
-     FROM shp_user_global_roles
+     FROM control_plane_user_global_roles
      WHERE user_id = $1
      ORDER BY role ASC`,
     [userId]
@@ -404,8 +404,8 @@ export async function getUserMemberships(
        tenants.slug AS tenant_slug,
        tenants.display_name AS tenant_display_name,
        memberships.role
-     FROM shp_memberships memberships
-     INNER JOIN shp_tenants tenants
+     FROM control_plane_memberships memberships
+     INNER JOIN control_plane_tenants tenants
        ON tenants.tenant_id = memberships.tenant_id
      WHERE memberships.user_id = $1
      ORDER BY tenants.slug ASC, memberships.role ASC`,
@@ -455,7 +455,7 @@ export async function createSession(
   const sessionToken = createOpaqueSessionToken();
 
   await client.query(
-    `INSERT INTO shp_sessions (
+    `INSERT INTO control_plane_sessions (
        session_id,
        user_id,
        session_token_hash,
@@ -490,7 +490,7 @@ export async function authenticateSession(
 
   const result = await client.query<SessionRow>(
     `SELECT session_id, user_id, expires_at, revoked_at
-     FROM shp_sessions
+     FROM control_plane_sessions
      WHERE session_token_hash = $1`,
     [hashToken(presentedToken)]
   );
@@ -509,7 +509,7 @@ export async function authenticateSession(
   }
 
   await client.query(
-    `UPDATE shp_sessions
+    `UPDATE control_plane_sessions
      SET last_used_at = $2
      WHERE session_id = $1`,
     [session.session_id, nowIso]
@@ -552,7 +552,7 @@ export async function ensureBootstrapAdmin(
 
     if (!existing) {
       await client.query(
-        `INSERT INTO shp_users (
+        `INSERT INTO control_plane_users (
            user_id,
            email,
            display_name,
@@ -563,7 +563,7 @@ export async function ensureBootstrapAdmin(
       );
     } else {
       await client.query(
-        `UPDATE shp_users
+        `UPDATE control_plane_users
          SET display_name = $2,
              updated_at = NOW()
          WHERE user_id = $1`,
@@ -626,7 +626,7 @@ export function createControlPlaneAuthMethods(
         }
 
         await client.query(
-          `INSERT INTO control_plane_nodes (
+          `INSERT INTO control_plane_agent_nodes (
              node_id,
              hostname,
              version,
@@ -688,7 +688,7 @@ export function createControlPlaneAuthMethods(
         await authenticateNode(client, request.nodeId, presentedToken, claimedAt);
 
         await client.query(
-          `UPDATE control_plane_nodes
+          `UPDATE control_plane_agent_nodes
            SET hostname = $2,
                version = $3,
                runtime_snapshot = COALESCE($4::jsonb, runtime_snapshot),
@@ -785,7 +785,7 @@ export function createControlPlaneAuthMethods(
         await authenticateNode(client, request.nodeId, presentedToken, reportedAt);
 
         await client.query(
-          `UPDATE control_plane_nodes
+          `UPDATE control_plane_agent_nodes
            SET last_seen_at = $2
            WHERE node_id = $1`,
           [request.nodeId, reportedAt]
@@ -819,7 +819,7 @@ export function createControlPlaneAuthMethods(
 
           if (afterSnapshot && typeof afterSnapshot === "object" && !Array.isArray(afterSnapshot)) {
             await client.query(
-              `UPDATE control_plane_nodes
+              `UPDATE control_plane_agent_nodes
                SET runtime_snapshot = jsonb_set(
                      COALESCE(runtime_snapshot, '{}'::jsonb),
                      '{codeServer}',
@@ -974,7 +974,7 @@ export function createControlPlaneAuthMethods(
         const user = await authenticateSession(client, presentedToken);
 
         await client.query(
-          `UPDATE shp_sessions
+          `UPDATE control_plane_sessions
            SET revoked_at = NOW()
            WHERE session_token_hash = $1`,
           [hashToken(presentedToken!)]
@@ -1009,7 +1009,7 @@ export function createControlPlaneAuthMethods(
         const tenantMemberships = request.tenantMemberships ?? [];
 
         await client.query(
-          `INSERT INTO shp_users (
+          `INSERT INTO control_plane_users (
              user_id,
              email,
              display_name,
@@ -1047,7 +1047,7 @@ export function createControlPlaneAuthMethods(
         await requireAuthorizedUser(client, presentedToken, ["platform_admin"]);
         const result = await client.query<{ user_id: string }>(
           `SELECT user_id
-           FROM shp_users
+           FROM control_plane_users
            ORDER BY created_at ASC`
         );
 

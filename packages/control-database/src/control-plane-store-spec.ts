@@ -92,7 +92,7 @@ function isMissingColumnError(error: unknown, columnName: string): boolean {
 
 async function hasMailPolicyTable(client: PoolClient): Promise<boolean> {
   const result = await client.query<{ exists: boolean }>(
-    `SELECT to_regclass('public.shp_mail_policy') IS NOT NULL AS exists`
+    `SELECT to_regclass('public.control_plane_mail_policy') IS NOT NULL AS exists`
   );
 
   return Boolean(result.rows[0]?.exists);
@@ -104,7 +104,7 @@ async function hasMailboxCredentialStateColumn(client: PoolClient): Promise<bool
        SELECT 1
        FROM information_schema.columns
        WHERE table_schema = 'public'
-         AND table_name = 'shp_mailbox_credentials'
+         AND table_name = 'control_plane_mailbox_credentials'
          AND column_name = 'credential_state'
      ) AS exists`
   );
@@ -127,7 +127,7 @@ async function queryMailPolicyRows(client: PoolClient): Promise<MailPolicyRow[]>
        sender_denylist,
        rate_limit_burst,
        rate_limit_period_seconds
-     FROM shp_mail_policy
+     FROM control_plane_mail_policy
      WHERE policy_id = $1`,
     [mailPolicyId]
   );
@@ -148,10 +148,10 @@ async function queryMailboxRows(client: PoolClient): Promise<MailboxRow[]> {
          credentials.secret_payload AS desired_password,
          credentials.credential_state,
          credentials.updated_at AS credential_updated_at
-       FROM shp_mailboxes mailboxes
-       INNER JOIN shp_mail_domains domains
+       FROM control_plane_mailboxes mailboxes
+       INNER JOIN control_plane_mail_domains domains
          ON domains.mail_domain_id = mailboxes.mail_domain_id
-       LEFT JOIN shp_mailbox_credentials credentials
+       LEFT JOIN control_plane_mailbox_credentials credentials
          ON credentials.mailbox_id = mailboxes.mailbox_id
        ORDER BY mailboxes.address ASC`
       : `SELECT
@@ -163,10 +163,10 @@ async function queryMailboxRows(client: PoolClient): Promise<MailboxRow[]> {
          credentials.secret_payload AS desired_password,
          NULL::text AS credential_state,
          credentials.updated_at AS credential_updated_at
-       FROM shp_mailboxes mailboxes
-       INNER JOIN shp_mail_domains domains
+       FROM control_plane_mailboxes mailboxes
+       INNER JOIN control_plane_mail_domains domains
          ON domains.mail_domain_id = mailboxes.mail_domain_id
-       LEFT JOIN shp_mailbox_credentials credentials
+       LEFT JOIN control_plane_mailbox_credentials credentials
          ON credentials.mailbox_id = mailboxes.mailbox_id
        ORDER BY mailboxes.address ASC`
   );
@@ -191,9 +191,9 @@ async function queryExistingMailboxCredentialRows(
   }>(
     hasCredentialState
       ? `SELECT mailbox_id, secret_payload, credential_state
-       FROM shp_mailbox_credentials`
+       FROM control_plane_mailbox_credentials`
       : `SELECT mailbox_id, secret_payload, NULL::text AS credential_state
-       FROM shp_mailbox_credentials`
+       FROM control_plane_mailbox_credentials`
   );
 
   return result.rows;
@@ -216,16 +216,16 @@ async function queryMailboxCredentialRowsByAddress(
   }>(
     hasCredentialState
       ? `SELECT mailboxes.address, credentials.credential_state, credentials.updated_at
-       FROM shp_mailbox_credentials credentials
-       INNER JOIN shp_mailboxes mailboxes
+       FROM control_plane_mailbox_credentials credentials
+       INNER JOIN control_plane_mailboxes mailboxes
          ON mailboxes.mailbox_id = credentials.mailbox_id
        ORDER BY mailboxes.address ASC`
       : `SELECT
          mailboxes.address,
          NULL::text AS credential_state,
          credentials.updated_at
-       FROM shp_mailbox_credentials credentials
-       INNER JOIN shp_mailboxes mailboxes
+       FROM control_plane_mailbox_credentials credentials
+       INNER JOIN control_plane_mailboxes mailboxes
          ON mailboxes.mailbox_id = credentials.mailbox_id
        ORDER BY mailboxes.address ASC`
   );
@@ -243,7 +243,7 @@ async function upsertMailboxCredentialRecord(
 
   await client.query(
     hasCredentialState
-      ? `INSERT INTO shp_mailbox_credentials (
+      ? `INSERT INTO control_plane_mailbox_credentials (
          mailbox_id,
          secret_payload,
          credential_state,
@@ -255,7 +255,7 @@ async function upsertMailboxCredentialRecord(
          secret_payload = EXCLUDED.secret_payload,
          credential_state = EXCLUDED.credential_state,
          updated_at = EXCLUDED.updated_at`
-      : `INSERT INTO shp_mailbox_credentials (
+      : `INSERT INTO control_plane_mailbox_credentials (
          mailbox_id,
          secret_payload,
          updated_at
@@ -280,7 +280,7 @@ async function upsertMailPolicyIfSupported(
   }
 
   await client.query(
-    `INSERT INTO shp_mail_policy (
+    `INSERT INTO control_plane_mail_policy (
          policy_id,
          reject_threshold,
          add_header_threshold,
@@ -443,7 +443,7 @@ export async function getLatestInventoryImport(
 ): Promise<ReturnType<typeof toInventoryImportSummary> | null> {
   const result = await client.query<InventoryImportRow>(
     `SELECT import_id, source_path, summary, imported_at
-     FROM shp_inventory_import_runs
+     FROM control_plane_inventory_import_runs
      ORDER BY imported_at DESC
      LIMIT 1`
   );
@@ -456,7 +456,7 @@ export async function getLatestInventoryExport(
 ): Promise<ReturnType<typeof toInventoryExportSummary> | null> {
   const result = await client.query<InventoryExportRow>(
     `SELECT event_id, payload, occurred_at
-     FROM shp_audit_events
+     FROM control_plane_audit_events
      WHERE event_type = 'inventory.exported'
      ORDER BY occurred_at DESC
      LIMIT 1`
@@ -499,7 +499,7 @@ async function createMailboxCredentialReveal(args: {
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
   await args.client.query(
-    `INSERT INTO shp_mailbox_credential_reveals (
+    `INSERT INTO control_plane_mailbox_credential_reveals (
        reveal_id,
        mailbox_id,
        actor_id,
@@ -527,7 +527,7 @@ export async function buildInventorySnapshot(client: PoolClient) {
     getLatestInventoryExport(client),
     client.query<InventoryNodeRow>(
       `SELECT node_id, hostname, public_ipv4, wireguard_address
-       FROM shp_nodes
+       FROM control_plane_nodes
        ORDER BY node_id ASC`
     ),
     client.query<InventoryZoneRow>(
@@ -536,8 +536,8 @@ export async function buildInventorySnapshot(client: PoolClient) {
          zones.zone_name,
          tenants.slug AS tenant_slug,
          zones.primary_node_id
-       FROM shp_dns_zones zones
-       INNER JOIN shp_tenants tenants
+       FROM control_plane_dns_zones zones
+       INNER JOIN control_plane_tenants tenants
          ON tenants.tenant_id = zones.tenant_id
        ORDER BY zones.zone_name ASC`
     ),
@@ -554,12 +554,12 @@ export async function buildInventorySnapshot(client: PoolClient) {
          apps.runtime_image,
          apps.storage_root,
          apps.mode
-       FROM shp_apps apps
-       INNER JOIN shp_tenants tenants
+       FROM control_plane_apps apps
+       INNER JOIN control_plane_tenants tenants
          ON tenants.tenant_id = apps.tenant_id
-       INNER JOIN shp_dns_zones zones
+       INNER JOIN control_plane_dns_zones zones
          ON zones.zone_id = apps.zone_id
-       INNER JOIN shp_sites sites
+       INNER JOIN control_plane_sites sites
          ON sites.app_id = apps.app_id
        ORDER BY apps.slug ASC`
     ),
@@ -576,10 +576,10 @@ export async function buildInventorySnapshot(client: PoolClient) {
          databases.migration_completed_from,
          databases.migration_completed_at,
          credentials.secret_payload AS desired_password
-       FROM shp_databases databases
-       INNER JOIN shp_apps apps
+       FROM control_plane_databases databases
+       INNER JOIN control_plane_apps apps
          ON apps.app_id = databases.app_id
-       LEFT JOIN shp_database_credentials credentials
+       LEFT JOIN control_plane_database_credentials credentials
          ON credentials.database_id = databases.database_id
        ORDER BY apps.slug ASC`
     )
@@ -601,12 +601,12 @@ export async function buildDesiredStateSpecFromDatabase(
 ): Promise<DesiredStateSpec> {
   const tenantResult = await client.query<{ slug: string; display_name: string }>(
     `SELECT slug, display_name
-     FROM shp_tenants
+     FROM control_plane_tenants
      ORDER BY slug ASC`
   );
   const nodeResult = await client.query<InventoryNodeRow>(
     `SELECT node_id, hostname, public_ipv4, wireguard_address
-     FROM shp_nodes
+     FROM control_plane_nodes
      ORDER BY node_id ASC`
   );
   const zoneResult = await client.query<InventoryZoneRow>(
@@ -615,8 +615,8 @@ export async function buildDesiredStateSpecFromDatabase(
        zones.zone_name,
        tenants.slug AS tenant_slug,
        zones.primary_node_id
-     FROM shp_dns_zones zones
-     INNER JOIN shp_tenants tenants
+     FROM control_plane_dns_zones zones
+     INNER JOIN control_plane_tenants tenants
        ON tenants.tenant_id = zones.tenant_id
      ORDER BY zones.zone_name ASC`
   );
@@ -627,8 +627,8 @@ export async function buildDesiredStateSpecFromDatabase(
        records.type,
        records.value,
        records.ttl
-     FROM shp_dns_records records
-     INNER JOIN shp_dns_zones zones
+     FROM control_plane_dns_records records
+     INNER JOIN control_plane_dns_zones zones
        ON zones.zone_id = records.zone_id
      ORDER BY zones.zone_name ASC, records.name ASC, records.type ASC, records.value ASC`
   );
@@ -645,12 +645,12 @@ export async function buildDesiredStateSpecFromDatabase(
        apps.runtime_image,
        apps.storage_root,
        apps.mode
-     FROM shp_apps apps
-     INNER JOIN shp_tenants tenants
+     FROM control_plane_apps apps
+     INNER JOIN control_plane_tenants tenants
        ON tenants.tenant_id = apps.tenant_id
-     INNER JOIN shp_dns_zones zones
+     INNER JOIN control_plane_dns_zones zones
        ON zones.zone_id = apps.zone_id
-     INNER JOIN shp_sites sites
+     INNER JOIN control_plane_sites sites
        ON sites.app_id = apps.app_id
      ORDER BY apps.slug ASC`
   );
@@ -667,10 +667,10 @@ export async function buildDesiredStateSpecFromDatabase(
        databases.migration_completed_from,
        databases.migration_completed_at,
        credentials.secret_payload AS desired_password
-     FROM shp_databases databases
-     INNER JOIN shp_apps apps
+     FROM control_plane_databases databases
+     INNER JOIN control_plane_apps apps
        ON apps.app_id = databases.app_id
-     LEFT JOIN shp_database_credentials credentials
+     LEFT JOIN control_plane_database_credentials credentials
        ON credentials.database_id = databases.database_id
      ORDER BY apps.slug ASC`
   );
@@ -683,8 +683,8 @@ export async function buildDesiredStateSpecFromDatabase(
        policies.retention_days,
        policies.storage_location,
        policies.resource_selectors
-     FROM shp_backup_policies policies
-     INNER JOIN shp_tenants tenants
+     FROM control_plane_backup_policies policies
+     INNER JOIN control_plane_tenants tenants
        ON tenants.tenant_id = policies.tenant_id
      ORDER BY policies.policy_slug ASC`
   );
@@ -698,10 +698,10 @@ export async function buildDesiredStateSpecFromDatabase(
        domains.standby_node_id,
        domains.mail_host,
        domains.dkim_selector
-     FROM shp_mail_domains domains
-     INNER JOIN shp_tenants tenants
+     FROM control_plane_mail_domains domains
+     INNER JOIN control_plane_tenants tenants
        ON tenants.tenant_id = domains.tenant_id
-     INNER JOIN shp_dns_zones zones
+     INNER JOIN control_plane_dns_zones zones
        ON zones.zone_id = domains.zone_id
      ORDER BY domains.domain_name ASC`
   );
@@ -712,8 +712,8 @@ export async function buildDesiredStateSpecFromDatabase(
        domains.domain_name,
        aliases.local_part,
        aliases.destinations
-     FROM shp_mail_aliases aliases
-     INNER JOIN shp_mail_domains domains
+     FROM control_plane_mail_aliases aliases
+     INNER JOIN control_plane_mail_domains domains
        ON domains.mail_domain_id = aliases.mail_domain_id
      ORDER BY aliases.address ASC`
   );
@@ -721,8 +721,8 @@ export async function buildDesiredStateSpecFromDatabase(
     `SELECT
        mailboxes.address AS mailbox_address,
        quotas.storage_bytes
-     FROM shp_mailbox_quotas quotas
-     INNER JOIN shp_mailboxes mailboxes
+     FROM control_plane_mailbox_quotas quotas
+     INNER JOIN control_plane_mailboxes mailboxes
        ON mailboxes.mailbox_id = quotas.mailbox_id
      ORDER BY mailboxes.address ASC`
   );
@@ -897,7 +897,7 @@ export async function applyDesiredStateSpec(
 
   for (const tenant of resolvedSpec.tenants) {
     await client.query(
-      `INSERT INTO shp_tenants (
+      `INSERT INTO control_plane_tenants (
          tenant_id,
          slug,
          display_name,
@@ -915,7 +915,7 @@ export async function applyDesiredStateSpec(
 
   for (const node of resolvedSpec.nodes) {
     await client.query(
-      `INSERT INTO shp_nodes (
+      `INSERT INTO control_plane_nodes (
          node_id,
          hostname,
          public_ipv4,
@@ -938,7 +938,7 @@ export async function applyDesiredStateSpec(
     const zoneId = `zone-${zone.zoneName}`;
 
     await client.query(
-      `INSERT INTO shp_dns_zones (
+      `INSERT INTO control_plane_dns_zones (
          zone_id,
          tenant_id,
          zone_name,
@@ -955,11 +955,11 @@ export async function applyDesiredStateSpec(
       [zoneId, `tenant-${zone.tenantSlug}`, zone.zoneName, zone.primaryNodeId]
     );
 
-    await client.query(`DELETE FROM shp_dns_records WHERE zone_id = $1`, [zoneId]);
+    await client.query(`DELETE FROM control_plane_dns_records WHERE zone_id = $1`, [zoneId]);
 
     for (const record of normalizeDnsRecords(zone.records)) {
       await client.query(
-        `INSERT INTO shp_dns_records (
+        `INSERT INTO control_plane_dns_records (
            record_id,
            zone_id,
            name,
@@ -992,7 +992,7 @@ export async function applyDesiredStateSpec(
     const mailDomainId = `mail-domain-${mailDomain.domainName}`;
 
     await client.query(
-      `INSERT INTO shp_mail_domains (
+      `INSERT INTO control_plane_mail_domains (
          mail_domain_id,
          tenant_id,
          zone_id,
@@ -1036,7 +1036,7 @@ export async function applyDesiredStateSpec(
     const existingCredential = existingMailboxCredentials.get(mailboxId);
 
     await client.query(
-      `INSERT INTO shp_mailboxes (
+      `INSERT INTO control_plane_mailboxes (
          mailbox_id,
          mail_domain_id,
          primary_node_id,
@@ -1081,7 +1081,7 @@ export async function applyDesiredStateSpec(
 
   for (const mailAlias of resolvedSpec.mailAliases) {
     await client.query(
-      `INSERT INTO shp_mail_aliases (
+      `INSERT INTO control_plane_mail_aliases (
          mail_alias_id,
          mail_domain_id,
          address,
@@ -1109,7 +1109,7 @@ export async function applyDesiredStateSpec(
 
   for (const quota of resolvedSpec.mailboxQuotas) {
     await client.query(
-      `INSERT INTO shp_mailbox_quotas (
+      `INSERT INTO control_plane_mailbox_quotas (
          mailbox_id,
          storage_bytes,
          updated_at
@@ -1127,7 +1127,7 @@ export async function applyDesiredStateSpec(
     const appId = `app-${app.slug}`;
 
     await client.query(
-      `INSERT INTO shp_apps (
+      `INSERT INTO control_plane_apps (
          app_id,
          tenant_id,
          zone_id,
@@ -1167,10 +1167,10 @@ export async function applyDesiredStateSpec(
       ]
     );
 
-    await client.query(`DELETE FROM shp_sites WHERE app_id = $1`, [appId]);
+    await client.query(`DELETE FROM control_plane_sites WHERE app_id = $1`, [appId]);
 
     await client.query(
-      `INSERT INTO shp_sites (
+      `INSERT INTO control_plane_sites (
          site_id,
          app_id,
          canonical_domain,
@@ -1192,7 +1192,7 @@ export async function applyDesiredStateSpec(
     const databaseId = resolveDesiredDatabaseId(database);
 
     await client.query(
-      `INSERT INTO shp_databases (
+      `INSERT INTO control_plane_databases (
          database_id,
          app_id,
          primary_node_id,
@@ -1233,7 +1233,7 @@ export async function applyDesiredStateSpec(
 
     if (database.desiredPassword) {
       await client.query(
-        `INSERT INTO shp_database_credentials (
+        `INSERT INTO control_plane_database_credentials (
            database_id,
            secret_payload,
            updated_at
@@ -1253,7 +1253,7 @@ export async function applyDesiredStateSpec(
 
   for (const policy of resolvedSpec.backupPolicies) {
     await client.query(
-      `INSERT INTO shp_backup_policies (
+      `INSERT INTO control_plane_backup_policies (
          policy_id,
          tenant_id,
          target_node_id,
@@ -1289,62 +1289,62 @@ export async function applyDesiredStateSpec(
   }
 
   await client.query(
-    `DELETE FROM shp_backup_policies
+    `DELETE FROM control_plane_backup_policies
      WHERE NOT (policy_id = ANY($1::text[]))`,
     [desiredBackupPolicyIds]
   );
   await client.query(
-    `DELETE FROM shp_mailbox_quotas
+    `DELETE FROM control_plane_mailbox_quotas
      WHERE NOT (mailbox_id = ANY($1::text[]))`,
     [desiredMailboxIds]
   );
   await client.query(
-    `DELETE FROM shp_mailbox_credentials
+    `DELETE FROM control_plane_mailbox_credentials
      WHERE NOT (mailbox_id = ANY($1::text[]))`,
     [desiredMailboxIds]
   );
   await client.query(
-    `DELETE FROM shp_mail_aliases
+    `DELETE FROM control_plane_mail_aliases
      WHERE NOT (mail_alias_id = ANY($1::text[]))`,
     [desiredMailAliasIds]
   );
   await client.query(
-    `DELETE FROM shp_mailboxes
+    `DELETE FROM control_plane_mailboxes
      WHERE NOT (mailbox_id = ANY($1::text[]))`,
     [desiredMailboxIds]
   );
   await client.query(
-    `DELETE FROM shp_mail_domains
+    `DELETE FROM control_plane_mail_domains
      WHERE NOT (mail_domain_id = ANY($1::text[]))`,
     [desiredMailDomainIds]
   );
   await client.query(
-    `DELETE FROM shp_database_credentials
+    `DELETE FROM control_plane_database_credentials
      WHERE NOT (database_id = ANY($1::text[]))`,
     [desiredDatabaseIds]
   );
   await client.query(
-    `DELETE FROM shp_databases
+    `DELETE FROM control_plane_databases
      WHERE NOT (database_id = ANY($1::text[]))`,
     [desiredDatabaseIds]
   );
   await client.query(
-    `DELETE FROM shp_apps
+    `DELETE FROM control_plane_apps
      WHERE NOT (app_id = ANY($1::text[]))`,
     [desiredAppIds]
   );
   await client.query(
-    `DELETE FROM shp_dns_zones
+    `DELETE FROM control_plane_dns_zones
      WHERE NOT (zone_id = ANY($1::text[]))`,
     [desiredZoneIds]
   );
   await client.query(
-    `DELETE FROM shp_nodes
+    `DELETE FROM control_plane_nodes
      WHERE NOT (node_id = ANY($1::text[]))`,
     [desiredNodeIds]
   );
   await client.query(
-    `DELETE FROM shp_tenants
+    `DELETE FROM control_plane_tenants
      WHERE NOT (tenant_id = ANY($1::text[]))`,
     [desiredTenantIds]
   );
@@ -2524,12 +2524,12 @@ export function createControlPlaneSpecMethods(
     }
   ): Promise<void> => {
     await client.query(
-      `UPDATE shp_mailbox_credentials credentials
+      `UPDATE control_plane_mailbox_credentials credentials
        SET
          generated_at = CASE WHEN $2 THEN NOW() ELSE credentials.generated_at END,
          rotated_at = CASE WHEN $3 THEN NOW() ELSE credentials.rotated_at END,
          reset_at = CASE WHEN $4 THEN NOW() ELSE credentials.reset_at END
-       FROM shp_mailboxes mailboxes
+       FROM control_plane_mailboxes mailboxes
        WHERE mailboxes.mailbox_id = credentials.mailbox_id
          AND mailboxes.address = $1`,
       [mailboxAddress, options.generated ?? false, options.rotated ?? false, options.reset ?? false]
@@ -2549,7 +2549,7 @@ export function createControlPlaneSpecMethods(
       address: string;
     }>(
       `WITH consumed_reveal AS (
-         UPDATE shp_mailbox_credential_reveals reveals
+         UPDATE control_plane_mailbox_credential_reveals reveals
          SET consumed_at = NOW()
          WHERE reveals.reveal_id = $1
            AND reveals.actor_id = $2
@@ -2569,7 +2569,7 @@ export function createControlPlaneSpecMethods(
          consumed_reveal.created_at,
          mailboxes.address
        FROM consumed_reveal
-       INNER JOIN shp_mailboxes mailboxes
+       INNER JOIN control_plane_mailboxes mailboxes
          ON mailboxes.mailbox_id = consumed_reveal.mailbox_id`,
       [revealId, actorId]
     );
@@ -2622,7 +2622,7 @@ export function createControlPlaneSpecMethods(
         };
 
         await client.query(
-          `INSERT INTO shp_inventory_import_runs (
+          `INSERT INTO control_plane_inventory_import_runs (
              import_id,
              source_path,
              summary,

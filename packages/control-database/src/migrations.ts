@@ -18,11 +18,40 @@ export interface ControlDatabaseMigrationPlan {
   sql: string;
 }
 
-const migrationsTableStatement = `CREATE TABLE IF NOT EXISTS shp_schema_migrations (
+type Queryable = Pick<Pool, "query"> | Pick<PoolClient, "query">;
+
+const migrationsTableName = "control_plane_schema_migrations";
+const legacyMigrationsTableName = "shp_schema_migrations";
+
+function migrationsTableStatement(tableName: string): string {
+  return `CREATE TABLE IF NOT EXISTS ${tableName} (
   version TEXT PRIMARY KEY,
   checksum TEXT NOT NULL,
   applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 )`;
+}
+
+async function relationExists(client: Queryable, relationName: string): Promise<boolean> {
+  const result = await client.query<{ relation: string | null }>(
+    `SELECT to_regclass($1)::text AS relation`,
+    [`public.${relationName}`]
+  );
+
+  return result.rows[0]?.relation !== null;
+}
+
+async function resolveMigrationsTable(client: Queryable): Promise<string> {
+  if (await relationExists(client, migrationsTableName)) {
+    return migrationsTableName;
+  }
+
+  if (await relationExists(client, legacyMigrationsTableName)) {
+    return legacyMigrationsTableName;
+  }
+
+  await client.query(migrationsTableStatement(migrationsTableName));
+  return migrationsTableName;
+}
 
 function getPackageRoot(): string {
   return path.resolve(fileURLToPath(new URL("..", import.meta.url)));
@@ -73,7 +102,7 @@ async function withTransaction<T>(
 export async function getAppliedControlMigrations(
   pool: Pool
 ): Promise<ControlDatabaseMigrationRecord[]> {
-  await pool.query(migrationsTableStatement);
+  const tableName = await resolveMigrationsTable(pool);
 
   const result = await pool.query<{
     version: string;
@@ -81,7 +110,7 @@ export async function getAppliedControlMigrations(
     applied_at: Date | string;
   }>(
     `SELECT version, checksum, applied_at
-     FROM shp_schema_migrations
+     FROM ${tableName}
      ORDER BY version ASC`
   );
 
@@ -98,7 +127,7 @@ export async function getAppliedControlMigrations(
 export async function runControlDatabaseMigrations(
   pool: Pool
 ): Promise<ControlDatabaseMigrationRecord[]> {
-  await pool.query(migrationsTableStatement);
+  await resolveMigrationsTable(pool);
 
   const appliedMigrations = new Map(
     (await getAppliedControlMigrations(pool)).map((migration) => [
@@ -126,8 +155,9 @@ export async function runControlDatabaseMigrations(
     try {
       await withTransaction(client, async () => {
         await client.query(plan.sql);
+        const tableName = await resolveMigrationsTable(client);
         await client.query(
-          `INSERT INTO shp_schema_migrations (version, checksum)
+          `INSERT INTO ${tableName} (version, checksum)
            VALUES ($1, $2)`,
           [plan.version, plan.checksum]
         );

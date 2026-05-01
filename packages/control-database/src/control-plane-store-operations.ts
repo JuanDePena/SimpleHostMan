@@ -233,7 +233,7 @@ async function buildEnvironmentParametersSnapshot(
        updated_by_user_id,
        created_at,
        updated_at
-     FROM shp_environment_parameters
+     FROM control_plane_environment_parameters
      ORDER BY parameter_key ASC`
   );
   const uiKeys = new Set(result.rows.map((row) => row.parameter_key));
@@ -291,7 +291,7 @@ async function resolveOperationHistoryRetention(
 > {
   const result = await client.query<{ parameter_value: string }>(
     `SELECT parameter_value
-     FROM shp_environment_parameters
+     FROM control_plane_environment_parameters
      WHERE parameter_key = $1`,
     [operationHistoryRetentionDaysParameterKey]
   );
@@ -368,13 +368,13 @@ export async function purgeOperationalHistoryRows(
   const auditResult = await client.query<{ deleted_audit_event_count: string }>(
     `WITH latest_inventory_export AS (
        SELECT event_id
-       FROM shp_audit_events
+       FROM control_plane_audit_events
        WHERE event_type = 'inventory.exported'
        ORDER BY occurred_at DESC
        LIMIT 1
      ),
      deleted_events AS (
-       DELETE FROM shp_audit_events events
+       DELETE FROM control_plane_audit_events events
        WHERE events.occurred_at < $1::timestamptz
          AND NOT EXISTS (
            SELECT 1
@@ -390,12 +390,12 @@ export async function purgeOperationalHistoryRows(
   const reconciliationResult = await client.query<{ deleted_reconciliation_run_count: string }>(
     `WITH latest_reconciliation_run AS (
        SELECT run_id
-       FROM shp_reconciliation_runs
+       FROM control_plane_reconciliation_runs
        ORDER BY completed_at DESC
        LIMIT 1
      ),
      deleted_reconciliation_runs AS (
-       DELETE FROM shp_reconciliation_runs runs
+       DELETE FROM control_plane_reconciliation_runs runs
        WHERE runs.completed_at < $1::timestamptz
          AND NOT EXISTS (
            SELECT 1
@@ -425,7 +425,7 @@ export async function purgeOperationalHistoryRows(
 
 async function hasMailPolicyTable(client: PoolClient): Promise<boolean> {
   const result = await client.query<{ exists: boolean }>(
-    `SELECT to_regclass('public.shp_mail_policy') IS NOT NULL AS exists`
+    `SELECT to_regclass('public.control_plane_mail_policy') IS NOT NULL AS exists`
   );
 
   return Boolean(result.rows[0]?.exists);
@@ -437,7 +437,7 @@ async function hasMailboxCredentialStateColumn(client: PoolClient): Promise<bool
        SELECT 1
        FROM information_schema.columns
        WHERE table_schema = 'public'
-         AND table_name = 'shp_mailbox_credentials'
+         AND table_name = 'control_plane_mailbox_credentials'
          AND column_name = 'credential_state'
      ) AS exists`
   );
@@ -460,7 +460,7 @@ async function queryMailPolicyRows(client: PoolClient): Promise<MailPolicyRow[]>
        sender_denylist,
        rate_limit_burst,
        rate_limit_period_seconds
-     FROM shp_mail_policy
+     FROM control_plane_mail_policy
      WHERE policy_id = 'mail-policy'`
   );
 
@@ -480,10 +480,10 @@ async function queryMailboxRows(client: PoolClient): Promise<MailboxRow[]> {
          credentials.secret_payload AS desired_password,
          credentials.credential_state,
          credentials.updated_at AS credential_updated_at
-       FROM shp_mailboxes mailboxes
-       INNER JOIN shp_mail_domains domains
+       FROM control_plane_mailboxes mailboxes
+       INNER JOIN control_plane_mail_domains domains
          ON domains.mail_domain_id = mailboxes.mail_domain_id
-       LEFT JOIN shp_mailbox_credentials credentials
+       LEFT JOIN control_plane_mailbox_credentials credentials
          ON credentials.mailbox_id = mailboxes.mailbox_id
        ORDER BY mailboxes.address ASC`
       : `SELECT
@@ -495,10 +495,10 @@ async function queryMailboxRows(client: PoolClient): Promise<MailboxRow[]> {
          credentials.secret_payload AS desired_password,
          NULL::text AS credential_state,
          credentials.updated_at AS credential_updated_at
-       FROM shp_mailboxes mailboxes
-       INNER JOIN shp_mail_domains domains
+       FROM control_plane_mailboxes mailboxes
+       INNER JOIN control_plane_mail_domains domains
          ON domains.mail_domain_id = mailboxes.mail_domain_id
-       LEFT JOIN shp_mailbox_credentials credentials
+       LEFT JOIN control_plane_mailbox_credentials credentials
          ON credentials.mailbox_id = mailboxes.mailbox_id
        ORDER BY mailboxes.address ASC`
   );
@@ -541,10 +541,10 @@ export async function buildMailSyncPlans(
        domains.standby_node_id,
        domains.mail_host,
        domains.dkim_selector
-     FROM shp_mail_domains domains
-     INNER JOIN shp_tenants tenants
+     FROM control_plane_mail_domains domains
+     INNER JOIN control_plane_tenants tenants
        ON tenants.tenant_id = domains.tenant_id
-     INNER JOIN shp_dns_zones zones
+     INNER JOIN control_plane_dns_zones zones
        ON zones.zone_id = domains.zone_id
      ORDER BY domains.domain_name ASC`
   );
@@ -555,8 +555,8 @@ export async function buildMailSyncPlans(
        domains.domain_name,
        aliases.local_part,
        aliases.destinations
-     FROM shp_mail_aliases aliases
-     INNER JOIN shp_mail_domains domains
+     FROM control_plane_mail_aliases aliases
+     INNER JOIN control_plane_mail_domains domains
        ON domains.mail_domain_id = aliases.mail_domain_id
      ORDER BY aliases.address ASC`
   );
@@ -564,8 +564,8 @@ export async function buildMailSyncPlans(
     `SELECT
        mailboxes.address AS mailbox_address,
        quotas.storage_bytes
-     FROM shp_mailbox_quotas quotas
-     INNER JOIN shp_mailboxes mailboxes
+     FROM control_plane_mailbox_quotas quotas
+     INNER JOIN control_plane_mailboxes mailboxes
        ON mailboxes.mailbox_id = quotas.mailbox_id
      ORDER BY mailboxes.address ASC`
   );
@@ -709,8 +709,8 @@ export async function buildMailProxyPlans(
        tenants.slug AS tenant_slug,
        domains.primary_node_id,
        domains.standby_node_id
-     FROM shp_mail_domains domains
-     INNER JOIN shp_tenants tenants
+     FROM control_plane_mail_domains domains
+     INNER JOIN control_plane_tenants tenants
        ON tenants.tenant_id = domains.tenant_id
      ORDER BY domains.domain_name ASC`
   );
@@ -777,18 +777,18 @@ export async function buildZoneDnsPlans(
          COALESCE(MAX(apps.updated_at), zones.updated_at),
          COALESCE(MAX(sites.updated_at), zones.updated_at)
        ) AS desired_updated_at
-     FROM shp_dns_zones zones
-     INNER JOIN shp_nodes nodes
+     FROM control_plane_dns_zones zones
+     INNER JOIN control_plane_nodes nodes
        ON nodes.node_id = zones.primary_node_id
-     LEFT JOIN shp_dns_records records
+     LEFT JOIN control_plane_dns_records records
        ON records.zone_id = zones.zone_id
-     LEFT JOIN shp_mail_domains mail_domains
+     LEFT JOIN control_plane_mail_domains mail_domains
        ON mail_domains.zone_id = zones.zone_id
-     LEFT JOIN shp_nodes mail_nodes
+     LEFT JOIN control_plane_nodes mail_nodes
        ON mail_nodes.node_id = mail_domains.primary_node_id
-     LEFT JOIN shp_apps apps
+     LEFT JOIN control_plane_apps apps
        ON apps.zone_id = zones.zone_id
-     LEFT JOIN shp_sites sites
+     LEFT JOIN control_plane_sites sites
        ON sites.app_id = apps.app_id
      WHERE zones.zone_name = $1
      GROUP BY
@@ -813,7 +813,7 @@ export async function buildZoneDnsPlans(
        hostname,
        public_ipv4,
        wireguard_address
-     FROM shp_nodes
+     FROM control_plane_nodes
      ORDER BY
        CASE WHEN node_id = $1 THEN 0 ELSE 1 END,
        node_id ASC`,
@@ -847,8 +847,8 @@ export async function buildZoneDnsPlans(
        records.type,
        records.value,
        records.ttl
-     FROM shp_dns_records records
-     INNER JOIN shp_dns_zones zones
+     FROM control_plane_dns_records records
+     INNER JOIN control_plane_dns_zones zones
        ON zones.zone_id = records.zone_id
      WHERE zones.zone_name = $1
      ORDER BY records.name ASC, records.type ASC, records.value ASC`,
@@ -859,10 +859,10 @@ export async function buildZoneDnsPlans(
     aliases: string[];
   }>(
     `SELECT sites.canonical_domain, sites.aliases
-     FROM shp_sites sites
-     INNER JOIN shp_apps apps
+     FROM control_plane_sites sites
+     INNER JOIN control_plane_apps apps
        ON apps.app_id = sites.app_id
-     INNER JOIN shp_dns_zones zones
+     INNER JOIN control_plane_dns_zones zones
        ON zones.zone_id = apps.zone_id
      WHERE zones.zone_name = $1
      ORDER BY sites.canonical_domain ASC`,
@@ -876,12 +876,12 @@ export async function buildZoneDnsPlans(
        domains.dkim_selector,
        domains.primary_node_id,
        nodes.public_ipv4
-     FROM shp_mail_domains domains
-     INNER JOIN shp_tenants tenants
+     FROM control_plane_mail_domains domains
+     INNER JOIN control_plane_tenants tenants
        ON tenants.tenant_id = domains.tenant_id
-     INNER JOIN shp_nodes nodes
+     INNER JOIN control_plane_nodes nodes
        ON nodes.node_id = domains.primary_node_id
-     INNER JOIN shp_dns_zones zones
+     INNER JOIN control_plane_dns_zones zones
        ON zones.zone_id = domains.zone_id
      WHERE zones.zone_name = $1
      ORDER BY domains.domain_name ASC`,
@@ -1052,10 +1052,10 @@ export async function buildProxyPayload(
        sites.canonical_domain,
        sites.aliases,
        apps.storage_root
-     FROM shp_apps apps
-     INNER JOIN shp_sites sites
+     FROM control_plane_apps apps
+     INNER JOIN control_plane_sites sites
        ON sites.app_id = apps.app_id
-     INNER JOIN shp_dns_zones zones
+     INNER JOIN control_plane_dns_zones zones
        ON zones.zone_id = apps.zone_id
      WHERE apps.slug = $1`,
     [appSlug]
@@ -1126,14 +1126,14 @@ export async function buildAppContainerPlans(
        databases.primary_node_id AS database_primary_node_id,
        nodes.wireguard_address AS database_primary_wireguard_address,
        credentials.secret_payload AS desired_password
-     FROM shp_apps apps
-     INNER JOIN shp_sites sites
+     FROM control_plane_apps apps
+     INNER JOIN control_plane_sites sites
        ON sites.app_id = apps.app_id
-     LEFT JOIN shp_databases databases
+     LEFT JOIN control_plane_databases databases
        ON databases.app_id = apps.app_id
-     LEFT JOIN shp_nodes nodes
+     LEFT JOIN control_plane_nodes nodes
        ON nodes.node_id = databases.primary_node_id
-     LEFT JOIN shp_database_credentials credentials
+     LEFT JOIN control_plane_database_credentials credentials
        ON credentials.database_id = databases.database_id
      WHERE apps.slug = $1
      ORDER BY
@@ -1273,10 +1273,10 @@ export async function buildDatabasePayload(
        databases.database_user,
        databases.primary_node_id,
        credentials.secret_payload AS desired_password
-     FROM shp_databases databases
-     INNER JOIN shp_apps apps
+     FROM control_plane_databases databases
+     INNER JOIN control_plane_apps apps
        ON apps.app_id = databases.app_id
-     LEFT JOIN shp_database_credentials credentials
+     LEFT JOIN control_plane_database_credentials credentials
        ON credentials.database_id = databases.database_id
      WHERE apps.slug = $1
      ORDER BY
@@ -1331,7 +1331,7 @@ export async function ensureControlPlaneTargetNode(
 ): Promise<void> {
   const nodeResult = await client.query<InventoryNodeRow>(
     `SELECT node_id, hostname, public_ipv4, wireguard_address
-     FROM shp_nodes
+     FROM control_plane_nodes
      WHERE node_id = $1`,
     [nodeId]
   );
@@ -1342,7 +1342,7 @@ export async function ensureControlPlaneTargetNode(
   }
 
   await client.query(
-    `INSERT INTO control_plane_nodes (
+    `INSERT INTO control_plane_agent_nodes (
        node_id,
        hostname,
        version,
@@ -1428,14 +1428,14 @@ async function resolveTargetNodeIds(
   const nodeResult = uniqueRequestedNodeIds.length > 0
     ? await client.query<{ node_id: string }>(
         `SELECT node_id
-         FROM shp_nodes
+         FROM control_plane_nodes
          WHERE node_id = ANY($1::text[])
          ORDER BY node_id ASC`,
         [uniqueRequestedNodeIds]
       )
     : await client.query<{ node_id: string }>(
         `SELECT node_id
-         FROM shp_nodes
+         FROM control_plane_nodes
          ORDER BY node_id ASC`
       );
   const targetNodeIds = nodeResult.rows.map((row) => row.node_id);
@@ -1530,7 +1530,7 @@ export async function getLatestReconciliationRun(
        summary,
        started_at,
        completed_at
-     FROM shp_reconciliation_runs
+     FROM control_plane_reconciliation_runs
      ORDER BY completed_at DESC
      LIMIT 1`
   );
@@ -1547,10 +1547,10 @@ export async function listAppContainerCredentialGaps(
        apps.primary_node_id,
        apps.standby_node_id,
        apps.mode
-     FROM shp_apps apps
-     INNER JOIN shp_databases databases
+     FROM control_plane_apps apps
+     INNER JOIN control_plane_databases databases
        ON databases.app_id = apps.app_id
-     LEFT JOIN shp_database_credentials credentials
+     LEFT JOIN control_plane_database_credentials credentials
        ON credentials.database_id = databases.database_id
      WHERE credentials.database_id IS NULL
      ORDER BY apps.slug ASC`
@@ -1587,7 +1587,7 @@ export async function buildReconciliationCandidates(
   let missingCredentialCount = 0;
   const zoneResult = await client.query<{ zone_name: string }>(
     `SELECT zone_name
-     FROM shp_dns_zones
+     FROM control_plane_dns_zones
      ORDER BY zone_name ASC`
   );
 
@@ -1614,7 +1614,7 @@ export async function buildReconciliationCandidates(
 
   const appResult = await client.query<{ slug: string }>(
     `SELECT slug
-     FROM shp_apps
+     FROM control_plane_apps
      ORDER BY slug ASC`
   );
 
@@ -1655,8 +1655,8 @@ export async function buildReconciliationCandidates(
 
   const databaseResult = await client.query<{ slug: string }>(
     `SELECT apps.slug
-     FROM shp_databases databases
-     INNER JOIN shp_apps apps
+     FROM control_plane_databases databases
+     INNER JOIN control_plane_apps apps
        ON apps.app_id = databases.app_id
      ORDER BY apps.slug ASC`
   );
@@ -1776,10 +1776,10 @@ async function buildResourceDriftSummaries(
   if (missingCredentialCount > 0) {
     const missingDatabases = await client.query<{ slug: string; primary_node_id: string }>(
       `SELECT apps.slug, databases.primary_node_id
-       FROM shp_databases databases
-       INNER JOIN shp_apps apps
+       FROM control_plane_databases databases
+       INNER JOIN control_plane_apps apps
          ON apps.app_id = databases.app_id
-       LEFT JOIN shp_database_credentials credentials
+       LEFT JOIN control_plane_database_credentials credentials
          ON credentials.database_id = databases.database_id
        WHERE credentials.database_id IS NULL
        ORDER BY apps.slug ASC`
@@ -2058,7 +2058,7 @@ export function createControlPlaneOperationsMethods(
 
         if (request.password) {
           await client.query(
-            `INSERT INTO shp_database_credentials (
+            `INSERT INTO control_plane_database_credentials (
                database_id,
                secret_payload,
                updated_at
@@ -2477,7 +2477,7 @@ export function createControlPlaneOperationsMethods(
         const completedAt = new Date().toISOString();
 
         await client.query(
-          `INSERT INTO shp_reconciliation_runs (
+          `INSERT INTO control_plane_reconciliation_runs (
              run_id,
              desired_state_version,
              generated_job_count,
@@ -2583,7 +2583,7 @@ export function createControlPlaneOperationsMethods(
              updated_by_user_id,
              created_at,
              updated_at
-           FROM shp_environment_parameters
+           FROM control_plane_environment_parameters
            WHERE parameter_key = $1`,
           [normalized.key]
         );
@@ -2612,7 +2612,7 @@ export function createControlPlaneOperationsMethods(
         );
 
         await client.query(
-          `INSERT INTO shp_environment_parameters (
+          `INSERT INTO control_plane_environment_parameters (
              parameter_key,
              parameter_value,
              description,
@@ -2666,7 +2666,7 @@ export function createControlPlaneOperationsMethods(
         const normalizedKey = normalizeEnvironmentParameterKey(key);
         const existingResult = await client.query<Pick<EnvironmentParameterRow, "created_from_ui">>(
           `SELECT created_from_ui
-           FROM shp_environment_parameters
+           FROM control_plane_environment_parameters
            WHERE parameter_key = $1`,
           [normalizedKey]
         );
@@ -2681,7 +2681,7 @@ export function createControlPlaneOperationsMethods(
         }
 
         await client.query(
-          `DELETE FROM shp_environment_parameters
+          `DELETE FROM control_plane_environment_parameters
            WHERE parameter_key = $1`,
           [normalizedKey]
         );
@@ -2717,12 +2717,12 @@ export function createControlPlaneOperationsMethods(
           backup_policy_count: string;
         }>(
           `SELECT
-             (SELECT COUNT(*) FROM shp_nodes) AS node_count,
+             (SELECT COUNT(*) FROM control_plane_nodes) AS node_count,
              (SELECT COUNT(*) FROM control_plane_jobs WHERE completed_at IS NULL)
                AS pending_job_count,
              (SELECT COUNT(*) FROM control_plane_job_results WHERE status = 'failed')
                AS failed_job_count,
-             (SELECT COUNT(*) FROM shp_backup_policies) AS backup_policy_count`
+             (SELECT COUNT(*) FROM control_plane_backup_policies) AS backup_policy_count`
         );
         const latestReconciliation = await getLatestReconciliationRun(client);
         const row = countResult.rows[0];
@@ -2780,8 +2780,8 @@ export function createControlPlaneOperationsMethods(
              COALESCE(backups.backup_policy_count, 0) AS backup_policy_count,
              latest.status AS latest_job_status,
              latest.summary AS latest_job_summary
-           FROM shp_nodes nodes
-           LEFT JOIN control_plane_nodes control
+           FROM control_plane_nodes nodes
+           LEFT JOIN control_plane_agent_nodes control
              ON control.node_id = nodes.node_id
            LEFT JOIN (
              SELECT node_id, COUNT(*) AS pending_job_count
@@ -2792,19 +2792,19 @@ export function createControlPlaneOperationsMethods(
              ON pending.node_id = nodes.node_id
            LEFT JOIN (
              SELECT primary_node_id AS node_id, COUNT(*) AS primary_zone_count
-             FROM shp_dns_zones
+             FROM control_plane_dns_zones
              GROUP BY primary_node_id
            ) zones
              ON zones.node_id = nodes.node_id
            LEFT JOIN (
              SELECT primary_node_id AS node_id, COUNT(*) AS primary_app_count
-             FROM shp_apps
+             FROM control_plane_apps
              GROUP BY primary_node_id
            ) apps
              ON apps.node_id = nodes.node_id
            LEFT JOIN (
              SELECT target_node_id AS node_id, COUNT(*) AS backup_policy_count
-             FROM shp_backup_policies
+             FROM control_plane_backup_policies
              GROUP BY target_node_id
            ) backups
              ON backups.node_id = nodes.node_id
@@ -2846,10 +2846,10 @@ export function createControlPlaneOperationsMethods(
              packages.source,
              packages.installed_at,
              packages.last_collected_at
-           FROM shp_node_installed_packages packages
-           LEFT JOIN control_plane_nodes control
+           FROM control_plane_node_installed_packages packages
+           LEFT JOIN control_plane_agent_nodes control
              ON control.node_id = packages.node_id
-           LEFT JOIN shp_nodes inventory
+           LEFT JOIN control_plane_nodes inventory
              ON inventory.node_id = packages.node_id
            ORDER BY packages.package_name ASC, packages.node_id ASC, packages.arch ASC`
         );
@@ -2878,8 +2878,8 @@ export function createControlPlaneOperationsMethods(
            0 AS backup_policy_count,
            NULL::text AS latest_job_status,
            NULL::text AS latest_job_summary
-         FROM shp_nodes nodes
-         LEFT JOIN control_plane_nodes control
+         FROM control_plane_nodes nodes
+         LEFT JOIN control_plane_agent_nodes control
            ON control.node_id = nodes.node_id
          ORDER BY nodes.node_id ASC`
       );
@@ -2968,7 +2968,7 @@ export function createControlPlaneOperationsMethods(
              entity_id,
              payload,
              occurred_at
-           FROM shp_audit_events
+           FROM control_plane_audit_events
            ORDER BY occurred_at DESC
            LIMIT $1`,
           [boundedLimit]
@@ -2993,8 +2993,8 @@ export function createControlPlaneOperationsMethods(
              policies.retention_days,
              policies.storage_location,
              policies.resource_selectors
-           FROM shp_backup_policies policies
-           INNER JOIN shp_tenants tenants
+           FROM control_plane_backup_policies policies
+           INNER JOIN control_plane_tenants tenants
              ON tenants.tenant_id = policies.tenant_id
            ORDER BY policies.policy_slug ASC`
         );
@@ -3008,8 +3008,8 @@ export function createControlPlaneOperationsMethods(
              runs.started_at,
              runs.completed_at,
              runs.details
-           FROM shp_backup_runs runs
-           INNER JOIN shp_backup_policies policies
+           FROM control_plane_backup_runs runs
+           INNER JOIN control_plane_backup_policies policies
              ON policies.policy_id = runs.policy_id
            ORDER BY policies.policy_slug ASC, runs.started_at DESC`
         );
@@ -3032,7 +3032,7 @@ export function createControlPlaneOperationsMethods(
         const runId = `backup-run-${randomUUID()}`;
 
         await client.query(
-          `INSERT INTO shp_backup_runs (
+          `INSERT INTO control_plane_backup_runs (
              run_id,
              policy_id,
              node_id,
@@ -3044,7 +3044,7 @@ export function createControlPlaneOperationsMethods(
            )
            VALUES (
              $1,
-             (SELECT policy_id FROM shp_backup_policies WHERE policy_slug = $2),
+             (SELECT policy_id FROM control_plane_backup_policies WHERE policy_slug = $2),
              $3,
              $4,
              $5,
@@ -3087,7 +3087,7 @@ export function createControlPlaneOperationsMethods(
              supported_job_kinds,
              accepted_at,
              last_seen_at
-           FROM control_plane_nodes
+           FROM control_plane_agent_nodes
            ORDER BY accepted_at ASC`
         ),
         pool.query<JobRow>(

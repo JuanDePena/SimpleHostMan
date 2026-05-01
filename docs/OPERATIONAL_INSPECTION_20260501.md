@@ -186,11 +186,11 @@ Observed state:
 
 Largest control-plane relations:
 
-- `shp_audit_events`: about `904 MB`
-- `shp_reconciliation_runs`: about `254 MB`
+- `control_plane_audit_events`: about `904 MB`
+- `control_plane_reconciliation_runs`: about `254 MB`
 - `control_plane_jobs`: about `168 MB`
 - `control_plane_job_results`: about `153 MB`
-- `shp_sessions`: about `7.5 MB`
+- `control_plane_sessions`: about `7.5 MB`
 
 Notable statistics:
 
@@ -213,6 +213,14 @@ Configuration posture:
 
 The control cluster is generally healthy. The main recommendation is to add
 query observability before changing indexes or query shapes.
+
+Schema naming note:
+
+- On `2026-05-01`, control database table names were standardized from
+  `shp_*` to `control_plane_*`.
+- Agent registration state uses `control_plane_agent_nodes` and
+  `control_plane_agent_node_credentials`.
+- Desired inventory nodes use `control_plane_nodes`.
 
 ## MariaDB Findings
 
@@ -579,8 +587,8 @@ Goal: prevent control-plane history from becoming the next capacity problem.
 
 Actions:
 
-- define retention policy for `shp_audit_events`
-- define retention policy for `shp_reconciliation_runs`
+- define retention policy for `control_plane_audit_events`
+- define retention policy for `control_plane_reconciliation_runs`
 - define retention policy for `control_plane_jobs` and
   `control_plane_job_results`
 - evaluate partitioning for high-volume history tables if retention must remain
@@ -615,15 +623,15 @@ Completion evidence:
 - Operational history retention is standardized on
   `SIMPLEHOST_HISTORY_RETENTION_DAYS = 90`.
 - The purge implementation now covers:
-  - `shp_audit_events`
-  - `shp_reconciliation_runs`
+  - `control_plane_audit_events`
+  - `control_plane_reconciliation_runs`
   - completed `control_plane_jobs`
   - matching `control_plane_job_results`
 - The purge still preserves:
   - the latest job per resource
   - the latest inventory export audit event
   - the latest reconciliation run
-- The live parameter description in `shp_environment_parameters` now states
+- The live parameter description in `control_plane_environment_parameters` now states
   that audit events, reconciliation runs, and completed job history rows share
   the same retention window.
 - A live cutoff check for the current 90-day window reported `0` purgeable
@@ -632,9 +640,9 @@ Completion evidence:
 - Partitioning is not needed yet. The 90-day retention window bounds the
   current high-volume tables before they justify partition maintenance.
 - Large index review found the largest current candidates:
-  - `shp_audit_events_entity_idx`: about `154 MB`, `0` scans in the current
+  - `control_plane_audit_events_entity_idx`: about `154 MB`, `0` scans in the current
     stats window
-  - `shp_reconciliation_runs_pkey`: about `55 MB`, `0` scans in the current
+  - `control_plane_reconciliation_runs_pkey`: about `55 MB`, `0` scans in the current
     stats window
   No index was dropped in this phase; these should be rechecked after a longer
   `pg_stat_statements` and retention window.

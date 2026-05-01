@@ -199,7 +199,7 @@ test("purgeOperationalHistoryRows preserves latest resource jobs while deleting 
       }
 
       if (statement.includes("latest_reconciliation_run")) {
-        assert.match(statement, /FROM shp_reconciliation_runs/);
+        assert.match(statement, /FROM control_plane_reconciliation_runs/);
         assert.match(statement, /runs\.completed_at < \$1::timestamptz/);
         assert.match(statement, /NOT EXISTS/);
 
@@ -232,7 +232,7 @@ test("buildZoneDnsPlans publishes node hostnames and dispatches primary plus sec
   const client = {
     query: async (statement: string, params?: unknown[]) => {
       if (
-        statement.includes("FROM shp_dns_zones zones") &&
+        statement.includes("FROM control_plane_dns_zones zones") &&
         statement.includes("desired_updated_at")
       ) {
         return {
@@ -249,7 +249,7 @@ test("buildZoneDnsPlans publishes node hostnames and dispatches primary plus sec
         };
       }
 
-      if (statement.includes("FROM shp_nodes") && statement.includes("CASE WHEN node_id = $1")) {
+      if (statement.includes("FROM control_plane_nodes") && statement.includes("CASE WHEN node_id = $1")) {
         assert.deepEqual(params, ["primary"]);
         return {
           rows: [
@@ -269,15 +269,15 @@ test("buildZoneDnsPlans publishes node hostnames and dispatches primary plus sec
         };
       }
 
-      if (statement.includes("FROM shp_dns_records records")) {
+      if (statement.includes("FROM control_plane_dns_records records")) {
         return { rows: [] };
       }
 
-      if (statement.includes("FROM shp_sites sites")) {
+      if (statement.includes("FROM control_plane_sites sites")) {
         return { rows: [] };
       }
 
-      if (statement.includes("FROM shp_mail_domains domains")) {
+      if (statement.includes("FROM control_plane_mail_domains domains")) {
         return { rows: [] };
       }
 

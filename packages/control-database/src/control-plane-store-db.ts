@@ -30,7 +30,7 @@ export async function insertAuditEvent(
   input: AuditEventInput
 ): Promise<void> {
   await client.query(
-    `INSERT INTO shp_audit_events (
+    `INSERT INTO control_plane_audit_events (
        event_id,
        actor_type,
        actor_id,
