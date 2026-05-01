@@ -20,7 +20,7 @@ pilot migrations that established the current SimpleHostMan pattern.
 | `zcrmt.com` | migrated WordPress runtime on `app-zcrmt` | Zoho preserved | WordPress kept on MariaDB `app_zcrmt_wp` | closed |
 | `merlelaw.com` | migrated blank static runtime on `app-merlelaw` | SimpleHostMan mail live | none | closed |
 | `engilum.com` | external web targets preserved | Zoho preserved | none | DNS-only staged |
-| `pyrosa.com.do` | `pyrosa-wp`, `pyrosa-demoportal`, `pyrosa-repos`, `pyrosa-demoerp`, `pyrosa-api`, `pyrosa-demosync`, `pyrosa-erp`, `pyrosa-portal`, and `pyrosa-ldap` runtimes active; second-level `www` aliases active; `sync`/`helpers` still on `vps-old` | Microsoft 365 preserved, no legacy mail migration planned | WordPress, demoportal, and demosync migrated to MariaDB; demoerp migrated to PostgreSQL; `repos`, `api`, `erp`, `portal`, and `ldap` have no local database | phase 9 complete |
+| `pyrosa.com.do` | `pyrosa-wp`, `pyrosa-demoportal`, `pyrosa-repos`, `pyrosa-demoerp`, `pyrosa-api`, `pyrosa-demosync`, `pyrosa-erp`, `pyrosa-portal`, `pyrosa-ldap`, and `pyrosa-pgadmin` runtimes active; second-level `www` aliases active; `sync`/`helpers` still on `vps-old` | Microsoft 365 preserved, no legacy mail migration planned | WordPress, demoportal, and demosync migrated to MariaDB; demoerp migrated to PostgreSQL; `repos`, `api`, `erp`, `portal`, and `ldap` have no local database; pgAdmin uses its migrated SQLite config store | phase 10 complete |
 | `solucionesmercantilnr.com` | not migrated | retired | none | out of scope: expired, not renewing |
 | `pyrosa.net` | not migrated | retired | none | out of scope: expired, not renewing |
 
@@ -1148,3 +1148,41 @@ Validation:
 - LDAPS connectivity from the running container to the old OpenLDAP service passed
 - authoritative PowerDNS on `primary`, `secondary`, and `vps-old` returns
   `ldap.pyrosa.com.do -> 51.222.204.86`
+
+### 2026-05-01: pyrosa.com.do pgAdmin cutover
+
+`pgadmin.pyrosa.com.do` was promoted into SimpleHostMan app desired state and cut over from the
+legacy cPanel proxy to a managed pgAdmin 4 runtime.
+
+Applied app:
+
+- app slug `pyrosa-pgadmin`
+- source data `/opt/pgadmin4/data/` on `vps-old`
+- backend port `10111`
+- runtime image `registry.example.com/pyrosa-pgadmin:stable`
+- storage root `/srv/containers/apps/pyrosa-pgadmin`
+- `app-pyrosa-pgadmin.service` active on `primary` and `secondary`
+- pgAdmin SQLite config store copied with one user and two saved server definitions
+
+Runtime notes:
+
+- the target image is based on `docker.io/dpage/pgadmin4:9.10`
+- copied state excludes old rotated pgAdmin logs and runtime sessions
+- pgAdmin local configuration and SQLite data remain operational files outside the repository
+
+DNS and TLS:
+
+- `pgadmin.pyrosa.com.do A -> 51.222.204.86`
+- `code.pyrosa.com.do`, `sync.pyrosa.com.do`, and `helpers.pyrosa.com.do` remain on
+  `51.161.11.249`
+- the legacy `vps-old` authoritative zone was updated to the same `pgadmin.pyrosa.com.do` cutover
+  record
+- the existing `*.pyrosa.com.do` wildcard certificate covers the hostname on both SimpleHostMan nodes
+
+Validation:
+
+- `https://pgadmin.pyrosa.com.do/login` returns `200 OK` on both SimpleHostMan nodes with target
+  `--resolve`
+- public `https://pgadmin.pyrosa.com.do/login` returns `200 OK` from `51.222.204.86`
+- authoritative PowerDNS on `primary`, `secondary`, and `vps-old` returns
+  `pgadmin.pyrosa.com.do -> 51.222.204.86`

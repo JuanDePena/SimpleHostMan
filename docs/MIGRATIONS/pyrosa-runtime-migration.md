@@ -34,13 +34,15 @@ Live desired state currently includes:
 | `pyrosa-erp` | `erp.pyrosa.com.do`, `www.erp.pyrosa.com.do` | `10108` | none | phase 7 empty placeholder runtime active on primary and secondary; `www` alias cut over in phase 8 |
 | `pyrosa-portal` | `portal.pyrosa.com.do`, `www.portal.pyrosa.com.do` | `10109` | none | phase 7 empty placeholder runtime active on primary and secondary; `www` alias cut over in phase 8 |
 | `pyrosa-ldap` | `ldap.pyrosa.com.do` | `10110` | none | phase 9 LDAP Account Manager UI active on primary and secondary; OpenLDAP remains on `vps-old` |
+| `pyrosa-pgadmin` | `pgadmin.pyrosa.com.do` | `10111` | pgAdmin SQLite config store | phase 10 pgAdmin 4 runtime active on primary and secondary |
 | `pyrosa-sync` | `sync.pyrosa.com.do` | `10102` | MariaDB `app_pyrosa_sync`, pending PostgreSQL | desired only; do not migrate now |
 
 `pyrosa-wp`, `pyrosa-demoportal`, and `pyrosa-sync` are also present in
 `bootstrap/apps.bootstrap.yaml`. `pyrosa-repos`, `pyrosa-demoerp`, `pyrosa-api`, and
-`pyrosa-demosync`, `pyrosa-erp`, `pyrosa-portal`, and `pyrosa-ldap` are represented only in live desired state
-until the bootstrap inventory is refreshed. `pyrosa-repos`, `pyrosa-api`, `pyrosa-erp`, and
-`pyrosa-portal`, and `pyrosa-ldap` intentionally have no database resource.
+`pyrosa-demosync`, `pyrosa-erp`, `pyrosa-portal`, `pyrosa-ldap`, and `pyrosa-pgadmin` are
+represented only in live desired state until the bootstrap inventory is refreshed. `pyrosa-repos`,
+`pyrosa-api`, `pyrosa-erp`, `pyrosa-portal`, and `pyrosa-ldap` intentionally have no database
+resource.
 
 The target node public IP for migrated web hostnames is `51.222.204.86`.
 
@@ -59,7 +61,7 @@ Legacy public IP: `51.161.11.249`.
 | `erp.pyrosa.com.do` | `_sites/erp.pyrosa.com.do` | empty | placeholder | none observed | migrated in phase 7 as an empty `pyrosa-erp` placeholder, preserving `403` |
 | `helpers.pyrosa.com.do` | `_sites/helpers.pyrosa.com.do` | `6.6G` | helper tools; Apache proxy path to `localhost:3333` configured | PostgreSQL `do_fiscal_reports`; active cron jobs | do not migrate now |
 | `ldap.pyrosa.com.do` | `_sites/ldap.pyrosa.com.do` | `91M` | LDAP Account Manager 9.3 UI | OpenLDAP on `389`/`636` | migrated in phase 9 as `pyrosa-ldap`; UI connects back to `vps-old` over LDAPS |
-| `pgadmin.pyrosa.com.do` | proxy, not document root content | empty docroot | pgAdmin4 on `127.0.0.1:5050` | PostgreSQL admin surface | keep on `vps-old` with PostgreSQL until DB estate is moved |
+| `pgadmin.pyrosa.com.do` | proxy, not document root content | empty docroot; pgAdmin data about `2M` | pgAdmin 4.9.10 | SQLite pgAdmin config store with one user and two saved servers | migrated in phase 10 as `pyrosa-pgadmin` |
 | `portal.pyrosa.com.do` | `_sites/portal.pyrosa.com.do` | empty | placeholder | none observed | migrated in phase 7 as an empty `pyrosa-portal` placeholder, preserving `403` |
 | `repos.pyrosa.com.do` | `_sites/repos.pyrosa.com.do` | `574M` | SLES/Yum RPM repository | `sbotools` repo metadata and signed package metadata | migrated in phase 3 as `pyrosa-repos` |
 | `sync.pyrosa.com.do` | `_sites/sync.pyrosa.com.do` | `4.1G` | DIS/QBO production app and active PHP workers | MySQL `wmpyrosa_dis` about `3.8G`, `wmpyrosa_qbo`, Redis | do not migrate now |
@@ -1086,3 +1088,61 @@ DNS validation at `2026-05-01 03:56 UTC`:
 - legacy authoritative `51.161.11.249` returned `ldap.pyrosa.com.do` pointing to `51.222.204.86`
 - `1.1.1.1` and `8.8.8.8` returned `ldap.pyrosa.com.do` pointing to `51.222.204.86`
 - `sync.pyrosa.com.do` and `helpers.pyrosa.com.do` remained on `51.161.11.249`
+
+## Phase 10 Execution Record
+
+Completed on `2026-05-01` and scoped to `pgadmin.pyrosa.com.do`.
+
+This phase moved the pgAdmin web surface into SimpleHostMan. The old cPanel document root was empty;
+the active service was a pgAdmin 4.9.10 gunicorn process on `127.0.0.1:5050` with a small SQLite
+configuration store under `/opt/pgadmin4/data`.
+
+### Runtime
+
+Applied runtime state:
+
+- app slug `pyrosa-pgadmin`
+- source data copied from `root@51.161.11.249:/opt/pgadmin4/data/`
+- copied state includes `pgadmin4.db`, `storage/`, and the pgAdmin local configuration required to
+  read the existing config store
+- copied state excludes old rotated pgAdmin logs and runtime sessions
+- backend port `10111`
+- runtime image tag `registry.example.com/pyrosa-pgadmin:stable`
+- storage root `/srv/containers/apps/pyrosa-pgadmin`
+- `app-pyrosa-pgadmin.service` active on `primary`
+- `app-pyrosa-pgadmin.service` active on `secondary`
+
+The target image is based on `docker.io/dpage/pgadmin4:9.10` and was tagged locally as the managed
+runtime image. The migrated SQLite store passed integrity checks and contains one pgAdmin user and
+two saved server definitions. Stored secrets were kept only in the operational pgAdmin data/config
+files and were not committed to this repository.
+
+### DNS And TLS
+
+SimpleHostMan PowerDNS now serves:
+
+- `pgadmin.pyrosa.com.do A -> 51.222.204.86` with TTL `300`
+
+The legacy DNS zone on `vps-old` was also updated so cached old delegations answer the same target
+A record with TTL `300`. The existing `*.pyrosa.com.do` wildcard certificate covers
+`pgadmin.pyrosa.com.do`, so no new certificate lineage was required.
+
+### Validation
+
+Runtime and target validation:
+
+- `https://pgadmin.pyrosa.com.do/` with `--resolve` to `primary` returns a redirect to `/login?next=/`
+- `https://pgadmin.pyrosa.com.do/login` with `--resolve` to `primary` returns `200 OK`
+- `https://pgadmin.pyrosa.com.do/` with `--resolve` to `secondary` returns a redirect to
+  `/login?next=/`
+- `https://pgadmin.pyrosa.com.do/login` with `--resolve` to `secondary` returns `200 OK`
+- public `https://pgadmin.pyrosa.com.do/login` returns `200 OK` from `51.222.204.86`
+
+DNS validation at `2026-05-01 04:11 UTC`:
+
+- authoritative `51.222.204.86` returned `pgadmin.pyrosa.com.do` pointing to `51.222.204.86`
+- authoritative `51.222.206.196` returned `pgadmin.pyrosa.com.do` pointing to `51.222.204.86`
+- legacy authoritative `51.161.11.249` returned `pgadmin.pyrosa.com.do` pointing to `51.222.204.86`
+- `1.1.1.1` and `8.8.8.8` returned `pgadmin.pyrosa.com.do` pointing to `51.222.204.86`
+- `code.pyrosa.com.do`, `sync.pyrosa.com.do`, and `helpers.pyrosa.com.do` remained on
+  `51.161.11.249`
