@@ -12,7 +12,9 @@ SimpleHostMan mail domain should be created for `pyrosa.com.do`.
 ## Guardrails
 
 - `sync.pyrosa.com.do` was cut over after period close and now runs from SimpleHostMan.
-- Keep `helpers.pyrosa.com.do` on `vps-old` until its separate helper/database stack is migrated.
+- `helpers.pyrosa.com.do` was cut over after period close and now runs from SimpleHostMan.
+- `www.helpers.pyrosa.com.do` remains on `vps-old` because second-level aliases are not required
+  unless separately requested.
 - Treat `repos.pyrosa.com.do` as package distribution infrastructure for SLES/RPM consumers of the
   Proyecto Iohana packages, not as a simple static site.
 - Preserve Microsoft 365 MX, SPF, DKIM, Autodiscover, and DMARC records.
@@ -36,13 +38,14 @@ Live desired state currently includes:
 | `pyrosa-ldap` | `ldap.pyrosa.com.do` | `10110` | none | phase 9 LDAP Account Manager UI active on primary and secondary; OpenLDAP remains on `vps-old` |
 | `pyrosa-pgadmin` | `pgadmin.pyrosa.com.do` | `10111` | pgAdmin SQLite config store | phase 10 pgAdmin 4 runtime active on primary and secondary |
 | `pyrosa-sync` | `sync.pyrosa.com.do` | `10102` | MariaDB `app_pyrosa_sync`, `app_pyrosa_sync_qbo`; PostgreSQL conversion deferred | phase 13 DIS/QBO production runtime active; workers active on primary only |
+| `pyrosa-helpers` | `helpers.pyrosa.com.do` | `10112`; DFR `10113`; QR render `10114` | PostgreSQL `app_pyrosa_helpers_dfr` imported for preservation; DFR runtime remains JSON-store backed | phase 14 helper runtime active on primary and secondary |
 
 `pyrosa-wp`, `pyrosa-demoportal`, and `pyrosa-sync` are also present in
 `bootstrap/apps.bootstrap.yaml`. `pyrosa-repos`, `pyrosa-demoerp`, `pyrosa-api`, and
-`pyrosa-demosync`, `pyrosa-erp`, `pyrosa-portal`, `pyrosa-ldap`, and `pyrosa-pgadmin` are
-represented only in live desired state until the bootstrap inventory is refreshed. `pyrosa-repos`,
-`pyrosa-api`, `pyrosa-erp`, `pyrosa-portal`, and `pyrosa-ldap` intentionally have no database
-resource.
+`pyrosa-demosync`, `pyrosa-erp`, `pyrosa-portal`, `pyrosa-ldap`, `pyrosa-pgadmin`, and
+`pyrosa-helpers` are represented only in live desired state until the bootstrap inventory is
+refreshed. `pyrosa-repos`, `pyrosa-api`, `pyrosa-erp`, `pyrosa-portal`, and `pyrosa-ldap`
+intentionally have no database resource.
 
 `code.pyrosa.com.do` is a host-service cutover rather than a `shp_apps` app resource. It fronts the
 existing code-server service on `127.0.0.1:8080` on the SimpleHostMan nodes and is tracked in the
@@ -50,8 +53,8 @@ phase 11 execution record below.
 
 The target node public IP for migrated web hostnames is `51.222.204.86`.
 
-As of the phase 13 execution record, every primary hostname approved for this wave is cut over to
-the target node except the remaining helper endpoint: `helpers.pyrosa.com.do`.
+As of the phase 14 execution record, every primary hostname approved for this wave is cut over to
+the target node. Second-level `www.*` aliases remain out of scope unless separately requested.
 
 ## Legacy Inventory
 
@@ -66,7 +69,7 @@ Legacy public IP: `51.161.11.249`.
 | `demoportal.pyrosa.com.do` | `_sites/demoportal.pyrosa.com.do` | `194M` source; `79M` staged without `node_modules`/logs | Laravel 12 app | MySQL `wmpyrosa_synct`, Redis/local mail settings observed in legacy env | migrated in phase 2 as `pyrosa-demoportal`, kept on MariaDB |
 | `demosync.pyrosa.com.do` | `_sites/demosync.pyrosa.com.do` | `88M` source; `255M` staged after local Tabler asset copy | DIS/QBO demo app | MySQL `wmpyrosa_disdemo` and shared `wmpyrosa_qbo` | migrated in phase 6 as `pyrosa-demosync`, kept on MariaDB |
 | `erp.pyrosa.com.do` | `_sites/erp.pyrosa.com.do` | empty | placeholder | none observed | migrated in phase 7 as an empty `pyrosa-erp` placeholder, preserving `403` |
-| `helpers.pyrosa.com.do` | `_sites/helpers.pyrosa.com.do` | `6.6G` | helper tools; Apache proxy path to `localhost:3333` configured | PostgreSQL `do_fiscal_reports`; active cron jobs | do not migrate now |
+| `helpers.pyrosa.com.do` | `_sites/helpers.pyrosa.com.do` | `6.6G` | helper tools; Apache proxy path to `localhost:3333` configured | PostgreSQL `do_fiscal_reports`; JSON-store DFR data | migrated in phase 14 as `pyrosa-helpers`; old `/dfr/` proxy disabled on `vps-old` after cutover |
 | `ldap.pyrosa.com.do` | `_sites/ldap.pyrosa.com.do` | `91M` | LDAP Account Manager 9.3 UI | OpenLDAP on `389`/`636` | migrated in phase 9 as `pyrosa-ldap`; UI connects back to `vps-old` over LDAPS |
 | `pgadmin.pyrosa.com.do` | proxy, not document root content | empty docroot; pgAdmin data about `2M` | pgAdmin 4.9.10 | SQLite pgAdmin config store with one user and two saved servers | migrated in phase 10 as `pyrosa-pgadmin` |
 | `portal.pyrosa.com.do` | `_sites/portal.pyrosa.com.do` | empty | placeholder | none observed | migrated in phase 7 as an empty `pyrosa-portal` placeholder, preserving `403` |
@@ -90,7 +93,7 @@ PostgreSQL 18:
 | Database | Observed consumer |
 | --- | --- |
 | `dolibarr_demoerp` | migrated to PostgreSQL `app_pyrosa_demoerp` for `demoerp.pyrosa.com.do` |
-| `do_fiscal_reports` | helper tooling |
+| `do_fiscal_reports` | migrated to PostgreSQL `app_pyrosa_helpers_dfr` for preservation/future compatibility; current DFR runtime remains JSON-store backed |
 | `adudoc_db` / `add_xp8hnrqxr3` | legacy Adudoc leftovers |
 
 ## Active Services Observed On vps-old
@@ -104,9 +107,10 @@ PostgreSQL 18:
 - pgAdmin4 on `127.0.0.1:5050`.
 - PHP workers for the production `sync.pyrosa.com.do` DIS runtime.
 
-`helpers.pyrosa.com.do` has active cron-driven jobs and a configured `/dfr/` proxy. No listener on
-`:3333` was observed during the spot check, but the helper tree should still remain untouched during
-period close.
+Before phase 14, `helpers.pyrosa.com.do` had cron-driven jobs and a configured `/dfr/` proxy on
+`vps-old`. No listener on `:3333` was observed during the spot check. After period close, the helper
+runtime was migrated and the old `/dfr/` proxy was disabled in favor of a temporary reverse proxy to
+the new primary.
 
 ## DNS Posture To Preserve
 
@@ -129,8 +133,8 @@ unchanged.
 ### Phase 0: Preservation and Freeze
 
 1. Freeze migration scope: only move hostnames explicitly selected for this wave.
-2. Keep `sync`, `helpers`, `repos`, `code`, `pgadmin`, and `ldap` on `vps-old` unless the operator
-   explicitly widens scope.
+2. Original freeze list was `sync`, `helpers`, `repos`, `code`, `pgadmin`, and `ldap`; those
+   endpoints were later migrated in approved follow-up phases where applicable.
 3. Seed target DNS for `pyrosa.com.do` with current Microsoft 365 records and old-host A records.
 4. Lower TTLs ahead of individual hostname cutovers where the authoritative provider permits it.
 
@@ -178,18 +182,18 @@ workflow is identified and reproduced on the target.
 
 ### Phase 4: Deferred Systems
 
-Defer until after period close:
+These systems were deferred until after period close and later resumed:
 
-- `sync.pyrosa.com.do` and its production DIS/QBO database/worker set.
-- `helpers.pyrosa.com.do` and `do_fiscal_reports`.
-- Production workers for the sync family. `demosync.pyrosa.com.do` was later migrated in phase 6
+- `sync.pyrosa.com.do` and its production DIS/QBO database/worker set, completed in phase 13.
+- `helpers.pyrosa.com.do` and `do_fiscal_reports`, completed in phase 14.
+- Production workers for the sync family. `demosync.pyrosa.com.do` was migrated in phase 6
   after validation showed no active cron or worker process on `vps-old`.
 
-Defer until separately approved:
+These systems were separately approved and migrated:
 
-- `code.pyrosa.com.do`.
-- `pgadmin.pyrosa.com.do`.
-- `ldap.pyrosa.com.do`.
+- `code.pyrosa.com.do`, completed in phase 11.
+- `pgadmin.pyrosa.com.do`, completed in phase 10.
+- `ldap.pyrosa.com.do`, completed in phase 9.
 
 ## Open Checks Before Execution
 
@@ -1377,3 +1381,94 @@ DNS validation at `2026-05-01 05:18 UTC`:
 - authoritative `51.222.206.196` returned `sync.pyrosa.com.do` pointing to `51.222.204.86`
 - legacy authoritative `51.161.11.249` returned `sync.pyrosa.com.do` pointing to `51.222.204.86`
 - public DNS returned `sync.pyrosa.com.do` pointing to `51.222.204.86`
+
+## Phase 14 Execution Record
+
+Completed on `2026-05-01` and scoped to `helpers.pyrosa.com.do`.
+
+This phase resumed after period close and cut over the helper tool collection. Public mail remains
+on Microsoft 365, so no Pyrosa mailboxes were migrated.
+
+### Runtime
+
+Applied runtime state:
+
+- app slug `pyrosa-helpers`
+- source `/home/wmpyrosa/public_html/_sites/helpers.pyrosa.com.do/`
+- PHP/static helper backend port `10112`
+- DFR FastAPI backend port `10113`
+- QR render microservice backend port `10114`
+- runtime image tag `registry.example.com/pyrosa-helpers:stable`
+- DFR image tag `registry.example.com/pyrosa-helpers-dfr:stable`
+- QR render image tag `registry.example.com/pyrosa-helpers-qrcode:stable`
+- storage root `/srv/containers/apps/pyrosa-helpers`
+- `app-pyrosa-helpers.service` active on `primary` and `secondary`
+- `app-pyrosa-helpers-dfr.service` active on `primary` and `secondary`
+- `app-pyrosa-helpers-qrcode.service` active on `primary` and `secondary`
+
+The copied tree excluded virtual environments, Git metadata, dependency directories, Playwright test
+output, cache directories, and dependency folders that were rebuilt in container images. The root
+app directory permission was normalized to `755` on both nodes so Apache inside the PHP container
+can read `.htaccess` and serve the helper root.
+
+The QR renderer runs as a separate Node/Chromium service. The PHP helper calls it through the Podman
+network at `10.88.9.14:3000`, while Apache exposes the service locally on `127.0.0.1:10114`.
+
+### Database
+
+The legacy PostgreSQL database was imported for preservation and future compatibility:
+
+- source database `do_fiscal_reports`
+- target database `app_pyrosa_helpers_dfr`
+- final import started `2026-05-01T05:31:48Z`
+- final import finished `2026-05-01T05:31:49Z`
+- imported `13` public tables, about `8814 kB`
+
+The current DFR code path remains JSON-store backed under
+`do-fiscal/reports/var/json-store`. The PostgreSQL import preserves the legacy database state but
+does not imply that the current DFR runtime is using PostgreSQL yet.
+
+DFR embedded jobs and scheduler mode are enabled on `primary` and disabled on `secondary` to avoid
+duplicate background work.
+
+### Old Host Drain
+
+The legacy `/dfr/` userdata proxy on `vps-old` pointed to `localhost:3333`, but no active listener
+was observed there during inspection. After cutover, that old include was disabled and replaced by
+a temporary reverse proxy to `http://51.222.204.86/` so clients with cached old A records continue
+to reach the new helper runtime.
+
+The legacy `www.helpers.pyrosa.com.do` second-level alias remains on `51.161.11.249` because
+second-level aliases are not required unless separately requested.
+
+### DNS And TLS
+
+SimpleHostMan PowerDNS now serves:
+
+- `helpers.pyrosa.com.do A -> 51.222.204.86` with TTL `300`
+
+The legacy PowerDNS/BIND zone on `vps-old` was also reloaded so cached old delegations answer the
+same target A record with TTL `300`. The existing `*.pyrosa.com.do` wildcard certificate covers
+`helpers.pyrosa.com.do`; no new certificate lineage was required.
+
+### Validation
+
+Runtime and target validation:
+
+- `https://helpers.pyrosa.com.do/` returns `200 OK` from `51.222.204.86`
+- `https://helpers.pyrosa.com.do/dfr/health` returns `200 OK` from `51.222.204.86`
+- `https://helpers.pyrosa.com.do/qrcode/scanner/` returns `200 OK` from `51.222.204.86`
+- `https://helpers.pyrosa.com.do/banking/tasas/` returns `200 OK` from `51.222.204.86`
+- `https://helpers.pyrosa.com.do/signature/ifco/` returns `200 OK` from `51.222.204.86`
+- QR render via `render.php` returns `200 OK` and JSON from `51.222.204.86`
+- root, DFR health, and QR scanner checks return `200 OK` on the `secondary` node with target
+  `--resolve`
+- cached-old path through the `vps-old` reverse proxy returns `200 OK` for root, DFR health,
+  QR scanner, QR render, banking tasas, and signature tools
+
+DNS validation at `2026-05-01 05:48 UTC`:
+
+- authoritative `51.222.204.86` returned `helpers.pyrosa.com.do` pointing to `51.222.204.86`
+- authoritative `51.222.206.196` returned `helpers.pyrosa.com.do` pointing to `51.222.204.86`
+- legacy authoritative `51.161.11.249` returned `helpers.pyrosa.com.do` pointing to `51.222.204.86`
+- public DNS returned `helpers.pyrosa.com.do` pointing to `51.222.204.86`

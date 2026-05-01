@@ -20,7 +20,7 @@ pilot migrations that established the current SimpleHostMan pattern.
 | `zcrmt.com` | migrated WordPress runtime on `app-zcrmt` | Zoho preserved | WordPress kept on MariaDB `app_zcrmt_wp` | closed |
 | `merlelaw.com` | migrated blank static runtime on `app-merlelaw` | SimpleHostMan mail live | none | closed |
 | `engilum.com` | external web targets preserved | Zoho preserved | none | DNS-only staged |
-| `pyrosa.com.do` | `pyrosa-wp`, `pyrosa-demoportal`, `pyrosa-repos`, `pyrosa-demoerp`, `pyrosa-api`, `pyrosa-demosync`, `pyrosa-erp`, `pyrosa-portal`, `pyrosa-ldap`, `pyrosa-pgadmin`, `pyrosa-sync`, and `code.pyrosa.com.do` host-service proxy active; `helpers` still on `vps-old`; second-level `www.*` aliases not required unless separately requested | Microsoft 365 preserved, no legacy mail migration planned | WordPress, demoportal, demosync, and sync migrated to MariaDB; demoerp migrated to PostgreSQL; `repos`, `api`, `erp`, `portal`, and `ldap` have no local database; pgAdmin uses its migrated SQLite config store | phase 13 sync cutover recorded |
+| `pyrosa.com.do` | `pyrosa-wp`, `pyrosa-demoportal`, `pyrosa-repos`, `pyrosa-demoerp`, `pyrosa-api`, `pyrosa-demosync`, `pyrosa-erp`, `pyrosa-portal`, `pyrosa-ldap`, `pyrosa-pgadmin`, `pyrosa-sync`, `pyrosa-helpers`, and `code.pyrosa.com.do` host-service proxy active; second-level `www.*` aliases not required unless separately requested | Microsoft 365 preserved, no legacy mail migration planned | WordPress, demoportal, demosync, and sync migrated to MariaDB; demoerp and helpers DFR preservation database migrated to PostgreSQL; `repos`, `api`, `erp`, `portal`, and `ldap` have no local database; pgAdmin uses its migrated SQLite config store | phase 14 helpers cutover recorded |
 | `solucionesmercantilnr.com` | not migrated | retired | none | out of scope: expired, not renewing |
 | `pyrosa.net` | not migrated | retired | none | out of scope: expired, not renewing |
 
@@ -1291,3 +1291,64 @@ Validation:
 - DIS database smoke test returned `62` rows from `dis_params`
 - authoritative PowerDNS on `primary`, `secondary`, and `vps-old` returns
   `sync.pyrosa.com.do -> 51.222.204.86`
+
+### 2026-05-01: pyrosa.com.do helpers cutover
+
+After period close, `helpers.pyrosa.com.do` was copied from `vps-old`, promoted into SimpleHostMan
+desired state, and cut over as the `pyrosa-helpers` runtime. Public mail remains on Microsoft 365,
+so no Pyrosa mailboxes were migrated.
+
+Applied app:
+
+- app slug `pyrosa-helpers`
+- source `/home/wmpyrosa/public_html/_sites/helpers.pyrosa.com.do/`
+- PHP/static helper backend port `10112`
+- DFR FastAPI backend port `10113`
+- QR render microservice backend port `10114`
+- runtime image `registry.example.com/pyrosa-helpers:stable`
+- DFR image `registry.example.com/pyrosa-helpers-dfr:stable`
+- QR render image `registry.example.com/pyrosa-helpers-qrcode:stable`
+- storage root `/srv/containers/apps/pyrosa-helpers`
+- `app-pyrosa-helpers.service`, `app-pyrosa-helpers-dfr.service`, and
+  `app-pyrosa-helpers-qrcode.service` active on `primary` and `secondary`
+
+Database outcome:
+
+- source PostgreSQL database `do_fiscal_reports` imported to `app_pyrosa_helpers_dfr`
+- final import ran from `2026-05-01T05:31:48Z` to `2026-05-01T05:31:49Z`
+- imported `13` public tables, about `8814 kB`
+- current DFR runtime remains JSON-store backed; PostgreSQL import preserves legacy state for
+  future compatibility
+
+Operational notes:
+
+- DFR embedded jobs and scheduler mode are enabled on `primary` and disabled on `secondary`
+- the QR renderer runs as a separate Node/Chromium service and is reached by PHP through the Podman
+  network
+- the copied root directory permission was normalized on both nodes so Apache can read `.htaccess`
+- the old `vps-old` `/dfr/` proxy to `localhost:3333` was disabled and replaced by a temporary
+  reverse proxy to the new primary for cached clients
+- `www.helpers.pyrosa.com.do` remains on `vps-old` because second-level aliases are not required
+  unless separately requested
+
+DNS and TLS:
+
+- `helpers.pyrosa.com.do A -> 51.222.204.86` with TTL `300`
+- SimpleHostMan primary and secondary PowerDNS answer the new target record
+- the legacy `vps-old` authoritative zone also answers the new target record
+- the existing `*.pyrosa.com.do` wildcard certificate covers `helpers.pyrosa.com.do`
+
+Validation:
+
+- `https://helpers.pyrosa.com.do/` returns `200 OK` from `51.222.204.86`
+- `https://helpers.pyrosa.com.do/dfr/health` returns `200 OK` from `51.222.204.86`
+- `https://helpers.pyrosa.com.do/qrcode/scanner/` returns `200 OK` from `51.222.204.86`
+- `https://helpers.pyrosa.com.do/banking/tasas/` returns `200 OK` from `51.222.204.86`
+- `https://helpers.pyrosa.com.do/signature/ifco/` returns `200 OK` from `51.222.204.86`
+- QR render via `render.php` returns `200 OK` and JSON from `51.222.204.86`
+- root, DFR health, and QR scanner checks return `200 OK` on the `secondary` node with target
+  `--resolve`
+- cached-old path through `vps-old` reverse proxy returns `200 OK` for root, DFR health,
+  QR scanner, QR render, banking tasas, and signature tools
+- authoritative PowerDNS on `primary`, `secondary`, and `vps-old` returns
+  `helpers.pyrosa.com.do -> 51.222.204.86`
