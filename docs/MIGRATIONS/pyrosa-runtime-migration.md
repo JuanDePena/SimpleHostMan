@@ -1510,3 +1510,33 @@ Rollback, if a hidden dependency appears:
 
 - run `whmapi1 configureservice service=httpd enabled=1 monitored=1` on `vps-old`
 - run `systemctl enable --now httpd` on `vps-old`
+
+## vps-old Mail Service Shutdown Drill
+
+Completed on `2026-05-01` after the Apache shutdown drill.
+
+The old cPanel mail-facing services on `vps-old` were stopped for burn-in monitoring. Public MX
+records for the migrated domains already point to SimpleHostMan, Zoho, or Microsoft 365.
+
+Operational state:
+
+- `postfix` was inactive and is now masked to prevent accidental startup.
+- cPanel `exim` is disabled and unmonitored; `exim.service` is inactive and disabled.
+- cPanel `imap` and `pop` are disabled and unmonitored.
+- `dovecot.service` is inactive and disabled.
+- `/etc/dovecotdisable` is present so Dovecot's systemd condition blocks accidental startup.
+- no listeners remain on TCP `25`, `110`, `143`, `465`, `587`, `993`, or `995`.
+
+Post-shutdown validation:
+
+- `postfix`, `dovecot`, and `exim` remained inactive after a delay check
+- Pyrosa web smoke checks continued returning `200 OK` from `51.222.204.86`
+
+Rollback, if a hidden dependency appears:
+
+- run `rm -f /etc/dovecotdisable` on `vps-old`
+- run `systemctl unmask postfix dovecot exim` on `vps-old`
+- run `whmapi1 configureservice service=exim enabled=1 monitored=1` on `vps-old`
+- run `whmapi1 configureservice service=imap enabled=1 monitored=1` on `vps-old`
+- run `whmapi1 configureservice service=pop enabled=1 monitored=1` on `vps-old`
+- run `systemctl enable --now exim dovecot` on `vps-old`

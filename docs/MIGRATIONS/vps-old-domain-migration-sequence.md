@@ -1399,3 +1399,34 @@ Rollback for the web drain test is intentionally simple:
 
 - `whmapi1 configureservice service=httpd enabled=1 monitored=1`
 - `systemctl enable --now httpd`
+
+### 2026-05-01: vps-old mail service shutdown drill
+
+After the Apache shutdown drill, the legacy mail-facing services on `vps-old` were also stopped for
+burn-in monitoring. Public MX records for the migrated domains already point to SimpleHostMan,
+Zoho, or Microsoft 365, so the old cPanel mail services should no longer receive production mail.
+
+Operational changes:
+
+- `postfix` was confirmed inactive; it was masked to prevent accidental startup
+- cPanel `exim` was disabled and unmonitored, then `exim.service` was stopped and disabled
+- cPanel `imap` and `pop` were disabled and unmonitored
+- `dovecot.service` was stopped and disabled
+- `/etc/dovecotdisable` was created so Dovecot's systemd condition blocks accidental startup
+
+Validation after shutdown:
+
+- `postfix`, `dovecot`, and `exim` were inactive after a delay check
+- cPanel `exim`, `imap`, and `pop` report `enabled: 0` and `monitored: 0`
+- no listeners remained on TCP `25`, `110`, `143`, `465`, `587`, `993`, or `995`
+- migrated web smoke checks for Pyrosa, Repos, pgAdmin, Sync, and Helpers still returned `200 OK`
+  from `51.222.204.86`
+
+Rollback for the mail drain test:
+
+- `rm -f /etc/dovecotdisable`
+- `systemctl unmask postfix dovecot exim`
+- `whmapi1 configureservice service=exim enabled=1 monitored=1`
+- `whmapi1 configureservice service=imap enabled=1 monitored=1`
+- `whmapi1 configureservice service=pop enabled=1 monitored=1`
+- `systemctl enable --now exim dovecot`
