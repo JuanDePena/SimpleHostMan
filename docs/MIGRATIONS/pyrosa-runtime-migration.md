@@ -35,7 +35,7 @@ Live desired state currently includes:
 | `pyrosa-portal` | `portal.pyrosa.com.do`, `www.portal.pyrosa.com.do` | `10109` | none | phase 7 empty placeholder runtime active on primary and secondary; `www` alias cut over in phase 8 |
 | `pyrosa-ldap` | `ldap.pyrosa.com.do` | `10110` | none | phase 9 LDAP Account Manager UI active on primary and secondary; OpenLDAP remains on `vps-old` |
 | `pyrosa-pgadmin` | `pgadmin.pyrosa.com.do` | `10111` | pgAdmin SQLite config store | phase 10 pgAdmin 4 runtime active on primary and secondary |
-| `pyrosa-sync` | `sync.pyrosa.com.do` | `10102` | MariaDB `app_pyrosa_sync`, pending PostgreSQL | desired only; do not migrate now |
+| `pyrosa-sync` | `sync.pyrosa.com.do` | `10102` | MariaDB `app_pyrosa_sync`, pending PostgreSQL | desired only; period-close hold; do not migrate now |
 
 `pyrosa-wp`, `pyrosa-demoportal`, and `pyrosa-sync` are also present in
 `bootstrap/apps.bootstrap.yaml`. `pyrosa-repos`, `pyrosa-demoerp`, `pyrosa-api`, and
@@ -49,6 +49,10 @@ existing code-server service on `127.0.0.1:8080` on the SimpleHostMan nodes and 
 phase 11 execution record below.
 
 The target node public IP for migrated web hostnames is `51.222.204.86`.
+
+As of the phase 12 hold record, every primary hostname approved for this wave is cut over to the
+target node except the two explicitly frozen endpoints: `sync.pyrosa.com.do` and
+`helpers.pyrosa.com.do`.
 
 ## Legacy Inventory
 
@@ -1213,3 +1217,69 @@ DNS validation at `2026-05-01 04:16 UTC`:
 - legacy authoritative `51.161.11.249` returned `code.pyrosa.com.do` pointing to `51.222.204.86`
 - `1.1.1.1` and `8.8.8.8` returned `code.pyrosa.com.do` pointing to `51.222.204.86`
 - `sync.pyrosa.com.do` and `helpers.pyrosa.com.do` remained on `51.161.11.249`
+
+## Phase 12 Hold Record
+
+Recorded on `2026-05-01` and scoped to closing the current Pyrosa migration wave without touching
+the period-close systems.
+
+No runtime or DNS cutover was performed in this phase. The safe migration queue is exhausted under
+the current guardrails because the only remaining primary hostnames on `vps-old` are the two systems
+that must stay there for now:
+
+- `sync.pyrosa.com.do`
+- `helpers.pyrosa.com.do`
+
+### Current DNS Boundary
+
+Authoritative validation at `2026-05-01 04:20 UTC` against SimpleHostMan PowerDNS showed these
+primary hostnames on the new target `51.222.204.86`:
+
+- `pyrosa.com.do`
+- `www.pyrosa.com.do`
+- `demoportal.pyrosa.com.do`
+- `repos.pyrosa.com.do`
+- `demoerp.pyrosa.com.do`
+- `api.pyrosa.com.do`
+- `demosync.pyrosa.com.do`
+- `erp.pyrosa.com.do`
+- `portal.pyrosa.com.do`
+- `ldap.pyrosa.com.do`
+- `pgadmin.pyrosa.com.do`
+- `code.pyrosa.com.do`
+
+The frozen primary hostnames still resolve to `51.161.11.249`:
+
+- `sync.pyrosa.com.do`
+- `helpers.pyrosa.com.do`
+
+Second-level `www.*` aliases are not required for import unless separately requested. The following
+aliases intentionally remain on `vps-old`:
+
+- `www.code.pyrosa.com.do`
+- `www.demoerp.pyrosa.com.do`
+- `www.demoportal.pyrosa.com.do`
+- `www.helpers.pyrosa.com.do`
+- `www.ldap.pyrosa.com.do`
+- `www.pgadmin.pyrosa.com.do`
+- `www.repos.pyrosa.com.do`
+- `www.sync.pyrosa.com.do`
+
+The phase 8 aliases `www.api.pyrosa.com.do`, `www.demosync.pyrosa.com.do`,
+`www.erp.pyrosa.com.do`, and `www.portal.pyrosa.com.do` were already cut over and remain active on
+the target node.
+
+### Operational Hold
+
+Do not disable the legacy `vps-old` services yet. `sync.pyrosa.com.do` and
+`helpers.pyrosa.com.do` still depend on the old host during period close, and the migrated LAM UI
+continues to use the old OpenLDAP service over LDAPS.
+
+After period close, reopen the migration with a fresh inspection of:
+
+- active cron and worker processes for `sync.pyrosa.com.do` and `helpers.pyrosa.com.do`
+- MySQL `wmpyrosa_dis` and `wmpyrosa_qbo`
+- PostgreSQL `do_fiscal_reports`
+- Redis usage and queue/session state
+- whether `sync.pyrosa.com.do` should stay on MariaDB initially or be migrated to PostgreSQL in a
+  separate compatibility phase
