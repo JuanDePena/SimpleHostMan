@@ -646,6 +646,9 @@ DNS and TLS outcome:
 - `sync.pyrosa.com.do` and `helpers.pyrosa.com.do` remain pointed at `51.161.11.249`
 - the legacy DNS zone on `vps-old` also serves `demoerp.pyrosa.com.do A -> 51.222.204.86` with
   TTL `300` for resolvers that still have old nameserver delegation cached
+- `demoportal`, `repos`, and `demoerp` HTTPS vhosts were restored with explicit `:443` blocks after
+  an HTTP-only `proxy.render` output was found, and the agent renderer was fixed for future TLS
+  proxy jobs
 
 Validation:
 

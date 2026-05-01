@@ -530,6 +530,12 @@ is `*.pyrosa.com.do`; that wildcard covers `repos.pyrosa.com.do` but not the two
 The existing Pyrosa wildcard certificate under `/etc/ssl/simplehostman/pyrosa.com.do/` is used by
 the `repos.pyrosa.com.do` HTTPS vhost on both nodes.
 
+Follow-up on `2026-05-01`: `proxy.render` had rewritten the Pyrosa subdomain vhosts as HTTP-only
+proxy files, which made HTTPS requests fall through to the default SSL vhost. The live
+`demoportal`, `repos`, and `demoerp` Apache vhosts were restored with explicit `:443` blocks on both
+nodes, and the agent renderer was fixed so future TLS proxy jobs emit HTTP redirect plus HTTPS
+vhosts.
+
 ### Validation
 
 Backend and vhost validation:
@@ -620,6 +626,10 @@ two-label `www.demoerp.pyrosa.com.do` name.
 
 The legacy DNS zone on `vps-old` was also updated so cached old delegations answer
 `demoerp.pyrosa.com.do A -> 51.222.204.86` with TTL `300`.
+
+The Pyrosa subdomain HTTPS vhosts were checked after a `proxy.render` renderer issue was found:
+`demoportal.pyrosa.com.do`, `repos.pyrosa.com.do`, and `demoerp.pyrosa.com.do` now all have explicit
+Apache `:443` vhosts on both nodes and use the existing `*.pyrosa.com.do` certificate.
 
 ### Validation
 

@@ -35,30 +35,77 @@ export function renderApacheVhost(payload: ProxyRenderPayload): string {
   const proxyPassUrl = payload.proxyPassUrl
     ? `${payload.proxyPassUrl.replace(/\/+$/, "")}/`
     : undefined;
+  const shouldRenderDocumentRoot = Boolean(payload.documentRoot && !proxyPassUrl);
+  const renderDocumentRoot = (indent = "  ") => [
+    ...(shouldRenderDocumentRoot
+      ? [
+          `${indent}DocumentRoot ${documentRoot}`,
+          `${indent}<Directory ${payload.documentRoot}>`,
+          `${indent}  AllowOverride All`,
+          `${indent}  Require all granted`,
+          `${indent}</Directory>`
+        ]
+      : [])
+  ];
+  const renderProxy = (indent = "  ") =>
+    proxyPassUrl
+      ? [
+          `${indent}ProxyPreserveHost ${payload.proxyPreserveHost === false ? "Off" : "On"}`,
+          `${indent}ProxyRequests Off`,
+          `${indent}ProxyPass / ${proxyPassUrl} retry=0 timeout=120`,
+          `${indent}ProxyPassReverse / ${proxyPassUrl}`
+        ]
+      : [];
+
+  if (!payload.tls) {
+    return [
+      "<VirtualHost *:80>",
+      `  ServerName ${payload.serverName}`,
+      ...aliases.map((alias) => `  ServerAlias ${alias}`),
+      ...renderDocumentRoot(),
+      ...renderProxy(),
+      "  # Plain HTTP bootstrap vhost.",
+      "</VirtualHost>"
+    ].join("\n");
+  }
 
   return [
     "<VirtualHost *:80>",
     `  ServerName ${payload.serverName}`,
     ...aliases.map((alias) => `  ServerAlias ${alias}`),
-    `  DocumentRoot ${documentRoot}`,
-    ...(payload.documentRoot
-      ? [
-          "  <Directory " + payload.documentRoot + ">",
-          "    AllowOverride All",
-          "    Require all granted",
-          "  </Directory>"
-        ]
-      : []),
+    "",
+    "  RewriteEngine On",
+    "  RewriteCond %{REQUEST_URI} !^/\\.well-known/acme-challenge/",
+    "  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L,NE]",
+    "</VirtualHost>",
+    "",
+    "<IfModule mod_ssl.c>",
+    "<VirtualHost *:443>",
+    `  ServerName ${payload.serverName}`,
+    ...aliases.map((alias) => `  ServerAlias ${alias}`),
+    "",
+    "  SSLEngine on",
+    `  SSLCertificateFile /etc/letsencrypt/live/${payload.serverName}/fullchain.pem`,
+    `  SSLCertificateKeyFile /etc/letsencrypt/live/${payload.serverName}/privkey.pem`,
+    "",
+    '  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"',
+    '  Header always set X-Content-Type-Options "nosniff"',
+    '  Header always set X-Frame-Options "SAMEORIGIN"',
+    '  Header always set Referrer-Policy "strict-origin-when-cross-origin"',
+    "",
+    ...renderDocumentRoot(),
     ...(proxyPassUrl
       ? [
-          `  ProxyPreserveHost ${payload.proxyPreserveHost === false ? "Off" : "On"}`,
-          "  ProxyRequests Off",
-          `  ProxyPass / ${proxyPassUrl} retry=0 timeout=120`,
-          `  ProxyPassReverse / ${proxyPassUrl}`
+          "  RequestHeader set X-Forwarded-Proto \"https\"",
+          "  RequestHeader set X-Forwarded-Port \"443\"",
+          ...renderProxy()
         ]
       : []),
-    payload.tls ? "  # TLS is expected to be terminated upstream." : "  # Plain HTTP bootstrap vhost.",
-    "</VirtualHost>"
+    "",
+    `  ErrorLog /var/log/httpd/${payload.vhostName}_ssl_error.log`,
+    `  CustomLog /var/log/httpd/${payload.vhostName}_ssl_access.log combined`,
+    "</VirtualHost>",
+    "</IfModule>"
   ].join("\n");
 }
 
