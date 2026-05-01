@@ -1111,8 +1111,8 @@ Validation:
 ### 2026-05-01: pyrosa.com.do LDAP Account Manager UI cutover
 
 `ldap.pyrosa.com.do` was copied from `vps-old`, promoted into SimpleHostMan app desired state, and
-cut over for the web UI only. The OpenLDAP daemon and directory data remain on `vps-old`; the new
-LAM container connects back to that service over LDAPS.
+cut over first for the web UI. OpenLDAP was later imported into SimpleHostMan so the hostname no
+longer depends on `vps-old`.
 
 Applied app:
 
@@ -1128,8 +1128,8 @@ Runtime notes:
 
 - legacy LAM session files and PHP `error_log` files were not copied
 - the PHP/Apache runtime now includes `ldap`, `gettext`, and `gmp`
-- the container pins `ldap.pyrosa.com.do` to `51.161.11.249` internally for LDAPS while public DNS
-  points the web UI to SimpleHostMan
+- the LAM profile uses `ldaps://ldap.pyrosa.com.do:636`, which now resolves to the SimpleHostMan
+  OpenLDAP listener
 
 DNS and TLS:
 
@@ -1145,9 +1145,23 @@ Validation:
   with target `--resolve`
 - LAM protected paths including `/lam/config/`, `/lam/lib/`, `/lam/sess/`, and `/lam/tmp/` return
   `403 Forbidden`
-- LDAPS connectivity from the running container to the old OpenLDAP service passed
+- LDAPS connectivity from the running container to the SimpleHostMan OpenLDAP service passed
 - authoritative PowerDNS on `primary`, `secondary`, and `vps-old` returns
   `ldap.pyrosa.com.do -> 51.222.204.86`
+
+Follow-up OpenLDAP service migration:
+
+- final export captured `10` configuration DNs and `7` data DNs from `vps-old`
+- `openldap-servers` and `openldap-clients` were installed on `primary` and `secondary`
+- the exported `cn=config`, `dc=pyrosa,dc=com,dc=do` database, and LDAP TLS certificate files were
+  imported on both SimpleHostMan nodes
+- firewalld now allows `ldap` and `ldaps` on both SimpleHostMan nodes
+- `slapd.service` is active and enabled on `primary` and `secondary`
+- `slapd.service` is inactive and disabled on `vps-old`
+- `vps-old` no longer listens on TCP `389` or `636`
+
+The secondary LDAP service is a synchronized snapshot for active-passive readiness, not live LDAP
+replication. Refresh it from `primary` before a manual LDAP failover if directory writes occur.
 
 ### 2026-05-01: pyrosa.com.do pgAdmin cutover
 

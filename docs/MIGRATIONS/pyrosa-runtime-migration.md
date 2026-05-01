@@ -35,7 +35,7 @@ Live desired state currently includes:
 | `pyrosa-demosync` | `demosync.pyrosa.com.do`, `www.demosync.pyrosa.com.do` | `10107` | MariaDB `app_pyrosa_demosync`, `app_pyrosa_demosync_qbo` | phase 6 DIS/QBO demo runtime active on primary and secondary; `www` alias cut over in phase 8 |
 | `pyrosa-erp` | `erp.pyrosa.com.do`, `www.erp.pyrosa.com.do` | `10108` | none | phase 7 empty placeholder runtime active on primary and secondary; `www` alias cut over in phase 8 |
 | `pyrosa-portal` | `portal.pyrosa.com.do`, `www.portal.pyrosa.com.do` | `10109` | none | phase 7 empty placeholder runtime active on primary and secondary; `www` alias cut over in phase 8 |
-| `pyrosa-ldap` | `ldap.pyrosa.com.do` | `10110` | none | phase 9 LDAP Account Manager UI active on primary and secondary; OpenLDAP remains on `vps-old` |
+| `pyrosa-ldap` | `ldap.pyrosa.com.do` | `10110` | none | phase 9 LDAP Account Manager UI active on primary and secondary; OpenLDAP migrated to SimpleHostMan and disabled on `vps-old` |
 | `pyrosa-pgadmin` | `pgadmin.pyrosa.com.do` | `10111` | pgAdmin SQLite config store | phase 10 pgAdmin 4 runtime active on primary and secondary |
 | `pyrosa-sync` | `sync.pyrosa.com.do` | `10102` | MariaDB `app_pyrosa_sync`, `app_pyrosa_sync_qbo`; PostgreSQL conversion deferred | phase 13 DIS/QBO production runtime active; workers active on primary only |
 | `pyrosa-helpers` | `helpers.pyrosa.com.do` | `10112`; DFR `10113`; QR render `10114` | PostgreSQL `app_pyrosa_helpers_dfr` imported for preservation; DFR runtime remains JSON-store backed | phase 14 helper runtime active on primary and secondary |
@@ -70,7 +70,7 @@ Legacy public IP: `51.161.11.249`.
 | `demosync.pyrosa.com.do` | `_sites/demosync.pyrosa.com.do` | `88M` source; `255M` staged after local Tabler asset copy | DIS/QBO demo app | MySQL `wmpyrosa_disdemo` and shared `wmpyrosa_qbo` | migrated in phase 6 as `pyrosa-demosync`, kept on MariaDB |
 | `erp.pyrosa.com.do` | `_sites/erp.pyrosa.com.do` | empty | placeholder | none observed | migrated in phase 7 as an empty `pyrosa-erp` placeholder, preserving `403` |
 | `helpers.pyrosa.com.do` | `_sites/helpers.pyrosa.com.do` | `6.6G` | helper tools; Apache proxy path to `localhost:3333` configured | PostgreSQL `do_fiscal_reports`; JSON-store DFR data | migrated in phase 14 as `pyrosa-helpers`; old `/dfr/` proxy disabled on `vps-old` after cutover |
-| `ldap.pyrosa.com.do` | `_sites/ldap.pyrosa.com.do` | `91M` | LDAP Account Manager 9.3 UI | OpenLDAP on `389`/`636` | migrated in phase 9 as `pyrosa-ldap`; UI connects back to `vps-old` over LDAPS |
+| `ldap.pyrosa.com.do` | `_sites/ldap.pyrosa.com.do` | `91M` | LDAP Account Manager 9.3 UI | OpenLDAP on `389`/`636` | migrated in phase 9 as `pyrosa-ldap`; OpenLDAP service later imported to SimpleHostMan and retired on `vps-old` |
 | `pgadmin.pyrosa.com.do` | proxy, not document root content | empty docroot; pgAdmin data about `2M` | pgAdmin 4.9.10 | SQLite pgAdmin config store with one user and two saved servers | migrated in phase 10 as `pyrosa-pgadmin` |
 | `portal.pyrosa.com.do` | `_sites/portal.pyrosa.com.do` | empty | placeholder | none observed | migrated in phase 7 as an empty `pyrosa-portal` placeholder, preserving `403` |
 | `repos.pyrosa.com.do` | `_sites/repos.pyrosa.com.do` | `574M` | SLES/Yum RPM repository | `sbotools` repo metadata and signed package metadata | migrated in phase 3 as `pyrosa-repos` |
@@ -1047,10 +1047,9 @@ DNS validation at `2026-05-01 03:31 UTC`:
 
 Completed on `2026-05-01` and scoped to `ldap.pyrosa.com.do`.
 
-This phase moved only the LDAP Account Manager web UI into SimpleHostMan. The OpenLDAP daemon and
-directory data remain on `vps-old` for now, and the new container reaches that service through
-LDAPS. `sync.pyrosa.com.do`, `helpers.pyrosa.com.do`, `code.pyrosa.com.do`, and
-`pgadmin.pyrosa.com.do` remain intentionally on `vps-old`.
+This phase first moved the LDAP Account Manager web UI into SimpleHostMan. The OpenLDAP daemon and
+directory data were then imported into SimpleHostMan on `2026-05-01` so `ldap.pyrosa.com.do` no
+longer depends on `vps-old`.
 
 ### Runtime
 
@@ -1066,9 +1065,28 @@ Applied runtime state:
 - `app-pyrosa-ldap.service` active on `secondary`
 
 The PHP/Apache runtime now includes the LAM-required `ldap`, `gettext`, and `gmp` extensions. The
-LAM profile in the migrated copy was adjusted from local LDAP to `ldaps://ldap.pyrosa.com.do:636`,
-and the container unit pins that hostname to `51.161.11.249` internally so the public DNS cutover
-does not make the UI connect to itself.
+LAM profile in the migrated copy uses `ldaps://ldap.pyrosa.com.do:636`; after the OpenLDAP import,
+that hostname resolves to the SimpleHostMan LDAP listener.
+
+### OpenLDAP Service Follow-Up
+
+Completed on `2026-05-01` after all Pyrosa web hostnames were already served from SimpleHostMan.
+
+Applied service state:
+
+- final `vps-old` export created from OpenLDAP `cn=config` and database `dc=pyrosa,dc=com,dc=do`
+- exported `10` configuration DNs and `7` data DNs
+- imported the same LDIF snapshot on `primary` and `secondary`
+- reused the legacy LDAP TLS certificate files under `/etc/openldap/certs/`
+- installed and enabled `openldap-servers` and `openldap-clients` on both SimpleHostMan nodes
+- opened `ldap` and `ldaps` services in firewalld on both SimpleHostMan nodes
+- `slapd.service` is active and enabled on `primary` and `secondary`
+- `slapd.service` is inactive and disabled on `vps-old`
+- `vps-old` no longer listens on TCP `389` or `636`
+
+This is a synchronized service snapshot, not live LDAP replication. If LDAP writes are made after
+this cutover, treat `primary` as the active writer and refresh `secondary` before any manual LDAP
+failover.
 
 ### DNS And TLS
 
@@ -1085,7 +1103,11 @@ A record with TTL `300`. The existing `*.pyrosa.com.do` wildcard certificate cov
 Runtime and target validation:
 
 - the `pyrosa-ldap` image exposes `ldap`, `gettext`, and `gmp` PHP extensions
-- LDAPS connectivity from the container to the old OpenLDAP service returned successfully
+- LDAPS connectivity from the container to the SimpleHostMan OpenLDAP service returns successfully
+- anonymous LDAPS bind/search from the LAM container reports `7` entries under
+  `dc=pyrosa,dc=com,dc=do`
+- host-level LDAP/LDAPS checks on `primary` and `secondary` report the same naming context and `7`
+  imported data DNs
 - `https://ldap.pyrosa.com.do/` with `--resolve` to `primary` returns a redirect to `/lam/`
 - `https://ldap.pyrosa.com.do/lam/templates/login.php` with `--resolve` to `primary` returns `200 OK`
 - `https://ldap.pyrosa.com.do/lam/templates/login.php` with `--resolve` to `secondary` returns `200 OK`
