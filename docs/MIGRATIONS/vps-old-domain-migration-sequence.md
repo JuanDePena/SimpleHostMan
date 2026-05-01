@@ -20,7 +20,7 @@ pilot migrations that established the current SimpleHostMan pattern.
 | `zcrmt.com` | migrated WordPress runtime on `app-zcrmt` | Zoho preserved | WordPress kept on MariaDB `app_zcrmt_wp` | closed |
 | `merlelaw.com` | migrated blank static runtime on `app-merlelaw` | SimpleHostMan mail live | none | closed |
 | `engilum.com` | external web targets preserved | Zoho preserved | none | DNS-only staged |
-| `pyrosa.com.do` | `pyrosa-wp`, `pyrosa-demoportal`, `pyrosa-repos`, `pyrosa-demoerp`, `pyrosa-api`, `pyrosa-demosync`, `pyrosa-erp`, `pyrosa-portal`, `pyrosa-ldap`, `pyrosa-pgadmin`, and `code.pyrosa.com.do` host-service proxy active; `sync`/`helpers` still on `vps-old`; second-level `www.*` aliases not required unless separately requested | Microsoft 365 preserved, no legacy mail migration planned | WordPress, demoportal, and demosync migrated to MariaDB; demoerp migrated to PostgreSQL; `repos`, `api`, `erp`, `portal`, and `ldap` have no local database; pgAdmin uses its migrated SQLite config store | phase 12 hold recorded |
+| `pyrosa.com.do` | `pyrosa-wp`, `pyrosa-demoportal`, `pyrosa-repos`, `pyrosa-demoerp`, `pyrosa-api`, `pyrosa-demosync`, `pyrosa-erp`, `pyrosa-portal`, `pyrosa-ldap`, `pyrosa-pgadmin`, `pyrosa-sync`, and `code.pyrosa.com.do` host-service proxy active; `helpers` still on `vps-old`; second-level `www.*` aliases not required unless separately requested | Microsoft 365 preserved, no legacy mail migration planned | WordPress, demoportal, demosync, and sync migrated to MariaDB; demoerp migrated to PostgreSQL; `repos`, `api`, `erp`, `portal`, and `ldap` have no local database; pgAdmin uses its migrated SQLite config store | phase 13 sync cutover recorded |
 | `solucionesmercantilnr.com` | not migrated | retired | none | out of scope: expired, not renewing |
 | `pyrosa.net` | not migrated | retired | none | out of scope: expired, not renewing |
 
@@ -465,9 +465,9 @@ All copied mailbox trees were also replicated to the secondary node.
 ## Current Next Action
 
 The migration batch through `merlelaw.com` is closed. The remaining active `vps-old` follow-up is
-`pyrosa.com.do`, which is now documented as a multi-app migration in
+`helpers.pyrosa.com.do`, tracked under the multi-app Pyrosa migration in
 [`pyrosa-runtime-migration.md`](/opt/simplehostman/src/docs/MIGRATIONS/pyrosa-runtime-migration.md).
-Public mail is on Microsoft 365, so legacy cPanel mail should not be migrated.
+Public Pyrosa mail is on Microsoft 365, so legacy cPanel mail should not be migrated.
 
 ### 2026-04-30: pyrosa.com.do WordPress phase 1
 
@@ -1239,7 +1239,55 @@ Second-level `www.*` aliases are not required for import unless separately reque
 that still point to `vps-old` include `www.code`, `www.demoerp`, `www.demoportal`, `www.helpers`,
 `www.ldap`, `www.pgadmin`, `www.repos`, and `www.sync`.
 
-Do not disable legacy services on `vps-old` yet. `sync` and `helpers` remain operational there, and
-the migrated LAM UI still uses the old OpenLDAP service over LDAPS. The next migration block after
-period close should start with a fresh process, cron, database, Redis, and worker inspection before
-any final DNS cutover is planned.
+At the time of this hold, legacy services on `vps-old` were left enabled because `sync` and
+`helpers` remained operational there, and the migrated LAM UI still used the old OpenLDAP service
+over LDAPS. The next migration block after period close was planned to start with a fresh process,
+cron, database, Redis, and worker inspection before any final DNS cutover.
+
+### 2026-05-01: pyrosa.com.do sync cutover
+
+After period close, `sync.pyrosa.com.do` was copied from `vps-old`, imported into MariaDB, and cut
+over as the production `pyrosa-sync` runtime. `helpers.pyrosa.com.do` remains on `vps-old`.
+
+Applied app:
+
+- app slug `pyrosa-sync`
+- source `/home/wmpyrosa/public_html/_sites/sync.pyrosa.com.do/`
+- backend port `10102`
+- runtime image `registry.example.com/pyrosa-sync:stable`
+- storage root `/srv/containers/apps/pyrosa-sync`
+- `app-pyrosa-sync.service` active on `primary` and `secondary`
+- DIS workers active on `primary` only
+
+Database outcome:
+
+- source database `wmpyrosa_dis` imported to `app_pyrosa_sync`
+- source database `wmpyrosa_qbo` imported to `app_pyrosa_sync_qbo`
+- final import ran from `2026-05-01T05:11:38Z` to `2026-05-01T05:13:07Z`
+- imported `38` DIS tables and `2` QBO tables
+- PostgreSQL conversion deferred to a later compatibility phase
+
+Operational notes:
+
+- legacy `dis-*` worker services on `vps-old` were stopped and disabled during final import
+- `vps-old` now has a temporary Apache reverse proxy for cached `sync.pyrosa.com.do` clients
+- runtime credentials stay in node-local env files, not in the repository
+- `www.sync.pyrosa.com.do` remains on `vps-old` because second-level aliases are not required unless
+  separately requested
+
+DNS and TLS:
+
+- `sync.pyrosa.com.do A -> 51.222.204.86` with TTL `300`
+- SimpleHostMan primary and secondary PowerDNS answer the new target record
+- the legacy `vps-old` authoritative zone also answers the new target record
+- the existing `*.pyrosa.com.do` wildcard certificate covers `sync.pyrosa.com.do`
+
+Validation:
+
+- `https://sync.pyrosa.com.do/dis/public/login` returns `200 OK` on both SimpleHostMan nodes with
+  target `--resolve`
+- public `https://sync.pyrosa.com.do/dis/public/login` returns `200 OK` from `51.222.204.86`
+- cached-old path through `vps-old` reverse proxy returns `200 OK`
+- DIS database smoke test returned `62` rows from `dis_params`
+- authoritative PowerDNS on `primary`, `secondary`, and `vps-old` returns
+  `sync.pyrosa.com.do -> 51.222.204.86`

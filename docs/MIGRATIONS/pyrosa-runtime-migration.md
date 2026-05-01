@@ -11,8 +11,8 @@ SimpleHostMan mail domain should be created for `pyrosa.com.do`.
 
 ## Guardrails
 
-- Keep `sync.pyrosa.com.do` on `vps-old` during period close.
-- Keep `helpers.pyrosa.com.do` on `vps-old` during period close.
+- `sync.pyrosa.com.do` was cut over after period close and now runs from SimpleHostMan.
+- Keep `helpers.pyrosa.com.do` on `vps-old` until its separate helper/database stack is migrated.
 - Treat `repos.pyrosa.com.do` as package distribution infrastructure for SLES/RPM consumers of the
   Proyecto Iohana packages, not as a simple static site.
 - Preserve Microsoft 365 MX, SPF, DKIM, Autodiscover, and DMARC records.
@@ -35,7 +35,7 @@ Live desired state currently includes:
 | `pyrosa-portal` | `portal.pyrosa.com.do`, `www.portal.pyrosa.com.do` | `10109` | none | phase 7 empty placeholder runtime active on primary and secondary; `www` alias cut over in phase 8 |
 | `pyrosa-ldap` | `ldap.pyrosa.com.do` | `10110` | none | phase 9 LDAP Account Manager UI active on primary and secondary; OpenLDAP remains on `vps-old` |
 | `pyrosa-pgadmin` | `pgadmin.pyrosa.com.do` | `10111` | pgAdmin SQLite config store | phase 10 pgAdmin 4 runtime active on primary and secondary |
-| `pyrosa-sync` | `sync.pyrosa.com.do` | `10102` | MariaDB `app_pyrosa_sync`, pending PostgreSQL | desired only; period-close hold; do not migrate now |
+| `pyrosa-sync` | `sync.pyrosa.com.do` | `10102` | MariaDB `app_pyrosa_sync`, `app_pyrosa_sync_qbo`; PostgreSQL conversion deferred | phase 13 DIS/QBO production runtime active; workers active on primary only |
 
 `pyrosa-wp`, `pyrosa-demoportal`, and `pyrosa-sync` are also present in
 `bootstrap/apps.bootstrap.yaml`. `pyrosa-repos`, `pyrosa-demoerp`, `pyrosa-api`, and
@@ -50,9 +50,8 @@ phase 11 execution record below.
 
 The target node public IP for migrated web hostnames is `51.222.204.86`.
 
-As of the phase 12 hold record, every primary hostname approved for this wave is cut over to the
-target node except the two explicitly frozen endpoints: `sync.pyrosa.com.do` and
-`helpers.pyrosa.com.do`.
+As of the phase 13 execution record, every primary hostname approved for this wave is cut over to
+the target node except the remaining helper endpoint: `helpers.pyrosa.com.do`.
 
 ## Legacy Inventory
 
@@ -72,7 +71,7 @@ Legacy public IP: `51.161.11.249`.
 | `pgadmin.pyrosa.com.do` | proxy, not document root content | empty docroot; pgAdmin data about `2M` | pgAdmin 4.9.10 | SQLite pgAdmin config store with one user and two saved servers | migrated in phase 10 as `pyrosa-pgadmin` |
 | `portal.pyrosa.com.do` | `_sites/portal.pyrosa.com.do` | empty | placeholder | none observed | migrated in phase 7 as an empty `pyrosa-portal` placeholder, preserving `403` |
 | `repos.pyrosa.com.do` | `_sites/repos.pyrosa.com.do` | `574M` | SLES/Yum RPM repository | `sbotools` repo metadata and signed package metadata | migrated in phase 3 as `pyrosa-repos` |
-| `sync.pyrosa.com.do` | `_sites/sync.pyrosa.com.do` | `4.1G` | DIS/QBO production app and active PHP workers | MySQL `wmpyrosa_dis` about `3.8G`, `wmpyrosa_qbo`, Redis | do not migrate now |
+| `sync.pyrosa.com.do` | `_sites/sync.pyrosa.com.do` | `4.1G`; `639M` staged after excluding backup, Git, logs, and full Tabler source trees | DIS/QBO production app and PHP workers | MySQL `wmpyrosa_dis`, `wmpyrosa_qbo`; Redis disabled in target config | migrated in phase 13 as `pyrosa-sync`, kept on MariaDB for compatibility |
 
 ## Database Inventory
 
@@ -1271,9 +1270,9 @@ the target node.
 
 ### Operational Hold
 
-Do not disable the legacy `vps-old` services yet. `sync.pyrosa.com.do` and
-`helpers.pyrosa.com.do` still depend on the old host during period close, and the migrated LAM UI
-continues to use the old OpenLDAP service over LDAPS.
+At the time of this hold, legacy `vps-old` services were left enabled because
+`sync.pyrosa.com.do` and `helpers.pyrosa.com.do` still depended on the old host during period close,
+and the migrated LAM UI continued to use the old OpenLDAP service over LDAPS.
 
 After period close, reopen the migration with a fresh inspection of:
 
@@ -1283,3 +1282,98 @@ After period close, reopen the migration with a fresh inspection of:
 - Redis usage and queue/session state
 - whether `sync.pyrosa.com.do` should stay on MariaDB initially or be migrated to PostgreSQL in a
   separate compatibility phase
+
+## Phase 13 Execution Record
+
+Completed on `2026-05-01` and scoped to `sync.pyrosa.com.do`.
+
+This phase resumed after period close and cut over the production DIS/QBO sync runtime. The app was
+kept on MariaDB for the initial compatibility migration; PostgreSQL conversion remains a later app
+compatibility project.
+
+The following hostname remains intentionally on `vps-old`:
+
+- `helpers.pyrosa.com.do`
+
+### Runtime
+
+Applied runtime state:
+
+- app slug `pyrosa-sync`
+- source `/home/wmpyrosa/public_html/_sites/sync.pyrosa.com.do/`
+- backend port `10102`
+- runtime image tag `registry.example.com/pyrosa-sync:stable`
+- storage root `/srv/containers/apps/pyrosa-sync`
+- `app-pyrosa-sync.service` active on `primary`
+- `app-pyrosa-sync.service` active on `secondary`
+- production workers active on `primary` only:
+  - `app-pyrosa-sync-worker@workflow-resolver.service`
+  - `app-pyrosa-sync-worker@workflow-runner.service`
+  - `app-pyrosa-sync-worker@scheduler.service`
+  - `app-pyrosa-sync-worker@workflow-checker.service`
+
+The copied source excluded the legacy `.git` tree, full Tabler source tree, old backup archives, and
+legacy runtime logs. The target uses copied Tabler distribution assets under `assets/tabler` and
+`assets/tabler-preview`. Runtime database credentials live only in
+`/etc/containers/systemd/env/app-pyrosa-sync.env` on the nodes.
+
+### Database
+
+Final import window:
+
+- started `2026-05-01T05:11:38Z`
+- finished `2026-05-01T05:13:07Z`
+
+Imported databases:
+
+- `wmpyrosa_dis` -> MariaDB `app_pyrosa_sync`: `38` tables, about `1751.45 MiB` after import
+- `wmpyrosa_qbo` -> MariaDB `app_pyrosa_sync_qbo`: `2` tables, about `0.16 MiB` after import
+
+The target DIS config reads database settings from environment variables. The target QBO config also
+reads database settings from environment variables. Redis was disabled in the target DIS config for
+this compatibility cutover.
+
+### Old Host Quiesce
+
+During the final import, `vps-old` served a temporary Apache maintenance response for
+`sync.pyrosa.com.do`, and these legacy services were stopped and disabled:
+
+- `dis-scheduler.service`
+- `dis-workflow-checker.service`
+- `dis-workflow-resolver.service`
+- `dis-workflow-runner.service`
+
+After DNS cutover, the temporary maintenance include on `vps-old` was replaced with a short-lived
+reverse proxy to `http://51.222.204.86/` so clients with cached old A records can drain without
+receiving `503`.
+
+### DNS And TLS
+
+SimpleHostMan PowerDNS now serves:
+
+- `sync.pyrosa.com.do A -> 51.222.204.86` with TTL `300`
+
+The legacy PowerDNS/BIND zone on `vps-old` was also reloaded so cached old delegations answer the
+same target A record with TTL `300`. The existing `*.pyrosa.com.do` wildcard certificate covers
+`sync.pyrosa.com.do`; no new certificate lineage was required.
+
+Second-level aliases are not required unless separately requested. `www.sync.pyrosa.com.do` remains
+on `51.161.11.249`.
+
+### Validation
+
+Runtime and target validation:
+
+- `https://sync.pyrosa.com.do/dis/public/login` with `--resolve` to `primary` returns `200 OK`
+- `https://sync.pyrosa.com.do/dis/public/login` with `--resolve` to `secondary` returns `200 OK`
+- direct container request to `http://127.0.0.1:10102/dis/public/login` returns `200 OK`
+- DIS database smoke test returned `62` rows from `dis_params`
+- public `https://sync.pyrosa.com.do/dis/public/login` returns `200 OK` from `51.222.204.86`
+- cached-old path through `vps-old` reverse proxy returns `200 OK`
+
+DNS validation at `2026-05-01 05:18 UTC`:
+
+- authoritative `51.222.204.86` returned `sync.pyrosa.com.do` pointing to `51.222.204.86`
+- authoritative `51.222.206.196` returned `sync.pyrosa.com.do` pointing to `51.222.204.86`
+- legacy authoritative `51.161.11.249` returned `sync.pyrosa.com.do` pointing to `51.222.204.86`
+- public DNS returned `sync.pyrosa.com.do` pointing to `51.222.204.86`
