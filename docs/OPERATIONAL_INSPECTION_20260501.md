@@ -1184,11 +1184,11 @@ Phase 5M completion evidence on `2026-05-02`:
   - `10170/tcp` listened only on `127.0.0.1`
   - `systemctl --failed` reported no failed units
 - The bootstrap admin account uses username/email `webmaster@pyrosa.com.do`,
-  is active, is a superuser, and has a usable password. The initial password is
-  stored only in
-  `/etc/simplehost/iam/authentik/akadmin-initial-password` with mode `0600`.
-- Live Authentik bootstrap values remain only in
-  `/etc/simplehost/iam/authentik/authentik.env` with mode `0600`.
+  is active, is a superuser, and has a usable password. After operator password
+  rotation, the temporary initial-password file
+  `/etc/simplehost/iam/authentik/akadmin-initial-password` was removed.
+- Live Authentik bootstrap password/email values were removed from
+  `/etc/simplehost/iam/authentik/authentik.env`, which remains mode `0600`.
 - `code.pyrosa.com.do` was not changed in this phase.
 - Hold point: an operator must log in to `https://auth.pyrosa.com.do/` as
   `webmaster@pyrosa.com.do`, enroll admin MFA, and create recovery codes before

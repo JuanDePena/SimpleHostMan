@@ -289,10 +289,10 @@ Completion evidence:
 - `authentik-server.service`, `authentik-worker.service`, and `httpd` are
   active.
 - `10170/tcp` remains bound only to `127.0.0.1`.
-- The initial admin password is stored only in
-  `/etc/simplehost/iam/authentik/akadmin-initial-password` with mode `0600`.
-- Live bootstrap values remain only in
-  `/etc/simplehost/iam/authentik/authentik.env` with mode `0600`.
+- After operator password rotation, the temporary initial-password file
+  `/etc/simplehost/iam/authentik/akadmin-initial-password` was removed.
+- Live bootstrap password/email values were removed from
+  `/etc/simplehost/iam/authentik/authentik.env`, which remains mode `0600`.
 - `code.pyrosa.com.do` was not changed in this phase.
 
 ### Phase 3: Backup Policy And Restore Test
