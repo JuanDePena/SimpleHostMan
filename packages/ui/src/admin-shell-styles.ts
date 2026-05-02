@@ -996,7 +996,7 @@ export function renderAdminShellStyleBlock(): string {
         min-height: var(--control-height);
       }
 
-      @media (max-width: 1100px) {
+      @media (max-width: 820px) {
         .admin-shell {
           grid-template-columns: 1fr;
           height: auto;
