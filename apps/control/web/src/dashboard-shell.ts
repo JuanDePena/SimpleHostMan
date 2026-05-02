@@ -12,7 +12,8 @@ import {
   getDashboardSubheading,
   type DashboardCopyLabels,
   type DashboardView,
-  type DesiredStateTabId
+  type DesiredStateTabId,
+  type StatusInterval
 } from "./dashboard-routing.js";
 import type { OverviewMetricsSnapshot } from "./overview-metrics.js";
 import { type WebLocale } from "./request.js";
@@ -133,6 +134,7 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
     locale: WebLocale
   ) => string;
   renderStats: (overview: DashboardData["overview"], copy: Copy, locale: WebLocale) => string;
+  statusInterval: StatusInterval;
 }): string {
   const {
     copy,
@@ -153,7 +155,8 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
     overviewMetrics,
     renderSignalStrip,
     renderOverviewMetrics,
-    renderStats
+    renderStats,
+    statusInterval
   } = args;
 
   const now = Date.now();
@@ -178,25 +181,36 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
       { id: "month", label: copy.overviewIntervalMonth },
       { id: "year", label: copy.overviewIntervalYear }
     ];
+    const currentUrl = new URL(currentPath, "http://localhost");
+    currentUrl.searchParams.delete("statusInterval");
+    const hiddenInputs = Array.from(currentUrl.searchParams.entries())
+      .map(
+        ([name, value]) =>
+          `<input type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(value)}" />`
+      )
+      .join("");
 
-    return `<label class="overview-interval-selector">
-      <span class="sr-only">${escapeHtml(copy.overviewIntervalLabel)}</span>
+    return `<form method="get" action="/" class="overview-interval-selector" data-status-interval-form>
+      ${hiddenInputs}
+      <label class="sr-only" for="overview-status-interval">${escapeHtml(copy.overviewIntervalLabel)}</label>
       <select
+        id="overview-status-interval"
         name="statusInterval"
         class="overview-interval-select"
         data-select-search="false"
+        data-submit-on-change="true"
         data-status-interval-select
         aria-label="${escapeHtml(copy.overviewIntervalLabel)}"
       >
         ${intervals
           .map(
             (interval) => `<option value="${escapeHtml(interval.id)}"${
-              interval.id === "day" ? " selected" : ""
+              interval.id === statusInterval ? " selected" : ""
             }>${escapeHtml(interval.label)}</option>`
           )
           .join("")}
       </select>
-    </label>`;
+    </form>`;
   };
 
   const topbarActionsHtml = `<div class="locale-switch" role="group" aria-label="${escapeHtml(copy.languageLabel)}">

@@ -138,6 +138,7 @@ test("overview keeps status focused and reconciliation lives in its own workspac
   assert.match(overviewHtml, /overview-signal-card/);
   assert.match(overviewHtml, /aria-label="Status interval"/);
   assert.match(overviewHtml, /data-select-search="false"/);
+  assert.match(overviewHtml, /data-submit-on-change="true"/);
   assert.match(overviewHtml, /data-status-interval-select/);
   assert.match(overviewHtml, /<option value="day" selected>Day<\/option>/);
   assert.match(overviewHtml, /<option value="week">Week<\/option>/);
@@ -159,6 +160,25 @@ test("overview keeps status focused and reconciliation lives in its own workspac
   assert.match(reconciliationHtml, />Run reconciliation</);
   assert.match(reconciliationHtml, /Latest reconciliation/);
   assert.doesNotMatch(reconciliationHtml, /id="section-overview"/);
+});
+
+test("overview status interval selector keeps the selected interval and preserved filters", () => {
+  const data = createDashboardData();
+  const overviewHtml = renderDashboardPage({
+    currentPath: "/?statusInterval=week&notice=Saved",
+    data,
+    desiredStateTab: "desired-state-create",
+    locale: "en",
+    overviewMetrics: createOverviewMetricsSnapshot(),
+    statusInterval: "week",
+    version: "test",
+    view: "overview"
+  });
+
+  assert.match(overviewHtml, /<form method="get" action="\/" class="overview-interval-selector"/);
+  assert.match(overviewHtml, /<input type="hidden" name="notice" value="Saved" \/>/);
+  assert.match(overviewHtml, /<option value="week" selected>Week<\/option>/);
+  assert.doesNotMatch(overviewHtml, /name="statusInterval" value="week"/);
 });
 
 test("dashboard sidebar renders logical collapsible groups", () => {

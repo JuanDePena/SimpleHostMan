@@ -13,6 +13,7 @@ import {
   normalizeDashboardFocus,
   normalizeDashboardView,
   normalizeDesiredStateTab,
+  normalizeStatusInterval,
   resolveCanonicalDashboardTarget
 } from "./dashboard-routing.js";
 import { renderDashboardPage } from "./dashboard-page.js";
@@ -44,6 +45,7 @@ export function createDashboardHandler(args: {
     const rawTab = url.searchParams.get("tab") ?? undefined;
     const desiredStateTab = normalizeDesiredStateTab(rawTab);
     const focus = normalizeDashboardFocus(url.searchParams.get("focus"));
+    const statusInterval = normalizeStatusInterval(url.searchParams.get("statusInterval"));
     const mailCredentialRevealId = url.searchParams.get("mailCredentialReveal");
 
     const session = await resolveSession();
@@ -56,9 +58,12 @@ export function createDashboardHandler(args: {
     const canonicalTarget = resolveCanonicalDashboardTarget(view, rawTab);
     const extraFilters = Object.fromEntries(
       Array.from(url.searchParams.entries()).filter(
-        ([key]) => key !== "view" && key !== "tab" && key !== "focus"
+        ([key]) => key !== "view" && key !== "tab" && key !== "focus" && key !== "statusInterval"
       )
     );
+    if (view === "overview" && statusInterval !== "day") {
+      extraFilters.statusInterval = statusInterval;
+    }
     const canonicalLocation = buildDashboardViewUrl(
       canonicalTarget.view,
       canonicalTarget.tab,
@@ -74,7 +79,8 @@ export function createDashboardHandler(args: {
 
     try {
       const { dashboard } = await loadAuthenticatedDashboard({
-        jobHistoryMode: view === "jobs" || view === "job-history" ? "full" : "compact"
+        jobHistoryMode: view === "jobs" || view === "job-history" ? "full" : "compact",
+        statusInterval: view === "overview" ? statusInterval : undefined
       });
       const historyReplaceUrl = (() => {
         if (!mailCredentialRevealId) {
@@ -102,6 +108,7 @@ export function createDashboardHandler(args: {
           mailCredentialReveal,
           notice: getNoticeFromUrl(url),
           overviewMetrics: args.overviewMetrics.getSnapshot(),
+          statusInterval,
           version: args.version,
           view
         })

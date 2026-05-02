@@ -17,6 +17,7 @@ import {
   type PackageInventoryCollectPayload,
   type MailSyncPayload,
   type OperationHistoryPurgeSummary,
+  type OperationsOverviewInterval,
   type ProxyRenderPayload,
   type ResourceDriftSummary,
   operationHistoryRetentionDaysParameterKey,
@@ -1731,6 +1732,36 @@ export async function buildReconciliationCandidates(
 
 const resourceDriftCacheTtlMs = 60 * 1000;
 
+function getOperationsOverviewCutoffAt(
+  interval: OperationsOverviewInterval | undefined,
+  now = new Date()
+): string | null {
+  if (!interval) {
+    return null;
+  }
+
+  const cutoff = new Date(now);
+
+  switch (interval) {
+    case "day":
+      cutoff.setUTCDate(cutoff.getUTCDate() - 1);
+      break;
+    case "week":
+      cutoff.setUTCDate(cutoff.getUTCDate() - 7);
+      break;
+    case "month":
+      cutoff.setUTCMonth(cutoff.getUTCMonth() - 1);
+      break;
+    case "year":
+      cutoff.setUTCFullYear(cutoff.getUTCFullYear() - 1);
+      break;
+    default:
+      return null;
+  }
+
+  return cutoff.toISOString();
+}
+
 interface ResourceDriftCacheEntry {
   expiresAtMs: number;
   promise?: Promise<ResourceDriftSummary[]>;
@@ -2701,7 +2732,8 @@ export function createControlPlaneOperationsMethods(
       });
     },
 
-    async getOperationsOverview(presentedToken) {
+    async getOperationsOverview(presentedToken, options) {
+      const failedJobCutoffAt = getOperationsOverviewCutoffAt(options?.statusInterval);
       const counts = await withTransaction(pool, async (client) => {
         if (presentedToken) {
           await requireAuthorizedUser(client, presentedToken, [
@@ -2720,9 +2752,13 @@ export function createControlPlaneOperationsMethods(
              (SELECT COUNT(*) FROM control_plane_nodes) AS node_count,
              (SELECT COUNT(*) FROM control_plane_jobs WHERE completed_at IS NULL)
                AS pending_job_count,
-             (SELECT COUNT(*) FROM control_plane_job_results WHERE status = 'failed')
+             (SELECT COUNT(*)
+                FROM control_plane_job_results
+               WHERE status = 'failed'
+                 AND ($1::timestamptz IS NULL OR completed_at >= $1::timestamptz))
                AS failed_job_count,
-             (SELECT COUNT(*) FROM control_plane_backup_policies) AS backup_policy_count`
+             (SELECT COUNT(*) FROM control_plane_backup_policies) AS backup_policy_count`,
+          [failedJobCutoffAt]
         );
         const latestReconciliation = await getLatestReconciliationRun(client);
         const row = countResult.rows[0];

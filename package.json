@@ -1,6 +1,6 @@
 {
   "name": "simplehost-source",
-  "version": "2605.02.23",
+  "version": "2605.02.24",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.32.1",

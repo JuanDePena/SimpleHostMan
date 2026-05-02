@@ -12,6 +12,22 @@ import {
 } from "./api-http.js";
 import type { ApiRouteHandler } from "./api-route-context.js";
 
+function readStatusIntervalSearchParam(
+  url: URL
+): "day" | "week" | "month" | "year" | undefined {
+  const value = url.searchParams.get("statusInterval");
+
+  switch (value) {
+    case "day":
+    case "week":
+    case "month":
+    case "year":
+      return value;
+    default:
+      return undefined;
+  }
+}
+
 export const handleResourceRoutes: ApiRouteHandler = async ({
   request,
   response,
@@ -68,7 +84,9 @@ export const handleResourceRoutes: ApiRouteHandler = async ({
     writeJson(
       response,
       200,
-      await controlPlaneStore.getOperationsOverview(bearerToken)
+      await controlPlaneStore.getOperationsOverview(bearerToken, {
+        statusInterval: readStatusIntervalSearchParam(url)
+      })
     );
     return true;
   }

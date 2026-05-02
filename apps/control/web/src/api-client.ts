@@ -24,6 +24,7 @@ import {
   type MailOverview,
   type NodeHealthSnapshot,
   type OperationHistoryPurgeSummary,
+  type OperationsOverviewInterval,
   type OperationsOverview,
   type PackageInstallRequest,
   type PackageInventoryRefreshRequest,
@@ -59,6 +60,7 @@ export type DashboardBootstrap = ControlDashboardBootstrap;
 
 export interface DashboardLoadOptions {
   jobHistoryMode?: "full" | "compact";
+  statusInterval?: OperationsOverviewInterval;
 }
 
 export class WebApiError extends Error {
@@ -224,9 +226,19 @@ async function requestWithBaseUrl<T>(
 }
 
 export function createControlWebApiFromRequest(request: ControlWebApiRequest): ControlWebApi {
+  const buildOverviewPath = (options: DashboardLoadOptions): string => {
+    const search = new URLSearchParams();
+
+    if (options.statusInterval) {
+      search.set("statusInterval", options.statusInterval);
+    }
+
+    const query = search.toString();
+    return query ? `/v1/operations/overview?${query}` : "/v1/operations/overview";
+  };
   const createDashboardLoaders = (options: DashboardLoadOptions = {}) => ({
     getOverview: (token: string) =>
-      request<OperationsOverview>("/v1/operations/overview", { token }),
+      request<OperationsOverview>(buildOverviewPath(options), { token }),
     getInventory: (token: string) =>
       request<InventoryStateSnapshot>("/v1/inventory/summary", { token }),
     getDesiredState: (token: string) =>

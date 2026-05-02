@@ -1,6 +1,6 @@
 {
   "name": "@simplehost/control-shared",
-  "version": "2605.02.23",
+  "version": "2605.02.24",
   "private": true,
   "type": "module",
   "main": "dist/index.js",

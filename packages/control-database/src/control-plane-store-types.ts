@@ -36,6 +36,7 @@ import type {
   NodeRegistrationResponse,
   OperationHistoryPurgeSummary,
   OperationsOverview,
+  OperationsOverviewOptions,
   PackageInventoryRefreshRequest,
   PackageInventorySnapshot,
   PackageInstallRequest,
@@ -513,7 +514,10 @@ export interface ControlPlaneStore {
   purgeOperationalHistory(
     presentedToken?: string | null
   ): Promise<OperationHistoryPurgeSummary>;
-  getOperationsOverview(presentedToken: string | null): Promise<OperationsOverview>;
+  getOperationsOverview(
+    presentedToken: string | null,
+    options?: OperationsOverviewOptions
+  ): Promise<OperationsOverview>;
   getResourceDrift(presentedToken: string | null): Promise<ResourceDriftSummary[]>;
   getNodeHealth(presentedToken: string | null): Promise<NodeHealthSnapshot[]>;
   getPackageInventory(presentedToken: string | null): Promise<PackageInventorySnapshot>;

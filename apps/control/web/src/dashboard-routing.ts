@@ -41,6 +41,8 @@ export type DashboardView =
   | "rustdesk"
   | "desired-state";
 
+export type StatusInterval = "day" | "week" | "month" | "year";
+
 const desiredStateTabIds = [
   "desired-state-create",
   "desired-state-tenants",
@@ -212,6 +214,18 @@ export function normalizeDashboardView(value: string | null | undefined): Dashbo
       return value;
     default:
       return "overview";
+  }
+}
+
+export function normalizeStatusInterval(value: string | null | undefined): StatusInterval {
+  switch (value) {
+    case "week":
+    case "month":
+    case "year":
+      return value;
+    case "day":
+    default:
+      return "day";
   }
 }
 

@@ -1179,6 +1179,12 @@ export function renderAdminShellClientScript(): string {
             if (!panel.hidden) {
               renderOptions();
             }
+
+            if (select.dataset.submitOnChange === "true" && select.form instanceof HTMLFormElement) {
+              window.requestAnimationFrame(() => {
+                select.form?.requestSubmit();
+              });
+            }
           });
 
           syncTrigger();

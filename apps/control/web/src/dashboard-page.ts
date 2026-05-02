@@ -13,7 +13,8 @@ import { type DashboardData } from "./api-client.js";
 import {
   buildDashboardViewUrl,
   type DashboardView,
-  type DesiredStateTabId
+  type DesiredStateTabId,
+  type StatusInterval
 } from "./dashboard-routing.js";
 import { renderAuditWorkspace } from "./dashboard-audit.js";
 import { renderBackupsWorkspace } from "./dashboard-backups.js";
@@ -107,6 +108,7 @@ type RenderDashboardArgs = {
   mailCredentialReveal?: MailboxCredentialReveal | null;
   notice?: PanelNotice;
   overviewMetrics: OverviewMetricsSnapshot;
+  statusInterval?: StatusInterval;
   version: string;
   view: DashboardView;
 };
@@ -229,6 +231,7 @@ export function renderDashboardPage(args: RenderDashboardArgs): string {
     mailCredentialReveal,
     notice,
     overviewMetrics,
+    statusInterval,
     version,
     view
   } = args;
@@ -958,6 +961,7 @@ export function renderDashboardPage(args: RenderDashboardArgs): string {
     topbarUserPanelHtml,
     userToggleIconHtml: renderUserIconSvg(),
     overviewMetrics,
+    statusInterval: statusInterval ?? "day",
     renderSignalStrip,
     renderOverviewMetrics,
     renderStats

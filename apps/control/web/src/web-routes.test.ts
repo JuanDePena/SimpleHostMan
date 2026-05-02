@@ -9,6 +9,7 @@ import { invokeRequestHandler } from "@simplehost/control-shared";
 import type { ControlWebApi } from "./api-client.js";
 import { WebApiError } from "./api-client.js";
 import { createControlWebSurface } from "./index.js";
+import { createMailReleaseBaselineData } from "./mail-release-baseline.js";
 import { type ControlWebRuntimeConfig } from "./web-routes.js";
 
 function createStubApi(
@@ -175,6 +176,52 @@ test("web healthz reports web runtime metadata", async () => {
   assert.equal(payload.service, "web");
   assert.equal(payload.environment, "test");
   assert.equal(payload.upstreamApi, "127.0.0.1:4100");
+});
+
+test("overview forwards the selected status interval to dashboard loading", async () => {
+  const dashboard = createMailReleaseBaselineData();
+  dashboard.currentUser = {
+    userId: "user-1",
+    email: "ops@example.com",
+    displayName: "Ops",
+    status: "active",
+    globalRoles: ["platform_admin"],
+    tenantMemberships: []
+  };
+  let statusInterval: string | undefined;
+  const handler = createControlWebSurface(
+    {
+      config: createConfig(),
+      startedAt: Date.now()
+    },
+    createStubApi({
+      resolveSession: async () => ({
+        state: "authenticated",
+        token: "session-token",
+        currentUser: dashboard.currentUser
+      }),
+      loadAuthenticatedDashboard: async (_token, options) => {
+        statusInterval = options?.statusInterval;
+        return {
+          session: {
+            state: "authenticated",
+            token: "session-token",
+            currentUser: dashboard.currentUser
+          },
+          dashboard
+        };
+      }
+    })
+  ).requestListener;
+
+  const response = await invokeRequestHandler(handler, {
+    method: "GET",
+    url: "/?statusInterval=month"
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(statusInterval, "month");
+  assert.match(response.bodyText, /<option value="month" selected>[^<]+<\/option>/);
 });
 
 test("locale preferences route redirects and sets locale cookie", async () => {

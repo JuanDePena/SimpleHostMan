@@ -164,6 +164,12 @@ export interface AuditEventSummary {
   occurredAt: string;
 }
 
+export type OperationsOverviewInterval = "day" | "week" | "month" | "year";
+
+export interface OperationsOverviewOptions {
+  statusInterval?: OperationsOverviewInterval;
+}
+
 export interface OperationsOverview {
   generatedAt: string;
   nodeCount: number;

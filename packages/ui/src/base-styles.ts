@@ -1090,6 +1090,7 @@ export function renderBaseStyleBlock(): string {
         display: flex;
         justify-content: flex-end;
         flex: 0 0 auto;
+        margin: 0;
         width: 6.5rem;
         max-width: 100%;
       }
