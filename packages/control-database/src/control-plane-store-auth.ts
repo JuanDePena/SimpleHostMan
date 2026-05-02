@@ -965,6 +965,40 @@ export function createControlPlaneAuthMethods(
       });
     },
 
+    async loginTrustedProxyUser(request) {
+      return withTransaction(pool, async (client) => {
+        const user = await getUserByEmail(client, request.email);
+
+        if (!user || user.status !== "active") {
+          throw new UserAuthorizationError("Trusted proxy user is not active.");
+        }
+
+        const session = await createSession(client, user.user_id, options.sessionTtlSeconds);
+        const summary = await buildAuthenticatedUserSummary(client, user.user_id);
+
+        await insertAuditEvent(client, {
+          actorType: "user",
+          actorId: user.user_id,
+          eventType: "auth.trusted_proxy_login",
+          entityType: "user",
+          entityId: user.user_id,
+          payload: {
+            email: user.email,
+            provider: request.provider,
+            username: request.username ?? null,
+            groups: request.groups ?? [],
+            remoteAddress: request.remoteAddress ?? null
+          }
+        });
+
+        return {
+          sessionToken: session.sessionToken,
+          expiresAt: session.expiresAt,
+          user: summary
+        };
+      });
+    },
+
     async getCurrentUser(presentedToken) {
       return withTransaction(pool, (client) => authenticateSession(client, presentedToken));
     },

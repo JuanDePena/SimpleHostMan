@@ -30,6 +30,15 @@ export interface AuthLoginResponse {
   user: AuthenticatedUserSummary;
 }
 
+export interface TrustedProxyLoginRequest {
+  email: string;
+  provider: "authentik";
+  username?: string;
+  displayName?: string;
+  groups?: string[];
+  remoteAddress?: string;
+}
+
 export interface AuthLogoutResponse {
   revoked: true;
 }

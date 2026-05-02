@@ -46,6 +46,7 @@ import type {
   ResourceDriftSummary,
   TenantMembershipRole,
   TenantMembershipSummary,
+  TrustedProxyLoginRequest,
   UpsertMailAliasRequest,
   UpsertMailDomainRequest,
   UpsertMailPolicyRequest,
@@ -454,6 +455,7 @@ export interface ControlPlaneStore {
     presentedToken: string | null
   ): Promise<{ accepted: true }>;
   loginUser(request: AuthLoginRequest): Promise<AuthLoginResponse>;
+  loginTrustedProxyUser(request: TrustedProxyLoginRequest): Promise<AuthLoginResponse>;
   getCurrentUser(presentedToken: string | null): Promise<AuthenticatedUserSummary>;
   logoutUser(presentedToken: string | null): Promise<AuthLogoutResponse>;
   createUser(
@@ -607,6 +609,7 @@ export type ControlPlaneAuthMethods = Pick<
   | "claimJobs"
   | "reportJob"
   | "loginUser"
+  | "loginTrustedProxyUser"
   | "getCurrentUser"
   | "logoutUser"
   | "createUser"

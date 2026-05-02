@@ -44,6 +44,9 @@ Current active slice:
   - `https://vps-prd.pyrosa.com.do:3200/` is now protected through Authentik on
     the primary, with the direct control-panel vhost saved under
     `/root/simplehost-rollbacks`
+  - SimpleHostMan trusted-proxy SSO now converts successful Authentik MFA into
+    a local `shp_session` for existing active operators, removing the internal
+    double-login on the primary operator UI
   - secondary IAM/DR posture is defined and staged conservatively: Authentik
     files, vhosts and units are present on the secondary, but startup is held
     behind `/etc/simplehost/iam/authentik/SECONDARY_PROMOTED`

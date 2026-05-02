@@ -491,8 +491,9 @@ Completion evidence:
 
 ### Phase 5: Protect SimpleHostMan Operator UI
 
-Status: primary operator UI completed on `2026-05-02`; secondary node-name UI
-remains direct while Authentik is held inactive on the standby.
+Status: primary operator UI and trusted proxy session handoff completed on
+`2026-05-02`; secondary node-name UI remains direct while Authentik is held
+inactive on the standby.
 
 Goal: reuse IAM only where it improves administrative safety.
 
@@ -503,6 +504,8 @@ Actions:
 - restrict the application to `PYROSA Operators`
 - add a host-internal Apache bridge for the embedded Authentik outpost
 - update the primary `:3200` Apache vhost to route through Authentik
+- add a SimpleHostMan trusted-proxy session handoff so successful Authentik
+  MFA creates the local `shp_session` cookie for existing active operators
 - keep `http://127.0.0.1:3200/` as the local break-glass route
 
 Validation:
@@ -510,6 +513,11 @@ Validation:
 - unauthenticated public requests redirect to the Authentik outpost
 - `/outpost.goauthentik.io/ping` returns healthy status
 - the embedded outpost can reach the host-internal bridge
+- Authentik-forwarded web `GET` requests from the loopback bridge create a
+  SimpleHostMan session for an existing active user matching
+  `x-authentik-email`
+- API requests and unsafe web methods do not create sessions from trusted
+  proxy headers
 - the local control-panel backend remains available on `127.0.0.1:3200`
 - secondary Authentik stays in hold mode and the secondary direct UI is
   unchanged
@@ -557,6 +565,23 @@ Completion evidence:
     `204`
   - `httpd`, `authentik-server`, `authentik-worker`, and
     `simplehost-control` remained active
+- SimpleHostMan release `2605.02.05` supports Authentik trusted-proxy SSO:
+  - Authentik identity headers are accepted only from loopback/internal bridge
+    traffic
+  - only existing active SimpleHostMan users can receive a local session; there
+    is no automatic user creation
+  - successful trusted logins are audited as `auth.trusted_proxy_login`
+  - local simulation of an Authentik-forwarded `GET /login` returned `303`,
+    redirected to `/`, and set a redacted `shp_session` cookie
+  - the same trusted request through `host.containers.internal:13200` from
+    inside the Authentik container returned `303` and set a redacted session
+    cookie
+  - following the redacted cookie to `/` returned `200` and did not render the
+    internal operator login form
+  - `GET /v1/auth/me` with the same Authentik headers, but without a bearer
+    session, still returned `401`
+  - the latest trusted login audit event recorded
+    `auth.trusted_proxy_login` for `webmaster@pyrosa.com.do`
 - Secondary validation:
   - `http://127.0.0.1:3200/` returned `200`
   - `https://vps-des.pyrosa.com.do:3200/` returned `200`

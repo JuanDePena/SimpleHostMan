@@ -10,7 +10,10 @@ import type { ControlWebApi, ControlWebSurface } from "@simplehost/control-web";
 
 export interface ControlBootstrapSurface {
   apiSurface: Pick<ControlApiSurface, "auth" | "requestHandler">;
-  auth: Pick<ControlApiSurface["auth"], "login" | "logout" | "getCurrentUser">;
+  auth: Pick<
+    ControlApiSurface["auth"],
+    "login" | "loginTrustedProxy" | "logout" | "getCurrentUser"
+  >;
   session: ReturnType<typeof createControlSessionSurface>;
   dashboard: {
     loadBootstrap(token: string): Promise<ControlDashboardBootstrap>;

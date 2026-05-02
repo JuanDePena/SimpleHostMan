@@ -5,17 +5,20 @@ class MockIncomingMessage extends Readable {
   method?: string;
   url?: string;
   headers: IncomingHttpHeaders;
+  socket: { remoteAddress?: string };
 
   constructor(args: {
     body?: string;
     headers?: IncomingHttpHeaders;
     method?: string;
+    remoteAddress?: string;
     url?: string;
   }) {
     super();
     this.method = args.method;
     this.url = args.url;
     this.headers = args.headers ?? {};
+    this.socket = { remoteAddress: args.remoteAddress ?? "127.0.0.1" };
     this.push(args.body ?? null);
     this.push(null);
   }
@@ -87,6 +90,7 @@ export async function invokeRequestHandler(
     body?: string;
     headers?: IncomingHttpHeaders;
     method?: string;
+    remoteAddress?: string;
     url: string;
   }
 ): Promise<InvokedHttpResponse> {

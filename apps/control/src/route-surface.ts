@@ -2,6 +2,7 @@ import { createControlApiHttpHandler, writeJson } from "@simplehost/control-api"
 
 import type { ControlBootstrapSurface } from "./bootstrap-surface.js";
 import type { CombinedControlRequestContext } from "./request-context.js";
+import { maybeCreateTrustedProxySession } from "./trusted-proxy-sso.js";
 
 export interface CombinedControlRouteSurface {
   handle(context: CombinedControlRequestContext): Promise<void>;
@@ -45,6 +46,15 @@ export function createCombinedControlRouteSurface(
           await apiRequestHandler(context.request, context.response);
           return;
         default:
+          if (
+            await maybeCreateTrustedProxySession({
+              context,
+              auth: surface.auth
+            })
+          ) {
+            return;
+          }
+
           await webRequestHandler(context.request, context.response);
       }
     },

@@ -1440,9 +1440,52 @@ Phase 5S completion evidence on `2026-05-02`:
   `/srv/backups/iam/authentik/primary/iam-authentik-primary-daily-2026-05-02T08-16-02-907Z`
 - No secret values were printed or committed.
 
+Phase 5T completion evidence on `2026-05-02`:
+
+- The post-MFA double-login behavior for
+  `https://vps-prd.pyrosa.com.do:3200/` was resolved in SimpleHostMan release
+  `2605.02.05` by adding Authentik trusted-proxy session handoff.
+- SimpleHostMan now creates its own `shp_session` cookie only when all of the
+  following are true:
+  - the request is a web `GET`
+  - the request arrives from loopback/internal bridge traffic
+  - Authentik forwarded an email identity through `x-authentik-email` or an
+    email-shaped `x-authentik-username`
+  - the email matches an existing active SimpleHostMan user
+- The implementation does not auto-create SimpleHostMan users and does not
+  apply trusted-proxy login to API routes or unsafe web methods.
+- Successful trusted logins are audited as `auth.trusted_proxy_login`.
+- Source changes:
+  - [`apps/control/src/trusted-proxy-sso.ts`](/opt/simplehostman/src/apps/control/src/trusted-proxy-sso.ts)
+  - [`packages/control-database/src/control-plane-store-auth.ts`](/opt/simplehostman/src/packages/control-database/src/control-plane-store-auth.ts)
+  - [`apps/control/src/router.test.ts`](/opt/simplehostman/src/apps/control/src/router.test.ts)
+- Validation:
+  - `pnpm --dir apps/control typecheck:local` passed
+  - `pnpm typecheck:control-runtime` passed
+  - `pnpm build:control-runtime` passed
+  - targeted router tests passed
+  - full entrypoint suite passed `52/53`; the single failure was the existing
+    release-root promotion parity test comparing a reused
+    `/opt/simplehostman/release/.staging/control` fixture with release-shadow
+    manifests, unrelated to the Authentik SSO path
+  - local Authentik-header simulation returned `303` to `/` with a redacted
+    `shp_session` cookie
+  - following that redacted session returned `200` for `/` without rendering
+    the internal operator login form
+  - API access with Authentik headers but no bearer/session remained `401`
+  - the same trusted request through `host.containers.internal:13200` from the
+    Authentik container returned `303` to `/` with a redacted session cookie
+  - the latest trusted login audit event recorded
+    `auth.trusted_proxy_login` for `webmaster@pyrosa.com.do`
+  - public `https://vps-prd.pyrosa.com.do:3200/` still returns `302` to the
+    Authentik outpost start path
+  - `/outpost.goauthentik.io/ping` still returns `204`
+  - `simplehost-control`, `simplehost-worker`, `httpd`, `authentik-server`,
+    and `authentik-worker` remained active
+
 ## Current Implementation Order
 
-Phases 1 through 4 and phase 5A/5B/5C/5D/5E/5F/5G/5H/5I/5J/5K/5L/5M/5N/5O/5P/5Q/5R/5S are complete.
+Phases 1 through 4 and phase 5A/5B/5C/5D/5E/5F/5G/5H/5I/5J/5K/5L/5M/5N/5O/5P/5Q/5R/5S/5T are complete.
 Continue in this order:
 
 1. Decide whether the secondary node-name SimpleHostMan UI remains a

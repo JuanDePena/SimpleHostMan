@@ -84,6 +84,8 @@ export async function createControlApiSurface(
   });
   const auth: ControlAuthSurface = {
     login: async (credentials) => controlPlaneStore.loginUser(credentials),
+    loginTrustedProxy: async (identity) =>
+      controlPlaneStore.loginTrustedProxyUser(identity),
     logout: async (token) => {
       await controlPlaneStore.logoutUser(token);
     },
