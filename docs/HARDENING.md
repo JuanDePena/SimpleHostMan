@@ -414,6 +414,106 @@ Historical topics retained for context:
 - SSH source-IP restriction if the administrator source range is stable enough
 - optional cleanup of the mail-related `fail2ban` dependency chain
 
+## Security Update Cadence
+
+Implemented on `2026-05-02`.
+
+Both nodes use `dnf-automatic` in conservative mode:
+
+- package installed: `dnf-automatic`
+- hold helper installed: `python3-dnf-plugin-versionlock`
+- config source:
+  [`platform/host/dnf/automatic.conf`](/opt/simplehostman/src/platform/host/dnf/automatic.conf)
+- live config: `/etc/dnf/automatic.conf`
+- update scope: `upgrade_type = security`
+- downloads: `download_updates = yes`
+- automatic installs: `apply_updates = no`
+- automatic reboot: `reboot = never`
+- timer: `dnf-automatic.timer`, daily at `06:00 UTC` with the package's
+  built-in randomized delay
+
+Manual validation on `2026-05-02` used:
+
+```bash
+/usr/bin/dnf-automatic /etc/dnf/automatic.conf --downloadupdates --no-installupdates
+```
+
+The validation downloaded the currently available security set but did not
+install it.
+
+Routine review commands:
+
+```bash
+dnf updateinfo list security --available
+dnf check-update --security
+systemctl list-timers dnf-automatic.timer
+journalctl -u dnf-automatic.service -n 120 --no-pager
+```
+
+Manual apply procedure:
+
+```bash
+dnf upgrade --security
+dnf history list
+systemctl --failed --no-pager
+```
+
+Package hold procedure:
+
+```bash
+dnf versionlock add <package-or-nevra>
+dnf versionlock list
+dnf versionlock delete <package-or-nevra>
+```
+
+Rollback procedure for a package transaction:
+
+```bash
+dnf history list
+dnf history info <transaction-id>
+dnf history undo <transaction-id>
+systemctl --failed --no-pager
+```
+
+Kernel rollback procedure:
+
+```bash
+grubby --default-kernel
+grubby --info=ALL | grep -E '^(title|kernel)='
+grubby --set-default /boot/vmlinuz-<previous-version>
+reboot
+```
+
+Apply security updates in a maintenance window, one node at a time, with
+primary services validated before moving to the secondary.
+
+## code-server Administrative Posture
+
+Reviewed on `2026-05-02`.
+
+Current decision:
+
+- keep `code-server@root` as a root-owned administrative tool
+- keep the backend bound to `127.0.0.1:8080`
+- expose browser access only through `https://code.pyrosa.com.do/`
+- keep node-name `:8080` public reverse proxies retired
+- back up root `code-server` config, user data, profiles and extensions through
+  SimpleHostMan backup policies:
+  - `code-server-primary-daily`
+  - `code-server-secondary-daily`
+
+Recommended next hardening step:
+
+- put `https://code.pyrosa.com.do/` behind an authentication gateway with
+  username/password plus OTP/MFA before Apache proxies to `127.0.0.1:8080`
+- prefer an established gateway such as Authelia or Authentik over ad hoc Basic
+  Auth; it should own MFA, session cookies, lockout/rate limiting, and recovery
+  codes
+- keep code-server's own password enabled as a second layer unless an explicit
+  operational reason exists to remove it
+- use a break-glass path documented outside the browser flow before enforcing
+  MFA
+
 ## Phase 5 Administrative Access Review
 
 Reviewed on `2026-05-02` during the post-migration resilience pass.
@@ -461,8 +561,4 @@ Validation completed after `sshd` reload:
 
 Remaining related follow-up:
 
-- Review the root-owned `code-server@root` service posture and scheduled
-  backup coverage for code-server config and user data.
-- If automatic security updates are desired, install and configure
-  `dnf-automatic` in download-only or security-only mode first, with an
-  explicit package hold/rollback procedure.
+- Decide and implement the `code.pyrosa.com.do` MFA gateway.

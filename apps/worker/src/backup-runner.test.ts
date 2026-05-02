@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   matchesCronExpression,
   policyCoversAppFiles,
+  policyCoversCodeServer,
   policyCoversDatabase,
   policyCoversMailDomain,
   policyCoversPostgresqlControl,
@@ -205,6 +206,33 @@ test("policyCoversPostgresqlControl recognizes control cluster selectors", () =>
       retentionDays: 14,
       storageLocation: "/srv/backups/databases/adudoc",
       resourceSelectors: ["app:adudoc", "database:app_adudoc"]
+    }),
+    false
+  );
+});
+
+test("policyCoversCodeServer recognizes host code-server selectors", () => {
+  assert.equal(
+    policyCoversCodeServer({
+      policySlug: "code-server-primary-daily",
+      tenantSlug: "pyrosa",
+      targetNodeId: "primary",
+      schedule: "20 4 * * *",
+      retentionDays: 14,
+      storageLocation: "/srv/backups/code-server/primary",
+      resourceSelectors: ["code-server"]
+    }),
+    true
+  );
+  assert.equal(
+    policyCoversCodeServer({
+      policySlug: "files-adudoc-daily",
+      tenantSlug: "adudoc",
+      targetNodeId: "primary",
+      schedule: "15 2 * * *",
+      retentionDays: 14,
+      storageLocation: "/srv/backups/apps/adudoc",
+      resourceSelectors: ["app-files:adudoc"]
     }),
     false
   );

@@ -44,6 +44,8 @@ Supported selectors:
 - `app-files:<slug>` for the app bind mount at `/srv/containers/apps/<slug>`
 - `storage-root:<slug>` as an alias for app bind mount coverage
 - `postgresql-cluster:control` for a logical dump of `postgresql@control`
+- `code-server` for the host-level root `code-server` config, user data,
+  profiles, and extensions
 
 Use explicit selectors for file backups. Existing mail policies may include
 `tenant:<slug>` for traceability, but `tenant:<slug>` does not by itself trigger
@@ -121,6 +123,37 @@ This produces a custom-format dump of `simplehost_control` and a globals-only
 dump for roles. It does not replace the required physical backup plus WAL
 archive posture for the `postgresql@control` cluster.
 
+### Host code-server
+
+Primary:
+
+- `code-server-primary-daily`
+- schedule: `20 4 * * *`
+- retention: `14` days
+- storage: `/srv/backups/code-server/primary`
+- selectors: `code-server`
+
+Secondary:
+
+- `code-server-secondary-daily`
+- schedule: `25 4 * * *`
+- retention: `14` days
+- storage: `/srv/backups/code-server/secondary`
+- selectors: `code-server`
+
+The archive includes:
+
+- `/root/.config/code-server`
+- `/root/.local/share/code-server/User`
+- `/root/.local/share/code-server/Machine`
+- `/root/.local/share/code-server/CachedProfilesData`
+- `/root/.local/share/code-server/extensions`
+- `/root/.local/share/code-server/coder.json`
+- `/root/.local/share/code-server/machineid`
+
+The archive intentionally excludes transient sockets, logs, heartbeat files and
+extension cache directories.
+
 ## Restore validation
 
 Minimum restore checks:
@@ -147,9 +180,10 @@ Monthly:
 - restore one app file archive into a scratch path and compare expected files
 - restore one mail-domain backup sample, including Maildir and DKIM/runtime
   config metadata
-- restore code-server config and user data into a scratch path:
-  - `/root/.config/code-server/config.yaml`
-  - `/root/.local/share/code-server/User/settings.json`
+- restore code-server config, user data and extensions into a scratch path:
+  - `/root/.config/code-server`
+  - `/root/.local/share/code-server/User`
+  - `/root/.local/share/code-server/extensions`
 
 Quarterly:
 
@@ -228,7 +262,31 @@ Validated artifacts:
   - restored and byte-compared:
     `/root/.config/code-server/config.yaml` and
     `/root/.local/share/code-server/User/settings.json`
-  - cleanup: scratch path removed; manual backup artifact retained
+  - cleanup: scratch path removed
+  - later cleanup: the manual artifact was removed after scheduled
+    `code-server` backup policies were implemented and validated on
+    `2026-05-02`
+
+### Execution record: 2026-05-02 code-server scheduled policies
+
+The `code-server` selector was added to the SimpleHostMan backup runner and
+validated with forced runs on both nodes.
+
+Validated artifacts:
+
+- Primary:
+  `/srv/backups/code-server/primary/code-server-primary-daily-2026-05-02T04-52-03-421Z/code-server-root.tar.gz`
+  - archive size: about `100M`
+  - manifest:
+    `/srv/backups/code-server/primary/code-server-primary-daily-2026-05-02T04-52-03-421Z/manifest.json`
+- Secondary:
+  `/srv/backups/code-server/secondary/code-server-secondary-daily-2026-05-02T04-53-15-551Z/code-server-root.tar.gz`
+  - archive size: about `64M`
+  - manifest:
+    `/srv/backups/code-server/secondary/code-server-secondary-daily-2026-05-02T04-53-15-551Z/manifest.json`
+
+Control-plane backup run records for `code-server-primary-daily` and
+`code-server-secondary-daily` both completed with `succeeded`.
 
 Final cleanup evidence:
 

@@ -46,10 +46,20 @@ export interface BackupPostgresqlClusterRunDetails {
   globalsPath: string;
 }
 
+export interface BackupCodeServerRunDetails {
+  artifactPaths: {
+    config: string[];
+    userData: string[];
+    extensions: string[];
+  };
+  archivePath: string;
+}
+
 export interface BackupRunDetails {
   mail?: BackupMailRunDetails;
   appFiles?: BackupAppFilesRunDetails;
   postgresqlCluster?: BackupPostgresqlClusterRunDetails;
+  codeServer?: BackupCodeServerRunDetails;
 }
 
 export interface BackupRunSummary {

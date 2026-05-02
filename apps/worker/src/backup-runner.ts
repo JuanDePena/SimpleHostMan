@@ -56,6 +56,10 @@ interface BackupRuntimeEnv {
   SIMPLEHOST_BACKUP_PG_DUMPALL_BIN?: string;
   SIMPLEHOST_BACKUP_CONTROL_DATABASE?: string;
   SIMPLEHOST_BACKUP_CONTROL_PGPORT?: string;
+  SIMPLEHOST_BACKUP_CODE_SERVER_CONFIG_ROOT?: string;
+  SIMPLEHOST_BACKUP_CODE_SERVER_DATA_ROOT?: string;
+  SIMPLEHOST_CODE_SERVER_CONFIG_PATH?: string;
+  SIMPLEHOST_CODE_SERVER_SETTINGS_PATH?: string;
 }
 
 interface BackupExecutionContext {
@@ -393,6 +397,16 @@ export function policyCoversPostgresqlControl(policy: BackupPolicySummary): bool
     selectors.includes("postgresql-control") ||
     selectors.includes("postgresql-cluster:control") ||
     selectors.includes("control-db")
+  );
+}
+
+export function policyCoversCodeServer(policy: BackupPolicySummary): boolean {
+  const selectors = normalizeSelectors(policy.resourceSelectors);
+
+  return (
+    selectors.includes("code-server") ||
+    selectors.includes("code-server:root") ||
+    selectors.includes("host-service:code-server")
   );
 }
 
@@ -901,6 +915,95 @@ async function createControlPostgresqlBackup(args: {
   };
 }
 
+function resolveCodeServerConfigRoot(runtimeEnv: BackupRuntimeEnv): string {
+  const configuredRoot = runtimeEnv.SIMPLEHOST_BACKUP_CODE_SERVER_CONFIG_ROOT?.trim();
+
+  if (configuredRoot) {
+    return configuredRoot;
+  }
+
+  const configuredConfigPath = runtimeEnv.SIMPLEHOST_CODE_SERVER_CONFIG_PATH?.trim();
+
+  if (configuredConfigPath) {
+    return join(configuredConfigPath, "..");
+  }
+
+  return "/root/.config/code-server";
+}
+
+function resolveCodeServerDataRoot(runtimeEnv: BackupRuntimeEnv): string {
+  const configuredRoot = runtimeEnv.SIMPLEHOST_BACKUP_CODE_SERVER_DATA_ROOT?.trim();
+
+  if (configuredRoot) {
+    return configuredRoot;
+  }
+
+  const configuredSettingsPath = runtimeEnv.SIMPLEHOST_CODE_SERVER_SETTINGS_PATH?.trim();
+
+  if (configuredSettingsPath) {
+    return join(configuredSettingsPath, "..", "..");
+  }
+
+  return "/root/.local/share/code-server";
+}
+
+async function createCodeServerArchive(args: {
+  policy: BackupPolicySummary;
+  runDirectory: string;
+  runtimeEnv: BackupRuntimeEnv;
+}): Promise<{
+  details: NonNullable<BackupRunDetails["codeServer"]>;
+  artifacts: string[];
+  summary: string;
+}> {
+  const configRoot = resolveCodeServerConfigRoot(args.runtimeEnv);
+  const dataRoot = resolveCodeServerDataRoot(args.runtimeEnv);
+  const configPaths = await collectExistingPaths([configRoot]);
+  const userDataPaths = await collectExistingPaths([
+    join(dataRoot, "User"),
+    join(dataRoot, "Machine"),
+    join(dataRoot, "CachedProfilesData"),
+    join(dataRoot, "coder.json"),
+    join(dataRoot, "machineid")
+  ]);
+  const extensionPaths = await collectExistingPaths([join(dataRoot, "extensions")]);
+  const archiveSourcePaths = [
+    ...new Set([...configPaths, ...userDataPaths, ...extensionPaths])
+  ];
+
+  if (archiveSourcePaths.length === 0) {
+    throw new Error(`Policy ${args.policy.policySlug} did not find code-server paths to archive.`);
+  }
+
+  const archivePath = join(args.runDirectory, "code-server-root.tar.gz");
+
+  await runCommand({
+    command: "/usr/bin/tar",
+    commandArgs: [
+      "--ignore-failed-read",
+      "--warning=no-file-changed",
+      "-czf",
+      archivePath,
+      "-P",
+      ...archiveSourcePaths
+    ]
+  });
+  await chmod(archivePath, 0o600);
+
+  return {
+    details: {
+      artifactPaths: {
+        config: configPaths,
+        userData: userDataPaths,
+        extensions: extensionPaths
+      },
+      archivePath
+    },
+    artifacts: [archivePath],
+    summary: `Backed up code-server config, user data, and extensions into ${args.policy.storageLocation}.`
+  };
+}
+
 async function executePolicy(
   context: BackupExecutionContext,
   policy: BackupPolicySummary,
@@ -930,6 +1033,7 @@ async function executePolicy(
           selector.startsWith("storage-root:")
       );
     const handlesPostgresqlControl = policyCoversPostgresqlControl(policy);
+    const handlesCodeServer = policyCoversCodeServer(policy);
 
     let details: BackupRunDetails | undefined;
     const artifacts: string[] = [];
@@ -1009,6 +1113,21 @@ async function executePolicy(
       };
       artifacts.push(...postgresqlResult.artifacts);
       summaryParts.push(postgresqlResult.summary);
+    }
+
+    if (handlesCodeServer) {
+      const codeServerResult = await createCodeServerArchive({
+        policy,
+        runDirectory,
+        runtimeEnv: context.runtimeEnv
+      });
+
+      details = {
+        ...(details ?? {}),
+        codeServer: codeServerResult.details
+      };
+      artifacts.push(...codeServerResult.artifacts);
+      summaryParts.push(codeServerResult.summary);
     }
 
     if (artifacts.length === 0) {

@@ -690,7 +690,7 @@ Completion evidence:
 
 ### Phase 5: Resilience And Failover Improvements
 
-Status: in progress; phases 5A through 5I completed on `2026-05-02`.
+Status: in progress; phases 5A through 5J completed on `2026-05-02`.
 
 Goal: reduce single points of failure that remain after the vps-old retirement.
 
@@ -712,6 +712,10 @@ Actions:
   vhost with the primary SimpleHost release
 - remove stale release directories, legacy runtime archives, and transient
   root-only cleanup backups after validation
+- configure conservative OS security-update automation with documented
+  hold/rollback procedures
+- add scheduled SimpleHostMan backup policy coverage for root `code-server`
+  config, user data, profiles and extensions
 - revisit mail-related `fail2ban` packaging cleanup only after the current
   healthcheck threshold behavior is settled
 
@@ -1053,19 +1057,60 @@ Phase 5I completion evidence on `2026-05-02`:
   - `systemctl --failed` reported no failed units on both nodes
   - `https://vps-des.pyrosa.com.do:3200/` returned `200 OK`
 
+Phase 5J completion evidence on `2026-05-02`:
+
+- Conservative OS security-update automation was enabled on both nodes:
+  - installed `dnf-automatic`
+  - installed `python3-dnf-plugin-versionlock`
+  - deployed `/etc/dnf/automatic.conf` from
+    [`platform/host/dnf/automatic.conf`](/opt/simplehostman/src/platform/host/dnf/automatic.conf)
+  - configured `upgrade_type = security`
+  - configured `download_updates = yes`
+  - configured `apply_updates = no`
+  - configured `reboot = never`
+  - enabled and started `dnf-automatic.timer`
+- Manual validation ran `dnf-automatic` with download/no-install flags on both
+  nodes. Packages were downloaded into cache, but no update transaction was
+  applied.
+- Package hold and rollback procedures were documented in
+  [`HARDENING.md`](/opt/simplehostman/src/docs/HARDENING.md).
+- `code-server@root` remains the intentional administrative posture:
+  - backend remains local on `127.0.0.1:8080`
+  - browser endpoint remains `https://code.pyrosa.com.do/`
+  - recommended next step is an MFA authentication gateway in front of the
+    Apache proxy
+- Scheduled `code-server` backup coverage was added to SimpleHostMan:
+  - release `2605.02.05` added the `code-server` backup selector
+  - primary policy: `code-server-primary-daily`
+  - secondary policy: `code-server-secondary-daily`
+  - secondary `simplehost-backup-runner.timer` was enabled while
+    `simplehost-worker` remains disabled
+  - forced validation runs succeeded on both nodes
+  - primary archive:
+    `/srv/backups/code-server/primary/code-server-primary-daily-2026-05-02T04-52-03-421Z/code-server-root.tar.gz`
+  - secondary archive:
+    `/srv/backups/code-server/secondary/code-server-secondary-daily-2026-05-02T04-53-15-551Z/code-server-root.tar.gz`
+- Deployment posture after release `2605.02.05`:
+  - primary: `simplehost-control`, `simplehost-worker`, `simplehost-agent`,
+    and `simplehost-backup-runner.timer` active
+  - secondary: `simplehost-control`, `simplehost-agent`, and
+    `simplehost-backup-runner.timer` active
+  - secondary `simplehost-worker` intentionally inactive
+- The secondary backup runner was aligned with the primary control-plane job
+  secret so it can read encrypted desired-state values from the primary
+  PostgreSQL control database. Secret values were not printed or committed.
+
 Remaining Phase 5 maintenance-window items:
 
-- decide whether to install and configure `dnf-automatic`
-- review code-server root-owned service posture, including a scheduled backup
-  policy for code-server config and user data
+- design and implement an MFA gateway for `https://code.pyrosa.com.do/`
 
 ## Current Implementation Order
 
-Phases 1 through 4 and phase 5A/5B/5C/5D/5E/5F/5G/5H/5I are complete.
+Phases 1 through 4 and phase 5A/5B/5C/5D/5E/5F/5G/5H/5I/5J are complete.
 Continue in this order:
 
-1. Decide whether to install and configure security-update automation.
-2. Review code-server root-owned service posture and scheduled backup coverage.
+1. Choose the `code.pyrosa.com.do` MFA gateway implementation.
+2. Implement the gateway with a documented break-glass path and rollback.
 
 ## Do Not Do Yet
 

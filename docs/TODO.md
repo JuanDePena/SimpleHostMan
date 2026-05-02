@@ -9,10 +9,11 @@ Current baseline:
 
 - canonical source tree: `/opt/simplehostman/src`
 - canonical runtime root: `/opt/simplehostman/release`
-- active release: `2605.02.04`
+- active release: `2605.02.05`
 - primary active services: `simplehost-control`, `simplehost-worker`, `simplehost-agent`
 - secondary active services: `simplehost-control`, `simplehost-agent`
 - secondary intentionally inactive service: `simplehost-worker`
+- backup timers: primary and secondary `simplehost-backup-runner.timer`
 
 ## Current status
 
@@ -32,9 +33,7 @@ Active open items as of `2026-05-02`:
 Current active slice:
 
 - Phase 5 resilience and failover follow-up:
-  - OS security-update cadence decision
-  - code-server root-owned service review, including scheduled backup coverage
-    for config and user data
+  - choose and implement the `code.pyrosa.com.do` MFA gateway
 
 Historical migration runbooks can retain execution records, validation gates, and conditional
 operator notes, but they should not be treated as active TODOs unless this file links to them.
