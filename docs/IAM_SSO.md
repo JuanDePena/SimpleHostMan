@@ -400,7 +400,7 @@ Completion evidence:
   - authentication flow: `pyrosa-authentication-mfa-required`
   - brand CSS hides the flow footer links, including `Powered by authentik`
 - The `pyrosa-authentication-mfa-required` flow title was updated to
-  `PYROSA Inicio de Sesión`.
+  `PYROSA | Inicio de Sesión`.
 - Authentik Proxy Provider `code.pyrosa.com.do` was created in `proxy` mode:
   - external host: `https://code.pyrosa.com.do`
   - internal host: `http://host.containers.internal:18080`
@@ -441,7 +441,9 @@ Completion evidence:
 - `https://auth.pyrosa.com.do/if/flow/pyrosa-authentication-mfa-required/`
   renders with `<title>PYROSA</title>`, Pyrosa media-backed logo/favicon, and
   no static `Welcome to authentik!` or `Powered by authentik` text.
-- The flow executor API reports title `PYROSA Inicio de Sesión`.
+- The flow executor API reports title `PYROSA | Inicio de Sesión`.
+- The flow executor API returned the same Spanish title with `Accept-Language`
+  set to `en`, `es`, and `fr`.
 - Break-glass local backend check:
   `http://127.0.0.1:8080/login` still returns `200`.
 - Internal bridge checks:
@@ -462,6 +464,10 @@ Completion evidence:
   `backup-run-0cb8786b-47f7-4a80-bc56-bfa1e7de299f`.
 - Post-branding backup directory:
   `/srv/backups/iam/authentik/primary/iam-authentik-primary-daily-2026-05-02T07-13-23-428Z`
+- A post-title-adjustment forced backup succeeded:
+  `backup-run-02e1fc98-1798-4be7-8504-f9a8c3c42430`.
+- Post-title-adjustment backup directory:
+  `/srv/backups/iam/authentik/primary/iam-authentik-primary-daily-2026-05-02T07-17-03-754Z`
 - The post-enforcement backup restored into scratch database
   `restoretest_authentik_phase4_20260502t0643z` and validated:
   - `1` `code-pyrosa` application
