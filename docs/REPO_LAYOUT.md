@@ -27,7 +27,6 @@ The current canonical top-level layout is:
     /apps
     /packages
     /platform
-    /bootstrap
     /packaging
     /scripts
     /docs
@@ -65,7 +64,6 @@ Meaning:
     /agent-renderers
     /agent-testing
   /platform
-  /bootstrap
   /packaging
     /env
     /systemd
@@ -166,16 +164,6 @@ Contains:
 - DNS templates
 - database templates
 - WireGuard templates
-
-### `bootstrap`
-
-Path:
-
-- `/opt/simplehostman/src/bootstrap`
-
-Contains:
-
-- bootstrap inventory and import/export seed material
 
 ### `packaging`
 
@@ -279,6 +267,5 @@ Current work is no longer monorepo migration or first runtime-root adoption. It 
 - `/opt/simplehostman/src/apps/cli/README.md`
 - `/opt/simplehostman/src/packages/README.md`
 - `/opt/simplehostman/src/platform/README.md`
-- `/opt/simplehostman/src/bootstrap/README.md`
 - `/opt/simplehostman/src/packaging/README.md`
 - `/opt/simplehostman/src/scripts/README.md`

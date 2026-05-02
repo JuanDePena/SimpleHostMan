@@ -53,7 +53,6 @@ Canonical source layout:
     /cli
   /packages
   /platform
-  /bootstrap
   /packaging
   /scripts
   /docs
@@ -67,8 +66,6 @@ Ownership:
 - `apps/cli`: break-glass and operator CLI
 - `packages/*`: shared contracts, config, UI, persistence, renderers, drivers, and testing helpers
 - `platform`: host and container templates
-- `bootstrap`: reserved bootstrap and recovery material; no live application
-  inventory lives there
 - `packaging`: release and install artifacts organized by artifact type for the unified runtime
 - `scripts`: install, deploy, rollback, bootstrap, and migration helpers
 - `docs`: integrated architecture, operational guides, and migration plans
@@ -126,7 +123,6 @@ Read these when working on source ownership boundaries:
 - `/opt/simplehostman/src/apps/cli/README.md`
 - `/opt/simplehostman/src/packages/README.md`
 - `/opt/simplehostman/src/platform/README.md`
-- `/opt/simplehostman/src/bootstrap/README.md`
 - `/opt/simplehostman/src/packaging/README.md`
 - `/opt/simplehostman/src/scripts/README.md`
 

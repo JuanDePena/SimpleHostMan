@@ -244,8 +244,8 @@ Exit criteria:
 Implementation notes:
 
 - `bootstrap/apps.bootstrap.yaml` was deleted from source control
-- `bootstrap/README.md` now documents that the directory has no live
-  application inventory
+- the now-empty `bootstrap/` directory and its tombstone README were removed
+  from the active source layout
 - active architecture, DNS, multi-domain, failover, repo layout and agent docs
   now point operators to PostgreSQL desired state and control-plane exports
 - historical migration records were left intact as evidence of prior migration
@@ -324,3 +324,5 @@ Rollback should use the phase-0 artifacts:
   deleted and active docs now point to PostgreSQL desired state.
 - `2026-05-02`: phase 4 completed; tests, builds, live export, reconcile, and
   phase-0 restore rehearsal all passed without YAML inputs.
+- `2026-05-02`: empty source `bootstrap/` directory removed after the desired
+  state transition closed.

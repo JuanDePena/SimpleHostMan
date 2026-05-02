@@ -100,7 +100,6 @@ High-level structure:
     /cli
   /packages
   /platform
-  /bootstrap
   /packaging
   /scripts
   /docs
@@ -114,7 +113,6 @@ What each area means:
 - `apps/cli`: operator and break-glass tooling
 - `packages`: shared contracts, config, persistence, renderers, drivers, UI primitives, and test helpers
 - `platform`: host- and service-level templates and managed artifacts
-- `bootstrap`: bootstrap inventory and seed data
 - `packaging`: release artifacts, RPM-related packaging, env examples, and release layout material
 - `scripts`: install, deploy, rollback, bootstrap, and migration helpers
 - `docs`: architecture, runbooks, migration plans, UI guidance, and operational references
