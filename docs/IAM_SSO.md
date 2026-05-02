@@ -489,13 +489,87 @@ Completion evidence:
 - Scratch database and temporary dump copy were removed.
 - No secret values were printed or committed.
 
-### Phase 5: Extend To Other Web Surfaces
+### Phase 5: Protect SimpleHostMan Operator UI
+
+Status: primary operator UI completed on `2026-05-02`; secondary node-name UI
+remains direct while Authentik is held inactive on the standby.
 
 Goal: reuse IAM only where it improves administrative safety.
 
-Candidates:
+Actions:
 
-- SimpleHostMan operator UI
+- create Authentik application and Proxy Provider for
+  `https://vps-prd.pyrosa.com.do:3200/`
+- restrict the application to `PYROSA Operators`
+- add a host-internal Apache bridge for the embedded Authentik outpost
+- update the primary `:3200` Apache vhost to route through Authentik
+- keep `http://127.0.0.1:3200/` as the local break-glass route
+
+Validation:
+
+- unauthenticated public requests redirect to the Authentik outpost
+- `/outpost.goauthentik.io/ping` returns healthy status
+- the embedded outpost can reach the host-internal bridge
+- the local control-panel backend remains available on `127.0.0.1:3200`
+- secondary Authentik stays in hold mode and the secondary direct UI is
+  unchanged
+
+Rollback:
+
+- restore the previous direct `simplehost-control.conf` vhost from
+  `/root/simplehost-rollbacks/simplehost-control-direct-20260502T081000Z.conf`
+- reload Apache
+- leave the Authentik provider/application in place unless it is causing
+  follow-on issues
+
+Completion evidence:
+
+- Authentik Proxy Provider `simplehost-control` was created in `proxy` mode:
+  - external host: `https://vps-prd.pyrosa.com.do:3200`
+  - internal host: `http://host.containers.internal:13200`
+  - authorization flow: `default-provider-authorization-implicit-consent`
+- Authentik application `simplehost-control` was created and restricted to
+  `PYROSA Operators`.
+- The embedded outpost now includes provider `simplehost-control`.
+- Source-controlled Apache vhost:
+  [`platform/httpd/vhosts/simplehost-control.conf`](/opt/simplehostman/src/platform/httpd/vhosts/simplehost-control.conf)
+- Source-controlled internal Apache bridge:
+  [`platform/httpd/vhosts/simplehost-control-internal-bridge.conf`](/opt/simplehostman/src/platform/httpd/vhosts/simplehost-control-internal-bridge.conf)
+- Live Apache vhost:
+  `/etc/httpd/conf.d/simplehost-control.conf`
+- Live internal Apache bridge:
+  `/etc/httpd/conf.d/simplehost-control-internal-bridge.conf`
+- The bridge listens on `10.88.0.1:13200`, allows only the Podman subnet, and
+  proxies to the local SimpleHostMan backend on `127.0.0.1:3200`.
+- SELinux port label: `13200/tcp` is registered as `http_port_t` for the
+  internal Apache listener.
+- Rollback vhost copy:
+  `/root/simplehost-rollbacks/simplehost-control-direct-20260502T081000Z.conf`
+- `apachectl -t` returned `Syntax OK`; Apache was reloaded.
+- Primary validation:
+  - `http://127.0.0.1:3200/` returned `200`
+  - `http://10.88.0.1:13200/` returned `200`
+  - `http://host.containers.internal:13200/` returned `200` from inside the
+    Authentik container
+  - `https://vps-prd.pyrosa.com.do:3200/` returned `302` to
+    `/outpost.goauthentik.io/start?...`
+  - `https://vps-prd.pyrosa.com.do:3200/outpost.goauthentik.io/ping` returned
+    `204`
+  - `httpd`, `authentik-server`, `authentik-worker`, and
+    `simplehost-control` remained active
+- Secondary validation:
+  - `http://127.0.0.1:3200/` returned `200`
+  - `https://vps-des.pyrosa.com.do:3200/` returned `200`
+  - `authentik-server` and `authentik-worker` remained inactive
+  - `/etc/simplehost/iam/authentik/SECONDARY_PROMOTED` remained absent
+- A post-SimpleHostMan-protection forced backup succeeded:
+  `backup-run-a04e1e3d-1b7b-400e-98a2-0ce7a8658931`.
+- Post-SimpleHostMan-protection backup directory:
+  `/srv/backups/iam/authentik/primary/iam-authentik-primary-daily-2026-05-02T08-16-02-907Z`
+- No secret values were printed or committed.
+
+Future candidates:
+
 - `pgadmin.pyrosa.com.do`
 - `ldap.pyrosa.com.do`
 - selected internal Pyrosa apps
@@ -559,7 +633,8 @@ behavior is explicitly tested.
 
 Completion evidence:
 
-- Latest Authentik backup seed replicated to the secondary:
+- Latest Authentik backup seed replicated to the secondary during the initial
+  standby staging:
   `/srv/backups/iam/authentik/primary-replicated/iam-authentik-primary-daily-2026-05-02T07-29-56-575Z`
 - Secondary restored root-only Authentik config/runtime paths:
   - `/etc/simplehost/iam/authentik`

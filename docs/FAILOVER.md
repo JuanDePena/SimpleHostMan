@@ -119,7 +119,10 @@ replicated `simplehost_control` PostgreSQL database.
 ## IAM/SSO promotion
 
 `auth.pyrosa.com.do` and protected administrative apps such as
-`code.pyrosa.com.do` use Authentik. During normal operation Authentik runs only
+`code.pyrosa.com.do` use Authentik. The primary node-name SimpleHostMan UI at
+`https://vps-prd.pyrosa.com.do:3200/` is also protected by Authentik, while the
+secondary node-name UI remains a direct standby/operator route until a separate
+secondary IAM design is approved. During normal operation Authentik runs only
 on the primary. The secondary is prepared as a manual standby, but
 `authentik-server` and `authentik-worker` are held inactive by
 `ConditionPathExists=/etc/simplehost/iam/authentik/SECONDARY_PROMOTED`.

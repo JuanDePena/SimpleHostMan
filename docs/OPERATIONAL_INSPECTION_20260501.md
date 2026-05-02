@@ -1398,12 +1398,58 @@ Phase 5R completion evidence on `2026-05-02`:
 - Primary `auth.pyrosa.com.do` and `code.pyrosa.com.do` still return `302`, and
   primary Authentik services remain active.
 
+Phase 5S completion evidence on `2026-05-02`:
+
+- IAM/SSO phase 5 from
+  [`IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md) protected the primary
+  SimpleHostMan operator UI at `https://vps-prd.pyrosa.com.do:3200/`.
+- Authentik Proxy Provider `simplehost-control` was created in `proxy` mode
+  with external host `https://vps-prd.pyrosa.com.do:3200` and internal host
+  `http://host.containers.internal:13200`.
+- Authentik application `simplehost-control` was created and restricted to
+  `PYROSA Operators`.
+- The embedded outpost now includes provider `simplehost-control`.
+- Source-controlled Apache vhost:
+  [`platform/httpd/vhosts/simplehost-control.conf`](/opt/simplehostman/src/platform/httpd/vhosts/simplehost-control.conf)
+- Source-controlled internal Apache bridge:
+  [`platform/httpd/vhosts/simplehost-control-internal-bridge.conf`](/opt/simplehostman/src/platform/httpd/vhosts/simplehost-control-internal-bridge.conf)
+- The bridge listens on `10.88.0.1:13200`, is limited to the Podman subnet,
+  and proxies to the local SimpleHostMan backend on `127.0.0.1:3200`.
+- SELinux `http_port_t` includes `13200/tcp`.
+- Rollback vhost copy:
+  `/root/simplehost-rollbacks/simplehost-control-direct-20260502T081000Z.conf`
+- Runtime validation:
+  - `apachectl -t` returned `Syntax OK`
+  - `http://127.0.0.1:3200/` returned `200`
+  - `http://10.88.0.1:13200/` returned `200`
+  - `http://host.containers.internal:13200/` returned `200` from inside the
+    Authentik container
+  - `https://vps-prd.pyrosa.com.do:3200/` returned `302` to the Authentik
+    outpost start path
+  - `https://vps-prd.pyrosa.com.do:3200/outpost.goauthentik.io/ping` returned
+    `204`
+  - `httpd`, `authentik-server`, `authentik-worker`, and
+    `simplehost-control` remained active
+  - secondary `https://vps-des.pyrosa.com.do:3200/` remained direct and
+    returned `200`
+  - secondary `authentik-server` and `authentik-worker` remained inactive, with
+    the `SECONDARY_PROMOTED` marker absent
+- Post-SimpleHostMan-protection forced backup run
+  `backup-run-a04e1e3d-1b7b-400e-98a2-0ce7a8658931` succeeded.
+- Post-SimpleHostMan-protection backup directory:
+  `/srv/backups/iam/authentik/primary/iam-authentik-primary-daily-2026-05-02T08-16-02-907Z`
+- No secret values were printed or committed.
+
 ## Current Implementation Order
 
-Phases 1 through 4 and phase 5A/5B/5C/5D/5E/5F/5G/5H/5I/5J/5K/5L/5M/5N/5O/5P/5Q/5R are complete.
+Phases 1 through 4 and phase 5A/5B/5C/5D/5E/5F/5G/5H/5I/5J/5K/5L/5M/5N/5O/5P/5Q/5R/5S are complete.
 Continue in this order:
 
-1. Choose the next administrative web surface for IAM protection.
+1. Decide whether the secondary node-name SimpleHostMan UI remains a
+   standby/direct route or gets a separate IAM design after secondary Authentik
+   promotion.
+2. Choose the next internal administrative app for IAM protection, such as
+   `pgadmin.pyrosa.com.do` or `ldap.pyrosa.com.do`.
 
 ## Do Not Do Yet
 
