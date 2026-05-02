@@ -179,18 +179,18 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
       { id: "year", label: copy.overviewIntervalYear }
     ];
 
-    return `<div class="overview-interval-selector" role="group" aria-label="${escapeHtml(copy.overviewIntervalLabel)}">
-      ${intervals
-        .map(
-          (interval) => `<button
-            type="button"
-            class="overview-interval-button${interval.id === "day" ? " active" : ""}"
-            data-status-interval="${escapeHtml(interval.id)}"
-            aria-pressed="${interval.id === "day" ? "true" : "false"}"
-          >${escapeHtml(interval.label)}</button>`
-        )
-        .join("")}
-    </div>`;
+    return `<label class="overview-interval-selector">
+      <span class="sr-only">${escapeHtml(copy.overviewIntervalLabel)}</span>
+      <select name="statusInterval" data-status-interval-select aria-label="${escapeHtml(copy.overviewIntervalLabel)}">
+        ${intervals
+          .map(
+            (interval) => `<option value="${escapeHtml(interval.id)}"${
+              interval.id === "day" ? " selected" : ""
+            }>${escapeHtml(interval.label)}</option>`
+          )
+          .join("")}
+      </select>
+    </label>`;
   };
 
   const topbarActionsHtml = `<div class="locale-switch" role="group" aria-label="${escapeHtml(copy.languageLabel)}">

@@ -1087,38 +1087,31 @@ export function renderBaseStyleBlock(): string {
       }
 
       .overview-interval-selector {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.12rem;
+        display: block;
         flex: 0 0 auto;
-        padding: 0.12rem;
-        border: 1px solid rgba(13, 32, 56, 0.1);
-        border-radius: var(--radius-control);
-        background: rgba(255, 255, 255, 0.72);
       }
 
-      .overview-interval-button {
+      .overview-interval-selector select {
         min-height: 1.72rem;
-        min-width: 3.2rem;
-        padding: 0.2rem 0.5rem;
+        min-width: 6.2rem;
+        max-width: 9rem;
+        padding: 0.18rem 1.8rem 0.18rem 0.62rem;
         border-radius: var(--radius-control);
-        background: transparent;
-        color: var(--muted);
-        box-shadow: none;
+        border: 1px solid rgba(13, 32, 56, 0.14);
+        background-color: rgba(255, 255, 255, 0.86);
+        color: var(--navy-strong);
         font-size: var(--font-size-label);
         font-weight: 700;
+        box-shadow: 0 0.42rem 1rem rgba(16, 39, 68, 0.08);
       }
 
-      .overview-interval-button:hover,
-      .overview-interval-button:focus-visible {
-        background: rgba(16, 39, 68, 0.08);
-        color: var(--navy-strong);
-      }
-
-      .overview-interval-button.active {
-        background: linear-gradient(135deg, var(--navy-soft), var(--navy-strong));
-        color: #f5fbff;
-        box-shadow: 0 0.5rem 1.1rem rgba(16, 39, 68, 0.12);
+      .overview-interval-selector select:focus,
+      .overview-interval-selector select:focus-visible {
+        border-color: rgba(16, 39, 68, 0.3);
+        outline: none;
+        box-shadow:
+          0 0 0 0.14rem rgba(86, 146, 255, 0.18),
+          0 0.42rem 1rem rgba(16, 39, 68, 0.08);
       }
 
       .overview-status-content {
@@ -1190,13 +1183,12 @@ export function renderBaseStyleBlock(): string {
         }
 
         .overview-interval-selector {
-          display: grid;
-          grid-template-columns: repeat(4, minmax(0, 1fr));
           width: 100%;
         }
 
-        .overview-interval-button {
-          min-width: 0;
+        .overview-interval-selector select {
+          max-width: none;
+          width: 100%;
         }
 
         .overview-metric-grid {
