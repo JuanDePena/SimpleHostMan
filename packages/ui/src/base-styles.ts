@@ -1092,10 +1092,14 @@ export function renderBaseStyleBlock(): string {
       }
 
       .overview-interval-selector select {
-        width: 8.8rem;
-        min-height: 1.46rem;
-        height: 1.46rem;
-        padding: 0 1.55rem 0 0.52rem;
+        box-sizing: border-box;
+        display: block;
+        width: 10rem;
+        min-width: 10rem;
+        max-width: none;
+        min-height: 1.38rem;
+        height: 1.38rem;
+        padding: 0 1.45rem 0 0.5rem;
         border-radius: var(--radius-control);
         border: 1px solid rgba(13, 32, 56, 0.14);
         background-color: rgba(255, 255, 255, 0.86);
@@ -1188,7 +1192,8 @@ export function renderBaseStyleBlock(): string {
         }
 
         .overview-interval-selector select {
-          height: 1.62rem;
+          min-width: 0;
+          height: 1.56rem;
           width: 100%;
         }
 
