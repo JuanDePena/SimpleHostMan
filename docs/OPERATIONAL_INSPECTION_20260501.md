@@ -690,7 +690,7 @@ Completion evidence:
 
 ### Phase 5: Resilience And Failover Improvements
 
-Status: in progress; phases 5A through 5K completed on `2026-05-02`.
+Status: in progress; phases 5A through 5L completed on `2026-05-02`.
 
 Goal: reduce single points of failure that remain after the vps-old retirement.
 
@@ -1111,7 +1111,7 @@ Phase 5K completion evidence on `2026-05-02`:
   [`IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md).
 - Authentik was classified as a dedicated IAM stack rather than a generic
   `control_plane_apps` record because it needs server, worker, PostgreSQL,
-  Redis or Valkey, and outpost behavior.
+  persistent file storage, and outpost behavior.
 - The plan reserves `auth.pyrosa.com.do` and local backend ports
   `10170-10179`, but no live DNS, vhost, database, container, or
   `code-server` proxy change was applied in this design phase.
@@ -1121,20 +1121,52 @@ Phase 5K completion evidence on `2026-05-02`:
 
 Remaining Phase 5 maintenance-window items:
 
-- stage and implement the Authentik IAM/SSO rollout for
-  `https://code.pyrosa.com.do/`
+- publish `auth.pyrosa.com.do`, bootstrap admin MFA, add backup coverage, and
+  then protect `https://code.pyrosa.com.do/`
+
+Phase 5L completion evidence on `2026-05-02`:
+
+- IAM/SSO phase 1 from
+  [`IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md) was completed on the
+  primary without protecting any existing app.
+- Authentik image:
+  `ghcr.io/goauthentik/server:2026.2.2`.
+- Source-controlled runtime artifacts were added:
+  - [`platform/containers/quadlet/authentik-server.container`](/opt/simplehostman/src/platform/containers/quadlet/authentik-server.container)
+  - [`platform/containers/quadlet/authentik-worker.container`](/opt/simplehostman/src/platform/containers/quadlet/authentik-worker.container)
+  - [`platform/containers/env/authentik.env.example`](/opt/simplehostman/src/platform/containers/env/authentik.env.example)
+- Live runtime files and paths:
+  - `/etc/containers/systemd/authentik-server.container`
+  - `/etc/containers/systemd/authentik-worker.container`
+  - `/etc/simplehost/iam/authentik/authentik.env` with mode `0600`
+  - `/srv/containers/iam/authentik`
+- PostgreSQL app-cluster state:
+  - role: `app_authentik`
+  - database: `app_authentik`
+  - owner: `app_authentik`
+  - public tables after initial migrations: `212`
+- Runtime validation:
+  - `authentik-server.service` active
+  - `authentik-worker.service` active
+  - `http://127.0.0.1:10170/` returned `302`
+  - `http://127.0.0.1:10170/if/flow/initial-setup/` returned `200`
+  - `10170/tcp` listened only on `127.0.0.1`
+  - `https://code.pyrosa.com.do/login` still returned `200` through the
+    existing direct vhost
+  - `systemctl --failed` reported no failed units
+- `custom-templates` and `certs` were left traversable by the container user
+  because the Authentik server process runs as UID `1000` in the image.
+- No DNS record, public Apache vhost, `auth.pyrosa.com.do` publication, or
+  `code.pyrosa.com.do` proxy enforcement was applied in this phase.
 
 ## Current Implementation Order
 
-Phases 1 through 4 and phase 5A/5B/5C/5D/5E/5F/5G/5H/5I/5J/5K are complete.
+Phases 1 through 4 and phase 5A/5B/5C/5D/5E/5F/5G/5H/5I/5J/5K/5L are complete.
 Continue in this order:
 
-1. Execute IAM/SSO phase 1 from
-   [`IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md): stage Authentik on
-   the primary without protecting existing apps.
-2. Publish `auth.pyrosa.com.do`, bootstrap admin MFA, and validate recovery.
-3. Add backup and restore-test coverage for Authentik.
-4. Protect `code.pyrosa.com.do` with documented break-glass and rollback.
+1. Publish `auth.pyrosa.com.do`, bootstrap admin MFA, and validate recovery.
+2. Add backup and restore-test coverage for Authentik.
+3. Protect `code.pyrosa.com.do` with documented break-glass and rollback.
 
 ## Do Not Do Yet
 

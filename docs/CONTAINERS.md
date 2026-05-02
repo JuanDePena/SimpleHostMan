@@ -88,6 +88,9 @@ Source-controlled container artifacts:
 - [`/opt/simplehostman/src/platform/containers/quadlet/mariadb-replica.container`](/opt/simplehostman/src/platform/containers/quadlet/mariadb-replica.container)
 - [`/opt/simplehostman/src/platform/containers/quadlet/rustdesk-hbbs.container`](/opt/simplehostman/src/platform/containers/quadlet/rustdesk-hbbs.container)
 - [`/opt/simplehostman/src/platform/containers/quadlet/rustdesk-hbbr.container`](/opt/simplehostman/src/platform/containers/quadlet/rustdesk-hbbr.container)
+- [`/opt/simplehostman/src/platform/containers/quadlet/authentik-server.container`](/opt/simplehostman/src/platform/containers/quadlet/authentik-server.container)
+- [`/opt/simplehostman/src/platform/containers/quadlet/authentik-worker.container`](/opt/simplehostman/src/platform/containers/quadlet/authentik-worker.container)
+- [`/opt/simplehostman/src/platform/containers/env/authentik.env.example`](/opt/simplehostman/src/platform/containers/env/authentik.env.example)
 - [`/opt/simplehostman/src/platform/host/firewalld/services/rustdesk-oss.xml`](/opt/simplehostman/src/platform/host/firewalld/services/rustdesk-oss.xml)
 
 ## Network model

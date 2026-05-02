@@ -33,8 +33,9 @@ Active open items as of `2026-05-02`:
 Current active slice:
 
 - Phase 5 resilience and IAM/SSO follow-up:
-  - implement the Authentik rollout tracked in
+  - continue the Authentik rollout tracked in
     [`/opt/simplehostman/src/docs/IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md)
+  - next step: publish `auth.pyrosa.com.do` and bootstrap admin MFA
   - first protected surface: `https://code.pyrosa.com.do/`
   - SSH remains unchanged and outside the Authentik scope
 

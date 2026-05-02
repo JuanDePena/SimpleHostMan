@@ -35,8 +35,8 @@ generic `control_plane_apps` web application.
 Reasoning:
 
 - Authentik is a multi-service stack, not a single HTTP container.
-- It needs a server component, a worker component, PostgreSQL, Redis or Valkey,
-  and at least one proxy outpost path for protected applications.
+- It needs a server component, a worker component, PostgreSQL, persistent file
+  storage, and at least one proxy outpost path for protected applications.
 - The current generic app reconciler assumes one app container published to a
   local HTTP backend port with application file volumes; that is the wrong
   shape for an IAM stack.
@@ -70,7 +70,10 @@ Primary runtime components:
 - `authentik-worker`
 - Authentik embedded outpost or a standalone local-only proxy outpost
 - PostgreSQL database `app_authentik`
-- dedicated Redis or Valkey instance for Authentik
+
+The official `2026.2.2` Compose file no longer includes Redis. Do not add a
+Redis or Valkey dependency unless the reviewed Authentik release explicitly
+requires it again.
 
 The preferred database is the platform PostgreSQL app cluster, not a bundled
 throwaway database container. If a bundled database is used temporarily during
@@ -188,6 +191,8 @@ Validation:
 
 ### Phase 1: Stage Primary IAM Runtime
 
+Status: completed on primary on `2026-05-02`.
+
 Goal: start Authentik on the primary without protecting any existing app.
 
 Actions:
@@ -195,15 +200,14 @@ Actions:
 - create `app_authentik` in the PostgreSQL app cluster
 - generate root-only Authentik secret material
 - create `/srv/containers/iam/authentik`
-- create local-only Quadlet or systemd-managed containers for server, worker
-  and Redis/Valkey
+- create local-only Quadlet-managed containers for server and worker
 - pin the Authentik image version reviewed at implementation time
 - keep all services bound to `127.0.0.1`
 
 Validation:
 
 - server and worker containers are healthy
-- Authentik can reach PostgreSQL and Redis/Valkey
+- Authentik can reach PostgreSQL
 - local initial setup URL responds through `127.0.0.1:10170`
 - `systemctl --failed` remains clean
 
@@ -212,6 +216,30 @@ Rollback:
 - stop and disable Authentik units
 - leave `code.pyrosa.com.do` unchanged
 - preserve secrets and database until explicit cleanup approval
+
+Completion evidence:
+
+- Authentik image pinned to `ghcr.io/goauthentik/server:2026.2.2`, matching the
+  current official Compose file reviewed during rollout.
+- Source-controlled Quadlet artifacts were added:
+  - [`platform/containers/quadlet/authentik-server.container`](/opt/simplehostman/src/platform/containers/quadlet/authentik-server.container)
+  - [`platform/containers/quadlet/authentik-worker.container`](/opt/simplehostman/src/platform/containers/quadlet/authentik-worker.container)
+  - [`platform/containers/env/authentik.env.example`](/opt/simplehostman/src/platform/containers/env/authentik.env.example)
+- Live Quadlet units were installed under `/etc/containers/systemd/`.
+- Root-only runtime environment is stored at
+  `/etc/simplehost/iam/authentik/authentik.env` with mode `0600`.
+- Persistent runtime paths were created under `/srv/containers/iam/authentik`.
+- PostgreSQL app database `app_authentik` and role `app_authentik` were created
+  on the app cluster.
+- `authentik-server.service` and `authentik-worker.service` are active.
+- `app_authentik` has Authentik schema state after initial migrations.
+- `http://127.0.0.1:10170/` returns `302`.
+- `http://127.0.0.1:10170/if/flow/initial-setup/` returns `200`.
+- `10170/tcp` listens only on `127.0.0.1`.
+- `https://code.pyrosa.com.do/login` continued to return `200` through the
+  existing direct vhost.
+- No live DNS, Apache vhost, public `auth.pyrosa.com.do`, or
+  `code.pyrosa.com.do` proxy change was applied in this phase.
 
 ### Phase 2: Publish `auth.pyrosa.com.do`
 
@@ -317,7 +345,7 @@ Options:
   restored database during failover
 - later active/passive automation after failover behavior is rehearsed
 
-Do not enable automatic IAM failover before the database and Redis/Valkey
+Do not enable automatic IAM failover before database and persistent file
 behavior is explicitly tested.
 
 ## Operational Hold Points

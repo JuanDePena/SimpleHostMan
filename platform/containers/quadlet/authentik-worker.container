@@ -1,0 +1,24 @@
+[Unit]
+Description=Authentik IAM/SSO worker
+After=network-online.target postgresql@apps.service
+Wants=network-online.target
+Requires=postgresql@apps.service
+
+[Container]
+ContainerName=authentik-worker
+Image=ghcr.io/goauthentik/server:2026.2.2
+Exec=worker
+EnvironmentFile=/etc/simplehost/iam/authentik/authentik.env
+Volume=/srv/containers/iam/authentik/data:/data:z
+Volume=/srv/containers/iam/authentik/certs:/certs:z
+Volume=/srv/containers/iam/authentik/custom-templates:/templates:z
+ShmSize=512m
+User=root
+
+[Service]
+Restart=always
+RestartSec=5
+TimeoutStartSec=900
+
+[Install]
+WantedBy=multi-user.target

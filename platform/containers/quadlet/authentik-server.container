@@ -1,0 +1,23 @@
+[Unit]
+Description=Authentik IAM/SSO server
+After=network-online.target postgresql@apps.service
+Wants=network-online.target
+Requires=postgresql@apps.service
+
+[Container]
+ContainerName=authentik-server
+Image=ghcr.io/goauthentik/server:2026.2.2
+Exec=server
+PublishPort=127.0.0.1:10170:9000
+EnvironmentFile=/etc/simplehost/iam/authentik/authentik.env
+Volume=/srv/containers/iam/authentik/data:/data:z
+Volume=/srv/containers/iam/authentik/custom-templates:/templates:z
+ShmSize=512m
+
+[Service]
+Restart=always
+RestartSec=5
+TimeoutStartSec=900
+
+[Install]
+WantedBy=multi-user.target
