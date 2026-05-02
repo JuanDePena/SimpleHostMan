@@ -48,7 +48,8 @@ Final validation confirmed:
 - unprovisioned SSO identities receive a SimpleHostMan `403` page, do not get
   `shp_session`, and receive an Authentik sign-out action
 - Authentik backup policy `iam-authentik-primary-daily` has a successful latest
-  primary run and the latest run is replicated to the secondary
+  primary run and the backup runner automatically replicates the complete run
+  directory to the secondary
 - secondary Authentik remains intentionally inactive behind the
   `SECONDARY_PROMOTED` hold marker
 
@@ -627,6 +628,8 @@ Completion evidence:
   `backup-run-a04e1e3d-1b7b-400e-98a2-0ce7a8658931`.
 - Post-SimpleHostMan-protection backup directory:
   `/srv/backups/iam/authentik/primary/iam-authentik-primary-daily-2026-05-02T08-16-02-907Z`
+- Automatic replication closeout backup directory:
+  `/srv/backups/iam/authentik/primary/iam-authentik-primary-daily-2026-05-02T15-23-41-791Z`
 - No secret values were printed or committed.
 
 Future candidates:
@@ -699,7 +702,7 @@ Completion evidence:
 
 - Latest Authentik backup seed replicated to the secondary during the initial
   standby staging:
-  `/srv/backups/iam/authentik/primary-replicated/iam-authentik-primary-daily-2026-05-02T08-16-02-907Z`
+  `/srv/backups/iam/authentik/primary-replicated/iam-authentik-primary-daily-2026-05-02T15-23-41-791Z`
 - Secondary restored root-only Authentik config/runtime paths:
   - `/etc/simplehost/iam/authentik`
   - `/srv/containers/iam/authentik`
@@ -753,7 +756,7 @@ Secondary dry-run validation on `2026-05-02`:
   - secondary `postgresql@apps` reports `pg_is_in_recovery() = true`.
   - secondary `app_authentik` database exists.
   - latest replicated Authentik backup seed is present under
-    `/srv/backups/iam/authentik/primary-replicated/iam-authentik-primary-daily-2026-05-02T08-16-02-907Z`.
+    `/srv/backups/iam/authentik/primary-replicated/iam-authentik-primary-daily-2026-05-02T15-23-41-791Z`.
   - replicated backup artifacts are present with root-only `600` permissions:
     `app_authentik.dump`, `authentik-files.tar.gz`, `manifest.json` and
     `postgresql-apps-globals.sql`.

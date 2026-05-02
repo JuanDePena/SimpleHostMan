@@ -33,6 +33,40 @@ Backup storage directories are kept at `0700` and generated artifacts at `0600`
 because database dumps and globals files can contain sensitive application data,
 role metadata, or password hashes.
 
+## Automatic Replication
+
+The backup runner performs generic post-run replication for every local policy
+that produces artifacts when replication is enabled in `/etc/simplehost/worker.env`.
+
+Primary runtime configuration:
+
+- `SIMPLEHOST_BACKUP_REPLICATION_ENABLED=true`
+- `SIMPLEHOST_BACKUP_REPLICATION_TARGET_NODE_ID=secondary`
+- `SIMPLEHOST_BACKUP_REPLICATION_TARGET_HOST=vps-des.pyrosa.com.do`
+
+Secondary runtime configuration:
+
+- `SIMPLEHOST_BACKUP_REPLICATION_ENABLED=true`
+- `SIMPLEHOST_BACKUP_REPLICATION_TARGET_NODE_ID=primary`
+- `SIMPLEHOST_BACKUP_REPLICATION_TARGET_HOST=vps-prd.pyrosa.com.do`
+
+The runner replicates the complete run directory after `manifest.json` is
+written. The copy uses `rsync` over SSH, preserves artifact permissions, keeps
+the replicated run directory at `0700`, and records the destination in
+`details.replication`.
+
+Replica path rules:
+
+- if the policy storage path ends with the local node id, the replica storage
+  path is a sibling with `-replicated` appended; for example
+  `/srv/backups/iam/authentik/primary` becomes
+  `/srv/backups/iam/authentik/primary-replicated`
+- otherwise the replica storage path is nested under the policy storage path as
+  `<source-node>-replicated`; for example `/srv/backups/mail-adudoc` becomes
+  `/srv/backups/mail-adudoc/primary-replicated`
+- `SIMPLEHOST_BACKUP_REPLICATION_STORAGE_ROOT` may be set later if a central
+  replica root is preferred
+
 ## Selector conventions
 
 Supported selectors:
@@ -389,14 +423,14 @@ Final IAM rollout backup validation on `2026-05-02`:
 - retention: `14` days
 - storage: `/srv/backups/iam/authentik/primary`
 - selectors: `iam:authentik`, `host-service:authentik`
-- latest recorded run:
+- latest recorded pre-replication-closeout run:
   - status: `succeeded`
   - started: `2026-05-02 08:16:06.037+00`
   - summary: backed up Authentik files and PostgreSQL database
     `app_authentik`
-- latest primary backup:
+- pre-replication-closeout primary backup:
   `/srv/backups/iam/authentik/primary/iam-authentik-primary-daily-2026-05-02T08-16-02-907Z`
-- latest secondary replicated backup:
+- pre-replication-closeout secondary replicated backup:
   `/srv/backups/iam/authentik/primary-replicated/iam-authentik-primary-daily-2026-05-02T08-16-02-907Z`
 - artifacts on both nodes remained `0600` `root:root`:
   - `app_authentik.dump`
@@ -406,6 +440,36 @@ Final IAM rollout backup validation on `2026-05-02`:
 - primary-to-secondary checksums matched for all four artifacts.
 - `simplehost-backup-runner.timer` is active and enabled on both primary and
   secondary.
+
+Automatic replication validation on `2026-05-02`:
+
+- primary Authentik policy:
+  - forced policy: `iam-authentik-primary-daily`
+  - status: `succeeded`
+  - source node: `primary`
+  - started: `2026-05-02 15:23:45.537+00`
+  - local run:
+    `/srv/backups/iam/authentik/primary/iam-authentik-primary-daily-2026-05-02T15-23-41-791Z`
+  - replicated run:
+    `/srv/backups/iam/authentik/primary-replicated/iam-authentik-primary-daily-2026-05-02T15-23-41-791Z`
+  - replicated artifacts: `4`
+  - artifact modes on both nodes: `0600`
+  - replicated run directory mode: `0700`
+  - checksums matched for `app_authentik.dump`, `authentik-files.tar.gz`,
+    `manifest.json`, and `postgresql-apps-globals.sql`
+- secondary code-server policy:
+  - forced policy: `code-server-secondary-daily`
+  - status: `succeeded`
+  - source node: `secondary`
+  - started: `2026-05-02 15:25:23.919+00`
+  - local run:
+    `/srv/backups/code-server/secondary/code-server-secondary-daily-2026-05-02T15-25-06-745Z`
+  - replicated run:
+    `/srv/backups/code-server/secondary-replicated/code-server-secondary-daily-2026-05-02T15-25-06-745Z`
+  - replicated artifacts: `2`
+  - artifact modes on both nodes: `0600`
+  - replicated run directory mode: `0700`
+  - checksums matched for `code-server-root.tar.gz` and `manifest.json`
 
 ## Physical PostgreSQL Backups
 

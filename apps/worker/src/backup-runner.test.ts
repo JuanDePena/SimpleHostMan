@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  deriveReplicaStorageLocation,
   matchesCronExpression,
   policyCoversAppFiles,
   policyCoversAuthentik,
@@ -263,5 +264,32 @@ test("policyCoversAuthentik recognizes IAM Authentik selectors", () => {
       resourceSelectors: ["code-server"]
     }),
     false
+  );
+});
+
+test("deriveReplicaStorageLocation keeps node-named roots as sibling replicated roots", () => {
+  assert.equal(
+    deriveReplicaStorageLocation("/srv/backups/iam/authentik/primary", "primary"),
+    "/srv/backups/iam/authentik/primary-replicated"
+  );
+  assert.equal(
+    deriveReplicaStorageLocation("/srv/backups/code-server/secondary/", "secondary"),
+    "/srv/backups/code-server/secondary-replicated"
+  );
+});
+
+test("deriveReplicaStorageLocation nests generic policy roots by source node", () => {
+  assert.equal(
+    deriveReplicaStorageLocation("/srv/backups/mail-adudoc", "primary"),
+    "/srv/backups/mail-adudoc/primary-replicated"
+  );
+  assert.equal(
+    deriveReplicaStorageLocation(
+      "/srv/backups/mail-adudoc",
+      "primary",
+      "mail-adudoc-daily",
+      "/srv/backups/replicated"
+    ),
+    "/srv/backups/replicated/primary/mail-adudoc-daily"
   );
 });

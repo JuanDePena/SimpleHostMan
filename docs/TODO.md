@@ -41,8 +41,12 @@ Current active slice:
   - Authentik backup and restore-test coverage is complete through
     SimpleHostMan backup policy `iam-authentik-primary-daily`
   - latest Authentik backup run
-    `iam-authentik-primary-daily-2026-05-02T08-16-02-907Z` is replicated to
+    `iam-authentik-primary-daily-2026-05-02T15-23-41-791Z` is replicated to
     the secondary and checksum-matched for all four backup artifacts
+  - SimpleHostMan backup runner now performs generic post-run replication for
+    generated backup artifacts when replication is enabled in
+    `/etc/simplehost/worker.env`; primary-to-secondary and
+    secondary-to-primary paths were both validated
   - `https://code.pyrosa.com.do/` is now protected through Authentik on the
     primary, with a direct-vhost rollback copy under `/root/simplehost-rollbacks`
   - `https://vps-prd.pyrosa.com.do:3200/` is now protected through Authentik on

@@ -1377,7 +1377,7 @@ Phase 5R completion evidence on `2026-05-02`:
   the conservative secondary DR posture.
 - Authentik remains active on the primary only during normal operation.
 - The latest Authentik backup seed was replicated to the secondary:
-  `/srv/backups/iam/authentik/primary-replicated/iam-authentik-primary-daily-2026-05-02T08-16-02-907Z`
+  `/srv/backups/iam/authentik/primary-replicated/iam-authentik-primary-daily-2026-05-02T15-23-41-791Z`
 - Secondary root-only Authentik config/runtime paths were restored from backup:
   - `/etc/simplehost/iam/authentik`
   - `/srv/containers/iam/authentik`
@@ -1580,7 +1580,7 @@ Phase 5W completion evidence on `2026-05-02`:
   - secondary `postgresql@apps` reports `pg_is_in_recovery() = true`
   - `app_authentik` exists on the secondary apps cluster
   - latest replicated Authentik backup seed is present:
-    `/srv/backups/iam/authentik/primary-replicated/iam-authentik-primary-daily-2026-05-02T08-16-02-907Z`
+    `/srv/backups/iam/authentik/primary-replicated/iam-authentik-primary-daily-2026-05-02T15-23-41-791Z`
   - replicated backup artifacts are present with `600` permissions:
     `app_authentik.dump`, `authentik-files.tar.gz`, `manifest.json` and
     `postgresql-apps-globals.sql`
@@ -1629,10 +1629,10 @@ Phase 5X completion evidence on `2026-05-02`:
   - policy schedule is `35 4 * * *`
   - policy retention is `14` days
   - selectors are `iam:authentik` and `host-service:authentik`
-  - latest recorded run succeeded at `2026-05-02 08:16:06.037+00`
-  - latest primary backup:
+  - pre-replication-closeout run succeeded at `2026-05-02 08:16:06.037+00`
+  - pre-replication-closeout primary backup:
     `/srv/backups/iam/authentik/primary/iam-authentik-primary-daily-2026-05-02T08-16-02-907Z`
-  - latest replicated secondary backup:
+  - pre-replication-closeout replicated secondary backup:
     `/srv/backups/iam/authentik/primary-replicated/iam-authentik-primary-daily-2026-05-02T08-16-02-907Z`
   - `app_authentik.dump`, `authentik-files.tar.gz`, `manifest.json` and
     `postgresql-apps-globals.sql` are `600` `root:root` on both nodes
@@ -1641,9 +1641,53 @@ Phase 5X completion evidence on `2026-05-02`:
   optional selection of another internal administrative app, such as
   `pgadmin.pyrosa.com.do` or `ldap.pyrosa.com.do`.
 
+Phase 5Y completion evidence on `2026-05-02`:
+
+- Backup replication was moved into the SimpleHostMan backup runner instead of
+  relying on manual `rsync` after individual backup runs.
+- Runtime configuration:
+  - primary `/etc/simplehost/worker.env` replicates generated backup runs to
+    `secondary` through `vps-des.pyrosa.com.do`
+  - secondary `/etc/simplehost/worker.env` replicates generated backup runs to
+    `primary` through `vps-prd.pyrosa.com.do`
+- Generic behavior:
+  - the runner writes local backup artifacts and `manifest.json`
+  - if replication is enabled, the runner creates the remote replica directory
+    as `0700`
+  - the runner syncs the complete run directory with `rsync` over SSH
+  - generated artifacts remain `0600`
+  - the backup run record stores the destination in `details.replication`
+- Validation:
+  - `pnpm --filter @simplehost/control-contracts build` passed
+  - `pnpm --filter @simplehost/worker test` passed with `11/11`
+  - source runtime was installed into `/opt/simplehostman/release/current` on
+    both nodes
+  - `simplehost-backup-runner.timer` active on both nodes
+  - primary `simplehost-worker` active
+  - secondary `simplehost-worker` remains intentionally inactive
+- Primary-to-secondary validation:
+  - forced policy: `iam-authentik-primary-daily`
+  - status: `succeeded`
+  - local run:
+    `/srv/backups/iam/authentik/primary/iam-authentik-primary-daily-2026-05-02T15-23-41-791Z`
+  - replicated run:
+    `/srv/backups/iam/authentik/primary-replicated/iam-authentik-primary-daily-2026-05-02T15-23-41-791Z`
+  - replicated artifacts: `4`
+  - checksums matched for `app_authentik.dump`, `authentik-files.tar.gz`,
+    `manifest.json` and `postgresql-apps-globals.sql`
+- Secondary-to-primary validation:
+  - forced policy: `code-server-secondary-daily`
+  - status: `succeeded`
+  - local run:
+    `/srv/backups/code-server/secondary/code-server-secondary-daily-2026-05-02T15-25-06-745Z`
+  - replicated run:
+    `/srv/backups/code-server/secondary-replicated/code-server-secondary-daily-2026-05-02T15-25-06-745Z`
+  - replicated artifacts: `2`
+  - checksums matched for `code-server-root.tar.gz` and `manifest.json`
+
 ## Current Implementation Order
 
-Phases 1 through 4 and phase 5A/5B/5C/5D/5E/5F/5G/5H/5I/5J/5K/5L/5M/5N/5O/5P/5Q/5R/5S/5T/5U/5V/5W/5X are complete.
+Phases 1 through 4 and phase 5A/5B/5C/5D/5E/5F/5G/5H/5I/5J/5K/5L/5M/5N/5O/5P/5Q/5R/5S/5T/5U/5V/5W/5X/5Y are complete.
 Continue in this order:
 
 1. Treat the initial IAM rollout as stable and closed.

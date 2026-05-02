@@ -67,12 +67,23 @@ export interface BackupAuthentikRunDetails {
   globalsPath: string;
 }
 
+export interface BackupReplicationRunDetails {
+  sourceNodeId: string;
+  targetNodeId: string;
+  targetHost: string;
+  sourceDirectory: string;
+  replicaDirectory: string;
+  artifactCount: number;
+  completedAt: string;
+}
+
 export interface BackupRunDetails {
   mail?: BackupMailRunDetails;
   appFiles?: BackupAppFilesRunDetails;
   postgresqlCluster?: BackupPostgresqlClusterRunDetails;
   codeServer?: BackupCodeServerRunDetails;
   authentik?: BackupAuthentikRunDetails;
+  replication?: BackupReplicationRunDetails;
 }
 
 export interface BackupRunSummary {

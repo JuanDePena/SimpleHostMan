@@ -1,7 +1,7 @@
 import { access, chmod, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { constants, createWriteStream } from "node:fs";
 import os from "node:os";
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { spawn } from "node:child_process";
 
@@ -64,6 +64,13 @@ interface BackupRuntimeEnv {
   SIMPLEHOST_BACKUP_AUTHENTIK_RUNTIME_ROOT?: string;
   SIMPLEHOST_BACKUP_AUTHENTIK_DATABASE?: string;
   SIMPLEHOST_BACKUP_AUTHENTIK_PGPORT?: string;
+  SIMPLEHOST_BACKUP_REPLICATION_ENABLED?: string;
+  SIMPLEHOST_BACKUP_REPLICATION_TARGET_NODE_ID?: string;
+  SIMPLEHOST_BACKUP_REPLICATION_TARGET_HOST?: string;
+  SIMPLEHOST_BACKUP_REPLICATION_STORAGE_ROOT?: string;
+  SIMPLEHOST_BACKUP_REPLICATION_RSYNC_BIN?: string;
+  SIMPLEHOST_BACKUP_REPLICATION_SSH_BIN?: string;
+  SIMPLEHOST_BACKUP_REPLICATION_CONNECT_TIMEOUT_SECONDS?: string;
 }
 
 interface BackupExecutionContext {
@@ -78,6 +85,16 @@ interface BackupExecutionContext {
 interface PolicyExecutionResult {
   request: BackupRunRecordRequest;
   artifacts: string[];
+}
+
+interface BackupReplicationPlan {
+  targetNodeId: string;
+  targetHost: string;
+  replicaStorageLocation: string;
+  replicaRunDirectory: string;
+  rsyncBinary: string;
+  sshBinary: string;
+  connectTimeoutSeconds: number;
 }
 
 function stripQuotes(value: string): string {
@@ -139,6 +156,34 @@ function normalizeHostname(value: string | undefined): string | undefined {
   }
 
   return value.trim().replace(/\.+$/, "").toLowerCase();
+}
+
+function parseOptionalBoolean(value: string | undefined): boolean | undefined {
+  const normalized = value?.trim().toLowerCase();
+
+  if (!normalized) {
+    return undefined;
+  }
+
+  if (["1", "true", "yes", "on"].includes(normalized)) {
+    return true;
+  }
+
+  if (["0", "false", "no", "off"].includes(normalized)) {
+    return false;
+  }
+
+  throw new Error(`Invalid boolean value: ${value}.`);
+}
+
+function stripCidr(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+
+  if (!trimmed) {
+    return undefined;
+  }
+
+  return trimmed.split("/", 1)[0];
 }
 
 function shortHostname(value: string | undefined): string | undefined {
@@ -507,6 +552,155 @@ async function runCommand(args: {
       );
     });
   });
+}
+
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, "'\\''")}'`;
+}
+
+export function deriveReplicaStorageLocation(
+  storageLocation: string,
+  sourceNodeId: string,
+  policySlug?: string,
+  storageRoot?: string
+): string {
+  const normalizedStorageLocation = storageLocation.replace(/\/+$/, "");
+
+  if (storageRoot?.trim()) {
+    return join(storageRoot.trim().replace(/\/+$/, ""), sourceNodeId, policySlug ?? basename(normalizedStorageLocation));
+  }
+
+  const storageBasename = basename(normalizedStorageLocation);
+
+  if (storageBasename === sourceNodeId) {
+    return join(dirname(normalizedStorageLocation), `${sourceNodeId}-replicated`);
+  }
+
+  return join(normalizedStorageLocation, `${sourceNodeId}-replicated`);
+}
+
+function resolveBackupReplicationPlan(args: {
+  context: BackupExecutionContext;
+  policy: BackupPolicySummary;
+  runDirectory: string;
+}): BackupReplicationPlan | undefined {
+  const explicitEnabled = parseOptionalBoolean(args.context.runtimeEnv.SIMPLEHOST_BACKUP_REPLICATION_ENABLED);
+  const configuredTargetNodeId = args.context.runtimeEnv.SIMPLEHOST_BACKUP_REPLICATION_TARGET_NODE_ID?.trim();
+  const configuredTargetHost = args.context.runtimeEnv.SIMPLEHOST_BACKUP_REPLICATION_TARGET_HOST?.trim();
+  const configuredStorageRoot = args.context.runtimeEnv.SIMPLEHOST_BACKUP_REPLICATION_STORAGE_ROOT?.trim();
+  const hasReplicationConfig =
+    Boolean(configuredTargetNodeId) || Boolean(configuredTargetHost) || Boolean(configuredStorageRoot);
+
+  if (explicitEnabled === false || (explicitEnabled !== true && !hasReplicationConfig)) {
+    return undefined;
+  }
+
+  const targetNode =
+    (configuredTargetNodeId
+      ? args.context.desiredState.spec.nodes.find((node) => node.nodeId === configuredTargetNodeId)
+      : args.context.desiredState.spec.nodes.find((node) => node.nodeId !== args.context.localNodeId)) ??
+    undefined;
+  const targetNodeId = configuredTargetNodeId ?? targetNode?.nodeId;
+
+  if (!targetNodeId) {
+    throw new Error("Backup replication target node is not configured.");
+  }
+
+  if (targetNodeId === args.context.localNodeId) {
+    throw new Error("Backup replication target node cannot be the local node.");
+  }
+
+  const targetHost =
+    configuredTargetHost ??
+    stripCidr(targetNode?.wireguardAddress) ??
+    normalizeHostname(targetNode?.hostname);
+
+  if (!targetHost) {
+    throw new Error(`Backup replication target host is not configured for node ${targetNodeId}.`);
+  }
+
+  const configuredTimeout =
+    args.context.runtimeEnv.SIMPLEHOST_BACKUP_REPLICATION_CONNECT_TIMEOUT_SECONDS?.trim() ?? "10";
+  const connectTimeoutSeconds = Number.parseInt(configuredTimeout, 10);
+
+  if (!Number.isInteger(connectTimeoutSeconds) || connectTimeoutSeconds <= 0) {
+    throw new Error(`Invalid backup replication SSH timeout: ${configuredTimeout}.`);
+  }
+
+  const replicaStorageLocation = deriveReplicaStorageLocation(
+    args.policy.storageLocation,
+    args.context.localNodeId,
+    args.policy.policySlug,
+    configuredStorageRoot
+  );
+
+  return {
+    targetNodeId,
+    targetHost,
+    replicaStorageLocation,
+    replicaRunDirectory: join(replicaStorageLocation, basename(args.runDirectory)),
+    rsyncBinary: args.context.runtimeEnv.SIMPLEHOST_BACKUP_REPLICATION_RSYNC_BIN?.trim() || "/usr/bin/rsync",
+    sshBinary: args.context.runtimeEnv.SIMPLEHOST_BACKUP_REPLICATION_SSH_BIN?.trim() || "/usr/bin/ssh",
+    connectTimeoutSeconds
+  };
+}
+
+async function replicateBackupRun(args: {
+  context: BackupExecutionContext;
+  policy: BackupPolicySummary;
+  runDirectory: string;
+  artifacts: string[];
+}): Promise<NonNullable<BackupRunDetails["replication"]> | undefined> {
+  const plan = resolveBackupReplicationPlan({
+    context: args.context,
+    policy: args.policy,
+    runDirectory: args.runDirectory
+  });
+
+  if (!plan) {
+    return undefined;
+  }
+
+  const sshOptions = [
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    `ConnectTimeout=${plan.connectTimeoutSeconds}`
+  ];
+
+  await runCommand({
+    command: plan.sshBinary,
+    commandArgs: [
+      ...sshOptions,
+      plan.targetHost,
+      [
+        `mkdir -p ${shellQuote(plan.replicaRunDirectory)}`,
+        `chmod 700 ${shellQuote(plan.replicaStorageLocation)} ${shellQuote(plan.replicaRunDirectory)}`
+      ].join(" && ")
+    ]
+  });
+
+  await runCommand({
+    command: plan.rsyncBinary,
+    commandArgs: [
+      "-a",
+      "--delete",
+      "-e",
+      [plan.sshBinary, ...sshOptions].join(" "),
+      `${args.runDirectory}/`,
+      `${plan.targetHost}:${plan.replicaRunDirectory}/`
+    ]
+  });
+
+  return {
+    sourceNodeId: args.context.localNodeId,
+    targetNodeId: plan.targetNodeId,
+    targetHost: plan.targetHost,
+    sourceDirectory: args.runDirectory,
+    replicaDirectory: plan.replicaRunDirectory,
+    artifactCount: args.artifacts.length,
+    completedAt: new Date().toISOString()
+  };
 }
 
 function buildRunStamp(date: Date): string {
@@ -1145,6 +1339,8 @@ async function executePolicy(
   const runDirectory = join(policy.storageLocation, `${policy.policySlug}-${buildRunStamp(now)}`);
   await mkdir(runDirectory, { recursive: true });
   await chmod(runDirectory, 0o700);
+  let preserveRunDirectoryOnFailure = false;
+
   try {
     const selectors = normalizeSelectors(policy.resourceSelectors);
     const handlesMail =
@@ -1299,6 +1495,24 @@ async function executePolicy(
     );
     await chmod(manifestPath, 0o600);
     artifacts.push(manifestPath);
+    preserveRunDirectoryOnFailure = true;
+
+    const replication = await replicateBackupRun({
+      context,
+      policy,
+      runDirectory,
+      artifacts
+    });
+
+    if (replication) {
+      details = {
+        ...(details ?? {}),
+        replication
+      };
+      summaryParts.push(
+        `Replicated ${artifacts.length} artifact(s) to ${replication.replicaDirectory} on ${replication.targetNodeId}.`
+      );
+    }
 
     return {
       request: {
@@ -1312,7 +1526,9 @@ async function executePolicy(
       artifacts
     };
   } catch (error) {
-    await rm(runDirectory, { recursive: true, force: true });
+    if (!preserveRunDirectoryOnFailure) {
+      await rm(runDirectory, { recursive: true, force: true });
+    }
     throw error;
   }
 }

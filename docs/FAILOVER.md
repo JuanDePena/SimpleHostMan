@@ -194,7 +194,7 @@ Latest dry-run validation on `2026-05-02`:
   standby/operator route
 - primary `auth.pyrosa.com.do` and `code.pyrosa.com.do` return `302`
 - latest replicated Authentik backup seed on secondary:
-  `/srv/backups/iam/authentik/primary-replicated/iam-authentik-primary-daily-2026-05-02T08-16-02-907Z`
+  `/srv/backups/iam/authentik/primary-replicated/iam-authentik-primary-daily-2026-05-02T15-23-41-791Z`
 - checksums matched between primary and secondary for
   `app_authentik.dump`, `authentik-files.tar.gz`, `manifest.json` and
   `postgresql-apps-globals.sql`
