@@ -400,6 +400,85 @@ Planned transition:
 - Replication style: asynchronous
 - Failover model: manual only
 
+Current status on `2026-05-02`:
+
+- `mariadb-primary` is active on the primary only.
+- No `mariadb-replica` container is active on the secondary yet.
+- Secondary MariaDB-backed application containers currently reach the primary
+  MariaDB listener over WireGuard.
+- Primary binlog and GTID prerequisites are present:
+  - `log_bin = ON`
+  - `gtid_strict_mode = ON`
+  - `server_id = 1`
+
+Replica activation should be treated as a maintenance-window task. Do not start
+the replica from an empty datadir and do not reuse a stale datadir.
+
+Planned replica seed sequence:
+
+1. Confirm `pgBackRest`, MariaDB logical dumps, and app-file backups are fresh.
+2. Generate or retrieve a unique MariaDB replication password from root-only
+   credential storage.
+3. On the primary, create a replication account limited to the secondary
+   WireGuard address:
+
+   ```sql
+   CREATE USER 'replicator'@'10.89.0.2' IDENTIFIED BY '<secret>';
+   GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'replicator'@'10.89.0.2';
+   FLUSH PRIVILEGES;
+   ```
+
+4. Take a physical MariaDB backup from the primary with `mariadb-backup`, or a
+   logical dump only if the maintenance window can tolerate the restore time.
+5. Prepare the backup and place it on the secondary at
+   `/srv/containers/mariadb/data` with the ownership expected by the container.
+6. Install the source-controlled replica config and Quadlet material:
+   - [`platform/mariadb/conf/replica.cnf`](/opt/simplehostman/src/platform/mariadb/conf/replica.cnf)
+   - [`platform/containers/quadlet/mariadb-replica.container`](/opt/simplehostman/src/platform/containers/quadlet/mariadb-replica.container)
+7. Start `mariadb-replica` on the secondary.
+8. Configure GTID replication from the primary:
+
+   ```sql
+   CHANGE MASTER TO
+     MASTER_HOST='10.89.0.1',
+     MASTER_PORT=3306,
+     MASTER_USER='replicator',
+     MASTER_PASSWORD='<secret>',
+     MASTER_USE_GTID=slave_pos;
+
+   START REPLICA;
+   ```
+
+9. Validate `SHOW REPLICA STATUS\G` reports both IO and SQL replication running
+   and that `Seconds_Behind_Master` converges to `0` or a low, explainable
+   value after controlled writes.
+
+Manual MariaDB promotion outline:
+
+1. Stop or freeze MariaDB-backed application writes.
+2. Confirm the replica has applied all relay logs.
+3. Stop `mariadb-primary` on the old primary if it is reachable.
+4. On the secondary:
+
+   ```sql
+   STOP REPLICA;
+   RESET REPLICA ALL;
+   SET GLOBAL read_only = OFF;
+   SET GLOBAL super_read_only = OFF;
+   ```
+
+5. Repoint MariaDB-backed app environment to the promoted node's WireGuard
+   listener and restart only those app containers.
+6. Keep the old primary isolated until it is rebuilt from the promoted node.
+
+Expected posture before the replica exists:
+
+- MariaDB-backed apps can continue running on the primary.
+- Secondary app failover for MariaDB-backed workloads remains limited by primary
+  MariaDB availability and backup/binlog recovery.
+- Expected RPO/RTO for MariaDB-backed apps should be treated as backup-driven
+  until the replica is deployed and validated.
+
 ### Version choice
 
 Default:

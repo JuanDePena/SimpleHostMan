@@ -132,6 +132,39 @@ Minimum restore checks:
   port
 - record the backup run id, artifact paths, restore target, and validation time
 
+## Restore-Test Calendar
+
+Phase 5 resilience review on `2026-05-02` set the restore-test cadence below.
+Record each execution with the backup run id, artifact path, scratch target,
+validation result, and cleanup evidence.
+
+Monthly:
+
+- restore `simplehost_control` logical dump into a scratch database
+- restore one PostgreSQL app database dump or pgBackRest clone into scratch
+  storage
+- restore one MariaDB logical dump into a scratch MariaDB instance or container
+- restore one app file archive into a scratch path and compare expected files
+- restore one mail-domain backup sample, including Maildir and DKIM/runtime
+  config metadata
+- restore code-server config and user data into a scratch path:
+  - `/root/.config/code-server/config.yaml`
+  - `/root/.local/share/code-server/User/settings.json`
+
+Quarterly:
+
+- rehearse PostgreSQL apps and control restore from pgBackRest into non-live
+  targets
+- rehearse MariaDB replica seed or promotion on non-production data
+- rehearse a full app recovery path for one MariaDB-backed app and one
+  PostgreSQL-backed app
+
+Annual or after material infrastructure changes:
+
+- rehearse cross-node recovery using the off-host pgBackRest mirror
+- review whether the interim off-host mirror should move to object storage in a
+  separate provider or region
+
 ## Physical PostgreSQL Backups
 
 `pgBackRest` is the physical backup and WAL archive layer for both host-native

@@ -405,3 +405,37 @@ Historical topics retained for context:
 - backup and restore validation for `code-server` data and server configuration
 - SSH source-IP restriction if the administrator source range is stable enough
 - optional cleanup of the mail-related `fail2ban` dependency chain
+
+## Phase 5 Administrative Access Review
+
+Reviewed on `2026-05-02` during the post-migration resilience pass.
+
+Current state on both nodes:
+
+- `PermitRootLogin yes`
+- `PasswordAuthentication yes`
+- public-key authentication enabled
+- `almalinux` exists as a non-root account but is not a member of `wheel`
+- `code-server@root` is active
+- code-server listens on `127.0.0.1:8080` and is also exposed through Apache on
+  public `8080`
+- `dnf-automatic` is not installed
+- security updates are available on both nodes, including kernel, OpenSSH,
+  sudo, Node.js, rsync, grub and shared-library packages
+
+Recommended order before tightening access:
+
+1. Add a named non-root operator account to `wheel`.
+2. Verify sudo and SSH access from two independent sessions.
+3. Store and test a root break-glass path.
+4. Move routine administration away from direct root SSH.
+5. Only then consider changing `PermitRootLogin` and
+   `PasswordAuthentication`.
+6. Decide whether public Apache exposure for code-server on `8080` remains
+   necessary, or whether the platform should return to SSH-tunnel-only access.
+7. If automatic security updates are desired, install and configure
+   `dnf-automatic` in download-only or security-only mode first, with an
+   explicit package hold/rollback procedure.
+
+Do not disable root or password access until the non-root sudo path has been
+tested and documented.

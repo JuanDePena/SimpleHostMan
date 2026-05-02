@@ -690,6 +690,8 @@ Completion evidence:
 
 ### Phase 5: Resilience And Failover Improvements
 
+Status: in progress; phase 5A completed on `2026-05-02`.
+
 Goal: reduce single points of failure that remain after the vps-old retirement.
 
 Actions:
@@ -724,21 +726,72 @@ Rollback:
 - stop replica services and return applications to primary MariaDB
 - remove swap/zram only after confirming no memory pressure exists
 
-## Recommended Implementation Order
+Phase 5A completion evidence on `2026-05-02`:
 
-1. Phase 1 cleanup, because it removes false alarms and low-risk noise.
-2. Phase 2 observability, because it turns later tuning into measured work.
-3. Phase 3 conservative tuning, starting with MariaDB buffer pool and temporary
-   table limits.
-4. Phase 4 retention, once control-plane history requirements are confirmed.
-5. Phase 5 resilience, because MariaDB high availability is the largest design
-   change and deserves its own maintenance window.
+- A `4G` emergency swapfile was added on both nodes:
+  - primary: `/swapfile`, active priority `10`, `0B` used after activation
+  - secondary: `/swapfile`, active priority `10`, `0B` used after activation
+- `vm.swappiness` was reduced from `30` to `10` on both nodes and persisted in
+  `/etc/sysctl.d/90-simplehost-memory.conf`.
+- Source baseline for the memory setting is tracked in
+  [`platform/host/sysctl/90-simplehost-memory.conf`](/opt/simplehostman/src/platform/host/sysctl/90-simplehost-memory.conf).
+- `zram-generator` is not installed on either node, so a swapfile was chosen to
+  avoid introducing package changes during the resilience pass.
+- MariaDB primary readiness was confirmed:
+  - `mariadb-primary` is active on `primary`
+  - MariaDB version is `11.8.6`
+  - `server_id = 1`
+  - binary logging is enabled
+  - `gtid_strict_mode = ON`
+  - current primary binlog at inspection time:
+    `mariadb-bin.000010:207086900`
+- No `mariadb-replica` container is active on the secondary yet. Replica
+  activation is intentionally left for a maintenance window with backup
+  preflight and rollback.
+- Administrative access review found:
+  - `PermitRootLogin yes`
+  - `PasswordAuthentication yes`
+  - user `almalinux` exists on both nodes but is not in `wheel`
+  - `code-server@root` is active and bound locally, with Apache proxy exposure
+    on `8080`
+- Security update review found `dnf-automatic` is not installed and both nodes
+  have security updates available, including kernel, OpenSSH, sudo, Node.js,
+  rsync, grub and library packages. Automation should not be enabled until a
+  rollback/hold procedure is documented.
+- MariaDB replication, promotion, restore-test cadence, and administrative
+  hardening follow-up are now documented in the active runbooks:
+  - [`DATABASES.md`](/opt/simplehostman/src/docs/DATABASES.md)
+  - [`BACKUPS.md`](/opt/simplehostman/src/docs/BACKUPS.md)
+  - [`HARDENING.md`](/opt/simplehostman/src/docs/HARDENING.md)
+
+Remaining Phase 5 maintenance-window items:
+
+- seed and start `mariadb-replica` on the secondary
+- validate controlled writes replicate and catch up
+- rehearse MariaDB promotion on non-production data
+- move routine administration from root to a tested non-root sudo path
+- decide whether to install and configure `dnf-automatic`
+- revisit code-server public proxy exposure and root-owned service posture
+
+## Current Implementation Order
+
+Phases 1 through 4 are complete. After phase 5A, continue in this order:
+
+1. Schedule a MariaDB maintenance window with backup preflight and rollback.
+2. Seed and start the secondary `mariadb-replica`.
+3. Validate controlled writes replicate and catch up.
+4. Rehearse MariaDB promotion on non-production data.
+5. Move routine administration from direct root SSH to a tested non-root sudo
+   path.
+6. Decide whether to install and configure security-update automation.
+7. Revisit code-server exposure and root-owned service posture.
 
 ## Do Not Do Yet
 
 - Do not increase VPS size; current capacity is sufficient.
 - Do not drop large control-plane indexes only because `idx_scan` is low in the
   current stats snapshot.
-- Do not prune audit or job history until a retention requirement is approved.
+- Do not reduce the current `90` day operational-history retention without an
+  explicit support/audit requirement.
 - Do not enable automatic database failover in the current two-node topology
   without a quorum design.

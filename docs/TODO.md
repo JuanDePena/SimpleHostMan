@@ -24,10 +24,17 @@ Current baseline:
 
 Active open items as of `2026-05-02`:
 
-- Post-migration operational hardening, tuning, and documentation cleanup are tracked in
+- Post-migration operational hardening, tuning, resilience, and documentation cleanup are tracked in
   [`/opt/simplehostman/src/docs/OPERATIONAL_INSPECTION_20260501.md`](/opt/simplehostman/src/docs/OPERATIONAL_INSPECTION_20260501.md).
-- The control-plane desired-state transition away from YAML catalog inputs is tracked in
-  [`/opt/simplehostman/src/docs/CONTROL_PLANE_DESIRED_STATE.md`](/opt/simplehostman/src/docs/CONTROL_PLANE_DESIRED_STATE.md).
+
+Current active slice:
+
+- Phase 5 resilience and failover follow-up:
+  - MariaDB replica activation in a maintenance window
+  - MariaDB promotion/repoint rehearsal
+  - restore-test calendar execution
+  - administrative access hardening
+  - OS security-update cadence decision
 
 Historical migration runbooks can retain execution records, validation gates, and conditional
 operator notes, but they should not be treated as active TODOs unless this file links to them.
