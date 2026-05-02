@@ -1121,7 +1121,8 @@ Phase 5K completion evidence on `2026-05-02`:
 
 Remaining Phase 5 maintenance-window items:
 
-- add Authentik backup coverage, and then protect `https://code.pyrosa.com.do/`
+- protect `https://code.pyrosa.com.do/` with Authentik and documented
+  rollback
 
 Phase 5L completion evidence on `2026-05-02`:
 
@@ -1228,13 +1229,53 @@ Phase 5O completion evidence on `2026-05-02`:
   `403`.
 - `code.pyrosa.com.do` was not changed in this phase.
 
+Phase 5P completion evidence on `2026-05-02`:
+
+- IAM/SSO phase 3 from
+  [`IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md) was completed through
+  a SimpleHostMan backup policy, not a standalone cron/script.
+- The SimpleHostMan backup runner now supports dedicated Authentik selectors:
+  `iam:authentik` and `host-service:authentik`.
+- Live worker runtime was hot-patched with the updated backup runner and
+  `simplehost-worker.service` remained active.
+- Backup policy:
+  - slug: `iam-authentik-primary-daily`
+  - target node: `primary`
+  - schedule: `35 4 * * *`
+  - retention: `14` days
+  - storage: `/srv/backups/iam/authentik/primary`
+  - selectors: `iam:authentik`, `host-service:authentik`
+- Forced backup run:
+  `backup-run-f1cd328b-92db-4959-8721-d15565922056`
+- Backup artifacts:
+  - `authentik-files.tar.gz`
+  - `app_authentik.dump`
+  - `postgresql-apps-globals.sql`
+  - `manifest.json`
+- Artifact mode: `0600`.
+- Restore-test id: `20260502T062345Z`.
+- Scratch database validation:
+  - database: `restoretest_authentik_20260502t062345z`
+  - restored tables: `212`
+  - restored users: `3`
+  - confirmed TOTP devices: `1`
+  - confirmed static/recovery-code devices: `1`
+  - remaining static/recovery-code tokens: `10`
+- Scratch file validation restored expected Authentik config, recovery-code,
+  data, certificate, and template paths.
+- Scratch database, staging directory, and scratch file target were removed.
+- `authentik-server.service`, `authentik-worker.service`,
+  `simplehost-worker.service`, `simplehost-backup-runner.timer`, and `httpd`
+  remained active.
+- No secret values were printed or committed.
+- `code.pyrosa.com.do` was not changed in this phase.
+
 ## Current Implementation Order
 
-Phases 1 through 4 and phase 5A/5B/5C/5D/5E/5F/5G/5H/5I/5J/5K/5L/5M/5N/5O are complete.
+Phases 1 through 4 and phase 5A/5B/5C/5D/5E/5F/5G/5H/5I/5J/5K/5L/5M/5N/5O/5P are complete.
 Continue in this order:
 
-1. Add backup and restore-test coverage for Authentik.
-2. Protect `code.pyrosa.com.do` with documented break-glass and rollback.
+1. Protect `code.pyrosa.com.do` with documented break-glass and rollback.
 
 ## Do Not Do Yet
 

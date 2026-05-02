@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   matchesCronExpression,
   policyCoversAppFiles,
+  policyCoversAuthentik,
   policyCoversCodeServer,
   policyCoversDatabase,
   policyCoversMailDomain,
@@ -233,6 +234,33 @@ test("policyCoversCodeServer recognizes host code-server selectors", () => {
       retentionDays: 14,
       storageLocation: "/srv/backups/apps/adudoc",
       resourceSelectors: ["app-files:adudoc"]
+    }),
+    false
+  );
+});
+
+test("policyCoversAuthentik recognizes IAM Authentik selectors", () => {
+  assert.equal(
+    policyCoversAuthentik({
+      policySlug: "iam-authentik-primary-daily",
+      tenantSlug: "pyrosa",
+      targetNodeId: "primary",
+      schedule: "35 4 * * *",
+      retentionDays: 14,
+      storageLocation: "/srv/backups/iam/authentik/primary",
+      resourceSelectors: ["iam:authentik"]
+    }),
+    true
+  );
+  assert.equal(
+    policyCoversAuthentik({
+      policySlug: "code-server-primary-daily",
+      tenantSlug: "pyrosa",
+      targetNodeId: "primary",
+      schedule: "20 4 * * *",
+      retentionDays: 14,
+      storageLocation: "/srv/backups/code-server/primary",
+      resourceSelectors: ["code-server"]
     }),
     false
   );

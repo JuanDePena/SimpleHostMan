@@ -60,6 +60,10 @@ interface BackupRuntimeEnv {
   SIMPLEHOST_BACKUP_CODE_SERVER_DATA_ROOT?: string;
   SIMPLEHOST_CODE_SERVER_CONFIG_PATH?: string;
   SIMPLEHOST_CODE_SERVER_SETTINGS_PATH?: string;
+  SIMPLEHOST_BACKUP_AUTHENTIK_CONFIG_ROOT?: string;
+  SIMPLEHOST_BACKUP_AUTHENTIK_RUNTIME_ROOT?: string;
+  SIMPLEHOST_BACKUP_AUTHENTIK_DATABASE?: string;
+  SIMPLEHOST_BACKUP_AUTHENTIK_PGPORT?: string;
 }
 
 interface BackupExecutionContext {
@@ -407,6 +411,17 @@ export function policyCoversCodeServer(policy: BackupPolicySummary): boolean {
     selectors.includes("code-server") ||
     selectors.includes("code-server:root") ||
     selectors.includes("host-service:code-server")
+  );
+}
+
+export function policyCoversAuthentik(policy: BackupPolicySummary): boolean {
+  const selectors = normalizeSelectors(policy.resourceSelectors);
+
+  return (
+    selectors.includes("authentik") ||
+    selectors.includes("iam:authentik") ||
+    selectors.includes("sso:authentik") ||
+    selectors.includes("host-service:authentik")
   );
 }
 
@@ -1004,6 +1019,120 @@ async function createCodeServerArchive(args: {
   };
 }
 
+function resolveAuthentikConfigRoot(runtimeEnv: BackupRuntimeEnv): string {
+  return runtimeEnv.SIMPLEHOST_BACKUP_AUTHENTIK_CONFIG_ROOT?.trim() || "/etc/simplehost/iam/authentik";
+}
+
+function resolveAuthentikRuntimeRoot(runtimeEnv: BackupRuntimeEnv): string {
+  return runtimeEnv.SIMPLEHOST_BACKUP_AUTHENTIK_RUNTIME_ROOT?.trim() || "/srv/containers/iam/authentik";
+}
+
+function resolveAuthentikDatabaseName(runtimeEnv: BackupRuntimeEnv): string {
+  return runtimeEnv.SIMPLEHOST_BACKUP_AUTHENTIK_DATABASE?.trim() || "app_authentik";
+}
+
+function resolveAuthentikPostgresqlPort(runtimeEnv: BackupRuntimeEnv): number {
+  const configuredPort = runtimeEnv.SIMPLEHOST_BACKUP_AUTHENTIK_PGPORT?.trim() || "5432";
+  const port = Number.parseInt(configuredPort, 10);
+
+  if (!Number.isInteger(port) || port <= 0 || port > 65535) {
+    throw new Error(`Invalid Authentik PostgreSQL backup port: ${configuredPort}.`);
+  }
+
+  return port;
+}
+
+async function createAuthentikBackup(args: {
+  policy: BackupPolicySummary;
+  runDirectory: string;
+  runtimeEnv: BackupRuntimeEnv;
+}): Promise<{
+  details: NonNullable<BackupRunDetails["authentik"]>;
+  artifacts: string[];
+  summary: string;
+}> {
+  const configRoot = resolveAuthentikConfigRoot(args.runtimeEnv);
+  const runtimeRoot = resolveAuthentikRuntimeRoot(args.runtimeEnv);
+  const configPaths = await collectExistingPaths([configRoot]);
+  const runtimeStatePaths = await collectExistingPaths([runtimeRoot]);
+  const archiveSourcePaths = [...new Set([...configPaths, ...runtimeStatePaths])];
+
+  if (archiveSourcePaths.length === 0) {
+    throw new Error(`Policy ${args.policy.policySlug} did not find Authentik paths to archive.`);
+  }
+
+  const archivePath = join(args.runDirectory, "authentik-files.tar.gz");
+
+  await runCommand({
+    command: "/usr/bin/tar",
+    commandArgs: [
+      "--ignore-failed-read",
+      "--warning=no-file-changed",
+      "-czf",
+      archivePath,
+      "-P",
+      ...archiveSourcePaths
+    ]
+  });
+  await chmod(archivePath, 0o600);
+
+  const databaseName = resolveAuthentikDatabaseName(args.runtimeEnv);
+  const databasePort = resolveAuthentikPostgresqlPort(args.runtimeEnv);
+  const pgDumpBinary =
+    args.runtimeEnv.SIMPLEHOST_BACKUP_PG_DUMP_BIN?.trim() || defaultPgDumpBinary;
+  const pgDumpAllBinary =
+    args.runtimeEnv.SIMPLEHOST_BACKUP_PG_DUMPALL_BIN?.trim() || defaultPgDumpAllBinary;
+  const dumpPath = join(args.runDirectory, `${databaseName}.dump`);
+  const globalsPath = join(args.runDirectory, "postgresql-apps-globals.sql");
+
+  await runCommand({
+    command: "/usr/sbin/runuser",
+    commandArgs: [
+      "-u",
+      "postgres",
+      "--",
+      pgDumpBinary,
+      "--format=custom",
+      "--compress=6",
+      "--port",
+      String(databasePort),
+      "--dbname",
+      databaseName
+    ],
+    stdoutPath: dumpPath
+  });
+
+  await runCommand({
+    command: "/usr/sbin/runuser",
+    commandArgs: [
+      "-u",
+      "postgres",
+      "--",
+      pgDumpAllBinary,
+      "--globals-only",
+      "--port",
+      String(databasePort)
+    ],
+    stdoutPath: globalsPath
+  });
+
+  return {
+    details: {
+      artifactPaths: {
+        config: configPaths,
+        runtimeState: runtimeStatePaths
+      },
+      archivePath,
+      databaseName,
+      databasePort,
+      dumpPath,
+      globalsPath
+    },
+    artifacts: [archivePath, dumpPath, globalsPath],
+    summary: `Backed up Authentik files and PostgreSQL database ${databaseName} into ${args.policy.storageLocation}.`
+  };
+}
+
 async function executePolicy(
   context: BackupExecutionContext,
   policy: BackupPolicySummary,
@@ -1034,6 +1163,7 @@ async function executePolicy(
       );
     const handlesPostgresqlControl = policyCoversPostgresqlControl(policy);
     const handlesCodeServer = policyCoversCodeServer(policy);
+    const handlesAuthentik = policyCoversAuthentik(policy);
 
     let details: BackupRunDetails | undefined;
     const artifacts: string[] = [];
@@ -1128,6 +1258,21 @@ async function executePolicy(
       };
       artifacts.push(...codeServerResult.artifacts);
       summaryParts.push(codeServerResult.summary);
+    }
+
+    if (handlesAuthentik) {
+      const authentikResult = await createAuthentikBackup({
+        policy,
+        runDirectory,
+        runtimeEnv: context.runtimeEnv
+      });
+
+      details = {
+        ...(details ?? {}),
+        authentik: authentikResult.details
+      };
+      artifacts.push(...authentikResult.artifacts);
+      summaryParts.push(authentikResult.summary);
     }
 
     if (artifacts.length === 0) {

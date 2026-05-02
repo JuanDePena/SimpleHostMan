@@ -46,6 +46,9 @@ Supported selectors:
 - `postgresql-cluster:control` for a logical dump of `postgresql@control`
 - `code-server` for the host-level root `code-server` config, user data,
   profiles, and extensions
+- `iam:authentik` or `host-service:authentik` for Authentik IAM files,
+  root-only secrets, recovery codes, and the `app_authentik` PostgreSQL
+  database
 
 Use explicit selectors for file backups. Existing mail policies may include
 `tenant:<slug>` for traceability, but `tenant:<slug>` does not by itself trigger
@@ -154,6 +157,27 @@ The archive includes:
 The archive intentionally excludes transient sockets, logs, heartbeat files and
 extension cache directories.
 
+### Authentik IAM
+
+Primary:
+
+- `iam-authentik-primary-daily`
+- schedule: `35 4 * * *`
+- retention: `14` days
+- storage: `/srv/backups/iam/authentik/primary`
+- selectors: `iam:authentik`, `host-service:authentik`
+
+The backup includes:
+
+- `/etc/simplehost/iam/authentik`
+- `/srv/containers/iam/authentik`
+- a custom-format logical dump of `app_authentik`
+- a globals-only dump from the PostgreSQL apps cluster
+
+The root-only config archive includes Authentik runtime secrets and recovery
+codes, so this policy must remain on root-owned storage with artifact mode
+`0600`.
+
 ## Restore validation
 
 Minimum restore checks:
@@ -178,6 +202,7 @@ Monthly:
   storage
 - restore one MariaDB logical dump into a scratch MariaDB instance or container
 - restore one app file archive into a scratch path and compare expected files
+- restore Authentik files plus `app_authentik` into scratch targets
 - restore one mail-domain backup sample, including Maildir and DKIM/runtime
   config metadata
 - restore code-server config, user data and extensions into a scratch path:
@@ -288,11 +313,58 @@ Validated artifacts:
 Control-plane backup run records for `code-server-primary-daily` and
 `code-server-secondary-daily` both completed with `succeeded`.
 
+### Execution record: 2026-05-02 Authentik IAM policy
+
+The `iam:authentik` selector was added to the SimpleHostMan backup runner and
+validated with a forced run on the primary.
+
+Backup policy:
+
+- `iam-authentik-primary-daily`
+- schedule: `35 4 * * *`
+- retention: `14` days
+- storage: `/srv/backups/iam/authentik/primary`
+- selectors: `iam:authentik`, `host-service:authentik`
+
+Validated artifacts:
+
+- run id:
+  `backup-run-f1cd328b-92db-4959-8721-d15565922056`
+- run directory:
+  `/srv/backups/iam/authentik/primary/iam-authentik-primary-daily-2026-05-02T06-23-15-154Z`
+- artifacts:
+  - `authentik-files.tar.gz`
+  - `app_authentik.dump`
+  - `postgresql-apps-globals.sql`
+  - `manifest.json`
+- artifact modes: `0600`
+- run status: `succeeded`
+
+Restore-test id: `20260502T062345Z`.
+
+- scratch database: `restoretest_authentik_20260502t062345z`
+- restored tables: `212`
+- restored users: `3`
+- confirmed TOTP devices: `1`
+- confirmed static/recovery-code devices: `1`
+- remaining static/recovery-code tokens: `10`
+- scratch file target:
+  `/srv/restore-tests/20260502T062345Z/authentik-files`
+- validated restored paths:
+  - `/etc/simplehost/iam/authentik/authentik.env`
+  - `/etc/simplehost/iam/authentik/recovery-codes-webmaster-pyrosa-20260502.txt`
+  - `/srv/containers/iam/authentik/data`
+  - `/srv/containers/iam/authentik/certs`
+  - `/srv/containers/iam/authentik/custom-templates`
+- cleanup: scratch database, staging directory, and scratch file target removed
+
 Final cleanup evidence:
 
 - no `restoretest_*` PostgreSQL databases remained on ports `5432` or `5433`
 - no restore-test MariaDB containers remained
 - `/srv/restore-tests/20260502T031956Z` was removed
+- `/srv/restore-tests/20260502T062345Z` was removed
+- `/var/lib/pgsql/restore-tests/20260502T062345Z` was removed
 
 ## Physical PostgreSQL Backups
 

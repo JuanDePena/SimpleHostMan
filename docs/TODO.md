@@ -37,9 +37,9 @@ Current active slice:
     [`/opt/simplehostman/src/docs/IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md)
   - admin TOTP MFA and recovery codes are already enrolled for
     `webmaster@pyrosa.com.do`
-  - next implementation step: add backup and restore-test coverage for
-    Authentik
-  - first protected surface: `https://code.pyrosa.com.do/`
+  - Authentik backup and restore-test coverage is complete through
+    SimpleHostMan backup policy `iam-authentik-primary-daily`
+  - next implementation step: protect `https://code.pyrosa.com.do/`
   - SSH remains unchanged and outside the Authentik scope
 
 Historical migration runbooks can retain execution records, validation gates, and conditional

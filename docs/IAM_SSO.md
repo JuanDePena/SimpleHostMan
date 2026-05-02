@@ -303,6 +303,9 @@ Completion evidence:
 
 ### Phase 3: Backup Policy And Restore Test
 
+Status: completed on `2026-05-02` through SimpleHostMan backup policy
+`iam-authentik-primary-daily`.
+
 Goal: make IAM recoverable before enforcing it.
 
 Actions:
@@ -322,6 +325,37 @@ Rollback:
 
 - disable the Authentik backup policy only if it is noisy or excessive
 - keep service runtime unchanged
+
+Completion evidence:
+
+- SimpleHostMan worker supports the dedicated selectors `iam:authentik` and
+  `host-service:authentik`.
+- Backup policy:
+  - slug: `iam-authentik-primary-daily`
+  - target node: `primary`
+  - schedule: `35 4 * * *`
+  - retention: `14` days
+  - storage: `/srv/backups/iam/authentik/primary`
+  - selectors: `iam:authentik`, `host-service:authentik`
+- Forced backup run:
+  `backup-run-f1cd328b-92db-4959-8721-d15565922056`
+- Artifacts:
+  - `authentik-files.tar.gz`
+  - `app_authentik.dump`
+  - `postgresql-apps-globals.sql`
+  - `manifest.json`
+- Artifact mode: `0600`.
+- Restore test `20260502T062345Z` restored `app_authentik` into scratch
+  database `restoretest_authentik_20260502t062345z` and validated:
+  - `212` public tables
+  - `3` users
+  - `1` confirmed TOTP device
+  - `1` confirmed static/recovery-code device
+  - `10` static/recovery-code tokens
+- The file archive restored expected Authentik config, recovery-code, data,
+  certificate, and template paths into a scratch directory.
+- Scratch database, staging directory, and scratch file target were removed.
+- No secret values were printed or committed.
 
 ### Phase 4: Protect `code.pyrosa.com.do`
 

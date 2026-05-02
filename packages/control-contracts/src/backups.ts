@@ -55,11 +55,24 @@ export interface BackupCodeServerRunDetails {
   archivePath: string;
 }
 
+export interface BackupAuthentikRunDetails {
+  artifactPaths: {
+    config: string[];
+    runtimeState: string[];
+  };
+  archivePath: string;
+  databaseName: string;
+  databasePort: number;
+  dumpPath: string;
+  globalsPath: string;
+}
+
 export interface BackupRunDetails {
   mail?: BackupMailRunDetails;
   appFiles?: BackupAppFilesRunDetails;
   postgresqlCluster?: BackupPostgresqlClusterRunDetails;
   codeServer?: BackupCodeServerRunDetails;
+  authentik?: BackupAuthentikRunDetails;
 }
 
 export interface BackupRunSummary {
