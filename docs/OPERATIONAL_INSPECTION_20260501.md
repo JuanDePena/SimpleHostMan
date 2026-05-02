@@ -690,7 +690,7 @@ Completion evidence:
 
 ### Phase 5: Resilience And Failover Improvements
 
-Status: in progress; phases 5A through 5F completed on `2026-05-02`.
+Status: in progress; phases 5A through 5G completed on `2026-05-02`.
 
 Goal: reduce single points of failure that remain after the vps-old retirement.
 
@@ -938,6 +938,44 @@ Phase 5F completion evidence on `2026-05-02`:
   a `firewall.apply` job cannot re-add `8080/tcp` while this source commit waits
   for the next full release promotion.
 
+Phase 5G completion evidence on `2026-05-02`:
+
+- The 5F hotpatch was formalized as release `2605.02.04`.
+- Source version was updated from `2604.28.18` to `2605.02.04` across the
+  workspace package manifests and SimpleHost env examples.
+- Build validation passed before deployment:
+  - `pnpm build:control-runtime`
+  - `pnpm build:agent-runtime`
+- Primary deployment:
+  - `/opt/simplehostman/release/current` points to
+    `/opt/simplehostman/release/releases/2605.02.04`
+  - `/etc/simplehost/control.env`, `/etc/simplehost/worker.env`, and
+    `/etc/simplehost/agent.env` report `SIMPLEHOST_VERSION=2605.02.04`
+  - `simplehost-control`, `simplehost-worker`, and `simplehost-agent` are
+    active
+  - scheduled backup and pgBackRest timers are active
+- Secondary deployment:
+  - `/opt/simplehostman/release/current` points to
+    `/opt/simplehostman/release/releases/2605.02.04`
+  - `/etc/simplehost/control.env`, `/etc/simplehost/worker.env`, and
+    `/etc/simplehost/agent.env` report `SIMPLEHOST_VERSION=2605.02.04`
+  - `simplehost-agent` is active
+  - `simplehost-control` and `simplehost-worker` remain inactive by design
+- Secondary note: public `:3200` still returns `200 OK` because it is served by
+  the legacy `spanel-web.service` from `/opt/simplehost/spanel/current`, not by
+  `simplehost-control`.
+- Post-release validation:
+  - `systemctl --failed` reported no failed units on both nodes
+  - active release artifacts no longer contain public `8080/tcp` or
+    `VirtualHost *:8080` desired state
+  - firewalld public ports remain `3200/tcp 51820/udp` on both nodes
+  - Apache remains public on `443` and `3200`; code-server remains local on
+    `127.0.0.1:8080`
+  - `https://code.pyrosa.com.do/login` returned `200 OK` against primary and
+    secondary with `--resolve`
+  - `https://vps-prd.pyrosa.com.do:8080/` and
+    `https://vps-des.pyrosa.com.do:8080/` refused connection
+
 Remaining Phase 5 maintenance-window items:
 
 - decide whether to install and configure `dnf-automatic`
@@ -946,8 +984,8 @@ Remaining Phase 5 maintenance-window items:
 
 ## Current Implementation Order
 
-Phases 1 through 4 and phase 5A/5B/5C/5D/5E/5F are complete. Continue in this
-order:
+Phases 1 through 4 and phase 5A/5B/5C/5D/5E/5F/5G are complete. Continue in
+this order:
 
 1. Decide whether to install and configure security-update automation.
 2. Review code-server root-owned service posture and scheduled backup coverage.

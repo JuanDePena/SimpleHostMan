@@ -9,7 +9,7 @@ Current baseline:
 
 - canonical source tree: `/opt/simplehostman/src`
 - canonical runtime root: `/opt/simplehostman/release`
-- active release: `2604.28.18`
+- active release: `2605.02.04`
 - active services: `simplehost-control`, `simplehost-worker`, `simplehost-agent`
 
 ## Current status
