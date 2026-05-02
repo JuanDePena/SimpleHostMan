@@ -1285,7 +1285,7 @@ Phase 5Q completion evidence on `2026-05-02`:
   - favicon media `pyrosa/favicon.ico`
   - authentication flow `pyrosa-authentication-mfa-required`
   - custom CSS hides the flow footer links, including `Powered by authentik`,
-    and centers the login title/header
+    centers the login title/header, and tightens the logo-to-title spacing
 - The flow title was updated to locale-neutral `PYROSA`.
 - Authentik Proxy Provider `code.pyrosa.com.do` was created in `proxy` mode
   with external host `https://code.pyrosa.com.do` and internal host
@@ -1323,6 +1323,8 @@ Phase 5Q completion evidence on `2026-05-02`:
     rendered with `<title>PYROSA</title>`, Pyrosa media-backed logo/favicon,
     and no static `Welcome to authentik!` or `Powered by authentik` text
   - the login title/header was centered by the Brand custom CSS
+  - the Brand custom CSS reduced logo-to-title spacing by lowering the logo
+    header bottom padding and the title header top padding
   - the flow executor API returned title `PYROSA`
   - the flow executor API returned the same locale-neutral title with
     `Accept-Language` set to `en`, `es`, and `fr`
@@ -1353,6 +1355,10 @@ Phase 5Q completion evidence on `2026-05-02`:
   `backup-run-b3f8ac07-9a0e-4131-96ee-79a3e4f0e678` succeeded.
 - Post-centered-title backup directory:
   `/srv/backups/iam/authentik/primary/iam-authentik-primary-daily-2026-05-02T07-26-10-550Z`
+- Post-login-spacing forced backup run
+  `backup-run-1d00efaa-e832-41db-82a5-22b8ce75c57b` succeeded.
+- Post-login-spacing backup directory:
+  `/srv/backups/iam/authentik/primary/iam-authentik-primary-daily-2026-05-02T07-29-56-575Z`
 - Post-enforcement backup directory:
   `/srv/backups/iam/authentik/primary/iam-authentik-primary-daily-2026-05-02T06-43-23-095Z`
 - Scratch restore database `restoretest_authentik_phase4_20260502t0643z`
