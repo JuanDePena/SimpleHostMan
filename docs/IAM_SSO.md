@@ -27,6 +27,31 @@ Explicitly out of scope:
 
 SSH remains governed by [`HARDENING.md`](/opt/simplehostman/src/docs/HARDENING.md).
 
+## Current Status
+
+The initial IAM/SSO rollout is stable and closed as of `2026-05-02`.
+
+Protected primary surfaces:
+
+- `https://auth.pyrosa.com.do/`
+- `https://code.pyrosa.com.do/`
+- `https://vps-prd.pyrosa.com.do:3200/`
+
+Final validation confirmed:
+
+- public primary requests to the protected surfaces redirect to Authentik
+- `webmaster@pyrosa.com.do` is active and has `1` confirmed TOTP device
+- successful Authentik trusted-proxy handoff creates a local `shp_session` for
+  existing active SimpleHostMan operators
+- SimpleHostMan logout for SSO sessions clears the local cookie and redirects
+  through the Authentik outpost sign-out path
+- unprovisioned SSO identities receive a SimpleHostMan `403` page, do not get
+  `shp_session`, and receive an Authentik sign-out action
+- Authentik backup policy `iam-authentik-primary-daily` has a successful latest
+  primary run and the latest run is replicated to the secondary
+- secondary Authentik remains intentionally inactive behind the
+  `SECONDARY_PROMOTED` hold marker
+
 ## Current Decision
 
 The platform should run Authentik as a dedicated IAM/SSO service, not as a
@@ -674,7 +699,7 @@ Completion evidence:
 
 - Latest Authentik backup seed replicated to the secondary during the initial
   standby staging:
-  `/srv/backups/iam/authentik/primary-replicated/iam-authentik-primary-daily-2026-05-02T07-29-56-575Z`
+  `/srv/backups/iam/authentik/primary-replicated/iam-authentik-primary-daily-2026-05-02T08-16-02-907Z`
 - Secondary restored root-only Authentik config/runtime paths:
   - `/etc/simplehost/iam/authentik`
   - `/srv/containers/iam/authentik`
@@ -728,7 +753,7 @@ Secondary dry-run validation on `2026-05-02`:
   - secondary `postgresql@apps` reports `pg_is_in_recovery() = true`.
   - secondary `app_authentik` database exists.
   - latest replicated Authentik backup seed is present under
-    `/srv/backups/iam/authentik/primary-replicated/iam-authentik-primary-daily-2026-05-02T07-29-56-575Z`.
+    `/srv/backups/iam/authentik/primary-replicated/iam-authentik-primary-daily-2026-05-02T08-16-02-907Z`.
   - replicated backup artifacts are present with root-only `600` permissions:
     `app_authentik.dump`, `authentik-files.tar.gz`, `manifest.json` and
     `postgresql-apps-globals.sql`.

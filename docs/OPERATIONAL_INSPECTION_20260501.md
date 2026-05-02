@@ -1377,7 +1377,7 @@ Phase 5R completion evidence on `2026-05-02`:
   the conservative secondary DR posture.
 - Authentik remains active on the primary only during normal operation.
 - The latest Authentik backup seed was replicated to the secondary:
-  `/srv/backups/iam/authentik/primary-replicated/iam-authentik-primary-daily-2026-05-02T07-29-56-575Z`
+  `/srv/backups/iam/authentik/primary-replicated/iam-authentik-primary-daily-2026-05-02T08-16-02-907Z`
 - Secondary root-only Authentik config/runtime paths were restored from backup:
   - `/etc/simplehost/iam/authentik`
   - `/srv/containers/iam/authentik`
@@ -1580,7 +1580,7 @@ Phase 5W completion evidence on `2026-05-02`:
   - secondary `postgresql@apps` reports `pg_is_in_recovery() = true`
   - `app_authentik` exists on the secondary apps cluster
   - latest replicated Authentik backup seed is present:
-    `/srv/backups/iam/authentik/primary-replicated/iam-authentik-primary-daily-2026-05-02T07-29-56-575Z`
+    `/srv/backups/iam/authentik/primary-replicated/iam-authentik-primary-daily-2026-05-02T08-16-02-907Z`
   - replicated backup artifacts are present with `600` permissions:
     `app_authentik.dump`, `authentik-files.tar.gz`, `manifest.json` and
     `postgresql-apps-globals.sql`
@@ -1591,16 +1591,67 @@ Phase 5W completion evidence on `2026-05-02`:
   - primary `auth.pyrosa.com.do` returned `302`
   - primary `code.pyrosa.com.do` returned `302`
 
+Phase 5X completion evidence on `2026-05-02`:
+
+- The initial IAM/SSO rollout was final-validated and marked stable.
+- Primary validation:
+  - `auth.pyrosa.com.do` returned `302` to the Authentik authentication flow
+  - `code.pyrosa.com.do` returned `302` to the Authentik outpost start path
+  - `vps-prd.pyrosa.com.do:3200` returned `302` to the Authentik outpost start
+    path
+  - `httpd`, `simplehost-control`, `simplehost-worker`, `authentik-server` and
+    `authentik-worker` were active
+  - `systemctl --failed` reported no failed units
+  - `webmaster@pyrosa.com.do` is active in Authentik and has `1` confirmed TOTP
+    device
+  - trusted-proxy SSO handoff for `webmaster@pyrosa.com.do` returned `303` to
+    `/` and set a redacted `shp_session`
+  - SSO logout returned `303` to
+    `/outpost.goauthentik.io/sign_out?rd=%2Flogin` and cleared
+    `shp_session`
+  - unprovisioned SSO identity returned `403`, did not set `shp_session`, and
+    rendered the Authentik sign-out action
+- Secondary validation:
+  - `/etc/simplehost/iam/authentik/SECONDARY_PROMOTED` remains absent
+  - `authentik-server` and `authentik-worker` remain inactive
+  - `httpd`, `simplehost-control` and `simplehost-agent` are active
+  - `simplehost-worker` remains intentionally inactive
+  - `systemctl --failed` reported `0` failed units
+  - Authentik files, vhosts, Quadlet units, hold drop-ins and pinned image are
+    present
+  - secondary `postgresql@apps` remains in recovery and contains
+    `app_authentik`
+  - `auth.pyrosa.com.do` and `code.pyrosa.com.do` returned `503` when resolved
+    to secondary `51.222.206.196`
+  - `https://vps-des.pyrosa.com.do:3200/` returned `200`
+- Backup validation:
+  - policy `iam-authentik-primary-daily` exists on `primary`
+  - policy schedule is `35 4 * * *`
+  - policy retention is `14` days
+  - selectors are `iam:authentik` and `host-service:authentik`
+  - latest recorded run succeeded at `2026-05-02 08:16:06.037+00`
+  - latest primary backup:
+    `/srv/backups/iam/authentik/primary/iam-authentik-primary-daily-2026-05-02T08-16-02-907Z`
+  - latest replicated secondary backup:
+    `/srv/backups/iam/authentik/primary-replicated/iam-authentik-primary-daily-2026-05-02T08-16-02-907Z`
+  - `app_authentik.dump`, `authentik-files.tar.gz`, `manifest.json` and
+    `postgresql-apps-globals.sql` are `600` `root:root` on both nodes
+  - checksums matched for all four artifacts
+- Outcome: no active IAM rollout blocker remains. The next IAM step is
+  optional selection of another internal administrative app, such as
+  `pgadmin.pyrosa.com.do` or `ldap.pyrosa.com.do`.
+
 ## Current Implementation Order
 
-Phases 1 through 4 and phase 5A/5B/5C/5D/5E/5F/5G/5H/5I/5J/5K/5L/5M/5N/5O/5P/5Q/5R/5S/5T/5U/5V/5W are complete.
+Phases 1 through 4 and phase 5A/5B/5C/5D/5E/5F/5G/5H/5I/5J/5K/5L/5M/5N/5O/5P/5Q/5R/5S/5T/5U/5V/5W/5X are complete.
 Continue in this order:
 
-1. Keep the secondary node-name SimpleHostMan UI as the standby/direct route
+1. Treat the initial IAM rollout as stable and closed.
+2. Keep the secondary node-name SimpleHostMan UI as the standby/direct route
    during normal operation; revisit only after a real secondary Authentik
    promotion test or an explicit requirement.
-2. Choose the next internal administrative app for IAM protection, such as
-   `pgadmin.pyrosa.com.do` or `ldap.pyrosa.com.do`.
+3. Optional next IAM step: choose another internal administrative app for IAM
+   protection, such as `pgadmin.pyrosa.com.do` or `ldap.pyrosa.com.do`.
 
 ## Do Not Do Yet
 

@@ -381,6 +381,32 @@ Post-enforcement Authentik backup on `2026-05-02`:
   - `1` MFA-required validation stage
 - scratch database and temporary dump copy were removed.
 
+Final IAM rollout backup validation on `2026-05-02`:
+
+- policy: `iam-authentik-primary-daily`
+- target node: `primary`
+- schedule: `35 4 * * *`
+- retention: `14` days
+- storage: `/srv/backups/iam/authentik/primary`
+- selectors: `iam:authentik`, `host-service:authentik`
+- latest recorded run:
+  - status: `succeeded`
+  - started: `2026-05-02 08:16:06.037+00`
+  - summary: backed up Authentik files and PostgreSQL database
+    `app_authentik`
+- latest primary backup:
+  `/srv/backups/iam/authentik/primary/iam-authentik-primary-daily-2026-05-02T08-16-02-907Z`
+- latest secondary replicated backup:
+  `/srv/backups/iam/authentik/primary-replicated/iam-authentik-primary-daily-2026-05-02T08-16-02-907Z`
+- artifacts on both nodes remained `0600` `root:root`:
+  - `app_authentik.dump`
+  - `authentik-files.tar.gz`
+  - `manifest.json`
+  - `postgresql-apps-globals.sql`
+- primary-to-secondary checksums matched for all four artifacts.
+- `simplehost-backup-runner.timer` is active and enabled on both primary and
+  secondary.
+
 ## Physical PostgreSQL Backups
 
 `pgBackRest` is the physical backup and WAL archive layer for both host-native

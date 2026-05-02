@@ -33,12 +33,16 @@ Active open items as of `2026-05-02`:
 Current active slice:
 
 - Phase 5 resilience and IAM/SSO follow-up:
-  - continue the Authentik rollout tracked in
+  - the initial Authentik rollout tracked in
     [`/opt/simplehostman/src/docs/IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md)
+    is stable and closed as of `2026-05-02`
   - admin TOTP MFA and recovery codes are already enrolled for
     `webmaster@pyrosa.com.do`
   - Authentik backup and restore-test coverage is complete through
     SimpleHostMan backup policy `iam-authentik-primary-daily`
+  - latest Authentik backup run
+    `iam-authentik-primary-daily-2026-05-02T08-16-02-907Z` is replicated to
+    the secondary and checksum-matched for all four backup artifacts
   - `https://code.pyrosa.com.do/` is now protected through Authentik on the
     primary, with a direct-vhost rollback copy under `/root/simplehost-rollbacks`
   - `https://vps-prd.pyrosa.com.do:3200/` is now protected through Authentik on
@@ -61,9 +65,8 @@ Current active slice:
     `https://vps-des.pyrosa.com.do:3200/` remains direct and returns `200`
   - secondary node-name SimpleHostMan UI remains the standby/direct operator
     route during normal operation
-  - next implementation step: choose the next internal administrative app for
-    IAM protection, such as `pgadmin.pyrosa.com.do` or `ldap.pyrosa.com.do`,
-    or close the current IAM rollout for now
+  - optional next IAM step: choose another internal administrative app for IAM
+    protection, such as `pgadmin.pyrosa.com.do` or `ldap.pyrosa.com.do`
   - SSH remains unchanged and outside the Authentik scope
 
 Historical migration runbooks can retain execution records, validation gates, and conditional
