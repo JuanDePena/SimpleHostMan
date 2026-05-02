@@ -243,8 +243,8 @@ Completion evidence:
 
 ### Phase 2: Publish `auth.pyrosa.com.do`
 
-Status: published on `2026-05-02`; admin MFA enrollment is the operator hold
-point before any protected app enforcement.
+Status: published on `2026-05-02`; admin TOTP MFA is enrolled, and recovery
+codes remain the operator hold point before any protected app enforcement.
 
 Goal: expose only the Authentik login/admin surface.
 
@@ -261,8 +261,9 @@ Validation:
 - `https://auth.pyrosa.com.do/` reaches Authentik
 - `webmaster@pyrosa.com.do` exists as an active superuser with a usable password
 - `/if/flow/initial-setup/` is blocked at Apache after bootstrap
-- admin MFA and recovery codes must be enrolled from the Authentik UI before
-  the first protected app is enforced
+- admin TOTP MFA is enrolled
+- recovery codes must be enrolled from the Authentik UI before the first
+  protected app is enforced
 - logout and session expiry work
 - no existing app vhost is changed
 
@@ -293,6 +294,8 @@ Completion evidence:
   `/etc/simplehost/iam/authentik/akadmin-initial-password` was removed.
 - Live bootstrap password/email values were removed from
   `/etc/simplehost/iam/authentik/authentik.env`, which remains mode `0600`.
+- `webmaster@pyrosa.com.do` has one confirmed TOTP authenticator.
+- No static/recovery-code authenticator is registered yet.
 - `code.pyrosa.com.do` was not changed in this phase.
 
 ### Phase 3: Backup Policy And Restore Test

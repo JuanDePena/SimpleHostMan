@@ -1121,8 +1121,8 @@ Phase 5K completion evidence on `2026-05-02`:
 
 Remaining Phase 5 maintenance-window items:
 
-- enroll admin MFA and recovery codes in Authentik, add backup coverage, and
-  then protect `https://code.pyrosa.com.do/`
+- create Authentik recovery codes, add backup coverage, and then protect
+  `https://code.pyrosa.com.do/`
 
 Phase 5L completion evidence on `2026-05-02`:
 
@@ -1190,17 +1190,33 @@ Phase 5M completion evidence on `2026-05-02`:
 - Live Authentik bootstrap password/email values were removed from
   `/etc/simplehost/iam/authentik/authentik.env`, which remains mode `0600`.
 - `code.pyrosa.com.do` was not changed in this phase.
-- Hold point: an operator must log in to `https://auth.pyrosa.com.do/` as
-  `webmaster@pyrosa.com.do`, enroll admin MFA, and create recovery codes before
-  app protection is enabled.
+- Hold point at phase 5M completion: an operator still had to log in to
+  `https://auth.pyrosa.com.do/` as `webmaster@pyrosa.com.do`, enroll admin MFA,
+  and create recovery codes before app protection could be enabled.
+
+Phase 5N completion evidence on `2026-05-02`:
+
+- Admin TOTP MFA was enrolled for `webmaster@pyrosa.com.do`.
+- Console validation showed:
+  - confirmed TOTP devices: `1`
+  - total TOTP devices: `1`
+  - confirmed static/recovery-code devices: `0`
+  - total static/recovery-code devices: `0`
+- `authentik-server.service`, `authentik-worker.service`, and `httpd` remained
+  active.
+- `https://auth.pyrosa.com.do/` continued to return `302` to the default
+  Authentik authentication flow.
+- `https://auth.pyrosa.com.do/if/flow/initial-setup/` remained blocked with
+  `403`.
+- Remaining hold point before protecting apps: create Authentik recovery codes
+  for `webmaster@pyrosa.com.do`.
 
 ## Current Implementation Order
 
-Phases 1 through 4 and phase 5A/5B/5C/5D/5E/5F/5G/5H/5I/5J/5K/5L/5M are complete.
+Phases 1 through 4 and phase 5A/5B/5C/5D/5E/5F/5G/5H/5I/5J/5K/5L/5M/5N are complete.
 Continue in this order:
 
-1. Enroll Authentik admin MFA and recovery codes for
-   `webmaster@pyrosa.com.do`.
+1. Create Authentik recovery codes for `webmaster@pyrosa.com.do`.
 2. Add backup and restore-test coverage for Authentik.
 3. Protect `code.pyrosa.com.do` with documented break-glass and rollback.
 
