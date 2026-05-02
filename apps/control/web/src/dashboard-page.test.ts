@@ -136,6 +136,9 @@ test("overview keeps status focused and reconciliation lives in its own workspac
   assert.match(overviewHtml, /id="section-overview"/);
   assert.match(overviewHtml, /overview-status-card/);
   assert.match(overviewHtml, /overview-signal-card/);
+  assert.match(overviewHtml, /aria-label="Status interval"/);
+  assert.match(overviewHtml, /data-status-interval="day"[\s\S]*aria-pressed="true"/);
+  assert.match(overviewHtml, /data-status-interval="week"[\s\S]*aria-pressed="false"/);
   assert.ok(
     overviewHtml.indexOf("overview-status-card") < overviewHtml.indexOf("overview-signal-card")
   );

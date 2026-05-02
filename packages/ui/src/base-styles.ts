@@ -1058,13 +1058,67 @@ export function renderBaseStyleBlock(): string {
         background: rgba(255, 255, 255, 0.84);
       }
 
-      .overview-metric-panel h3 {
+      .overview-metric-panel > h3,
+      .overview-metric-panel-header {
         margin: 0;
         padding: 0.75rem 0.9rem;
         border-bottom: 1px solid rgba(13, 32, 56, 0.08);
         background: rgba(235, 242, 250, 0.78);
         color: var(--ink);
         font-size: var(--font-size-heading-sm);
+      }
+
+      .overview-metric-panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.72rem;
+      }
+
+      .overview-metric-panel-header h3 {
+        min-width: 0;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: inherit;
+        font-size: inherit;
+        line-height: 1.2;
+      }
+
+      .overview-interval-selector {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.12rem;
+        flex: 0 0 auto;
+        padding: 0.12rem;
+        border: 1px solid rgba(13, 32, 56, 0.1);
+        border-radius: var(--radius-control);
+        background: rgba(255, 255, 255, 0.72);
+      }
+
+      .overview-interval-button {
+        min-height: 1.72rem;
+        min-width: 3.2rem;
+        padding: 0.2rem 0.5rem;
+        border-radius: var(--radius-control);
+        background: transparent;
+        color: var(--muted);
+        box-shadow: none;
+        font-size: var(--font-size-label);
+        font-weight: 700;
+      }
+
+      .overview-interval-button:hover,
+      .overview-interval-button:focus-visible {
+        background: rgba(16, 39, 68, 0.08);
+        color: var(--navy-strong);
+      }
+
+      .overview-interval-button.active {
+        background: linear-gradient(135deg, var(--navy-soft), var(--navy-strong));
+        color: #f5fbff;
+        box-shadow: 0 0.5rem 1.1rem rgba(16, 39, 68, 0.12);
       }
 
       .overview-status-content {
@@ -1130,6 +1184,21 @@ export function renderBaseStyleBlock(): string {
       }
 
       @media (max-width: 560px) {
+        .overview-metric-panel-header {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .overview-interval-selector {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          width: 100%;
+        }
+
+        .overview-interval-button {
+          min-width: 0;
+        }
+
         .overview-metric-grid {
           grid-template-columns: 1fr;
         }

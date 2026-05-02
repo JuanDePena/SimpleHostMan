@@ -26,6 +26,11 @@ type DashboardShellCopy = DashboardCopyLabels & {
   languageLabel: string;
   latestReconciliation: string;
   managedNodes: string;
+  overviewIntervalDay: string;
+  overviewIntervalLabel: string;
+  overviewIntervalMonth: string;
+  overviewIntervalWeek: string;
+  overviewIntervalYear: string;
   metricsControlService: string;
   metricsCpuCores: string;
   metricsCpuLoad: string;
@@ -166,6 +171,27 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
     (entry) => entry.driftStatus === "missing_secret"
   ).length;
   const backupFailedCount = filteredBackupRuns.filter((run) => run.status === "failed").length;
+  const renderStatusIntervalSelector = (): string => {
+    const intervals = [
+      { id: "day", label: copy.overviewIntervalDay },
+      { id: "week", label: copy.overviewIntervalWeek },
+      { id: "month", label: copy.overviewIntervalMonth },
+      { id: "year", label: copy.overviewIntervalYear }
+    ];
+
+    return `<div class="overview-interval-selector" role="group" aria-label="${escapeHtml(copy.overviewIntervalLabel)}">
+      ${intervals
+        .map(
+          (interval) => `<button
+            type="button"
+            class="overview-interval-button${interval.id === "day" ? " active" : ""}"
+            data-status-interval="${escapeHtml(interval.id)}"
+            aria-pressed="${interval.id === "day" ? "true" : "false"}"
+          >${escapeHtml(interval.label)}</button>`
+        )
+        .join("")}
+    </div>`;
+  };
 
   const topbarActionsHtml = `<div class="locale-switch" role="group" aria-label="${escapeHtml(copy.languageLabel)}">
     <form method="post" action="/preferences/locale" class="inline-form">
@@ -569,7 +595,10 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
     <div class="overview-layout">
       <div class="overview-main">
         <article class="overview-metric-panel overview-status-card">
-          <h3>${escapeHtml(copy.overviewStatusTitle)}</h3>
+          <div class="overview-metric-panel-header">
+            <h3>${escapeHtml(copy.overviewStatusTitle)}</h3>
+            ${renderStatusIntervalSelector()}
+          </div>
           <div class="overview-status-content">
             ${renderStats(data.overview, copy, locale)}
           </div>
