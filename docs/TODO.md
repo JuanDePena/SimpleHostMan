@@ -47,6 +47,12 @@ Current active slice:
     generated backup artifacts when replication is enabled in
     `/etc/simplehost/worker.env`; primary-to-secondary and
     secondary-to-primary paths were both validated
+  - the scheduled `simplehost-backup-runner.timer` invocations at
+    `2026-05-02 16:05 UTC` and `2026-05-02 16:10 UTC` completed successfully
+    on both nodes without manual `--force`; no policy was due in those
+    minutes, so the next natural scheduled checkpoints are `db-adudoc-daily`
+    at `2026-05-03 01:00 UTC` on primary and `code-server-secondary-daily` at
+    `2026-05-03 04:25 UTC` on secondary
   - `https://code.pyrosa.com.do/` is now protected through Authentik on the
     primary, with a direct-vhost rollback copy under `/root/simplehost-rollbacks`
   - `https://vps-prd.pyrosa.com.do:3200/` is now protected through Authentik on

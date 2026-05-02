@@ -690,7 +690,10 @@ Completion evidence:
 
 ### Phase 5: Resilience And Failover Improvements
 
-Status: in progress; phases 5A through 5L completed on `2026-05-02`.
+Status: complete through phase 5Y on `2026-05-02`; the initial IAM rollout,
+secondary IAM/DR posture, and generic backup-run replication are closed. Any
+next IAM target or restore drill is now an explicit follow-up, not a current
+rollout blocker.
 
 Goal: reduce single points of failure that remain after the vps-old retirement.
 
@@ -1685,16 +1688,40 @@ Phase 5Y completion evidence on `2026-05-02`:
   - replicated artifacts: `2`
   - checksums matched for `code-server-root.tar.gz` and `manifest.json`
 
+Phase 5 closeout observation on `2026-05-02`:
+
+- The scheduled `simplehost-backup-runner.timer` invocations at `16:05 UTC`
+  and `16:10 UTC` completed successfully on both nodes without a manual
+  `--force`.
+- Primary outcome:
+  - `simplehost-backup-runner.service` exited `0`
+  - no policies executed
+  - `16` policies skipped because no schedule matched the observed minutes
+- Secondary outcome:
+  - `simplehost-backup-runner.service` exited `0`
+  - no policies executed
+  - `1` policy skipped because no schedule matched the observed minutes
+- Replication configuration keys are present in `/etc/simplehost/worker.env`
+  on both nodes.
+- Control-plane backup history after the replication fix shows `0` failed runs
+  and `2` succeeded runs with `details.replication`.
+- The next natural scheduled replication checkpoints are:
+  - primary: `db-adudoc-daily` at `2026-05-03 01:00 UTC`
+  - secondary: `code-server-secondary-daily` at `2026-05-03 04:25 UTC`
+
 ## Current Implementation Order
 
-Phases 1 through 4 and phase 5A/5B/5C/5D/5E/5F/5G/5H/5I/5J/5K/5L/5M/5N/5O/5P/5Q/5R/5S/5T/5U/5V/5W/5X/5Y are complete.
+Phases 1 through 4 and phase 5A/5B/5C/5D/5E/5F/5G/5H/5I/5J/5K/5L/5M/5N/5O/5P/5Q/5R/5S/5T/5U/5V/5W/5X/5Y, plus the phase 5 closeout observation, are complete.
 Continue in this order:
 
-1. Treat the initial IAM rollout as stable and closed.
-2. Keep the secondary node-name SimpleHostMan UI as the standby/direct route
+1. Review the next natural scheduled backup checkpoints after `2026-05-03
+   01:00 UTC` and `2026-05-03 04:25 UTC` if an overnight verification is
+   desired.
+2. Treat the initial IAM rollout as stable and closed.
+3. Keep the secondary node-name SimpleHostMan UI as the standby/direct route
    during normal operation; revisit only after a real secondary Authentik
    promotion test or an explicit requirement.
-3. Optional next IAM step: choose another internal administrative app for IAM
+4. Optional next IAM step: choose another internal administrative app for IAM
    protection, such as `pgadmin.pyrosa.com.do` or `ldap.pyrosa.com.do`.
 
 ## Do Not Do Yet
