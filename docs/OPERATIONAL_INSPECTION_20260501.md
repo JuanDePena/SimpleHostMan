@@ -690,7 +690,7 @@ Completion evidence:
 
 ### Phase 5: Resilience And Failover Improvements
 
-Status: in progress; phases 5A and 5B completed on `2026-05-02`.
+Status: in progress; phases 5A through 5E completed on `2026-05-02`.
 
 Goal: reduce single points of failure that remain after the vps-old retirement.
 
@@ -870,21 +870,58 @@ Phase 5D completion evidence on `2026-05-02`:
   - root-only backup artifacts must be copied into a temporary
     `postgres:postgres` staging path before `pg_restore`
 
+Phase 5E completion evidence on `2026-05-02`:
+
+- Routine administration was moved to a tested non-root sudo path:
+  - user: `almalinux`
+  - sudo: passwordless sudo through `/etc/sudoers.d/90-cloud-init-users`
+  - SSH validation: `almalinux` key login plus `sudo -n true` succeeded on
+    both nodes
+- `almalinux` now has the operator key and both node-operation keys installed
+  on both nodes. Tracked fingerprints:
+  - `SHA256:8r2X/jTbPpmPmXFvXrAxvUH+6BNKL0pjOMbgPIFNPY8`
+    (`vps-root-ed25519-2026`)
+  - `SHA256:tpARyU16T3kbPoxFNI3VfXg3RvK5BMOxdVdlxMA7Qrg`
+    (`root@vps-3dbbfb0b.vps.ovh.ca`)
+  - `SHA256:O3ZhT25KzejEOyTewO6MbAcxhTcOPCmfseBnLOmOoUQ`
+    (`root@vps-16535090.vps.ovh.ca`)
+- `/etc/ssh/sshd_config.d/00-simplehost-admin-hardening.conf` was deployed on
+  primary and secondary.
+- The temporary primary root-password drop-in
+  `/etc/ssh/sshd_config.d/01-vps-prd-root-password.conf` was backed up and
+  removed.
+- Effective SSH posture after reload:
+  - `PermitRootLogin without-password`
+  - `PasswordAuthentication no`
+  - `KbdInteractiveAuthentication no`
+  - `PubkeyAuthentication yes`
+  - `X11Forwarding no`
+  - `AllowAgentForwarding no`
+  - `AllowTcpForwarding no` globally
+- Primary root keeps only the local `code-server` tunnel exception:
+  - `AllowTcpForwarding local`
+  - `PermitOpen 127.0.0.1:8080 localhost:8080`
+- Root key break-glass validation succeeded in both directions:
+  - primary to secondary
+  - secondary to primary
+- Password-only SSH attempts were rejected with server methods limited to
+  `publickey,gssapi-keyex,gssapi-with-mic`.
+- Source-IP SSH restriction remains deferred because the operator source range
+  is not documented as stable enough.
+
 Remaining Phase 5 maintenance-window items:
 
-- move routine administration from root to a tested non-root sudo path
 - decide whether to install and configure `dnf-automatic`
 - revisit code-server public proxy exposure and root-owned service posture,
   including a scheduled backup policy for code-server config and user data
 
 ## Current Implementation Order
 
-Phases 1 through 4 and phase 5A/5B/5C/5D are complete. Continue in this order:
+Phases 1 through 4 and phase 5A/5B/5C/5D/5E are complete. Continue in this
+order:
 
-1. Move routine administration from direct root SSH to a tested non-root sudo
-   path.
-2. Decide whether to install and configure security-update automation.
-3. Revisit code-server exposure, root-owned service posture, and scheduled
+1. Decide whether to install and configure security-update automation.
+2. Revisit code-server exposure, root-owned service posture, and scheduled
    backup coverage.
 
 ## Do Not Do Yet

@@ -1,11 +1,13 @@
 # VPS Hardening
 
 Date applied: 2026-03-11
+Last administrative access update: 2026-05-02
 Host OS: AlmaLinux 10.1
 
 ## Scope
 
-This runbook documents the hardening currently applied to this VPS:
+This runbook documents the hardening currently applied to the SimpleHost
+primary and secondary VPS nodes:
 
 - SSH access is key-only.
 - `root` is still allowed over SSH, but passwords are disabled.
@@ -46,53 +48,51 @@ This runbook documents the hardening currently applied to this VPS:
 
 ### SSH
 
-OpenSSH on this host uses the first value read for duplicated directives. Because of that, the hardening required changes in earlier drop-ins as well as a dedicated hardening drop-in.
+OpenSSH on AlmaLinux uses the first value read for duplicated directives. The
+current cross-node enforcement therefore lives in an early `00-*` drop-in so it
+wins over provider and cloud-init defaults that may still exist later in
+`sshd_config.d`.
 
 Source-controlled copies:
 
+- [`/opt/simplehostman/src/platform/host/ssh/00-simplehost-admin-hardening.conf`](/opt/simplehostman/src/platform/host/ssh/00-simplehost-admin-hardening.conf)
 - [`/opt/simplehostman/src/platform/host/ssh/50-cloud-init.conf`](/opt/simplehostman/src/platform/host/ssh/50-cloud-init.conf)
 - [`/opt/simplehostman/src/platform/host/ssh/50-redhat.conf`](/opt/simplehostman/src/platform/host/ssh/50-redhat.conf)
 - [`/opt/simplehostman/src/platform/host/ssh/99-hardening.conf`](/opt/simplehostman/src/platform/host/ssh/99-hardening.conf)
 
 Deployed files:
 
-- [`/etc/ssh/sshd_config.d/50-cloud-init.conf`](/etc/ssh/sshd_config.d/50-cloud-init.conf)
-- [`/etc/ssh/sshd_config.d/50-redhat.conf`](/etc/ssh/sshd_config.d/50-redhat.conf)
+- [`/etc/ssh/sshd_config.d/00-simplehost-admin-hardening.conf`](/etc/ssh/sshd_config.d/00-simplehost-admin-hardening.conf)
+  on both nodes
 - [`/etc/ssh/sshd_config.d/99-hardening.conf`](/etc/ssh/sshd_config.d/99-hardening.conf)
+  on the primary only, for the root `code-server` local tunnel exception
 
-Effective SSH content:
+Current first-read SSH hardening content:
 
-[`/etc/ssh/sshd_config.d/50-cloud-init.conf`](/etc/ssh/sshd_config.d/50-cloud-init.conf):
-
-```sshconfig
-PasswordAuthentication no
-```
-
-[`/etc/ssh/sshd_config.d/50-redhat.conf`](/etc/ssh/sshd_config.d/50-redhat.conf):
-
-```sshconfig
-SyslogFacility AUTHPRIV
-ChallengeResponseAuthentication no
-GSSAPIAuthentication yes
-GSSAPICleanupCredentials no
-UsePAM yes
-X11Forwarding no
-PrintMotd no
-```
-
-[`/etc/ssh/sshd_config.d/99-hardening.conf`](/etc/ssh/sshd_config.d/99-hardening.conf):
+[`/etc/ssh/sshd_config.d/00-simplehost-admin-hardening.conf`](/etc/ssh/sshd_config.d/00-simplehost-admin-hardening.conf):
 
 ```sshconfig
 PermitRootLogin prohibit-password
+PasswordAuthentication no
 KbdInteractiveAuthentication no
 PubkeyAuthentication yes
-AllowTcpForwarding no
+PermitEmptyPasswords no
+X11Forwarding no
 AllowAgentForwarding no
+AllowTcpForwarding no
+```
 
+Primary-only root tunnel exception:
+
+```sshconfig
 Match User root
     AllowTcpForwarding local
     PermitOpen 127.0.0.1:8080 localhost:8080
 ```
+
+The temporary primary drop-in
+`/etc/ssh/sshd_config.d/01-vps-prd-root-password.conf` was removed during the
+2026-05-02 administrative access hardening pass.
 
 ### Firewall
 
@@ -236,6 +236,7 @@ sshd -t
 systemctl reload sshd
 sshd -T | grep -E '^(permitrootlogin|passwordauthentication|kbdinteractiveauthentication|pubkeyauthentication|x11forwarding|allowtcpforwarding|allowagentforwarding|port) '
 sshd -T -C user=root,host=localhost,addr=127.0.0.1 | grep -E '^(allowtcpforwarding|permitopen) '
+ssh -i /root/.ssh/id_ed25519 -o BatchMode=yes almalinux@127.0.0.1 'sudo -n true'
 ssh -o PreferredAuthentications=publickey -o PasswordAuthentication=no root@SERVER_IP
 ssh -N -L 8080:127.0.0.1:8080 root@SERVER_IP
 ```
@@ -253,11 +254,11 @@ allowtcpforwarding no
 allowagentforwarding no
 ```
 
-Expected root-specific values:
+Expected primary root-specific values:
 
 ```text
 allowtcpforwarding local
-permitopen 127.0.0.1:8080
+permitopen 127.0.0.1:8080 localhost:8080
 ```
 
 ### Firewall
@@ -339,15 +340,16 @@ server-healthcheck.service: last run success when no critical issue is present
 
 ### SSH
 
-Restore previous SSH behavior from console access:
+Restore password access only from console access or an already authenticated
+root key session, and only for a bounded break-glass window:
 
 ```bash
-cat >/etc/ssh/sshd_config.d/50-cloud-init.conf <<'EOF'
-PasswordAuthentication yes
-EOF
-
-sed -i 's/^X11Forwarding no$/X11Forwarding yes/' /etc/ssh/sshd_config.d/50-redhat.conf
-rm -f /etc/ssh/sshd_config.d/99-hardening.conf
+rm -f /etc/ssh/sshd_config.d/00-simplehost-admin-hardening.conf
+printf '%s\n' \
+  '# Temporary break-glass password access.' \
+  'PermitRootLogin yes' \
+  'PasswordAuthentication yes' \
+  >/etc/ssh/sshd_config.d/01-vps-prd-root-password.conf
 sshd -t
 systemctl reload sshd
 ```
@@ -410,32 +412,51 @@ Historical topics retained for context:
 
 Reviewed on `2026-05-02` during the post-migration resilience pass.
 
-Current state on both nodes:
+Baseline before the administrative access change:
 
 - `PermitRootLogin yes`
 - `PasswordAuthentication yes`
 - public-key authentication enabled
-- `almalinux` exists as a non-root account but is not a member of `wheel`
-- `code-server@root` is active
-- code-server listens on `127.0.0.1:8080` and is also exposed through Apache on
-  public `8080`
-- `dnf-automatic` is not installed
-- security updates are available on both nodes, including kernel, OpenSSH,
-  sudo, Node.js, rsync, grub and shared-library packages
+- `almalinux` existed as a non-root account with passwordless sudo through
+  `/etc/sudoers.d/90-cloud-init-users`
+- the primary had a temporary
+  `/etc/ssh/sshd_config.d/01-vps-prd-root-password.conf` drop-in
 
-Recommended order before tightening access:
+Implemented outcome:
 
-1. Add a named non-root operator account to `wheel`.
-2. Verify sudo and SSH access from two independent sessions.
-3. Store and test a root break-glass path.
-4. Move routine administration away from direct root SSH.
-5. Only then consider changing `PermitRootLogin` and
-   `PasswordAuthentication`.
-6. Decide whether public Apache exposure for code-server on `8080` remains
-   necessary, or whether the platform should return to SSH-tunnel-only access.
-7. If automatic security updates are desired, install and configure
-   `dnf-automatic` in download-only or security-only mode first, with an
-   explicit package hold/rollback procedure.
+- `almalinux` is the tested routine administration path on both nodes.
+- `almalinux` has operator and node-operation public keys installed on both
+  nodes; the tracked fingerprints are:
+  - `SHA256:8r2X/jTbPpmPmXFvXrAxvUH+6BNKL0pjOMbgPIFNPY8`
+    (`vps-root-ed25519-2026`)
+  - `SHA256:tpARyU16T3kbPoxFNI3VfXg3RvK5BMOxdVdlxMA7Qrg`
+    (`root@vps-3dbbfb0b.vps.ovh.ca`)
+  - `SHA256:O3ZhT25KzejEOyTewO6MbAcxhTcOPCmfseBnLOmOoUQ`
+    (`root@vps-16535090.vps.ovh.ca`)
+- `sshd` now reports `PermitRootLogin without-password` and
+  `PasswordAuthentication no` on both nodes.
+- Root remains available only by key as a break-glass account.
+- The primary keeps the root-only local tunnel exception to
+  `127.0.0.1:8080` for `code-server`; the secondary has SSH forwarding
+  disabled for root and all other users.
+- The temporary root-password drop-in was backed up and removed.
+- Source-IP SSH restriction remains deferred because the operator ingress range
+  is not documented as stable enough yet.
 
-Do not disable root or password access until the non-root sudo path has been
-tested and documented.
+Validation completed after `sshd` reload:
+
+- `ssh -i /root/.ssh/id_ed25519 almalinux@127.0.0.1 'sudo -n true'`
+  succeeded on both nodes.
+- Primary to secondary `almalinux` SSH with `sudo -n` succeeded.
+- Root key break-glass succeeded from primary to secondary and from secondary
+  to primary.
+- Password-only SSH attempts failed with server methods limited to
+  `publickey,gssapi-keyex,gssapi-with-mic`.
+
+Remaining related follow-up:
+
+- Decide whether public Apache exposure for code-server on `8080` remains
+  necessary, or whether the platform should return to SSH-tunnel-only access.
+- If automatic security updates are desired, install and configure
+  `dnf-automatic` in download-only or security-only mode first, with an
+  explicit package hold/rollback procedure.
