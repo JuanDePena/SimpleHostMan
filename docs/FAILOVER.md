@@ -121,9 +121,9 @@ replicated `simplehost_control` PostgreSQL database.
 `auth.pyrosa.com.do` and protected administrative apps such as
 `code.pyrosa.com.do` use Authentik. The primary node-name SimpleHostMan UI at
 `https://vps-prd.pyrosa.com.do:3200/` is also protected by Authentik, while the
-secondary node-name UI remains a direct standby/operator route until a separate
-secondary IAM design is approved. During normal operation Authentik runs only
-on the primary. The secondary is prepared as a manual standby, but
+secondary node-name UI remains a direct standby/operator route during normal
+operation. Authentik runs only on the primary. The secondary is prepared as a
+manual standby, but
 `authentik-server` and `authentik-worker` are held inactive by
 `ConditionPathExists=/etc/simplehost/iam/authentik/SECONDARY_PROMOTED`.
 
@@ -179,6 +179,20 @@ promoted, because Authentik performs writes to `app_authentik`.
 If the apps standby is unavailable, restore the latest
 `app_authentik.dump` from the replicated Authentik backup seed instead of
 starting from the physical standby.
+
+Latest dry-run validation on `2026-05-02`:
+
+- secondary hold marker is absent
+- secondary `authentik-server` and `authentik-worker` are inactive
+- secondary `postgresql@apps` remains in recovery and contains `app_authentik`
+- secondary Authentik files, vhosts, Quadlet units, hold drop-ins and pinned
+  image are present
+- secondary `apachectl -t` returned `Syntax OK`
+- `auth.pyrosa.com.do` and `code.pyrosa.com.do` return `503` when resolved to
+  secondary `51.222.206.196`, as expected while Authentik is held inactive
+- `https://vps-des.pyrosa.com.do:3200/` returns `200` and remains the direct
+  standby/operator route
+- primary `auth.pyrosa.com.do` and `code.pyrosa.com.do` return `302`
 
 ## Rebuild after failover
 

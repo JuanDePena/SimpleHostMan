@@ -626,6 +626,9 @@ Goal: define the passive-node IAM posture after the primary rollout is stable.
 Selected posture:
 
 - Authentik runs on the primary only during normal operation.
+- The secondary node-name SimpleHostMan UI remains a direct standby/operator
+  route during normal operation. It does not need a separate IAM design unless
+  a future requirement asks for secondary-node IAM after a promoted DR test.
 - The secondary carries restored Authentik files, secrets, media, vhosts,
   Quadlet units and the pinned container image, but the services remain
   inactive.
@@ -699,6 +702,42 @@ Completion evidence:
   `--resolve` while Authentik is intentionally held inactive.
 - Primary `auth.pyrosa.com.do` and `code.pyrosa.com.do` still return `302`,
   and primary Authentik services remain active.
+
+Secondary dry-run validation on `2026-05-02`:
+
+- DNS posture:
+  - `auth.pyrosa.com.do` and `code.pyrosa.com.do` point to primary
+    `51.222.204.86`.
+  - secondary is reachable as `vps-des.pyrosa.com.do`
+    (`51.222.206.196`).
+- Service posture:
+  - `/etc/simplehost/iam/authentik/SECONDARY_PROMOTED` is absent.
+  - `authentik-server` and `authentik-worker` are inactive on the secondary.
+  - `httpd`, `simplehost-control` and `simplehost-agent` are active on the
+    secondary.
+  - `simplehost-worker` remains intentionally inactive on the secondary.
+  - `systemctl --failed` reported `0` failed units.
+- Artifact posture:
+  - Authentik Quadlet units, hold drop-ins, root-only env, runtime directory,
+    vhosts and pinned image are present on the secondary.
+  - `/etc/simplehost/iam/authentik/authentik.env` remains mode `600` and points
+    to `AUTHENTIK_POSTGRESQL__HOST=10.89.0.2`.
+  - `/srv/containers/iam/authentik` remains mode `700`.
+  - `apachectl -t` returned `Syntax OK`.
+- Data and backup posture:
+  - secondary `postgresql@apps` reports `pg_is_in_recovery() = true`.
+  - secondary `app_authentik` database exists.
+  - latest replicated Authentik backup seed is present under
+    `/srv/backups/iam/authentik/primary-replicated/iam-authentik-primary-daily-2026-05-02T07-29-56-575Z`.
+  - replicated backup artifacts are present with root-only `600` permissions:
+    `app_authentik.dump`, `authentik-files.tar.gz`, `manifest.json` and
+    `postgresql-apps-globals.sql`.
+- HTTP posture:
+  - `auth.pyrosa.com.do` resolved to secondary with `--resolve` returns `503`.
+  - `code.pyrosa.com.do` resolved to secondary with `--resolve` returns `503`.
+  - `https://vps-des.pyrosa.com.do:3200/` returns `200` as the direct standby
+    operator route.
+  - primary `auth.pyrosa.com.do` and `code.pyrosa.com.do` return `302`.
 
 ## Operational Hold Points
 

@@ -54,9 +54,16 @@ Current active slice:
   - secondary IAM/DR posture is defined and staged conservatively: Authentik
     files, vhosts and units are present on the secondary, but startup is held
     behind `/etc/simplehost/iam/authentik/SECONDARY_PROMOTED`
-  - next implementation step: decide whether the secondary node-name
-    SimpleHostMan UI should stay as a standby/direct operator route or receive
-    its own IAM design after secondary Authentik promotion
+  - secondary IAM/DR posture was dry-run validated on `2026-05-02`: Authentik
+    files, vhosts, units, hold drop-ins, pinned image and replicated backup
+    seed are present; `auth.pyrosa.com.do` and `code.pyrosa.com.do` return
+    `503` when resolved to the secondary while Authentik is held inactive;
+    `https://vps-des.pyrosa.com.do:3200/` remains direct and returns `200`
+  - secondary node-name SimpleHostMan UI remains the standby/direct operator
+    route during normal operation
+  - next implementation step: choose the next internal administrative app for
+    IAM protection, such as `pgadmin.pyrosa.com.do` or `ldap.pyrosa.com.do`,
+    or close the current IAM rollout for now
   - SSH remains unchanged and outside the Authentik scope
 
 Historical migration runbooks can retain execution records, validation gates, and conditional

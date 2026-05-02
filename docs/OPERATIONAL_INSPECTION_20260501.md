@@ -1544,14 +1544,61 @@ Phase 5V completion evidence on `2026-05-02`:
   - `simplehost-control`, `simplehost-worker`, `httpd`, `authentik-server`,
     and `authentik-worker` remained active
 
+Phase 5W completion evidence on `2026-05-02`:
+
+- The secondary IAM/DR posture was dry-run validated without promoting
+  Authentik.
+- Selected steady-state decision: the secondary node-name SimpleHostMan UI
+  remains a direct standby/operator route during normal operation. A separate
+  secondary IAM design is deferred unless a future requirement asks for it
+  after an actual secondary Authentik promotion test.
+- DNS posture:
+  - `auth.pyrosa.com.do` and `code.pyrosa.com.do` point to primary
+    `51.222.204.86`
+  - `vps-des.pyrosa.com.do` points to secondary `51.222.206.196`
+- Secondary service posture:
+  - `/etc/simplehost/iam/authentik/SECONDARY_PROMOTED` is absent
+  - `authentik-server` inactive
+  - `authentik-worker` inactive
+  - `httpd` active
+  - `simplehost-control` active
+  - `simplehost-agent` active
+  - `simplehost-worker` intentionally inactive
+  - `systemctl --failed` reported `0` failed units
+- Secondary artifact posture:
+  - Authentik Quadlet units and hold drop-ins are present
+  - `/etc/simplehost/iam/authentik/authentik.env` is present as `600`
+    `root:root` and points to `AUTHENTIK_POSTGRESQL__HOST=10.89.0.2`
+  - `/srv/containers/iam/authentik` is present as `700` `root:root`
+  - Authentik and protected-app vhosts are present:
+    `/etc/httpd/conf.d/pyrosa-authentik.conf`,
+    `/etc/httpd/conf.d/pyrosa-code.conf` and
+    `/etc/httpd/conf.d/pyrosa-code-internal-bridge.conf`
+  - pinned image `ghcr.io/goauthentik/server:2026.2.2` is present
+  - `apachectl -t` returned `Syntax OK`
+- Data and backup posture:
+  - secondary `postgresql@apps` reports `pg_is_in_recovery() = true`
+  - `app_authentik` exists on the secondary apps cluster
+  - latest replicated Authentik backup seed is present:
+    `/srv/backups/iam/authentik/primary-replicated/iam-authentik-primary-daily-2026-05-02T07-29-56-575Z`
+  - replicated backup artifacts are present with `600` permissions:
+    `app_authentik.dump`, `authentik-files.tar.gz`, `manifest.json` and
+    `postgresql-apps-globals.sql`
+- HTTP posture:
+  - `auth.pyrosa.com.do` with `--resolve` to secondary returned `503`
+  - `code.pyrosa.com.do` with `--resolve` to secondary returned `503`
+  - `https://vps-des.pyrosa.com.do:3200/` returned `200`
+  - primary `auth.pyrosa.com.do` returned `302`
+  - primary `code.pyrosa.com.do` returned `302`
+
 ## Current Implementation Order
 
-Phases 1 through 4 and phase 5A/5B/5C/5D/5E/5F/5G/5H/5I/5J/5K/5L/5M/5N/5O/5P/5Q/5R/5S/5T/5U/5V are complete.
+Phases 1 through 4 and phase 5A/5B/5C/5D/5E/5F/5G/5H/5I/5J/5K/5L/5M/5N/5O/5P/5Q/5R/5S/5T/5U/5V/5W are complete.
 Continue in this order:
 
-1. Decide whether the secondary node-name SimpleHostMan UI remains a
-   standby/direct route or gets a separate IAM design after secondary Authentik
-   promotion.
+1. Keep the secondary node-name SimpleHostMan UI as the standby/direct route
+   during normal operation; revisit only after a real secondary Authentik
+   promotion test or an explicit requirement.
 2. Choose the next internal administrative app for IAM protection, such as
    `pgadmin.pyrosa.com.do` or `ldap.pyrosa.com.do`.
 
