@@ -17,8 +17,10 @@ The model is designed so more domains can be added without changing the baseline
 
 ## Status on 2026-03-14
 
-- `apps.yaml` remains the bootstrap inventory, but day-to-day desired state now lives in `SimpleHost Control` PostgreSQL.
-- Runtime imports normally read `/etc/simplehost/inventory.apps.yaml`, and YAML export remains for audit and disaster recovery.
+- Day-to-day desired state lives in `SimpleHost Control` PostgreSQL tables named
+  `control_plane_*`.
+- Runtime reconciliation reads PostgreSQL desired state. YAML is export-only for
+  audit, review, and disaster recovery.
 - Canonical node IDs in the control plane are `primary` and `secondary`; public operator aliases are `vps-prd.pyrosa.com.do` and `vps-des.pyrosa.com.do`.
 
 ## Isolation model
@@ -88,11 +90,11 @@ Derived object names:
 
 ## Inventory model
 
-Keep a source-controlled inventory for applications and domains in:
+Keep application and domain desired state in `SimpleHost Control` PostgreSQL.
+Operators should edit it through the control-plane UI/API or explicit database
+migrations.
 
-- [`/opt/simplehostman/src/bootstrap/apps.bootstrap.yaml`](/opt/simplehostman/src/bootstrap/apps.bootstrap.yaml)
-
-That file defines:
+The catalog defines:
 
 - node metadata
 - public and WireGuard addresses
@@ -267,9 +269,8 @@ WordPress-specific rules:
 
 ## Operational artifacts
 
-The source-controlled artifacts that implement this model are stored under:
+The source-controlled templates that implement this model are stored under:
 
-- [`/opt/simplehostman/src/bootstrap/apps.bootstrap.yaml`](/opt/simplehostman/src/bootstrap/apps.bootstrap.yaml)
 - [`/opt/simplehostman/src/platform/httpd/vhosts/app-vhost.conf.template`](/opt/simplehostman/src/platform/httpd/vhosts/app-vhost.conf.template)
 - [`/opt/simplehostman/src/platform/httpd/vhosts/redirect-vhost.conf.template`](/opt/simplehostman/src/platform/httpd/vhosts/redirect-vhost.conf.template)
 - [`/opt/simplehostman/src/platform/containers/quadlet/app-template.container`](/opt/simplehostman/src/platform/containers/quadlet/app-template.container)

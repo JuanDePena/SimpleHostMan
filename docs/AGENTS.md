@@ -13,7 +13,8 @@ Current canonical paths:
 - workspace root: `/opt/simplehostman`
 - source workspace root: `/opt/simplehostman/src`
 - shared docs root: `/opt/simplehostman/src/docs`
-- bootstrap inventory: `/opt/simplehostman/src/bootstrap/apps.bootstrap.yaml`
+- desired state catalog: `SimpleHost Control` PostgreSQL `control_plane_*`
+  tables, edited through the control-plane UI/API or explicit migrations
 - runtime and release root: `/opt/simplehostman/release`
 
 Do not reintroduce `/home/server`, `/opt/server`, or `/opt/simplehost`.
@@ -66,7 +67,8 @@ Ownership:
 - `apps/cli`: break-glass and operator CLI
 - `packages/*`: shared contracts, config, UI, persistence, renderers, drivers, and testing helpers
 - `platform`: host and container templates
-- `bootstrap`: bootstrap inventory and seed material
+- `bootstrap`: reserved bootstrap and recovery material; no live application
+  inventory lives there
 - `packaging`: release and install artifacts organized by artifact type for the unified runtime
 - `scripts`: install, deploy, rollback, bootstrap, and migration helpers
 - `docs`: integrated architecture, operational guides, and migration plans
@@ -143,6 +145,7 @@ Read these when working on service-specific behavior:
 ## Notes for future agents
 
 - If bootstrapping the codebase, start with `/opt/simplehostman/src`.
-- If changing bootstrap inventory, work in `/opt/simplehostman/src/bootstrap/apps.bootstrap.yaml`.
+- If changing platform desired state, use the control-plane UI/API or explicit
+  PostgreSQL migrations; do not reintroduce a source-controlled YAML catalog.
 - If a change affects both source layout and architecture, update the migration docs in the same turn.
 - If a task touches releases or systemd, verify whether it is only source-level rehearsal work or a live runtime change before changing anything live.

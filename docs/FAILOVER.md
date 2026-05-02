@@ -56,7 +56,6 @@ rsync -a \
   /etc/simplehost/worker.env \
   /etc/simplehost/control.env.example \
   /etc/simplehost/worker.env.example \
-  /etc/simplehost/inventory.apps.yaml \
   root@vps-16535090.vps.ovh.ca:/etc/simplehost/
 
 ssh root@vps-16535090.vps.ovh.ca \
@@ -70,6 +69,9 @@ ssh root@vps-16535090.vps.ovh.ca \
 
 While `postgresql-control` is still in recovery mode, `simplehost-control` and
 `simplehost-worker` are expected to stay down on the standby.
+
+No YAML inventory file is required for failover. Desired state is stored in the
+replicated `simplehost_control` PostgreSQL database.
 
 ## Manual promotion sequence
 

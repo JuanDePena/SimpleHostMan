@@ -597,8 +597,8 @@ Actions:
   evidence are available
 - document retention for `/srv/backups/mail-gomezrosado` because that path is
   currently a large backup consumer
-- decide how `apps.bootstrap.yaml` should represent apps with multiple managed
-  databases, including the Pyrosa DIS/QBO secondary databases
+- document how PostgreSQL desired-state exports represent apps with multiple
+  managed databases, including the Pyrosa DIS/QBO secondary databases
 - define a managed publication workflow for `repos.pyrosa.com.do` before new
   Proyecto Iohana RPM packages are published through SimpleHostMan
 
@@ -608,7 +608,8 @@ Validation:
 - table sizes stop growing unbounded
 - dashboard and audit views still load correctly
 - restore tests still pass after backup retention changes
-- bootstrap inventory regeneration has an explicit rule for multi-database apps
+- desired-state export and recovery documentation has an explicit rule for
+  multi-database apps
 - repository publishing has an owner, trigger, validation checklist, and rollback
   path before it is reactivated
 
@@ -650,17 +651,17 @@ Completion evidence:
   [`BACKUPS.md`](/opt/simplehostman/src/docs/BACKUPS.md). The policy remains
   `14` days; the path currently uses about `7.7G`, with the oldest observed
   retained run from `2026-04-25`.
-- `apps.bootstrap.yaml` now supports multi-database apps with explicit
-  `databases` entries and stable database ids.
-- The Pyrosa DIS/QBO pairings are now represented in bootstrap inventory:
+- The Pyrosa DIS/QBO pairings are represented in PostgreSQL desired state with
+  explicit managed database entries:
   - `database-pyrosa-sync`
   - `database-pyrosa-sync-qbo`
   - `database-pyrosa-demosync`
   - `database-pyrosa-demosync-qbo`
-- The bootstrap parser and desired-state builder validate the current YAML as
-  `14` apps and `10` managed database entries.
+- The retired bootstrap parser and desired-state builder were previously
+  validated against the transitional YAML catalog before PostgreSQL became the
+  sole source of truth.
 - `pyrosa-helpers-dfr` no longer carries same-engine migration metadata in the
-  live desired state or bootstrap YAML.
+  live desired state.
 - `repos.pyrosa.com.do` publication workflow is documented in
   [`REPOSITORY_PUBLISHING.md`](/opt/simplehostman/src/docs/REPOSITORY_PUBLISHING.md).
   It remains a static repository until an explicit audited publishing workflow

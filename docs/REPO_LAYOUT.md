@@ -13,7 +13,8 @@ This document defines the canonical source layout for the unified SimpleHost wor
 - workspace root: `/opt/simplehostman`
 - source workspace root: `/opt/simplehostman/src`
 - shared docs root: `/opt/simplehostman/src/docs`
-- bootstrap inventory: `/opt/simplehostman/src/bootstrap/apps.bootstrap.yaml`
+- desired state catalog: `SimpleHost Control` PostgreSQL `control_plane_*`
+  tables
 - runtime and release root: `/opt/simplehostman/release`
 
 ## Top-level layout

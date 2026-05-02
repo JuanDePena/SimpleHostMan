@@ -1,23 +1,27 @@
-# Bootstrap Inventory
+# Bootstrap Material
 
-This directory contains bootstrap and seed material for the unified source workspace.
+This directory is reserved for bootstrap and recovery material for the unified
+source workspace.
 
 Path:
 
 - `/opt/simplehostman/src/bootstrap`
 
-Primary file:
+There is no longer a source-controlled application inventory in this directory.
+The former bootstrap catalog was retired on `2026-05-02` after the control-plane
+desired state moved fully into PostgreSQL tables named `control_plane_*`.
 
-- `/opt/simplehostman/src/bootstrap/apps.bootstrap.yaml`
+Day-to-day desired state is authoritative in PostgreSQL through `SimpleHostMan`.
+Operators should change resources through the control-plane UI/API or explicit
+database migrations.
 
-This tree remains useful as seed material for controlled import and disaster recovery.
+When a YAML artifact is needed for audit, review, or disaster recovery, export
+the current PostgreSQL catalog from the control plane instead of treating a repo
+file as a source of truth:
 
-Day-to-day desired state is now authoritative in PostgreSQL through `SimpleHostMan`.
-When operators need a YAML artifact, they should prefer exporting the current resource catalog from the control plane instead of treating this file as the live source of truth.
+- `GET /v1/resources/spec`
+- `GET /v1/inventory/export`
 
-Application database inventory may use either the legacy singular `database`
-field or the plural `databases` field. Use `databases` whenever an application
-owns more than one managed database, and keep the first entry as the runtime
-primary database consumed by generic container rendering. Secondary databases
-must carry explicit stable ids such as `database-pyrosa-sync-qbo` so bootstrap
-replay does not collide with the primary `database-<app>` resource id.
+Historical bootstrap/import details are preserved in the migration documents
+under `/opt/simplehostman/src/docs/MIGRATIONS` and in
+`/opt/simplehostman/src/docs/CONTROL_PLANE_DESIRED_STATE.md`.

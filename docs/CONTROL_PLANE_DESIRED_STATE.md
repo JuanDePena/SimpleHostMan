@@ -218,12 +218,14 @@ Implementation notes:
 - PostgreSQL catalog export remains available through `GET /v1/resources/spec`
   and `GET /v1/inventory/export`
 - historical latest-import metadata remains visible read-only for audit context
-- legacy inventory converter helpers remain covered by unit tests until the repo
-  bootstrap file is retired in Phase 3
+- legacy inventory converter helpers remain covered by unit tests as historical
+  rollback support until a separate final cleanup removes them
 
 ### Phase 3: Retire Repo Bootstrap File
 
 Goal: remove `bootstrap/apps.bootstrap.yaml` as a source-controlled catalog.
+
+Status: completed on `2026-05-02`.
 
 Tasks:
 
@@ -239,6 +241,16 @@ Exit criteria:
   document
 - docs point operators to PostgreSQL desired state and the control-plane API/UI
 
+Implementation notes:
+
+- `bootstrap/apps.bootstrap.yaml` was deleted from source control
+- `bootstrap/README.md` now documents that the directory has no live
+  application inventory
+- active architecture, DNS, multi-domain, failover, repo layout and agent docs
+  now point operators to PostgreSQL desired state and control-plane exports
+- historical migration records were left intact as evidence of prior migration
+  work
+
 ### Phase 4: Final Validation
 
 Goal: prove the platform can operate and recover without YAML inputs.
@@ -252,18 +264,11 @@ Validation:
 - fresh reconciliation run with `0` unexpected jobs
 - forced export from `GET /v1/resources/spec`
 - restore rehearsal from the phase-0 control-plane dump into a temporary
-  database, if a recovery rehearsal is required before deleting the files
+  database, if a recovery rehearsal is required before closing the transition
 
 ## Rollback
 
-Before Phase 3 deletes files, rollback is straightforward:
-
-- restore `SIMPLEHOST_INVENTORY_PATH` in control config
-- keep or restore `/etc/simplehost/inventory.apps.yaml`
-- re-enable the YAML import route/UI action
-- redeploy the previous release
-
-After Phase 3, rollback should use the phase-0 artifacts:
+Rollback should use the phase-0 artifacts:
 
 - restore the `simplehost_control` dump if PostgreSQL desired state is damaged
 - reintroduce the YAML import path only through an explicit incident decision
@@ -282,3 +287,5 @@ After Phase 3, rollback should use the phase-0 artifacts:
   reconciliation generated `0` jobs.
 - `2026-05-02`: phase 2 completed; YAML import route/UI were removed while
   PostgreSQL desired-state export remains available.
+- `2026-05-02`: phase 3 completed; source-controlled bootstrap inventory was
+  deleted and active docs now point to PostgreSQL desired state.

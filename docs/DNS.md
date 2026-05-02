@@ -24,7 +24,8 @@ The goal is to replace legacy DNS hosted on an older cPanel VPS with a PowerDNS 
 - Public operator aliases for the nodes are `vps-prd.pyrosa.com.do` and `vps-des.pyrosa.com.do`; the underlying system hostnames remain the legacy OVH names.
 - PowerDNS ownership and templates now live in [`/opt/simplehostman/src/platform/pdns`](/opt/simplehostman/src/platform/pdns).
 - `dns.sync` is already dispatched from `SimpleHost Control` and executed by `SimpleHost Agent` against the local PowerDNS API.
-- Desired DNS state now lives in `SimpleHost Control` PostgreSQL; `apps.yaml` is only the bootstrap/import-export path.
+- Desired DNS state now lives in `SimpleHost Control` PostgreSQL; YAML exports
+  are audit and disaster-recovery artifacts only.
 
 ## Status on 2026-04-26
 
@@ -175,9 +176,11 @@ Recommended migration sequence:
 - Use separate records for canonical and alias hostnames.
 - Keep redirect-only names visible in Apache configuration even if they share the same zone.
 
-Current example inventory:
+Current desired-state sources:
 
-- [`/opt/simplehostman/src/bootstrap/apps.bootstrap.yaml`](/opt/simplehostman/src/bootstrap/apps.bootstrap.yaml)
+- `SimpleHost Control` PostgreSQL tables named `control_plane_*`
+- `GET /v1/resources/spec` for JSON export
+- `GET /v1/inventory/export` for YAML export
 
 Source-controlled DNS artifacts:
 

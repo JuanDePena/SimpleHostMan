@@ -50,7 +50,8 @@ Product design references:
 - `postgresql-apps` and `postgresql-control` are already deployed as host-native primary/standby clusters.
 - `SimpleHost Control` now runs as the combined `simplehost-control` runtime on the primary node; the secondary keeps `simplehost-control` and `simplehost-worker` stopped until promotion.
 - `SimpleHost Agent` is active on both nodes and desired state already lives in `SimpleHost Control` PostgreSQL.
-- Bootstrap YAML remains for import/export and disaster recovery only.
+- PostgreSQL `control_plane_*` tables are the desired-state source of truth;
+  generated exports remain available for audit and disaster recovery.
 - Public operator ingress is normalized on both nodes through the `public` zone for `80/tcp`, `443/tcp`, `51820/udp`, `3200/tcp`, and `8080/tcp`.
 - The combined control plane now serves operator UI and `/v1/*` over `3200/tcp`.
 
