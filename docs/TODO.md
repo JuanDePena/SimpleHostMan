@@ -30,7 +30,6 @@ Active open items as of `2026-05-02`:
 Current active slice:
 
 - Phase 5 resilience and failover follow-up:
-  - MariaDB promotion/repoint rehearsal
   - restore-test calendar execution
   - administrative access hardening
   - OS security-update cadence decision

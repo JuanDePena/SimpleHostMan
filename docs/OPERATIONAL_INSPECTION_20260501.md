@@ -790,18 +790,53 @@ Phase 5B completion evidence on `2026-05-02`:
 - `super_read_only` was removed from the MariaDB replica config because MariaDB
   `11.8.6` rejects it as an unknown server option in this image.
 
+Phase 5C completion evidence on `2026-05-02`:
+
+- MariaDB promotion was rehearsed against an isolated scratch datadir on the
+  secondary. The live `mariadb-replica` service and production apps were not
+  promoted or repointed.
+- Rehearsal id: `20260502T030524Z`.
+- The scratch datadir was created with `mariadb-backup` from the live replica,
+  prepared, copied to a temporary path, and started as
+  `mariadb-promotion-rehearsal-20260502T030524Z` on
+  `127.0.0.1:13306`.
+- The scratch server started with `skip-slave-start`, then the promotion
+  sequence was executed:
+  - `STOP REPLICA`
+  - `RESET REPLICA ALL`
+  - `SET GLOBAL read_only = OFF`
+- The promoted scratch server accepted a controlled write:
+  - `server_id = 102`
+  - `read_only = 0`
+  - local write GTID: `0-102-62376`
+  - validation row:
+    `20260502T030524Z / isolated MariaDB promotion rehearsal`
+- A connection smoke test through the repoint rehearsal port
+  `127.0.0.1:13306` returned the validation row.
+- Temporary scratch container, datadir, and backup copy were removed after the
+  test; `13306` no longer listens.
+- The live replica remained healthy after cleanup:
+  - `Slave_IO_Running: Yes`
+  - `Slave_SQL_Running: Yes`
+  - `Seconds_Behind_Master: 0`
+  - `Gtid_IO_Pos: 0-1-62433`
+- Note: transient `podman run` sidecars launched from SSH on the secondary
+  required `--cgroups=disabled` because the host rejected the default eBPF
+  device-filter setup. The systemd-managed `mariadb-replica` unit was
+  unaffected.
+
 Remaining Phase 5 maintenance-window items:
 
-- rehearse MariaDB promotion on non-production data
+- execute the restore-test calendar
 - move routine administration from root to a tested non-root sudo path
 - decide whether to install and configure `dnf-automatic`
 - revisit code-server public proxy exposure and root-owned service posture
 
 ## Current Implementation Order
 
-Phases 1 through 4 and phase 5A/5B are complete. Continue in this order:
+Phases 1 through 4 and phase 5A/5B/5C are complete. Continue in this order:
 
-1. Rehearse MariaDB promotion on non-production data.
+1. Execute the restore-test calendar.
 2. Move routine administration from direct root SSH to a tested non-root sudo
    path.
 3. Decide whether to install and configure security-update automation.

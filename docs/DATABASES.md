@@ -484,6 +484,25 @@ Manual MariaDB promotion outline:
    listener and restart only those app containers.
 6. Keep the old primary isolated until it is rebuilt from the promoted node.
 
+Promotion rehearsal result on `2026-05-02`:
+
+- Rehearsal id: `20260502T030524Z`.
+- Scope: isolated scratch datadir on the secondary, not the live replica.
+- Scratch listener: `127.0.0.1:13306`.
+- Promotion sequence validated:
+  - `STOP REPLICA`
+  - `RESET REPLICA ALL`
+  - `SET GLOBAL read_only = OFF`
+- Write validation on the promoted scratch server:
+  - `server_id = 102`
+  - `read_only = 0`
+  - local write GTID: `0-102-62376`
+- Repoint smoke test through `127.0.0.1:13306` returned the validation row.
+- Scratch container, datadir, and backup copy were removed after validation.
+- Live replica remained healthy afterward with `Slave_IO_Running = Yes`,
+  `Slave_SQL_Running = Yes`, `Seconds_Behind_Master = 0`, and
+  `Gtid_IO_Pos = 0-1-62433`.
+
 Expected passive-replica posture:
 
 - MariaDB-backed apps can continue running on the primary.
