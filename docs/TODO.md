@@ -75,8 +75,15 @@ Current active slice:
     `https://vps-des.pyrosa.com.do:3200/` remains direct and returns `200`
   - secondary node-name SimpleHostMan UI remains the standby/direct operator
     route during normal operation
-  - optional next IAM step: choose another internal administrative app for IAM
-    protection, such as `pgadmin.pyrosa.com.do` or `ldap.pyrosa.com.do`
+  - deferred follow-up options to resume after the operator provides the next
+    instructions:
+    - review the natural scheduled backup checkpoints after
+      `2026-05-03 01:00 UTC` on primary and `2026-05-03 04:25 UTC` on
+      secondary
+    - run a controlled restore drill from replicated backups, starting with
+      Authentik or code-server
+    - choose the next internal administrative app for Authentik protection,
+      such as `pgadmin.pyrosa.com.do` or `ldap.pyrosa.com.do`
   - SSH remains unchanged and outside the Authentik scope
 
 Historical migration runbooks can retain execution records, validation gates, and conditional

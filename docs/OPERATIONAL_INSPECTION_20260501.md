@@ -1714,15 +1714,18 @@ Phase 5 closeout observation on `2026-05-02`:
 Phases 1 through 4 and phase 5A/5B/5C/5D/5E/5F/5G/5H/5I/5J/5K/5L/5M/5N/5O/5P/5Q/5R/5S/5T/5U/5V/5W/5X/5Y, plus the phase 5 closeout observation, are complete.
 Continue in this order:
 
-1. Review the next natural scheduled backup checkpoints after `2026-05-03
-   01:00 UTC` and `2026-05-03 04:25 UTC` if an overnight verification is
-   desired.
+1. Resume from the deferred follow-up options when the operator provides the
+   next instructions:
+   - review the natural scheduled backup checkpoints after `2026-05-03
+     01:00 UTC` and `2026-05-03 04:25 UTC`
+   - run a controlled restore drill from replicated backups, starting with
+     Authentik or code-server
+   - choose the next internal administrative app for Authentik protection,
+     such as `pgadmin.pyrosa.com.do` or `ldap.pyrosa.com.do`
 2. Treat the initial IAM rollout as stable and closed.
 3. Keep the secondary node-name SimpleHostMan UI as the standby/direct route
    during normal operation; revisit only after a real secondary Authentik
    promotion test or an explicit requirement.
-4. Optional next IAM step: choose another internal administrative app for IAM
-   protection, such as `pgadmin.pyrosa.com.do` or `ldap.pyrosa.com.do`.
 
 ## Do Not Do Yet
 
