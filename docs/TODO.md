@@ -30,9 +30,10 @@ Active open items as of `2026-05-02`:
 Current active slice:
 
 - Phase 5 resilience and failover follow-up:
-  - restore-test calendar execution
   - administrative access hardening
   - OS security-update cadence decision
+  - code-server exposure/root-owned service review, including scheduled backup
+    coverage for config and user data
 
 Historical migration runbooks can retain execution records, validation gates, and conditional
 operator notes, but they should not be treated as active TODOs unless this file links to them.

@@ -825,22 +825,67 @@ Phase 5C completion evidence on `2026-05-02`:
   device-filter setup. The systemd-managed `mariadb-replica` unit was
   unaffected.
 
+Phase 5D completion evidence on `2026-05-02`:
+
+- Monthly restore-test calendar was executed with restore-test id
+  `20260502T031956Z`.
+- PostgreSQL control logical restore succeeded from
+  `control-postgresql-logical-daily-2026-05-02T02-40-07-916Z`:
+  - scratch database: `restoretest_control_20260502t031956z`
+  - restored tables: `34`
+  - restored apps/databases/mail domains: `21` / `11` / `8`
+- PostgreSQL app restore succeeded from `app_adudoc.dump`:
+  - scratch database: `restoretest_adudoc_20260502t031956z`
+  - restored tables: `14`
+- Roundcube/webmail restore succeeded from the `adudoc` mail backup:
+  - scratch database: `restoretest_roundcube_20260502t031956z`
+  - restored tables: `19`
+- MariaDB logical restore succeeded from the `pyrosa-wp` dump:
+  - transient MariaDB `11.8.6` container
+  - restored tables: `55`
+  - restored `wppy_options` rows: `523`
+- App file restore succeeded from the `gomezrosado` file archive:
+  - expected files validated: `index.html`, `assets/site.css`,
+    `migration-source.txt`
+  - restored file count: `48`
+- Mail runtime restore succeeded from the `adudoc` mail archive:
+  - `webmaster` and `notificaciones` Maildirs validated
+  - DKIM and runtime Postfix/Dovecot config files validated
+  - restored file count: `67`
+  - restored message count: `9`
+- Code-server config restore was validated from a manual root-only artifact
+  because no scheduled code-server backup artifact existed:
+  - artifact:
+    `/srv/backups/code-server/manual-restore-test-20260502T031956Z/code-server-root-config.tar.gz`
+  - files byte-compared after restore:
+    `/root/.config/code-server/config.yaml` and
+    `/root/.local/share/code-server/User/settings.json`
+- Cleanup validation:
+  - no `restoretest_*` PostgreSQL databases remained on ports `5432` or `5433`
+  - no restore-test MariaDB containers remained
+  - `/srv/restore-tests/20260502T031956Z` was removed
+- Restore-test operational notes:
+  - PostgreSQL custom dumps must be restored with
+    `/usr/pgsql-18/bin/pg_restore`, not `/usr/bin/pg_restore`
+  - root-only backup artifacts must be copied into a temporary
+    `postgres:postgres` staging path before `pg_restore`
+
 Remaining Phase 5 maintenance-window items:
 
-- execute the restore-test calendar
 - move routine administration from root to a tested non-root sudo path
 - decide whether to install and configure `dnf-automatic`
-- revisit code-server public proxy exposure and root-owned service posture
+- revisit code-server public proxy exposure and root-owned service posture,
+  including a scheduled backup policy for code-server config and user data
 
 ## Current Implementation Order
 
-Phases 1 through 4 and phase 5A/5B/5C are complete. Continue in this order:
+Phases 1 through 4 and phase 5A/5B/5C/5D are complete. Continue in this order:
 
-1. Execute the restore-test calendar.
-2. Move routine administration from direct root SSH to a tested non-root sudo
+1. Move routine administration from direct root SSH to a tested non-root sudo
    path.
-3. Decide whether to install and configure security-update automation.
-4. Revisit code-server exposure and root-owned service posture.
+2. Decide whether to install and configure security-update automation.
+3. Revisit code-server exposure, root-owned service posture, and scheduled
+   backup coverage.
 
 ## Do Not Do Yet
 
