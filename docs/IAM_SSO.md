@@ -570,6 +570,10 @@ Completion evidence:
     traffic
   - only existing active SimpleHostMan users can receive a local session; there
     is no automatic user creation
+  - unprovisioned or inactive SSO identities receive a SimpleHostMan-owned
+    `403` page without the dashboard sidebar, with the SSO email shown and a
+    `Cerrar sesion SSO` action that points at the Authentik outpost sign-out
+    path
   - successful trusted logins are audited as `auth.trusted_proxy_login`
   - local simulation of an Authentik-forwarded `GET /login` returned `303`,
     redirected to `/`, and set a redacted `shp_session` cookie
@@ -582,6 +586,9 @@ Completion evidence:
     session, still returned `401`
   - the latest trusted login audit event recorded
     `auth.trusted_proxy_login` for `webmaster@pyrosa.com.do`
+  - local and Authentik-container simulations for an unprovisioned SSO email
+    returned `403`, rendered `Acceso no provisionado`, did not set
+    `shp_session`, and included the Authentik outpost sign-out link
 - Secondary validation:
   - `http://127.0.0.1:3200/` returned `200`
   - `https://vps-des.pyrosa.com.do:3200/` returned `200`

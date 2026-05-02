@@ -294,6 +294,89 @@ test("creates a local session for trusted Authentik web requests", async () => {
   assert.match(response.headers["set-cookie"] as string, /SameSite=Lax/);
 });
 
+test("renders a SimpleHostMan SSO access-denied page for unprovisioned trusted users", async () => {
+  let trustedLogins = 0;
+  let webCalls = 0;
+
+  const handler = createCombinedControlRequestHandler({
+    surface: createStubBootstrapSurface({
+      context: createTestContext(),
+      apiSurface: createStubApiSurface(
+        async (_request, response) => {
+          response.writeHead(200);
+          response.end("api");
+        },
+        {
+          loginTrustedProxy: async () => {
+            trustedLogins += 1;
+            const error = new Error("Trusted proxy user is not active.");
+            error.name = "UserAuthorizationError";
+            throw error;
+          }
+        }
+      ),
+      webSurface: createStubWebSurface(async (_request, response) => {
+        webCalls += 1;
+        response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+        response.end("<html><body>login</body></html>");
+      })
+    })
+  });
+
+  const response = await invokeRequestHandler(handler, {
+    method: "GET",
+    url: "/login",
+    headers: {
+      "x-authentik-email": "missing@example.com"
+    }
+  });
+
+  assert.equal(trustedLogins, 1);
+  assert.equal(webCalls, 0);
+  assert.equal(response.statusCode, 403);
+  assert.equal(response.headers["set-cookie"], undefined);
+  assert.match(String(response.headers["content-type"]), /text\/html/);
+  assert.match(response.bodyText, /Acceso no provisionado/);
+  assert.match(response.bodyText, /missing@example\.com/);
+  assert.match(response.bodyText, /outpost\.goauthentik\.io\/sign_out/);
+  assert.doesNotMatch(response.bodyText, /Search navigation/);
+});
+
+test("does not hide trusted proxy system failures behind the access-denied page", async () => {
+  const handler = createCombinedControlRequestHandler({
+    surface: createStubBootstrapSurface({
+      context: createTestContext(),
+      apiSurface: createStubApiSurface(
+        async (_request, response) => {
+          response.writeHead(200);
+          response.end("api");
+        },
+        {
+          loginTrustedProxy: async () => {
+            throw new Error("database unavailable");
+          }
+        }
+      ),
+      webSurface: createStubWebSurface(async (_request, response) => {
+        response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+        response.end("<html><body>login</body></html>");
+      })
+    })
+  });
+
+  await assert.rejects(
+    () =>
+      invokeRequestHandler(handler, {
+        method: "GET",
+        url: "/login",
+        headers: {
+          "x-authentik-email": "webmaster@pyrosa.com.do"
+        }
+      }),
+    /database unavailable/
+  );
+});
+
 test("does not create trusted proxy sessions for API or unsafe web requests", async () => {
   let trustedLogins = 0;
   let apiCalls = 0;

@@ -1483,9 +1483,42 @@ Phase 5T completion evidence on `2026-05-02`:
   - `simplehost-control`, `simplehost-worker`, `httpd`, `authentik-server`,
     and `authentik-worker` remained active
 
+Phase 5U completion evidence on `2026-05-02`:
+
+- The trusted-proxy SSO rejection path now renders a SimpleHostMan-owned
+  `403` page for unprovisioned or inactive SSO identities instead of surfacing
+  an internal error or falling back to the regular login form.
+- The page intentionally has no dashboard sidebar. It includes:
+  - `SimpleHostMan` header
+  - `Acceso no provisionado` body
+  - the email received from Authentik
+  - `Cerrar sesión SSO` action targeting the Authentik outpost sign-out path
+  - `Volver a intentar` action
+- The implementation only treats `UserAuthorizationError` from trusted-proxy
+  login as an access-denied page. Other failures still bubble as system errors
+  so database or runtime issues are not hidden as authorization denials.
+- Validation:
+  - `pnpm --dir apps/control typecheck:local` passed
+  - targeted router tests passed with `10/10`
+  - `pnpm typecheck:control-runtime` passed
+  - `pnpm build:control-runtime` passed
+  - local simulation for `missing-sso-user@example.com` returned `403`
+  - the `403` response did not set `shp_session`
+  - the page rendered `Acceso no provisionado`, the SSO email, and the
+    Authentik sign-out link
+  - the same missing-user simulation through
+    `host.containers.internal:13200` from the Authentik container returned
+    `403` and rendered the access-denied page
+  - valid trusted-proxy login for `webmaster@pyrosa.com.do` still returned
+    `303` to `/` with a redacted `shp_session`
+  - public `https://vps-prd.pyrosa.com.do:3200/` still returns `302` to the
+    Authentik outpost
+  - `simplehost-control`, `simplehost-worker`, `httpd`, `authentik-server`,
+    and `authentik-worker` remained active
+
 ## Current Implementation Order
 
-Phases 1 through 4 and phase 5A/5B/5C/5D/5E/5F/5G/5H/5I/5J/5K/5L/5M/5N/5O/5P/5Q/5R/5S/5T are complete.
+Phases 1 through 4 and phase 5A/5B/5C/5D/5E/5F/5G/5H/5I/5J/5K/5L/5M/5N/5O/5P/5Q/5R/5S/5T/5U are complete.
 Continue in this order:
 
 1. Decide whether the secondary node-name SimpleHostMan UI remains a

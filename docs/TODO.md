@@ -47,6 +47,8 @@ Current active slice:
   - SimpleHostMan trusted-proxy SSO now converts successful Authentik MFA into
     a local `shp_session` for existing active operators, removing the internal
     double-login on the primary operator UI
+  - unprovisioned SSO identities now receive a SimpleHostMan `403` access page
+    with the received email and an Authentik outpost sign-out action
   - secondary IAM/DR posture is defined and staged conservatively: Authentik
     files, vhosts and units are present on the secondary, but startup is held
     behind `/etc/simplehost/iam/authentik/SECONDARY_PROMOTED`
