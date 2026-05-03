@@ -139,7 +139,12 @@ test("overview keeps status focused and reconciliation lives in its own workspac
   assert.match(overviewHtml, /aria-label="Status interval"/);
   assert.match(overviewHtml, /data-select-search="false"/);
   assert.match(overviewHtml, /data-submit-on-change="true"/);
+  assert.match(
+    overviewHtml,
+    /data-status-interval-storage-key="simplehost:overview:status-interval:v1"/
+  );
   assert.match(overviewHtml, /data-status-interval-select/);
+  assert.match(overviewHtml, /window\.localStorage\.setItem\(storageKey, urlStatusInterval\)/);
   assert.match(overviewHtml, /<option value="day" selected>Day<\/option>/);
   assert.match(overviewHtml, /<option value="week">Week<\/option>/);
   assert.ok(
@@ -214,6 +219,7 @@ test("dashboard sidebar renders logical collapsible groups", () => {
   assert.ok(
     controlPlaneGroup.indexOf(">Parameters<") < controlPlaneGroup.indexOf(">Reconciliation<")
   );
+  assert.match(controlPlaneGroup, />Parameters<[\s\S]*sidebar-badge[^>]*>2<\/span>/);
 
   const continuityGroup = html.slice(
     html.indexOf('data-nav-group-id="continuity"'),

@@ -6,6 +6,55 @@ export function renderAdminShellClientScript(): string {
           history.replaceState(null, "", historyReplaceUrl);
         }
 
+        const statusIntervalSelect = document.querySelector("[data-status-interval-select]");
+
+        if (statusIntervalSelect instanceof HTMLSelectElement) {
+          const validStatusIntervals = new Set(["day", "week", "month", "year"]);
+          const storageKey =
+            statusIntervalSelect.getAttribute("data-status-interval-storage-key") ??
+            "simplehost:overview:status-interval:v1";
+          const currentUrl = new URL(window.location.href);
+          const urlStatusInterval = currentUrl.searchParams.get("statusInterval") ?? "";
+
+          try {
+            if (validStatusIntervals.has(urlStatusInterval)) {
+              window.localStorage.setItem(storageKey, urlStatusInterval);
+            } else {
+              const savedStatusInterval = window.localStorage.getItem(storageKey) ?? "";
+
+              if (
+                validStatusIntervals.has(savedStatusInterval) &&
+                savedStatusInterval !== statusIntervalSelect.value
+              ) {
+                const nextUrl = new URL(window.location.href);
+
+                if (savedStatusInterval === "day") {
+                  nextUrl.searchParams.delete("statusInterval");
+                } else {
+                  nextUrl.searchParams.set("statusInterval", savedStatusInterval);
+                }
+
+                if (nextUrl.href !== currentUrl.href) {
+                  window.location.replace(nextUrl.href);
+                  return;
+                }
+              }
+            }
+          } catch (_error) {
+            // Ignore storage failures and keep the server-provided interval.
+          }
+
+          statusIntervalSelect.addEventListener("change", () => {
+            try {
+              if (validStatusIntervals.has(statusIntervalSelect.value)) {
+                window.localStorage.setItem(storageKey, statusIntervalSelect.value);
+              }
+            } catch (_error) {
+              // Ignore storage failures; the select still submits normally.
+            }
+          });
+        }
+
         const workspaceFilterStoragePrefix = "simplehost:workspace-filters:";
         const workspaceFilterStorageKey = (view) =>
           view ? workspaceFilterStoragePrefix + view : "";

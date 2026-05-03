@@ -1373,8 +1373,8 @@ export function renderBaseStyleBlock(): string {
         }
 
         #section-parameters-table .table-col-parameter-key {
-          width: 17.85rem;
-          max-width: 17.85rem;
+          width: 18.75rem;
+          max-width: 18.75rem;
         }
 
         #section-parameters-table .table-col-parameter-value {

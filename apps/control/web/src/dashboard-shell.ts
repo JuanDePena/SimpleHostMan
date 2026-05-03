@@ -199,6 +199,7 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
         class="overview-interval-select"
         data-select-search="false"
         data-submit-on-change="true"
+        data-status-interval-storage-key="simplehost:overview:status-interval:v1"
         data-status-interval-select
         aria-label="${escapeHtml(copy.overviewIntervalLabel)}"
       >
@@ -287,7 +288,7 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
           id: "parameters",
           label: copy.navParameters,
           href: buildDashboardViewUrl("parameters"),
-          badge: String(data.parameters.uiManagedCount),
+          badge: String(data.parameters.parameterCount),
           active: view === "parameters"
         },
         {
