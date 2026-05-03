@@ -306,12 +306,12 @@ export function renderParametersWorkspace(args: {
     description: copy.parametersInventoryDescription,
     headingBadgeClassName: "section-badge-lime",
     columns: [
-      { label: copy.parameterKeyLabel, className: "mono" },
-      { label: copy.parameterSourceLabel },
-      { label: copy.parameterValueLabel, className: "mono table-col-runtime-text-compact" },
-      { label: copy.parameterSensitiveLabel },
-      { label: copy.parameterEditableLabel },
-      { label: copy.parameterUpdatedAtLabel }
+      { label: copy.parameterKeyLabel, className: "mono table-col-parameter-key" },
+      { label: copy.parameterSourceLabel, className: "table-col-parameter-source" },
+      { label: copy.parameterValueLabel, className: "mono table-col-parameter-value" },
+      { label: copy.parameterSensitiveLabel, className: "table-col-parameter-flag" },
+      { label: copy.parameterEditableLabel, className: "table-col-parameter-flag" },
+      { label: copy.parameterUpdatedAtLabel, className: "table-col-parameter-updated" }
     ],
     rows,
     emptyMessage: copy.noParameters,

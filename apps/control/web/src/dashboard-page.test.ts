@@ -938,6 +938,18 @@ test("runtime text-heavy tables use compact desktop columns", () => {
   assert.match(renderView(createDashboardData(), "processes"), /table-col-runtime-text-compact/);
 });
 
+test("parameters table favors value width over key width", () => {
+  const html = renderView(createDashboardData(), "parameters");
+  const tableStart = html.indexOf('id="section-parameters-table"');
+  assert.notEqual(tableStart, -1, "missing parameters table");
+  const tableEnd = html.indexOf("</section>", tableStart);
+  const tableHtml = html.slice(tableStart, tableEnd);
+
+  assert.match(tableHtml, /table-col-parameter-key/);
+  assert.match(tableHtml, /table-col-parameter-value/);
+  assert.doesNotMatch(tableHtml, /table-col-runtime-text-compact/);
+});
+
 test("storage workspace shows selected node tracked path usage beside storage detail", () => {
   const data = createDashboardData();
   data.nodeHealth[0] = {

@@ -23,7 +23,11 @@ import {
   operationHistoryRetentionDaysParameterKey,
   operationHistoryRetentionDefaultDays,
   operationHistoryRetentionMaximumDays,
-  operationHistoryRetentionMinimumDays
+  operationHistoryRetentionMinimumDays,
+  operationHistoryPurgeIntervalDaysParameterKey,
+  operationHistoryPurgeIntervalDefaultDays,
+  operationHistoryPurgeIntervalMaximumDays,
+  operationHistoryPurgeIntervalMinimumDays
 } from "@simplehost/control-contracts";
 
 import { requireAuthorizedUser } from "./control-plane-store-auth.js";
@@ -135,13 +139,17 @@ function isSensitiveParameter(key: string, explicit = false): boolean {
   return explicit || sensitiveParameterKeyPattern.test(key);
 }
 
-function parseOperationHistoryRetentionDays(value: string | undefined): number | null {
+function parseBoundedDayCount(
+  value: string | undefined,
+  minimumDays: number,
+  maximumDays: number
+): number | null {
   const parsed = Number.parseInt(value ?? "", 10);
 
   if (
     !Number.isInteger(parsed) ||
-    parsed < operationHistoryRetentionMinimumDays ||
-    parsed > operationHistoryRetentionMaximumDays
+    parsed < minimumDays ||
+    parsed > maximumDays
   ) {
     return null;
   }
@@ -149,16 +157,53 @@ function parseOperationHistoryRetentionDays(value: string | undefined): number |
   return parsed;
 }
 
-function normalizeOperationHistoryRetentionValue(value: string): string {
-  const parsed = parseOperationHistoryRetentionDays(value.trim());
+function parseOperationHistoryRetentionDays(value: string | undefined): number | null {
+  return parseBoundedDayCount(
+    value,
+    operationHistoryRetentionMinimumDays,
+    operationHistoryRetentionMaximumDays
+  );
+}
+
+function parseOperationHistoryPurgeIntervalDays(value: string | undefined): number | null {
+  return parseBoundedDayCount(
+    value,
+    operationHistoryPurgeIntervalMinimumDays,
+    operationHistoryPurgeIntervalMaximumDays
+  );
+}
+
+function normalizeBoundedDayCountValue(
+  value: string,
+  minimumDays: number,
+  maximumDays: number,
+  label: string
+): string {
+  const parsed = parseBoundedDayCount(value.trim(), minimumDays, maximumDays);
 
   if (parsed === null) {
-    throw new Error(
-      `Retention must be an integer between ${operationHistoryRetentionMinimumDays} and ${operationHistoryRetentionMaximumDays} days.`
-    );
+    throw new Error(`${label} must be an integer between ${minimumDays} and ${maximumDays} days.`);
   }
 
   return String(parsed);
+}
+
+function normalizeOperationHistoryRetentionValue(value: string): string {
+  return normalizeBoundedDayCountValue(
+    value,
+    operationHistoryRetentionMinimumDays,
+    operationHistoryRetentionMaximumDays,
+    "Retention"
+  );
+}
+
+function normalizeOperationHistoryPurgeIntervalValue(value: string): string {
+  return normalizeBoundedDayCountValue(
+    value,
+    operationHistoryPurgeIntervalMinimumDays,
+    operationHistoryPurgeIntervalMaximumDays,
+    "Purge interval"
+  );
 }
 
 function renderParameterValue(
@@ -266,6 +311,8 @@ function normalizeEnvironmentParameterRequest(
     value:
       key === operationHistoryRetentionDaysParameterKey && request.value !== undefined
         ? normalizeOperationHistoryRetentionValue(request.value)
+        : key === operationHistoryPurgeIntervalDaysParameterKey && request.value !== undefined
+          ? normalizeOperationHistoryPurgeIntervalValue(request.value)
         : request.value,
     description:
       request.description === undefined
@@ -312,6 +359,37 @@ async function resolveOperationHistoryRetention(
     cutoffAt: new Date(now.getTime() - retentionDays * dayMs).toISOString(),
     source
   };
+}
+
+async function resolveOperationHistoryPurgeInterval(
+  client: PoolClient,
+  runtimeEnv: NodeJS.ProcessEnv
+): Promise<number> {
+  const result = await client.query<{ parameter_value: string }>(
+    `SELECT parameter_value
+     FROM control_plane_environment_parameters
+     WHERE parameter_key = $1`,
+    [operationHistoryPurgeIntervalDaysParameterKey]
+  );
+  const runtimeValue = runtimeEnv[operationHistoryPurgeIntervalDaysParameterKey];
+
+  return (
+    parseOperationHistoryPurgeIntervalDays(result.rows[0]?.parameter_value ?? runtimeValue) ??
+    operationHistoryPurgeIntervalDefaultDays
+  );
+}
+
+async function getLatestOperationHistoryPurgeAt(client: PoolClient): Promise<string | null> {
+  const result = await client.query<{ occurred_at: Date | string }>(
+    `SELECT occurred_at
+     FROM control_plane_audit_events
+     WHERE event_type = 'history.purged'
+     ORDER BY occurred_at DESC
+     LIMIT 1`
+  );
+  const occurredAt = result.rows[0]?.occurred_at;
+
+  return occurredAt === undefined ? null : normalizeDatabaseTimestamp(occurredAt);
 }
 
 export async function purgeOperationalHistoryRows(
@@ -2555,6 +2633,8 @@ export function createControlPlaneOperationsMethods(
     async purgeOperationalHistory(presentedToken) {
       return withTransaction(pool, async (client) => {
         let actorId: string | undefined;
+        const now = new Date();
+        const isWorkerPurge = presentedToken === undefined;
 
         if (presentedToken !== undefined) {
           const actor = await requireAuthorizedUser(client, presentedToken, [
@@ -2564,12 +2644,37 @@ export function createControlPlaneOperationsMethods(
           actorId = actor.userId;
         }
 
-        const retention = await resolveOperationHistoryRetention(client, runtimeEnv);
+        const retention = await resolveOperationHistoryRetention(client, runtimeEnv, now);
+
+        if (isWorkerPurge) {
+          const purgeIntervalDays = await resolveOperationHistoryPurgeInterval(client, runtimeEnv);
+          const latestPurgeAt = await getLatestOperationHistoryPurgeAt(client);
+          const nextPurgeAt =
+            latestPurgeAt === null
+              ? null
+              : new Date(Date.parse(latestPurgeAt) + purgeIntervalDays * dayMs).toISOString();
+
+          if (nextPurgeAt !== null && Date.parse(nextPurgeAt) > now.getTime()) {
+            return {
+              generatedAt: now.toISOString(),
+              ...retention,
+              deletedAuditEventCount: 0,
+              deletedReconciliationRunCount: 0,
+              deletedJobCount: 0,
+              deletedJobResultCount: 0,
+              keptLatestResourceJobCount: 0,
+              skipped: true,
+              nextPurgeAt
+            };
+          }
+        }
+
         const deleted = await purgeOperationalHistoryRows(client, retention.cutoffAt);
         const summary: OperationHistoryPurgeSummary = {
-          generatedAt: new Date().toISOString(),
+          generatedAt: now.toISOString(),
           ...retention,
-          ...deleted
+          ...deleted,
+          skipped: false
         };
 
         await insertAuditEvent(client, {

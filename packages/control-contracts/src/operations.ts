@@ -107,6 +107,11 @@ export const operationHistoryRetentionDaysParameterKey =
 export const operationHistoryRetentionDefaultDays = 90;
 export const operationHistoryRetentionMinimumDays = 1;
 export const operationHistoryRetentionMaximumDays = 3650;
+export const operationHistoryPurgeIntervalDaysParameterKey =
+  "SIMPLEHOST_HISTORY_PURGE_INTERVAL_DAYS";
+export const operationHistoryPurgeIntervalDefaultDays = 1;
+export const operationHistoryPurgeIntervalMinimumDays = 1;
+export const operationHistoryPurgeIntervalMaximumDays = 3650;
 
 export type OperationHistoryRetentionSource = "ui" | "runtime" | "default";
 
@@ -124,6 +129,8 @@ export interface OperationHistoryPurgeSummary extends OperationHistoryRetentionS
   deletedJobCount: number;
   deletedJobResultCount: number;
   keptLatestResourceJobCount: number;
+  skipped?: boolean;
+  nextPurgeAt?: string;
 }
 
 export interface ReconciliationRunSummary {

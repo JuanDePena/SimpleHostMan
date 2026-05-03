@@ -1371,6 +1371,30 @@ export function renderBaseStyleBlock(): string {
           overflow-wrap: anywhere;
           word-break: break-word;
         }
+
+        #section-parameters-table .table-col-parameter-key {
+          width: 17.85rem;
+          max-width: 17.85rem;
+        }
+
+        #section-parameters-table .table-col-parameter-value {
+          width: 46%;
+        }
+
+        #section-parameters-table .table-col-parameter-source,
+        #section-parameters-table .table-col-parameter-flag {
+          width: 6.6rem;
+        }
+
+        #section-parameters-table .table-col-parameter-updated {
+          width: 12.4rem;
+        }
+
+        #section-parameters-table td.table-col-parameter-key,
+        #section-parameters-table td.table-col-parameter-value {
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
       }
 
       .node-health-code-server-cell {

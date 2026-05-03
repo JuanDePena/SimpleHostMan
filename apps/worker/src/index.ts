@@ -54,6 +54,8 @@ export async function runWorkerIteration(
             historyRetention: {
               retentionDays: historyPurge.retentionDays,
               cutoffAt: historyPurge.cutoffAt,
+              skipped: historyPurge.skipped ?? false,
+              nextPurgeAt: historyPurge.nextPurgeAt,
               deletedJobCount: historyPurge.deletedJobCount,
               deletedJobResultCount: historyPurge.deletedJobResultCount,
               deletedReconciliationRunCount: historyPurge.deletedReconciliationRunCount,
