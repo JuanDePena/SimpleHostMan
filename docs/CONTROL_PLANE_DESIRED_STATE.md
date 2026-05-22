@@ -125,10 +125,18 @@ Physical database check:
 
 ### `/etc/simplehost/inventory.apps.yaml`
 
-The local file exists on `primary` only. It is absent on `secondary`.
+The local file was removed from `primary` on `2026-05-21` after confirming it
+was no longer referenced by active code, runtime env, systemd units, Apache
+config, or cron paths. It was already absent on `secondary`.
 
-The primary local file contains `5` apps and `5` databases. PostgreSQL contains
-`21` apps and `11` databases.
+A root-only rollback copy was retained at:
+
+- `/root/simplehost-retired-yaml/inventory.apps.yaml.20260521T005308Z`
+- SHA-256:
+  `37a7ca44dff190ee9b809b1319b554323b21984d52ec596816aaf27b4250252c`
+
+At removal time, the primary local file contained `5` apps and `5` databases.
+PostgreSQL contained `22` apps and `11` databases.
 
 Findings:
 
@@ -332,3 +340,5 @@ Rollback should use the phase-0 artifacts:
   phase-0 restore rehearsal all passed without YAML inputs.
 - `2026-05-02`: empty source `bootstrap/` directory removed after the desired
   state transition closed.
+- `2026-05-21`: stale `/etc/simplehost/inventory.apps.yaml` removed from
+  `primary`; root-only rollback copy kept under `/root/simplehost-retired-yaml/`.

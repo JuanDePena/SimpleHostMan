@@ -8,4 +8,5 @@
   <port protocol="tcp" port="3306"/>
   <port protocol="tcp" port="3100"/>
   <port protocol="tcp" port="8081"/>
+  <port protocol="tcp" port="13200"/>
 </zone>
