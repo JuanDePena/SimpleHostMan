@@ -579,6 +579,19 @@ export function deriveReplicaStorageLocation(
   return join(normalizedStorageLocation, `${sourceNodeId}-replicated`);
 }
 
+export function buildRemoteBackupRetentionCommand(
+  storageLocation: string,
+  retentionDays: number
+): string | undefined {
+  if (retentionDays <= 0) {
+    return undefined;
+  }
+
+  const findMtimeDays = Math.max(0, Math.ceil(retentionDays) - 1);
+
+  return `find ${shellQuote(storageLocation)} -mindepth 1 -maxdepth 1 -mtime +${findMtimeDays} -exec rm -rf -- {} +`;
+}
+
 function resolveBackupReplicationPlan(args: {
   context: BackupExecutionContext;
   policy: BackupPolicySummary;
@@ -691,6 +704,18 @@ async function replicateBackupRun(args: {
       `${plan.targetHost}:${plan.replicaRunDirectory}/`
     ]
   });
+
+  const retentionCommand = buildRemoteBackupRetentionCommand(
+    plan.replicaStorageLocation,
+    args.policy.retentionDays
+  );
+
+  if (retentionCommand) {
+    await runCommand({
+      command: plan.sshBinary,
+      commandArgs: [...sshOptions, plan.targetHost, retentionCommand]
+    });
+  }
 
   return {
     sourceNodeId: args.context.localNodeId,

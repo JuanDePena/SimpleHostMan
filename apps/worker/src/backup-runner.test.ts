@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  buildRemoteBackupRetentionCommand,
   deriveReplicaStorageLocation,
   matchesCronExpression,
   policyCoversAppFiles,
@@ -291,5 +292,20 @@ test("deriveReplicaStorageLocation nests generic policy roots by source node", (
       "/srv/backups/replicated"
     ),
     "/srv/backups/replicated/primary/mail-adudoc-daily"
+  );
+});
+
+test("buildRemoteBackupRetentionCommand prunes only old replica root children", () => {
+  assert.equal(
+    buildRemoteBackupRetentionCommand("/srv/backups/mail-adudoc/primary-replicated", 14),
+    "find '/srv/backups/mail-adudoc/primary-replicated' -mindepth 1 -maxdepth 1 -mtime +13 -exec rm -rf -- {} +"
+  );
+  assert.equal(
+    buildRemoteBackupRetentionCommand("/srv/backups/tenant's/primary-replicated", 1),
+    "find '/srv/backups/tenant'\\''s/primary-replicated' -mindepth 1 -maxdepth 1 -mtime +0 -exec rm -rf -- {} +"
+  );
+  assert.equal(
+    buildRemoteBackupRetentionCommand("/srv/backups/mail-adudoc/primary-replicated", 0),
+    undefined
   );
 });

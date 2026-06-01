@@ -55,6 +55,11 @@ written. The copy uses `rsync` over SSH, preserves artifact permissions, keeps
 the replicated run directory at `0700`, and records the destination in
 `details.replication`.
 
+After a run is replicated, the runner applies the same policy retention window
+to the replica storage root on the target node. This keeps directories such as
+`primary-replicated` from accumulating backup runs beyond the configured
+retention.
+
 Replica path rules:
 
 - if the policy storage path ends with the local node id, the replica storage
