@@ -112,18 +112,18 @@ INSERT INTO control_plane_iam_bindings (
   notes
 )
 SELECT
-  binding_id,
-  provider_id,
-  target_kind,
-  target_slug,
-  external_url,
-  internal_url,
-  auth_mode,
-  mfa_policy,
-  status,
-  allowed_groups,
-  config_json,
-  notes
+  seed.binding_id,
+  providers.provider_id,
+  seed.target_kind,
+  seed.target_slug,
+  seed.external_url,
+  seed.internal_url,
+  seed.auth_mode,
+  seed.mfa_policy,
+  seed.status,
+  seed.allowed_groups,
+  seed.config_json,
+  seed.notes
 FROM (
   VALUES
     (
