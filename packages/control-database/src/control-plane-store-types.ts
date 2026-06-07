@@ -156,6 +156,8 @@ export interface IamBindingRow {
   auth_mode: string;
   mfa_policy: string;
   status: string;
+  render_mode: string;
+  provider_provisioning_status: string;
   allowed_groups: unknown;
   config_json: Record<string, unknown> | null;
   notes: string | null;

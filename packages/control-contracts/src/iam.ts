@@ -13,6 +13,20 @@ export const iamAuthModes = [
 ] as const;
 export type IamAuthMode = (typeof iamAuthModes)[number];
 
+export const iamProviderCapabilityKeys = [
+  "proxy",
+  "trusted_proxy_headers",
+  "ui_auth",
+  "oauth",
+  "oidc",
+  "saml",
+  "gateway_proxy"
+] as const;
+export type IamProviderCapabilityKey = (typeof iamProviderCapabilityKeys)[number];
+
+export const iamProviderCapabilityStatuses = ["available", "future", "disabled"] as const;
+export type IamProviderCapabilityStatus = (typeof iamProviderCapabilityStatuses)[number];
+
 export const iamMfaPolicies = ["provider_default", "required", "optional", "none"] as const;
 export type IamMfaPolicy = (typeof iamMfaPolicies)[number];
 
@@ -22,6 +36,25 @@ export type IamBindingTargetKind = (typeof iamBindingTargetKinds)[number];
 export const iamBindingStatuses = ["active", "candidate", "future", "disabled"] as const;
 export type IamBindingStatus = (typeof iamBindingStatuses)[number];
 
+export const iamBindingRenderModes = ["metadata_only", "apache_managed"] as const;
+export type IamBindingRenderMode = (typeof iamBindingRenderModes)[number];
+
+export const iamProviderProvisioningStatuses = [
+  "unknown",
+  "not_required",
+  "manual_ready",
+  "pending",
+  "future"
+] as const;
+export type IamProviderProvisioningStatus =
+  (typeof iamProviderProvisioningStatuses)[number];
+
+export interface IamProviderCapabilitySummary {
+  key: IamProviderCapabilityKey;
+  status: IamProviderCapabilityStatus;
+  notes?: string;
+}
+
 export interface IamProviderSummary {
   providerId: string;
   slug: string;
@@ -30,6 +63,7 @@ export interface IamProviderSummary {
   status: IamProviderStatus;
   baseUrl?: string;
   capabilities: IamAuthMode[];
+  capabilityStatus: IamProviderCapabilitySummary[];
   config: Record<string, unknown>;
   notes?: string;
   createdAt: string;
@@ -47,6 +81,9 @@ export interface IamBindingSummary {
   authMode: IamAuthMode;
   mfaPolicy: IamMfaPolicy;
   status: IamBindingStatus;
+  renderMode: IamBindingRenderMode;
+  renderEnabled: boolean;
+  providerProvisioningStatus: IamProviderProvisioningStatus;
   allowedGroups: string[];
   config: Record<string, unknown>;
   notes?: string;
@@ -65,4 +102,6 @@ export interface IamBindingMutationRequest {
   authMode: IamAuthMode;
   mfaPolicy: IamMfaPolicy;
   status: IamBindingStatus;
+  renderMode?: IamBindingRenderMode;
+  providerProvisioningStatus?: IamProviderProvisioningStatus;
 }

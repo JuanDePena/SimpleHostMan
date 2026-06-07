@@ -184,6 +184,23 @@ test("iam provider selection migration defines tables, seeds, and session metada
   assert.match(migrationSql, /'iam-binding-simplehost-control'/);
 });
 
+test("iam provider selection phase 5-7 migration adds render state and ui-auth bindings", () => {
+  const migrationSql = readFileSync(
+    new URL("../migrations/0019_iam_provider_selection_phase_5_7.sql", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(migrationSql, /ADD COLUMN IF NOT EXISTS render_mode/);
+  assert.match(migrationSql, /ADD COLUMN IF NOT EXISTS provider_provisioning_status/);
+  assert.match(migrationSql, /'metadata_only'/);
+  assert.match(migrationSql, /'apache_managed'/);
+  assert.match(migrationSql, /'iam-binding-pyrosa-directory'/);
+  assert.match(migrationSql, /'iam-binding-pyrosa-newsync'/);
+  assert.match(migrationSql, /"gateway_proxy"/);
+  assert.match(migrationSql, /PYROSA_DIRECTORY_ACCOUNTS_CLIENT_SECRET/);
+  assert.match(migrationSql, /PYROSA_SYNC_UI_AUTH_CLIENT_SECRET/);
+});
+
 test("buildIamOverview maps provider capabilities and protected bindings", async () => {
   const overview = await buildIamOverview(
     createSequenceStubClient([
@@ -196,7 +213,13 @@ test("buildIamOverview maps provider capabilities and protected bindings", async
           status: "active",
           base_url: "https://auth.pyrosa.com.do",
           capabilities: ["proxy", "trusted_proxy_headers"],
-          config_json: { signOutPath: "/outpost.goauthentik.io/sign_out" },
+          config_json: {
+            signOutPath: "/outpost.goauthentik.io/sign_out",
+            capabilityStatus: [
+              { key: "proxy", status: "available" },
+              { key: "gateway_proxy", status: "future" }
+            ]
+          },
           notes: "Default IAM provider.",
           created_at: "2026-06-07T00:00:00.000Z",
           updated_at: "2026-06-07T00:00:00.000Z"
@@ -214,6 +237,8 @@ test("buildIamOverview maps provider capabilities and protected bindings", async
           auth_mode: "trusted_proxy_headers",
           mfa_policy: "required",
           status: "active",
+          render_mode: "metadata_only",
+          provider_provisioning_status: "manual_ready",
           allowed_groups: ["PYROSA Operators"],
           config_json: {},
           notes: "Existing handoff.",
@@ -225,8 +250,15 @@ test("buildIamOverview maps provider capabilities and protected bindings", async
   );
 
   assert.deepEqual(overview.providers[0]?.capabilities, ["proxy", "trusted_proxy_headers"]);
+  assert.deepEqual(overview.providers[0]?.capabilityStatus, [
+    { key: "proxy", status: "available", notes: undefined },
+    { key: "gateway_proxy", status: "future", notes: undefined }
+  ]);
   assert.equal(overview.bindings[0]?.targetSlug, "simplehost-control");
   assert.equal(overview.bindings[0]?.authMode, "trusted_proxy_headers");
+  assert.equal(overview.bindings[0]?.renderMode, "metadata_only");
+  assert.equal(overview.bindings[0]?.renderEnabled, false);
+  assert.equal(overview.bindings[0]?.providerProvisioningStatus, "manual_ready");
   assert.deepEqual(overview.bindings[0]?.allowedGroups, ["PYROSA Operators"]);
 });
 

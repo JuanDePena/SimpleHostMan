@@ -991,7 +991,14 @@ test("iam workspace lists providers and protected bindings", () => {
   assert.match(html, /Authentik/);
   assert.match(html, /Pyrosa Accounts/);
   assert.match(html, /simplehost-control/);
+  assert.match(html, /pyrosa-directory/);
+  assert.match(html, /pyrosa-newsync/);
   assert.match(html, /trusted_proxy_headers/);
+  assert.match(html, /ui_auth/);
+  assert.match(html, /metadata_only/);
+  assert.match(html, /not_required/);
+  assert.match(html, /gateway_proxy/);
+  assert.match(html, /future/);
   assert.match(html, /action="\/actions\/iam\/binding"/);
 });
 

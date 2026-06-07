@@ -14,13 +14,20 @@ import {
   type Fail2BanApplyPayload,
   type FirewallApplyPayload,
   iamAuthModes,
+  iamBindingRenderModes,
   iamBindingStatuses,
   iamMfaPolicies,
+  iamProviderCapabilityKeys,
+  iamProviderCapabilityStatuses,
+  iamProviderProvisioningStatuses,
   type IamAuthMode,
   type IamBindingMutationRequest,
+  type IamBindingRenderMode,
   type IamBindingStatus,
   type IamMfaPolicy,
   type IamOverview,
+  type IamProviderCapabilitySummary,
+  type IamProviderProvisioningStatus,
   type PackageInstallPayload,
   type PackageInventoryCollectPayload,
   type MailSyncPayload,
@@ -149,6 +156,44 @@ function parseStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : [];
 }
 
+function parseIamProviderCapabilityStatus(value: unknown): IamProviderCapabilitySummary[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((entry) => {
+    if (!entry || typeof entry !== "object") {
+      return [];
+    }
+
+    const candidate = entry as {
+      key?: unknown;
+      status?: unknown;
+      notes?: unknown;
+    };
+
+    if (typeof candidate.key !== "string" || typeof candidate.status !== "string") {
+      return [];
+    }
+
+    if (!isIncludedValue(iamProviderCapabilityKeys, candidate.key)) {
+      return [];
+    }
+
+    if (!isIncludedValue(iamProviderCapabilityStatuses, candidate.status)) {
+      return [];
+    }
+
+    return [
+      {
+        key: candidate.key,
+        status: candidate.status,
+        notes: typeof candidate.notes === "string" ? candidate.notes : undefined
+      }
+    ];
+  });
+}
+
 function isIncludedValue<T extends readonly string[]>(
   candidates: T,
   value: string
@@ -180,16 +225,36 @@ function normalizeIamBindingRequest(request: IamBindingMutationRequest): IamBind
     throw new Error(`Unsupported IAM binding status ${request.status}.`);
   }
 
+  if (
+    request.renderMode !== undefined &&
+    !isIncludedValue(iamBindingRenderModes, request.renderMode)
+  ) {
+    throw new Error(`Unsupported IAM binding render mode ${request.renderMode}.`);
+  }
+
+  if (
+    request.providerProvisioningStatus !== undefined &&
+    !isIncludedValue(iamProviderProvisioningStatuses, request.providerProvisioningStatus)
+  ) {
+    throw new Error(
+      `Unsupported IAM provider provisioning status ${request.providerProvisioningStatus}.`
+    );
+  }
+
   return {
     bindingId,
     providerSlug,
     authMode: request.authMode,
     mfaPolicy: request.mfaPolicy,
-    status: request.status
+    status: request.status,
+    renderMode: request.renderMode,
+    providerProvisioningStatus: request.providerProvisioningStatus
   };
 }
 
 function toIamProviderSummary(row: IamProviderRow): IamOverview["providers"][number] {
+  const config = row.config_json ?? {};
+
   return {
     providerId: row.provider_id,
     slug: row.slug,
@@ -198,7 +263,8 @@ function toIamProviderSummary(row: IamProviderRow): IamOverview["providers"][num
     status: row.status as IamOverview["providers"][number]["status"],
     baseUrl: row.base_url ?? undefined,
     capabilities: parseStringArray(row.capabilities) as IamAuthMode[],
-    config: row.config_json ?? {},
+    capabilityStatus: parseIamProviderCapabilityStatus(config.capabilityStatus),
+    config,
     notes: row.notes ?? undefined,
     createdAt: normalizeDatabaseTimestamp(row.created_at),
     updatedAt: normalizeDatabaseTimestamp(row.updated_at)
@@ -217,6 +283,10 @@ function toIamBindingSummary(row: IamBindingRow): IamOverview["bindings"][number
     authMode: row.auth_mode as IamAuthMode,
     mfaPolicy: row.mfa_policy as IamMfaPolicy,
     status: row.status as IamBindingStatus,
+    renderMode: row.render_mode as IamBindingRenderMode,
+    renderEnabled: row.render_mode === "apache_managed",
+    providerProvisioningStatus:
+      row.provider_provisioning_status as IamProviderProvisioningStatus,
     allowedGroups: parseStringArray(row.allowed_groups),
     config: row.config_json ?? {},
     notes: row.notes ?? undefined,
@@ -262,6 +332,8 @@ export async function buildIamOverview(client: PoolClient): Promise<IamOverview>
          bindings.auth_mode,
          bindings.mfa_policy,
          bindings.status,
+         bindings.render_mode,
+         bindings.provider_provisioning_status,
          bindings.allowed_groups,
          bindings.config_json,
          bindings.notes,
@@ -2898,8 +2970,16 @@ export function createControlPlaneOperationsMethods(
           );
         }
 
-        const existingResult = await client.query<{ binding_id: string; target_slug: string }>(
-          `SELECT binding_id, target_slug
+        const existingResult = await client.query<{
+          binding_id: string;
+          target_slug: string;
+          render_mode: string;
+          provider_provisioning_status: string;
+        }>(
+          `SELECT binding_id,
+                  target_slug,
+                  render_mode,
+                  provider_provisioning_status
            FROM control_plane_iam_bindings
            WHERE binding_id = $1`,
           [normalized.bindingId]
@@ -2916,6 +2996,8 @@ export function createControlPlaneOperationsMethods(
                auth_mode = $3,
                mfa_policy = $4,
                status = $5,
+               render_mode = $6,
+               provider_provisioning_status = $7,
                updated_at = NOW()
            WHERE binding_id = $1`,
           [
@@ -2923,7 +3005,9 @@ export function createControlPlaneOperationsMethods(
             provider.provider_id,
             normalized.authMode,
             normalized.mfaPolicy,
-            normalized.status
+            normalized.status,
+            normalized.renderMode ?? existing.render_mode,
+            normalized.providerProvisioningStatus ?? existing.provider_provisioning_status
           ]
         );
 
@@ -2938,7 +3022,10 @@ export function createControlPlaneOperationsMethods(
             provider: normalized.providerSlug,
             authMode: normalized.authMode,
             mfaPolicy: normalized.mfaPolicy,
-            status: normalized.status
+            status: normalized.status,
+            renderMode: normalized.renderMode ?? existing.render_mode,
+            providerProvisioningStatus:
+              normalized.providerProvisioningStatus ?? existing.provider_provisioning_status
           }
         });
 

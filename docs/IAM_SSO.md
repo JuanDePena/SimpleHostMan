@@ -79,7 +79,7 @@ Official Authentik references checked during this planning pass:
 
 ## Architectural Decision: IAM Provider Selection
 
-Status: accepted for phases 1-4 on `2026-06-07`.
+Status: accepted for phases 1-7 on `2026-06-07`.
 
 SimpleHostMan should model IAM as a selectable control-plane resource instead
 of hard-coding every SSO integration to a single product. The first supported
@@ -93,8 +93,10 @@ providers are:
   not be presented as an OIDC or SAML provider until those protocols are
   implemented in Pyrosa Accounts.
 
-Provider selection is metadata-only during phases 1-4. It does not rewrite
-Apache vhosts, Authentik provider objects, outposts, DNS, or live app traffic.
+Provider selection was metadata-only during phases 1-4. Phases 5-7 add render
+state and richer capability metadata, but they still do not rewrite Apache
+vhosts, Authentik provider objects, outposts, DNS, or live app traffic unless a
+binding is explicitly promoted from `metadata_only` to `apache_managed`.
 
 The control plane stores:
 
@@ -118,6 +120,9 @@ Operational defaults:
   and `pgadmin` metadata.
 - Pyrosa Accounts remains selectable only where the application supports
   `ui_auth`.
+- `pyrosa-directory` and `pyrosa-newsync` already implement Pyrosa Accounts
+  `ui_auth`; SimpleHostMan models these bindings as app-handled authentication
+  without taking ownership of their client secrets.
 - Non-HTTP services such as SSH and RustDesk transport remain outside IAM.
 
 Implementation phases:
@@ -132,6 +137,38 @@ Implementation phases:
    `ui_auth`.
 7. Add or reject Pyrosa Accounts gateway/OIDC/SAML support based on concrete app
    requirements.
+
+Phase 5-7 implementation decisions:
+
+- IAM bindings now carry `render_mode`:
+  - `metadata_only`: SimpleHostMan records and displays the binding, but does
+    not dispatch Apache changes.
+  - `apache_managed`: reserved for bindings whose generated Apache output has
+    passed parity checks and is safe to apply.
+- IAM bindings also carry `provider_provisioning_status` so an operator can see
+  whether the upstream provider object is already manually ready, not required,
+  pending, future-only, or unknown.
+- Authentik capabilities remain available for `proxy`, `trusted_proxy_headers`,
+  `oidc`, and `saml`.
+- Pyrosa Accounts capability status is explicit:
+  - `ui_auth`: available for compatible Pyrosa-native apps.
+  - `oauth`, `oidc`, and `gateway_proxy`: future/scaffold-disabled until real
+    runtime support exists.
+  - `saml`: disabled unless a concrete requirement appears.
+- `pyrosa-directory` is recorded as:
+  - provider: `pyrosa-accounts`
+  - mode: `ui_auth`
+  - client: `directory`
+  - callback: `https://directory.pyrosa.com.do/auth/callback`
+  - secret storage: app runtime env, outside SimpleHostMan.
+- `pyrosa-newsync` is recorded as:
+  - provider: `pyrosa-accounts`
+  - mode: `ui_auth`
+  - client: `sync`
+  - callback: `https://newsync.pyrosa.com.do/auth/callback`
+  - secret storage: app runtime env, outside SimpleHostMan.
+  - inventory boundary: the binding can exist even while full app inventory
+    ownership remains outside PostgreSQL.
 
 ## Target Architecture
 

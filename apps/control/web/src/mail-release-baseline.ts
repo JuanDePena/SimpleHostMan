@@ -348,6 +348,12 @@ export function createMailReleaseBaselineData(): DashboardData {
           status: "active",
           baseUrl: "https://auth.pyrosa.com.do",
           capabilities: ["proxy", "trusted_proxy_headers", "oidc", "saml"],
+          capabilityStatus: [
+            { key: "proxy", status: "available" },
+            { key: "trusted_proxy_headers", status: "available" },
+            { key: "oidc", status: "available" },
+            { key: "saml", status: "available" }
+          ],
           config: {},
           notes: "Default IAM provider.",
           createdAt: "2026-06-07T00:00:00.000Z",
@@ -361,6 +367,13 @@ export function createMailReleaseBaselineData(): DashboardData {
           status: "candidate",
           baseUrl: "https://accounts.pyrosa.com.do",
           capabilities: ["ui_auth"],
+          capabilityStatus: [
+            { key: "ui_auth", status: "available" },
+            { key: "oauth", status: "future" },
+            { key: "oidc", status: "future" },
+            { key: "gateway_proxy", status: "future" },
+            { key: "saml", status: "disabled" }
+          ],
           config: {},
           notes: "Pyrosa-native ui-auth candidate.",
           createdAt: "2026-06-07T00:00:00.000Z",
@@ -379,6 +392,9 @@ export function createMailReleaseBaselineData(): DashboardData {
           authMode: "proxy",
           mfaPolicy: "required",
           status: "active",
+          renderMode: "metadata_only",
+          renderEnabled: false,
+          providerProvisioningStatus: "manual_ready",
           allowedGroups: ["PYROSA Operators"],
           config: {},
           notes: "Existing Authentik protected surface.",
@@ -396,9 +412,64 @@ export function createMailReleaseBaselineData(): DashboardData {
           authMode: "trusted_proxy_headers",
           mfaPolicy: "required",
           status: "active",
+          renderMode: "metadata_only",
+          renderEnabled: false,
+          providerProvisioningStatus: "manual_ready",
           allowedGroups: ["PYROSA Operators"],
           config: {},
           notes: "Existing Authentik trusted-proxy handoff.",
+          createdAt: "2026-06-07T00:00:00.000Z",
+          updatedAt: "2026-06-07T00:00:00.000Z"
+        },
+        {
+          bindingId: "iam-binding-pyrosa-directory",
+          providerSlug: "pyrosa-accounts",
+          providerDisplayName: "Pyrosa Accounts",
+          targetKind: "app",
+          targetSlug: "pyrosa-directory",
+          externalUrl: "https://directory.pyrosa.com.do/",
+          authMode: "ui_auth",
+          mfaPolicy: "required",
+          status: "active",
+          renderMode: "metadata_only",
+          renderEnabled: false,
+          providerProvisioningStatus: "not_required",
+          allowedGroups: [],
+          config: {
+            authHandledByApp: true,
+            uiAuth: {
+              clientSlug: "directory",
+              callbackUrl: "https://directory.pyrosa.com.do/auth/callback",
+              secretStorage: "PYROSA_DIRECTORY_ACCOUNTS_CLIENT_SECRET in app runtime env"
+            }
+          },
+          notes: "Existing Pyrosa Accounts ui-auth integration.",
+          createdAt: "2026-06-07T00:00:00.000Z",
+          updatedAt: "2026-06-07T00:00:00.000Z"
+        },
+        {
+          bindingId: "iam-binding-pyrosa-newsync",
+          providerSlug: "pyrosa-accounts",
+          providerDisplayName: "Pyrosa Accounts",
+          targetKind: "app",
+          targetSlug: "pyrosa-newsync",
+          externalUrl: "https://newsync.pyrosa.com.do/",
+          authMode: "ui_auth",
+          mfaPolicy: "required",
+          status: "active",
+          renderMode: "metadata_only",
+          renderEnabled: false,
+          providerProvisioningStatus: "not_required",
+          allowedGroups: [],
+          config: {
+            authHandledByApp: true,
+            uiAuth: {
+              clientSlug: "sync",
+              callbackUrl: "https://newsync.pyrosa.com.do/auth/callback",
+              secretStorage: "PYROSA_SYNC_UI_AUTH_CLIENT_SECRET in app runtime env"
+            }
+          },
+          notes: "Existing Pyrosa Accounts ui-auth integration.",
           createdAt: "2026-06-07T00:00:00.000Z",
           updatedAt: "2026-06-07T00:00:00.000Z"
         }

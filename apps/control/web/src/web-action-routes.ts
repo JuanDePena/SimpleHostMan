@@ -160,7 +160,11 @@ export const handleActionWebRoutes: WebRouteHandler = async ({
       authMode: (form.get("authMode")?.trim() ?? "proxy") as IamBindingMutationRequest["authMode"],
       mfaPolicy: (form.get("mfaPolicy")?.trim() ??
         "provider_default") as IamBindingMutationRequest["mfaPolicy"],
-      status: (form.get("status")?.trim() ?? "candidate") as IamBindingMutationRequest["status"]
+      status: (form.get("status")?.trim() ?? "candidate") as IamBindingMutationRequest["status"],
+      renderMode: (form.get("renderMode")?.trim() ??
+        "metadata_only") as IamBindingMutationRequest["renderMode"],
+      providerProvisioningStatus: (form.get("providerProvisioningStatus")?.trim() ??
+        "unknown") as IamBindingMutationRequest["providerProvisioningStatus"]
     };
 
     await api.updateIamBinding(token, requestBody);

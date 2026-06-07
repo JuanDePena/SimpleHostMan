@@ -6,8 +6,10 @@ import {
 
 import {
   iamAuthModes,
+  iamBindingRenderModes,
   iamBindingStatuses,
   iamMfaPolicies,
+  iamProviderProvisioningStatuses,
   type IamBindingSummary,
   type IamProviderSummary
 } from "@simplehost/control-contracts";
@@ -33,6 +35,69 @@ function toneForStatus(status: string): "default" | "success" | "danger" | "mute
 
 function renderList(values: string[], emptyValue: string): string {
   return values.length > 0 ? escapeHtml(values.join(", ")) : escapeHtml(emptyValue);
+}
+
+function renderCapabilityStatus(
+  provider: IamProviderSummary,
+  renderPill: (value: string, tone?: "default" | "success" | "danger" | "muted") => string,
+  emptyValue: string
+): string {
+  if (provider.capabilityStatus.length === 0) {
+    return renderList(provider.capabilities, emptyValue);
+  }
+
+  return provider.capabilityStatus
+    .map((capability) => {
+      const tone =
+        capability.status === "available"
+          ? "success"
+          : capability.status === "disabled"
+            ? "danger"
+            : "muted";
+
+      return `${escapeHtml(capability.key)} ${renderPill(capability.status, tone)}`;
+    })
+    .join(" ");
+}
+
+function renderUiAuthMetadata(binding: IamBindingSummary, copy: WebCopy): string {
+  const uiAuth =
+    binding.config.uiAuth && typeof binding.config.uiAuth === "object"
+      ? (binding.config.uiAuth as Record<string, unknown>)
+      : undefined;
+
+  if (!uiAuth) {
+    return "";
+  }
+
+  const facts = [
+    {
+      label: copy.iamClientSlugLabel,
+      value:
+        typeof uiAuth.clientSlug === "string"
+          ? `<span class="mono">${escapeHtml(uiAuth.clientSlug)}</span>`
+          : escapeHtml(copy.none)
+    },
+    {
+      label: copy.iamCallbackUrlLabel,
+      value:
+        typeof uiAuth.callbackUrl === "string"
+          ? `<span class="mono">${escapeHtml(uiAuth.callbackUrl)}</span>`
+          : escapeHtml(copy.none)
+    },
+    {
+      label: copy.iamSecretStorageLabel,
+      value:
+        typeof uiAuth.secretStorage === "string"
+          ? escapeHtml(uiAuth.secretStorage)
+          : escapeHtml(copy.none)
+    }
+  ];
+
+  return `<div class="stack">
+    <h4>${escapeHtml(copy.iamUiAuthTitle)}</h4>
+    ${renderActionFacts(facts, { className: "action-card-facts-wide-labels" })}
+  </div>`;
 }
 
 function selectBinding(
@@ -63,6 +128,7 @@ function buildProviderRows(args: {
       escapeHtml(provider.displayName),
       renderPill(provider.status, toneForStatus(provider.status)),
       renderList(provider.capabilities, copy.none),
+      renderCapabilityStatus(provider, renderPill, copy.none),
       provider.baseUrl ? `<span class="mono">${escapeHtml(provider.baseUrl)}</span>` : escapeHtml(copy.none)
     ],
     searchText: [
@@ -70,6 +136,9 @@ function buildProviderRows(args: {
       provider.displayName,
       provider.status,
       provider.capabilities.join(" "),
+      provider.capabilityStatus
+        .map((capability) => `${capability.key} ${capability.status} ${capability.notes ?? ""}`)
+        .join(" "),
       provider.baseUrl ?? "",
       provider.notes ?? ""
     ].join(" ")
@@ -100,6 +169,16 @@ function buildBindingRows(args: {
         ),
         escapeHtml(binding.providerDisplayName),
         renderPill(binding.authMode, binding.authMode === "ui_auth" ? "success" : "default"),
+        renderPill(binding.renderMode, binding.renderEnabled ? "success" : "muted"),
+        renderPill(
+          binding.providerProvisioningStatus,
+          binding.providerProvisioningStatus === "manual_ready" ||
+            binding.providerProvisioningStatus === "not_required"
+            ? "success"
+            : binding.providerProvisioningStatus === "pending"
+              ? "default"
+              : "muted"
+        ),
         renderPill(binding.mfaPolicy, binding.mfaPolicy === "required" ? "success" : "muted"),
         renderPill(binding.status, toneForStatus(binding.status))
       ],
@@ -109,6 +188,8 @@ function buildBindingRows(args: {
         binding.providerSlug,
         binding.providerDisplayName,
         binding.authMode,
+        binding.renderMode,
+        binding.providerProvisioningStatus,
         binding.mfaPolicy,
         binding.status,
         binding.externalUrl ?? "",
@@ -167,6 +248,22 @@ function renderBindingDetailPanel(args: {
         {
           label: copy.iamAllowedGroupsLabel,
           value: renderList(binding.allowedGroups, copy.none)
+        },
+        {
+          label: copy.iamRenderModeLabel,
+          value: renderPill(binding.renderMode, binding.renderEnabled ? "success" : "muted")
+        },
+        {
+          label: copy.iamProviderProvisioningLabel,
+          value: renderPill(
+            binding.providerProvisioningStatus,
+            binding.providerProvisioningStatus === "manual_ready" ||
+              binding.providerProvisioningStatus === "not_required"
+              ? "success"
+              : binding.providerProvisioningStatus === "pending"
+                ? "default"
+                : "muted"
+          )
         }
       ],
       { className: "action-card-facts-wide-labels" }
@@ -211,6 +308,27 @@ function renderBindingDetailPanel(args: {
             )}
           </select>
         </label>
+        <label>
+          <span>${escapeHtml(copy.iamRenderModeLabel)}</span>
+          <select name="renderMode"${disabledAttribute}>
+            ${renderSelectOptions(
+              iamBindingRenderModes.map((mode) => ({ value: mode, label: mode })),
+              binding.renderMode
+            )}
+          </select>
+        </label>
+        <label>
+          <span>${escapeHtml(copy.iamProviderProvisioningLabel)}</span>
+          <select name="providerProvisioningStatus"${disabledAttribute}>
+            ${renderSelectOptions(
+              iamProviderProvisioningStatuses.map((status) => ({
+                value: status,
+                label: status
+              })),
+              binding.providerProvisioningStatus
+            )}
+          </select>
+        </label>
       </div>
       ${
         currentUserIsAdmin
@@ -218,6 +336,7 @@ function renderBindingDetailPanel(args: {
           : `<p class="empty">${escapeHtml(copy.iamAdminRequired)}</p>`
       }
     </form>
+    ${renderUiAuthMetadata(binding, copy)}
     ${binding.notes ? `<p class="muted">${escapeHtml(binding.notes)}</p>` : ""}
   </article>`;
 }
@@ -261,6 +380,7 @@ export function renderIamWorkspace(args: {
         { label: copy.iamDisplayNameLabel },
         { label: copy.iamStatusLabel },
         { label: copy.iamCapabilitiesLabel },
+        { label: copy.iamCapabilityStatusLabel },
         { label: copy.iamBaseUrlLabel, className: "mono" }
       ],
       rows: buildProviderRows({ providers, renderPill, copy }),
@@ -282,6 +402,8 @@ export function renderIamWorkspace(args: {
           { label: copy.iamTargetLabel, className: "mono" },
           { label: copy.iamProviderLabel },
           { label: copy.iamAuthModeLabel },
+          { label: copy.iamRenderModeLabel },
+          { label: copy.iamProviderProvisioningLabel },
           { label: copy.iamMfaPolicyLabel },
           { label: copy.iamStatusLabel }
         ],

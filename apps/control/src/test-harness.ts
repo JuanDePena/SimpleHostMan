@@ -180,6 +180,12 @@ export function createDashboardBootstrap(
           status: "active",
           baseUrl: "https://auth.pyrosa.com.do",
           capabilities: ["proxy", "trusted_proxy_headers", "oidc", "saml"],
+          capabilityStatus: [
+            { key: "proxy", status: "available" },
+            { key: "trusted_proxy_headers", status: "available" },
+            { key: "oidc", status: "available" },
+            { key: "saml", status: "available" }
+          ],
           config: {},
           notes: "Default IAM provider.",
           createdAt: new Date().toISOString(),
@@ -193,6 +199,13 @@ export function createDashboardBootstrap(
           status: "candidate",
           baseUrl: "https://accounts.pyrosa.com.do",
           capabilities: ["ui_auth"],
+          capabilityStatus: [
+            { key: "ui_auth", status: "available" },
+            { key: "oauth", status: "future" },
+            { key: "oidc", status: "future" },
+            { key: "gateway_proxy", status: "future" },
+            { key: "saml", status: "disabled" }
+          ],
           config: {},
           notes: "Pyrosa-native ui-auth candidate.",
           createdAt: new Date().toISOString(),
@@ -211,8 +224,11 @@ export function createDashboardBootstrap(
           authMode: "trusted_proxy_headers",
           mfaPolicy: "required",
           status: "active",
+          renderMode: "metadata_only",
+          renderEnabled: false,
+          providerProvisioningStatus: "manual_ready",
           allowedGroups: ["PYROSA Operators"],
-          config: {},
+          config: { render: { mode: "metadata_only", enabled: false } },
           notes: "Existing Authentik trusted-proxy handoff.",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
