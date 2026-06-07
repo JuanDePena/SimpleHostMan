@@ -139,6 +139,7 @@ export function createDashboardBootstrap(
     nodeHealth: [],
     jobHistory: [],
     auditEvents: [],
+    users: [currentUser],
     backups: {
       generatedAt: new Date().toISOString(),
       policies: [],
@@ -168,6 +169,55 @@ export function createDashboardBootstrap(
       runtimeCount: 0,
       uiManagedCount: 0,
       parameters: []
+    },
+    iam: {
+      providers: [
+        {
+          providerId: "iam-provider-authentik",
+          slug: "authentik",
+          displayName: "Authentik",
+          kind: "authentik",
+          status: "active",
+          baseUrl: "https://auth.pyrosa.com.do",
+          capabilities: ["proxy", "trusted_proxy_headers", "oidc", "saml"],
+          config: {},
+          notes: "Default IAM provider.",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        {
+          providerId: "iam-provider-pyrosa-accounts",
+          slug: "pyrosa-accounts",
+          displayName: "Pyrosa Accounts",
+          kind: "pyrosa_accounts",
+          status: "candidate",
+          baseUrl: "https://accounts.pyrosa.com.do",
+          capabilities: ["ui_auth"],
+          config: {},
+          notes: "Pyrosa-native ui-auth candidate.",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      ],
+      bindings: [
+        {
+          bindingId: "iam-binding-simplehost-control",
+          providerSlug: "authentik",
+          providerDisplayName: "Authentik",
+          targetKind: "control",
+          targetSlug: "simplehost-control",
+          externalUrl: "https://vps-prd.pyrosa.com.do:3200/",
+          internalUrl: "http://host.containers.internal:13200",
+          authMode: "trusted_proxy_headers",
+          mfaPolicy: "required",
+          status: "active",
+          allowedGroups: ["PYROSA Operators"],
+          config: {},
+          notes: "Existing Authentik trusted-proxy handoff.",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      ]
     }
   } as unknown as ControlDashboardBootstrap;
 }
@@ -407,6 +457,9 @@ export function createStubApiSurface(args: {
       case "/v1/audit/events":
         writeJson(response, 200, args.dashboard.auditEvents);
         return;
+      case "/v1/users":
+        writeJson(response, 200, args.dashboard.users);
+        return;
       case "/v1/backups/summary":
         writeJson(response, 200, args.dashboard.backups);
         return;
@@ -421,6 +474,9 @@ export function createStubApiSurface(args: {
         return;
       case "/v1/parameters":
         writeJson(response, 200, args.dashboard.parameters);
+        return;
+      case "/v1/iam/summary":
+        writeJson(response, 200, args.dashboard.iam);
         return;
       case "/v1/apps/adudoc/proxy-preview":
         if (args.proxyPreviewError) {

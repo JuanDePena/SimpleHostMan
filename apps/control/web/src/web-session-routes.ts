@@ -27,17 +27,19 @@ function readHeader(
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 }
 
-function isAuthentikSsoRequest(headers: Record<string, string | string[] | undefined>): boolean {
-  return Boolean(
+function buildExternalSsoSignOutLocation(
+  headers: Record<string, string | string[] | undefined>
+): string | null {
+  if (
     readHeader(headers, "x-authentik-email") ??
-      readHeader(headers, "x-authentik-username") ??
-      readHeader(headers, "x-authentik-meta-provider") ??
-      readHeader(headers, "x-authentik-meta-outpost")
-  );
-}
+    readHeader(headers, "x-authentik-username") ??
+    readHeader(headers, "x-authentik-meta-provider") ??
+    readHeader(headers, "x-authentik-meta-outpost")
+  ) {
+    return `/outpost.goauthentik.io/sign_out?rd=${encodeURIComponent("/login")}`;
+  }
 
-function buildAuthentikOutpostSignOutLocation(): string {
-  return `/outpost.goauthentik.io/sign_out?rd=${encodeURIComponent("/login")}`;
+  return null;
 }
 
 export const handleSessionWebRoutes: WebRouteHandler = async ({
@@ -91,9 +93,8 @@ export const handleSessionWebRoutes: WebRouteHandler = async ({
 
     redirect(
       response,
-      isAuthentikSsoRequest(request.headers)
-        ? buildAuthentikOutpostSignOutLocation()
-        : "/login?notice=Session%20closed&kind=info",
+      buildExternalSsoSignOutLocation(request.headers) ??
+        "/login?notice=Session%20closed&kind=info",
       clearSessionCookie()
     );
     return true;

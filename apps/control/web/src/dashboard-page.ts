@@ -24,6 +24,7 @@ import { renderNodeHealthWorkspace } from "./dashboard-node-health.js";
 import { renderPackagesWorkspace } from "./dashboard-packages.js";
 import { renderParametersWorkspace } from "./dashboard-parameters.js";
 import { renderOperatorsWorkspace } from "./dashboard-operators.js";
+import { renderIamWorkspace } from "./dashboard-iam.js";
 import {
   renderFail2BanWorkspace,
   renderFirewallWorkspace
@@ -841,6 +842,16 @@ export function renderDashboardPage(args: RenderDashboardArgs): string {
         });
       case "operators":
         return renderOperatorsWorkspace({
+          copy,
+          data,
+          currentPath,
+          focus,
+          renderFocusLink: renderFocusLinkWithPill,
+          renderPill,
+          renderSignalStrip
+        });
+      case "iam":
+        return renderIamWorkspace({
           copy,
           data,
           currentPath,

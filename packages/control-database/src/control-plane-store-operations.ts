@@ -13,6 +13,14 @@ import {
   type EnvironmentParametersSnapshot,
   type Fail2BanApplyPayload,
   type FirewallApplyPayload,
+  iamAuthModes,
+  iamBindingStatuses,
+  iamMfaPolicies,
+  type IamAuthMode,
+  type IamBindingMutationRequest,
+  type IamBindingStatus,
+  type IamMfaPolicy,
+  type IamOverview,
   type PackageInstallPayload,
   type PackageInventoryCollectPayload,
   type MailSyncPayload,
@@ -71,6 +79,8 @@ import type {
   DatabaseDispatchRow,
   DriftStatusRow,
   EnvironmentParameterRow,
+  IamBindingRow,
+  IamProviderRow,
   InventoryNodeRow,
   InventoryRecordRow,
   InstalledPackageRow,
@@ -133,6 +143,147 @@ function normalizeEnvironmentParameterKey(key: string): string {
 function normalizeParameterDescription(value: string | undefined): string | null {
   const normalized = value?.trim();
   return normalized && normalized.length > 0 ? normalized : null;
+}
+
+function parseStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : [];
+}
+
+function isIncludedValue<T extends readonly string[]>(
+  candidates: T,
+  value: string
+): value is T[number] {
+  return candidates.some((candidate) => candidate === value);
+}
+
+function normalizeIamBindingRequest(request: IamBindingMutationRequest): IamBindingMutationRequest {
+  const bindingId = request.bindingId?.trim();
+  const providerSlug = request.providerSlug?.trim();
+
+  if (!bindingId) {
+    throw new Error("IAM binding id is required.");
+  }
+
+  if (!providerSlug) {
+    throw new Error("IAM provider slug is required.");
+  }
+
+  if (!isIncludedValue(iamAuthModes, request.authMode)) {
+    throw new Error(`Unsupported IAM auth mode ${request.authMode}.`);
+  }
+
+  if (!isIncludedValue(iamMfaPolicies, request.mfaPolicy)) {
+    throw new Error(`Unsupported IAM MFA policy ${request.mfaPolicy}.`);
+  }
+
+  if (!isIncludedValue(iamBindingStatuses, request.status)) {
+    throw new Error(`Unsupported IAM binding status ${request.status}.`);
+  }
+
+  return {
+    bindingId,
+    providerSlug,
+    authMode: request.authMode,
+    mfaPolicy: request.mfaPolicy,
+    status: request.status
+  };
+}
+
+function toIamProviderSummary(row: IamProviderRow): IamOverview["providers"][number] {
+  return {
+    providerId: row.provider_id,
+    slug: row.slug,
+    displayName: row.display_name,
+    kind: row.kind as IamOverview["providers"][number]["kind"],
+    status: row.status as IamOverview["providers"][number]["status"],
+    baseUrl: row.base_url ?? undefined,
+    capabilities: parseStringArray(row.capabilities) as IamAuthMode[],
+    config: row.config_json ?? {},
+    notes: row.notes ?? undefined,
+    createdAt: normalizeDatabaseTimestamp(row.created_at),
+    updatedAt: normalizeDatabaseTimestamp(row.updated_at)
+  };
+}
+
+function toIamBindingSummary(row: IamBindingRow): IamOverview["bindings"][number] {
+  return {
+    bindingId: row.binding_id,
+    providerSlug: row.provider_slug,
+    providerDisplayName: row.provider_display_name,
+    targetKind: row.target_kind as IamOverview["bindings"][number]["targetKind"],
+    targetSlug: row.target_slug,
+    externalUrl: row.external_url ?? undefined,
+    internalUrl: row.internal_url ?? undefined,
+    authMode: row.auth_mode as IamAuthMode,
+    mfaPolicy: row.mfa_policy as IamMfaPolicy,
+    status: row.status as IamBindingStatus,
+    allowedGroups: parseStringArray(row.allowed_groups),
+    config: row.config_json ?? {},
+    notes: row.notes ?? undefined,
+    createdAt: normalizeDatabaseTimestamp(row.created_at),
+    updatedAt: normalizeDatabaseTimestamp(row.updated_at)
+  };
+}
+
+export async function buildIamOverview(client: PoolClient): Promise<IamOverview> {
+  const [providersResult, bindingsResult] = await Promise.all([
+    client.query<IamProviderRow>(
+      `SELECT
+         provider_id,
+         slug,
+         display_name,
+         kind,
+         status,
+         base_url,
+         capabilities,
+         config_json,
+         notes,
+         created_at,
+         updated_at
+       FROM control_plane_iam_providers
+       ORDER BY
+         CASE status
+           WHEN 'active' THEN 1
+           WHEN 'candidate' THEN 2
+           WHEN 'future' THEN 3
+           ELSE 4
+         END,
+         display_name`
+    ),
+    client.query<IamBindingRow>(
+      `SELECT
+         bindings.binding_id,
+         providers.slug AS provider_slug,
+         providers.display_name AS provider_display_name,
+         bindings.target_kind,
+         bindings.target_slug,
+         bindings.external_url,
+         bindings.internal_url,
+         bindings.auth_mode,
+         bindings.mfa_policy,
+         bindings.status,
+         bindings.allowed_groups,
+         bindings.config_json,
+         bindings.notes,
+         bindings.created_at,
+         bindings.updated_at
+       FROM control_plane_iam_bindings bindings
+       INNER JOIN control_plane_iam_providers providers
+         ON providers.provider_id = bindings.provider_id
+       ORDER BY
+         CASE bindings.target_kind
+           WHEN 'control' THEN 1
+           WHEN 'host_service' THEN 2
+           ELSE 3
+         END,
+         bindings.target_slug`
+    )
+  ]);
+
+  return {
+    providers: providersResult.rows.map(toIamProviderSummary),
+    bindings: bindingsResult.rows.map(toIamBindingSummary)
+  };
 }
 
 function isSensitiveParameter(key: string, explicit = false): boolean {
@@ -2698,6 +2849,100 @@ export function createControlPlaneOperationsMethods(
         ]);
 
         return buildEnvironmentParametersSnapshot(client, runtimeEnv);
+      });
+    },
+
+    async getIamOverview(presentedToken) {
+      return withTransaction(pool, async (client) => {
+        await requireAuthorizedUser(client, presentedToken, [
+          "platform_admin",
+          "platform_operator"
+        ]);
+
+        return buildIamOverview(client);
+      });
+    },
+
+    async upsertIamBinding(request, presentedToken) {
+      return withTransaction(pool, async (client) => {
+        const actor = await requireAuthorizedUser(client, presentedToken, ["platform_admin"]);
+        const normalized = normalizeIamBindingRequest(request);
+        const providerResult = await client.query<IamProviderRow>(
+          `SELECT
+             provider_id,
+             slug,
+             display_name,
+             kind,
+             status,
+             base_url,
+             capabilities,
+             config_json,
+             notes,
+             created_at,
+             updated_at
+           FROM control_plane_iam_providers
+           WHERE slug = $1`,
+          [normalized.providerSlug]
+        );
+        const provider = providerResult.rows[0];
+
+        if (!provider) {
+          throw new Error(`IAM provider ${normalized.providerSlug} does not exist.`);
+        }
+
+        const capabilities = parseStringArray(provider.capabilities);
+
+        if (!capabilities.includes(normalized.authMode)) {
+          throw new Error(
+            `IAM provider ${normalized.providerSlug} does not support ${normalized.authMode}.`
+          );
+        }
+
+        const existingResult = await client.query<{ binding_id: string; target_slug: string }>(
+          `SELECT binding_id, target_slug
+           FROM control_plane_iam_bindings
+           WHERE binding_id = $1`,
+          [normalized.bindingId]
+        );
+        const existing = existingResult.rows[0];
+
+        if (!existing) {
+          throw new Error(`IAM binding ${normalized.bindingId} does not exist.`);
+        }
+
+        await client.query(
+          `UPDATE control_plane_iam_bindings
+           SET provider_id = $2,
+               auth_mode = $3,
+               mfa_policy = $4,
+               status = $5,
+               updated_at = NOW()
+           WHERE binding_id = $1`,
+          [
+            normalized.bindingId,
+            provider.provider_id,
+            normalized.authMode,
+            normalized.mfaPolicy,
+            normalized.status
+          ]
+        );
+
+        await insertAuditEvent(client, {
+          actorType: "user",
+          actorId: actor.userId,
+          eventType: "iam.binding.updated",
+          entityType: "iam_binding",
+          entityId: normalized.bindingId,
+          payload: {
+            targetSlug: existing.target_slug,
+            provider: normalized.providerSlug,
+            authMode: normalized.authMode,
+            mfaPolicy: normalized.mfaPolicy,
+            status: normalized.status
+          }
+        });
+
+        return buildIamOverview(client);
       });
     },
 

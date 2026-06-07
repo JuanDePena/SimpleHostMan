@@ -20,6 +20,8 @@ import type {
   EnvironmentParametersSnapshot,
   Fail2BanApplyRequest,
   FirewallApplyRequest,
+  IamBindingMutationRequest,
+  IamOverview,
   InventoryImportSummary,
   InventoryStateSnapshot,
   JobClaimRequest,
@@ -120,6 +122,45 @@ export interface SessionRow {
   user_id: string;
   expires_at: Date | string;
   revoked_at: Date | string | null;
+}
+
+export interface SessionMetadata {
+  authProviderSlug?: string;
+  externalSubject?: string;
+  mfaSatisfied?: boolean;
+  assuranceLevel?: string;
+}
+
+export interface IamProviderRow {
+  provider_id: string;
+  slug: string;
+  display_name: string;
+  kind: string;
+  status: string;
+  base_url: string | null;
+  capabilities: unknown;
+  config_json: Record<string, unknown> | null;
+  notes: string | null;
+  created_at: Date | string;
+  updated_at: Date | string;
+}
+
+export interface IamBindingRow {
+  binding_id: string;
+  provider_slug: string;
+  provider_display_name: string;
+  target_kind: string;
+  target_slug: string;
+  external_url: string | null;
+  internal_url: string | null;
+  auth_mode: string;
+  mfa_policy: string;
+  status: string;
+  allowed_groups: unknown;
+  config_json: Record<string, unknown> | null;
+  notes: string | null;
+  created_at: Date | string;
+  updated_at: Date | string;
 }
 
 export interface EnvironmentParameterRow {
@@ -524,6 +565,11 @@ export interface ControlPlaneStore {
   listEnvironmentParameters(
     presentedToken: string | null
   ): Promise<EnvironmentParametersSnapshot>;
+  getIamOverview(presentedToken: string | null): Promise<IamOverview>;
+  upsertIamBinding(
+    request: IamBindingMutationRequest,
+    presentedToken: string | null
+  ): Promise<IamOverview>;
   upsertEnvironmentParameter(
     request: EnvironmentParameterMutationRequest,
     presentedToken: string | null
@@ -659,6 +705,8 @@ export type ControlPlaneOperationsMethods = Pick<
   | "getNodeHealth"
   | "getPackageInventory"
   | "listEnvironmentParameters"
+  | "getIamOverview"
+  | "upsertIamBinding"
   | "upsertEnvironmentParameter"
   | "deleteEnvironmentParameter"
   | "getRustDeskNodeHealth"

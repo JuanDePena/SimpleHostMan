@@ -1,6 +1,6 @@
 # IAM And SSO Runbook
 
-Updated on `2026-05-02`.
+Updated on `2026-06-07`.
 
 ## Scope
 
@@ -76,6 +76,62 @@ Official Authentik references checked during this planning pass:
 - https://docs.goauthentik.io/install-config/configuration/
 - https://docs.goauthentik.io/add-secure-apps/outposts/
 - https://docs.goauthentik.io/add-secure-apps/providers/proxy/
+
+## Architectural Decision: IAM Provider Selection
+
+Status: accepted for phases 1-4 on `2026-06-07`.
+
+SimpleHostMan should model IAM as a selectable control-plane resource instead
+of hard-coding every SSO integration to a single product. The first supported
+providers are:
+
+- `authentik`: active/default for administrative and infrastructure browser
+  surfaces. It currently provides proxy protection, trusted-proxy headers, MFA,
+  and can later expose OIDC/SAML for apps that support those protocols.
+- `pyrosa-accounts`: candidate provider for Pyrosa-native applications that can
+  integrate with the in-house `ui-auth` ticket/introspection flow. It should
+  not be presented as an OIDC or SAML provider until those protocols are
+  implemented in Pyrosa Accounts.
+
+Provider selection is metadata-only during phases 1-4. It does not rewrite
+Apache vhosts, Authentik provider objects, outposts, DNS, or live app traffic.
+
+The control plane stores:
+
+- IAM providers and their capabilities.
+- Protected-surface bindings that select provider, mode, MFA policy and status.
+- trusted-proxy login metadata on local `shp_session`/`control_plane_sessions`
+  records so audit and logout behavior can identify the originating provider.
+
+Initial integration modes:
+
+- `proxy`: provider performs the HTTP reverse-proxy enforcement before the app.
+- `trusted_proxy_headers`: SimpleHostMan consumes trusted identity headers after
+  upstream provider enforcement and creates a local `shp_session`.
+- `ui_auth`: Pyrosa apps delegate UI session exchange to Pyrosa Accounts.
+- `oidc` and `saml`: reserved for providers that actually implement those
+  protocols for the selected application.
+
+Operational defaults:
+
+- Authentik remains selected for `code-server`, SimpleHostMan operator access,
+  and `pgadmin` metadata.
+- Pyrosa Accounts remains selectable only where the application supports
+  `ui_auth`.
+- Non-HTTP services such as SSH and RustDesk transport remain outside IAM.
+
+Implementation phases:
+
+1. Document this architectural decision in this runbook.
+2. Add PostgreSQL provider/binding metadata and shared contracts.
+3. Generalize SimpleHostMan trusted-proxy SSO without changing current
+   Authentik behavior.
+4. Add an initial Control Plane IAM view for providers and protected bindings.
+5. Render protected Apache/provider state from PostgreSQL metadata.
+6. Integrate Pyrosa Accounts with compatible Pyrosa-native apps through
+   `ui_auth`.
+7. Add or reject Pyrosa Accounts gateway/OIDC/SAML support based on concrete app
+   requirements.
 
 ## Target Architecture
 

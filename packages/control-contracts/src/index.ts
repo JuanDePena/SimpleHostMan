@@ -7,3 +7,4 @@ export * from "./desired-state.js";
 export * from "./mail.js";
 export * from "./backups.js";
 export * from "./operations.js";
+export * from "./iam.js";

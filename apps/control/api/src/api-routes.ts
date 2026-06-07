@@ -9,6 +9,7 @@ import {
 } from "@simplehost/control-database";
 
 import { handleAuthRoutes } from "./api-auth-routes.js";
+import { handleIamRoutes } from "./api-iam-routes.js";
 import { readBearerToken, writeJson } from "./api-http.js";
 import { handleMailRoutes } from "./api-mail-routes.js";
 import { handleNodeAgentRoutes } from "./api-node-agent-routes.js";
@@ -23,6 +24,8 @@ const rootEndpoints = [
   "POST /v1/auth/login",
   "GET /v1/auth/me",
   "POST /v1/auth/logout",
+  "GET /v1/iam/summary",
+  "PUT /v1/iam/bindings/:bindingId",
   "GET /v1/users",
   "POST /v1/users",
   "GET /v1/inventory/summary",
@@ -130,6 +133,7 @@ export function createApiRequestHandler({
 
     for (const handler of [
       handleAuthRoutes,
+      handleIamRoutes,
       handleResourceRoutes,
       handleParameterRoutes,
       handleMailRoutes,

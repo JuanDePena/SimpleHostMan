@@ -8,12 +8,45 @@ import type { CombinedControlRequestContext } from "./request-context.js";
 const sessionCookieName = "shp_session";
 
 export interface TrustedProxyIdentity {
+  provider: string;
   email: string;
   username?: string;
   displayName?: string;
   groups: string[];
   remoteAddress?: string;
+  externalSubject?: string;
+  mfaSatisfied?: boolean;
+  assuranceLevel?: string;
+  signOutPath: string;
 }
+
+interface TrustedProxyProviderAdapter {
+  provider: string;
+  emailHeader: string;
+  usernameHeader: string;
+  displayNameHeader?: string;
+  groupsHeader?: string;
+  subjectHeader?: string;
+  mfaSatisfiedHeader?: string;
+  assuranceLevelHeader?: string;
+  signOutPath: string;
+  assumesMfaSatisfied?: boolean;
+}
+
+// Only adapters in this list can mint local sessions from upstream headers.
+// Pyrosa Accounts stays metadata-only for trusted-proxy until a gateway exists.
+const trustedProxyProviderAdapters: TrustedProxyProviderAdapter[] = [
+  {
+    provider: "authentik",
+    emailHeader: "x-authentik-email",
+    usernameHeader: "x-authentik-username",
+    displayNameHeader: "x-authentik-name",
+    groupsHeader: "x-authentik-groups",
+    subjectHeader: "x-authentik-uid",
+    signOutPath: "/outpost.goauthentik.io/sign_out",
+    assumesMfaSatisfied: true
+  }
+];
 
 function escapeHtml(value: string): string {
   return value
@@ -63,7 +96,25 @@ function parseGroups(value: string | null): string[] {
     .filter(Boolean);
 }
 
-export function readAuthentikTrustedProxyIdentity(
+function parseBooleanHeader(value: string | null): boolean | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const normalized = value.trim().toLowerCase();
+
+  if (["1", "true", "yes", "y"].includes(normalized)) {
+    return true;
+  }
+
+  if (["0", "false", "no", "n"].includes(normalized)) {
+    return false;
+  }
+
+  return undefined;
+}
+
+export function readTrustedProxyIdentity(
   request: IncomingMessage
 ): TrustedProxyIdentity | null {
   const remoteAddress = request.socket?.remoteAddress;
@@ -72,22 +123,41 @@ export function readAuthentikTrustedProxyIdentity(
     return null;
   }
 
-  const username = readHeader(request, "x-authentik-username") ?? undefined;
-  const email =
-    normalizeEmail(readHeader(request, "x-authentik-email")) ??
-    normalizeEmail(username ?? null);
+  for (const adapter of trustedProxyProviderAdapters) {
+    const username = readHeader(request, adapter.usernameHeader) ?? undefined;
+    const email =
+      normalizeEmail(readHeader(request, adapter.emailHeader)) ??
+      normalizeEmail(username ?? null);
 
-  if (!email) {
-    return null;
+    if (!email) {
+      continue;
+    }
+
+    const parsedMfaSatisfied = adapter.mfaSatisfiedHeader
+      ? parseBooleanHeader(readHeader(request, adapter.mfaSatisfiedHeader))
+      : undefined;
+
+    return {
+      provider: adapter.provider,
+      email,
+      username,
+      displayName: adapter.displayNameHeader
+        ? readHeader(request, adapter.displayNameHeader) ?? undefined
+        : undefined,
+      groups: adapter.groupsHeader ? parseGroups(readHeader(request, adapter.groupsHeader)) : [],
+      remoteAddress,
+      externalSubject: adapter.subjectHeader
+        ? readHeader(request, adapter.subjectHeader) ?? username ?? email
+        : username ?? email,
+      mfaSatisfied: parsedMfaSatisfied ?? adapter.assumesMfaSatisfied,
+      assuranceLevel: adapter.assuranceLevelHeader
+        ? readHeader(request, adapter.assuranceLevelHeader) ?? undefined
+        : undefined,
+      signOutPath: adapter.signOutPath
+    };
   }
 
-  return {
-    email,
-    username,
-    displayName: readHeader(request, "x-authentik-name") ?? undefined,
-    groups: parseGroups(readHeader(request, "x-authentik-groups")),
-    remoteAddress
-  };
+  return null;
 }
 
 function serializeSessionCookie(login: AuthLoginResponse): string {
@@ -104,11 +174,14 @@ function buildTrustedProxyLoginRequest(
 ): TrustedProxyLoginRequest {
   return {
     email: identity.email,
-    provider: "authentik",
+    provider: identity.provider,
     username: identity.username,
     displayName: identity.displayName,
     groups: identity.groups,
-    remoteAddress: identity.remoteAddress
+    remoteAddress: identity.remoteAddress,
+    externalSubject: identity.externalSubject,
+    mfaSatisfied: identity.mfaSatisfied,
+    assuranceLevel: identity.assuranceLevel
   };
 }
 
@@ -120,8 +193,8 @@ function buildRedirectLocation(context: CombinedControlRequestContext): string {
   return `${context.pathname}${context.url.search}`;
 }
 
-function buildSsoSignOutLocation(): string {
-  return `/outpost.goauthentik.io/sign_out?rd=${encodeURIComponent("/login")}`;
+function buildSsoSignOutLocation(identity: TrustedProxyIdentity): string {
+  return `${identity.signOutPath}?rd=${encodeURIComponent("/login")}`;
 }
 
 function isTrustedProxyAccessDeniedError(error: unknown): boolean {
@@ -130,7 +203,7 @@ function isTrustedProxyAccessDeniedError(error: unknown): boolean {
 
 function renderTrustedProxyAccessDeniedPage(identity: TrustedProxyIdentity): string {
   const email = escapeHtml(identity.email);
-  const signOutHref = escapeHtml(buildSsoSignOutLocation());
+  const signOutHref = escapeHtml(buildSsoSignOutLocation(identity));
 
   return `<!doctype html>
 <html lang="es">
@@ -272,7 +345,7 @@ function renderTrustedProxyAccessDeniedPage(identity: TrustedProxyIdentity): str
       <section>
         <div class="summary">
           <h2>Acceso no provisionado</h2>
-          <p>Authentik validó la identidad, pero no hay una cuenta activa de SimpleHostMan asociada a este correo.</p>
+          <p>El proveedor IAM validó la identidad, pero no hay una cuenta activa de SimpleHostMan asociada a este correo.</p>
         </div>
         <div class="identity">
           <span>Correo recibido por SSO</span>
@@ -312,7 +385,7 @@ export async function maybeCreateTrustedProxySession(args: {
     return false;
   }
 
-  const identity = readAuthentikTrustedProxyIdentity(args.context.request);
+  const identity = readTrustedProxyIdentity(args.context.request);
 
   if (!identity) {
     return false;

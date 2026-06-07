@@ -7,6 +7,7 @@ import {
   type Fail2BanApplyRequest,
   type FirewallApplyRequest,
   type EnvironmentParameterMutationRequest,
+  type IamBindingMutationRequest,
   type JobDispatchResponse,
   type PackageInstallRequest,
   type PackageInventoryRefreshRequest
@@ -144,6 +145,29 @@ export const handleActionWebRoutes: WebRouteHandler = async ({
         `Created operator ${result.user.email}.`,
         "success"
       )
+    );
+    return true;
+  }
+
+  if (request.method === "POST" && url.pathname === "/actions/iam/binding") {
+    const token = await requireSessionToken({ requireSession });
+    const form = await readFormBody(request);
+    const returnTo = form.get("returnTo") ?? "/";
+    const bindingId = form.get("bindingId")?.trim() ?? "";
+    const requestBody: IamBindingMutationRequest = {
+      bindingId,
+      providerSlug: form.get("providerSlug")?.trim() ?? "",
+      authMode: (form.get("authMode")?.trim() ?? "proxy") as IamBindingMutationRequest["authMode"],
+      mfaPolicy: (form.get("mfaPolicy")?.trim() ??
+        "provider_default") as IamBindingMutationRequest["mfaPolicy"],
+      status: (form.get("status")?.trim() ?? "candidate") as IamBindingMutationRequest["status"]
+    };
+
+    await api.updateIamBinding(token, requestBody);
+
+    redirect(
+      response,
+      noticeReturnTo(returnTo, `Saved IAM binding ${bindingId}.`, "success")
     );
     return true;
   }

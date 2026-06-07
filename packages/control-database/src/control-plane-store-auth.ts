@@ -28,6 +28,7 @@ import type {
   NodeCredentialRow,
   NodeRow,
   ControlPlaneStoreOptions,
+  SessionMetadata,
   SessionRow,
   UserCredentialRow,
   UserGlobalRoleRow,
@@ -448,7 +449,8 @@ export async function buildAuthenticatedUserSummary(
 export async function createSession(
   client: PoolClient,
   userId: string,
-  sessionTtlSeconds: number
+  sessionTtlSeconds: number,
+  metadata: SessionMetadata = {}
 ): Promise<{ sessionToken: string; expiresAt: string }> {
   const createdAt = new Date();
   const expiresAt = new Date(createdAt.getTime() + sessionTtlSeconds * 1000);
@@ -461,15 +463,23 @@ export async function createSession(
        session_token_hash,
        created_at,
        expires_at,
-       last_used_at
+       last_used_at,
+       auth_provider_slug,
+       external_subject,
+       mfa_satisfied,
+       assurance_level
      )
-     VALUES ($1, $2, $3, $4, $5, $4)`,
+     VALUES ($1, $2, $3, $4, $5, $4, $6, $7, $8, $9)`,
     [
       randomUUID(),
       userId,
       hashToken(sessionToken),
       createdAt.toISOString(),
-      expiresAt.toISOString()
+      expiresAt.toISOString(),
+      metadata.authProviderSlug ?? null,
+      metadata.externalSubject ?? null,
+      metadata.mfaSatisfied ?? null,
+      metadata.assuranceLevel ?? null
     ]
   );
 
@@ -973,7 +983,12 @@ export function createControlPlaneAuthMethods(
           throw new UserAuthorizationError("Trusted proxy user is not active.");
         }
 
-        const session = await createSession(client, user.user_id, options.sessionTtlSeconds);
+        const session = await createSession(client, user.user_id, options.sessionTtlSeconds, {
+          authProviderSlug: request.provider,
+          externalSubject: request.externalSubject ?? request.username ?? request.email,
+          mfaSatisfied: request.mfaSatisfied,
+          assuranceLevel: request.assuranceLevel
+        });
         const summary = await buildAuthenticatedUserSummary(client, user.user_id);
 
         await insertAuditEvent(client, {
@@ -987,7 +1002,10 @@ export function createControlPlaneAuthMethods(
             provider: request.provider,
             username: request.username ?? null,
             groups: request.groups ?? [],
-            remoteAddress: request.remoteAddress ?? null
+            remoteAddress: request.remoteAddress ?? null,
+            externalSubject: request.externalSubject ?? request.username ?? request.email,
+            mfaSatisfied: request.mfaSatisfied ?? null,
+            assuranceLevel: request.assuranceLevel ?? null
           }
         });
 

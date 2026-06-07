@@ -260,6 +260,8 @@ test("creates a local session for trusted Authentik web requests", async () => {
             assert.equal(identity.email, "webmaster@pyrosa.com.do");
             assert.equal(identity.provider, "authentik");
             assert.equal(identity.username, "webmaster@pyrosa.com.do");
+            assert.equal(identity.externalSubject, "authentik-user-id");
+            assert.equal(identity.mfaSatisfied, true);
             assert.deepEqual(identity.groups, ["PYROSA Operators", "Admins"]);
             assert.equal(identity.remoteAddress, "127.0.0.1");
             return createAuthLoginResponse();
@@ -280,6 +282,7 @@ test("creates a local session for trusted Authentik web requests", async () => {
     headers: {
       "x-authentik-email": "Webmaster@PYROSA.COM.DO",
       "x-authentik-username": "webmaster@pyrosa.com.do",
+      "x-authentik-uid": "authentik-user-id",
       "x-authentik-groups": "PYROSA Operators, Admins"
     }
   });

@@ -32,11 +32,14 @@ export interface AuthLoginResponse {
 
 export interface TrustedProxyLoginRequest {
   email: string;
-  provider: "authentik";
+  provider: string;
   username?: string;
   displayName?: string;
   groups?: string[];
   remoteAddress?: string;
+  externalSubject?: string;
+  mfaSatisfied?: boolean;
+  assuranceLevel?: string;
 }
 
 export interface AuthLogoutResponse {

@@ -225,7 +225,8 @@ test("dashboard sidebar renders logical collapsible groups", () => {
     html.indexOf('data-nav-group-id="continuity"')
   );
   assert.ok(controlPlaneGroup.indexOf(">Overview<") < controlPlaneGroup.indexOf(">Audit<"));
-  assert.ok(controlPlaneGroup.indexOf(">Audit<") < controlPlaneGroup.indexOf(">Jobs<"));
+  assert.ok(controlPlaneGroup.indexOf(">Audit<") < controlPlaneGroup.indexOf(">IAM<"));
+  assert.ok(controlPlaneGroup.indexOf(">IAM<") < controlPlaneGroup.indexOf(">Jobs<"));
   assert.ok(controlPlaneGroup.indexOf(">Jobs<") < controlPlaneGroup.indexOf(">Operators<"));
   assert.ok(
     controlPlaneGroup.indexOf(">Operators<") < controlPlaneGroup.indexOf(">Parameters<")
@@ -235,6 +236,7 @@ test("dashboard sidebar renders logical collapsible groups", () => {
   );
   assert.match(controlPlaneGroup, />Parameters<[\s\S]*sidebar-badge[^>]*>2<\/span>/);
   assert.match(controlPlaneGroup, />Operators<[\s\S]*sidebar-badge[^>]*>2<\/span>/);
+  assert.match(controlPlaneGroup, />IAM<[\s\S]*sidebar-badge[^>]*>2<\/span>/);
 
   const continuityGroup = html.slice(
     html.indexOf('data-nav-group-id="continuity"'),
@@ -980,6 +982,17 @@ test("operators workspace lists control-plane users and create form", () => {
   assert.match(html, /action="\/actions\/operators\/create"/);
   assert.match(html, /name="globalRole"/);
   assert.match(html, /Platform operator/);
+});
+
+test("iam workspace lists providers and protected bindings", () => {
+  const html = renderView(createDashboardData(), "iam", "iam-binding-simplehost-control");
+
+  assert.match(html, /id="section-iam"/);
+  assert.match(html, /Authentik/);
+  assert.match(html, /Pyrosa Accounts/);
+  assert.match(html, /simplehost-control/);
+  assert.match(html, /trusted_proxy_headers/);
+  assert.match(html, /action="\/actions\/iam\/binding"/);
 });
 
 test("storage workspace shows selected node tracked path usage beside storage detail", () => {

@@ -17,6 +17,8 @@ import {
   type EnvironmentParametersSnapshot,
   type Fail2BanApplyRequest,
   type FirewallApplyRequest,
+  type IamBindingMutationRequest,
+  type IamOverview,
   type InventoryStateSnapshot,
   type JobDispatchResponse,
   type JobHistoryEntry,
@@ -91,6 +93,8 @@ export interface ControlWebApi extends ControlAuthSurface {
   loadDashboardData(token: string): Promise<DashboardData>;
   loadUsers(token: string): Promise<AuthenticatedUserSummary[]>;
   createUser(token: string, request: CreateUserRequest): Promise<CreateUserResponse>;
+  loadIamOverview(token: string): Promise<IamOverview>;
+  updateIamBinding(token: string, request: IamBindingMutationRequest): Promise<IamOverview>;
   loadParameters(token: string): Promise<EnvironmentParametersSnapshot>;
   upsertParameter(
     token: string,
@@ -271,7 +275,9 @@ export function createControlWebApiFromRequest(request: ControlWebApiRequest): C
     getPackages: (token: string) =>
       request<PackageInventorySnapshot>("/v1/packages/summary", { token }),
     getParameters: (token: string) =>
-      request<EnvironmentParametersSnapshot>("/v1/parameters", { token })
+      request<EnvironmentParametersSnapshot>("/v1/parameters", { token }),
+    getIamOverview: (token: string) =>
+      request<IamOverview>("/v1/iam/summary", { token })
   });
 
   const api: ControlWebApi = {
@@ -324,6 +330,19 @@ export function createControlWebApiFromRequest(request: ControlWebApiRequest): C
         token,
         body: createUserRequest
       });
+    },
+    loadIamOverview(token: string): Promise<IamOverview> {
+      return request<IamOverview>("/v1/iam/summary", { token });
+    },
+    updateIamBinding(token: string, updateRequest: IamBindingMutationRequest): Promise<IamOverview> {
+      return request<IamOverview>(
+        `/v1/iam/bindings/${encodeURIComponent(updateRequest.bindingId)}`,
+        {
+          method: "PUT",
+          token,
+          body: updateRequest
+        }
+      );
     },
     loadParameters(token: string): Promise<EnvironmentParametersSnapshot> {
       return request<EnvironmentParametersSnapshot>("/v1/parameters", { token });

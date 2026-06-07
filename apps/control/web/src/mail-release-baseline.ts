@@ -337,6 +337,72 @@ export function createMailReleaseBaselineData(): DashboardData {
       runtimeCount: 0,
       uiManagedCount: 0,
       parameters: []
+    },
+    iam: {
+      providers: [
+        {
+          providerId: "iam-provider-authentik",
+          slug: "authentik",
+          displayName: "Authentik",
+          kind: "authentik",
+          status: "active",
+          baseUrl: "https://auth.pyrosa.com.do",
+          capabilities: ["proxy", "trusted_proxy_headers", "oidc", "saml"],
+          config: {},
+          notes: "Default IAM provider.",
+          createdAt: "2026-06-07T00:00:00.000Z",
+          updatedAt: "2026-06-07T00:00:00.000Z"
+        },
+        {
+          providerId: "iam-provider-pyrosa-accounts",
+          slug: "pyrosa-accounts",
+          displayName: "Pyrosa Accounts",
+          kind: "pyrosa_accounts",
+          status: "candidate",
+          baseUrl: "https://accounts.pyrosa.com.do",
+          capabilities: ["ui_auth"],
+          config: {},
+          notes: "Pyrosa-native ui-auth candidate.",
+          createdAt: "2026-06-07T00:00:00.000Z",
+          updatedAt: "2026-06-07T00:00:00.000Z"
+        }
+      ],
+      bindings: [
+        {
+          bindingId: "iam-binding-code-server",
+          providerSlug: "authentik",
+          providerDisplayName: "Authentik",
+          targetKind: "host_service",
+          targetSlug: "code-server",
+          externalUrl: "https://code.pyrosa.com.do/",
+          internalUrl: "http://host.containers.internal:18080",
+          authMode: "proxy",
+          mfaPolicy: "required",
+          status: "active",
+          allowedGroups: ["PYROSA Operators"],
+          config: {},
+          notes: "Existing Authentik protected surface.",
+          createdAt: "2026-06-07T00:00:00.000Z",
+          updatedAt: "2026-06-07T00:00:00.000Z"
+        },
+        {
+          bindingId: "iam-binding-simplehost-control",
+          providerSlug: "authentik",
+          providerDisplayName: "Authentik",
+          targetKind: "control",
+          targetSlug: "simplehost-control",
+          externalUrl: "https://vps-prd.pyrosa.com.do:3200/",
+          internalUrl: "http://host.containers.internal:13200",
+          authMode: "trusted_proxy_headers",
+          mfaPolicy: "required",
+          status: "active",
+          allowedGroups: ["PYROSA Operators"],
+          config: {},
+          notes: "Existing Authentik trusted-proxy handoff.",
+          createdAt: "2026-06-07T00:00:00.000Z",
+          updatedAt: "2026-06-07T00:00:00.000Z"
+        }
+      ]
     }
   } as unknown as DashboardData;
 }

@@ -47,6 +47,12 @@ function createStubApi(
     createUser: async () => {
       throw new Error("Unexpected user create in test");
     },
+    loadIamOverview: async () => {
+      throw new Error("Unexpected IAM overview load in test");
+    },
+    updateIamBinding: async () => {
+      throw new Error("Unexpected IAM binding update in test");
+    },
     loadParameters: async () => {
       throw new Error("Unexpected parameters load in test");
     },

@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import type { PoolClient } from "pg";
 
@@ -11,6 +12,7 @@ import {
 import { createQueuedDispatchJob } from "./control-plane-store-helpers.js";
 import {
   buildAppContainerPlans,
+  buildIamOverview,
   buildProxyPayload,
   buildZoneDnsPlans,
   mergeJobHistoryRows,
@@ -31,6 +33,14 @@ function createMailSyncJob(payload: Record<string, unknown>) {
 function createStubClient(rows: Array<Record<string, unknown>>): PoolClient {
   return {
     query: async () => ({ rows })
+  } as unknown as PoolClient;
+}
+
+function createSequenceStubClient(rowSets: Array<Array<Record<string, unknown>>>): PoolClient {
+  let queryIndex = 0;
+
+  return {
+    query: async () => ({ rows: rowSets[queryIndex++] ?? [] })
   } as unknown as PoolClient;
 }
 
@@ -158,6 +168,66 @@ test("mergeJobHistoryRows de-duplicates dns.sync rows already present in the rec
 
   assert.equal(merged.length, 1);
   assert.equal(merged[0]?.id, "job-dns-1");
+});
+
+test("iam provider selection migration defines tables, seeds, and session metadata", () => {
+  const migrationSql = readFileSync(
+    new URL("../migrations/0018_iam_provider_selection.sql", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(migrationSql, /CREATE TABLE IF NOT EXISTS control_plane_iam_providers/);
+  assert.match(migrationSql, /CREATE TABLE IF NOT EXISTS control_plane_iam_bindings/);
+  assert.match(migrationSql, /ADD COLUMN IF NOT EXISTS auth_provider_slug/);
+  assert.match(migrationSql, /'authentik'/);
+  assert.match(migrationSql, /'pyrosa-accounts'/);
+  assert.match(migrationSql, /'iam-binding-simplehost-control'/);
+});
+
+test("buildIamOverview maps provider capabilities and protected bindings", async () => {
+  const overview = await buildIamOverview(
+    createSequenceStubClient([
+      [
+        {
+          provider_id: "iam-provider-authentik",
+          slug: "authentik",
+          display_name: "Authentik",
+          kind: "authentik",
+          status: "active",
+          base_url: "https://auth.pyrosa.com.do",
+          capabilities: ["proxy", "trusted_proxy_headers"],
+          config_json: { signOutPath: "/outpost.goauthentik.io/sign_out" },
+          notes: "Default IAM provider.",
+          created_at: "2026-06-07T00:00:00.000Z",
+          updated_at: "2026-06-07T00:00:00.000Z"
+        }
+      ],
+      [
+        {
+          binding_id: "iam-binding-simplehost-control",
+          provider_slug: "authentik",
+          provider_display_name: "Authentik",
+          target_kind: "control",
+          target_slug: "simplehost-control",
+          external_url: "https://vps-prd.pyrosa.com.do:3200/",
+          internal_url: "http://host.containers.internal:13200",
+          auth_mode: "trusted_proxy_headers",
+          mfa_policy: "required",
+          status: "active",
+          allowed_groups: ["PYROSA Operators"],
+          config_json: {},
+          notes: "Existing handoff.",
+          created_at: "2026-06-07T00:00:00.000Z",
+          updated_at: "2026-06-07T00:00:00.000Z"
+        }
+      ]
+    ])
+  );
+
+  assert.deepEqual(overview.providers[0]?.capabilities, ["proxy", "trusted_proxy_headers"]);
+  assert.equal(overview.bindings[0]?.targetSlug, "simplehost-control");
+  assert.equal(overview.bindings[0]?.authMode, "trusted_proxy_headers");
+  assert.deepEqual(overview.bindings[0]?.allowedGroups, ["PYROSA Operators"]);
 });
 
 test("purgeOperationalHistoryRows preserves latest resource jobs while deleting old history", async () => {

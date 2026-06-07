@@ -3,6 +3,7 @@ export type DashboardView =
   | "reconciliation"
   | "parameters"
   | "operators"
+  | "iam"
   | "tenants"
   | "nodes"
   | "zones"
@@ -119,6 +120,7 @@ export interface DashboardCopyLabels {
   navAudit: string;
   navJobs: string;
   navOperators: string;
+  navIam: string;
   navParameters: string;
   navReconciliation: string;
   navRustDesk: string;
@@ -152,6 +154,7 @@ export interface DashboardCopyLabels {
   firewallWorkspaceDescription: string;
   fail2banWorkspaceDescription: string;
   operatorsWorkspaceDescription: string;
+  iamWorkspaceDescription: string;
   parametersWorkspaceDescription: string;
   reconciliationWorkspaceDescription: string;
   rustdeskWorkspaceDescription: string;
@@ -177,6 +180,7 @@ export function normalizeDashboardView(value: string | null | undefined): Dashbo
     case "reconciliation":
     case "parameters":
     case "operators":
+    case "iam":
     case "tenants":
     case "nodes":
     case "zones":
@@ -346,6 +350,8 @@ function getObjectViewLabel(
       return copy.navParameters;
     case "operators":
       return copy.navOperators;
+    case "iam":
+      return copy.navIam;
     case "jobs":
       return copy.navJobs;
     default:
@@ -530,6 +536,8 @@ export function getDashboardSubheading(copy: DashboardCopyLabels, view: Dashboar
       return copy.parametersWorkspaceDescription;
     case "operators":
       return copy.operatorsWorkspaceDescription;
+    case "iam":
+      return copy.iamWorkspaceDescription;
     case "jobs":
       return copy.jobHistoryDescription;
     case "audit":

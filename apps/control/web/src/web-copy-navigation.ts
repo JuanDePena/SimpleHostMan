@@ -18,6 +18,7 @@ export const navigationCopyByLocale = {
     navJobs: "Jobs",
     navParameters: "Parameters",
     navOperators: "Operators",
+    navIam: "IAM",
     navBackups: "Backups",
     navRustDesk: "RustDesk",
     navUpdates: "Updates",
@@ -109,6 +110,8 @@ export const navigationCopyByLocale = {
       "Runtime environment parameters plus UI-managed entries for control-plane operations.",
     operatorsWorkspaceDescription:
       "Control-plane users, global roles and access posture for administrative operators.",
+    iamWorkspaceDescription:
+      "IAM providers, protected surfaces and SSO/MFA binding posture.",
     reconciliationWorkspaceDescription:
       "Compare desired resources with the latest applied state and dispatch missing platform work.",
     rustdeskWorkspaceDescription:
@@ -130,6 +133,7 @@ export const navigationCopyByLocale = {
     navJobs: "Jobs",
     navParameters: "Parameters",
     navOperators: "Operadores",
+    navIam: "IAM",
     navBackups: "Backups",
     navRustDesk: "RustDesk",
     navUpdates: "Updates",
@@ -226,6 +230,8 @@ export const navigationCopyByLocale = {
       "Variables de entorno runtime y entradas gestionadas desde UI para operaciones del control plane.",
     operatorsWorkspaceDescription:
       "Usuarios del control plane, roles globales y postura de acceso para operadores administrativos.",
+    iamWorkspaceDescription:
+      "Proveedores IAM, superficies protegidas y postura de bindings SSO/MFA.",
     reconciliationWorkspaceDescription:
       "Compara recursos deseados con el último estado aplicado y despacha trabajo faltante de plataforma.",
     rustdeskWorkspaceDescription:
