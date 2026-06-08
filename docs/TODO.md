@@ -97,14 +97,20 @@ Current state:
   `client_credentials`, `profile:read`, and root-only client secret storage.
 - OAuth metadata, token issue, introspection, and revoke were smoke-validated
   locally on 2026-06-08 UTC.
+- SimpleHostMan source now includes a feature-flagged read-only resource-server
+  pilot at `/v1/oauth/pilot/profile`.
+- Runtime release `2606.08.02` validated the resource-server pilot with opaque
+  service tokens, introspection, `profile:read`, `simplehost-control` audience,
+  revocation and fail-closed checks on 2026-06-08 UTC.
 - SimpleHostMan still keeps `pyrosa-accounts` OAuth scaffold-disabled for
-  protected surfaces until a real resource-server pilot is complete.
+  protected browser surfaces because the service-token pilot does not validate
+  human Authorization Code login, MFA/AAL or browser SSO rollback.
 - `oidc` and `gateway_proxy` remain future/scaffold-disabled in SimpleHostMan.
 
 Pending work:
 
-- validate one real resource-server pilot with opaque tokens, introspection,
-  scopes, audience, MFA/AAL and fail-closed behavior
+- validate a human Authorization Code resource-server/browser pilot with user
+  sessions, MFA/AAL, scopes, audience and rollback
 - implement OIDC discovery, JWKS, signed ID tokens, claims and `/userinfo`
   before advertising `pyrosa-accounts` as an OIDC provider
 - implement a real gateway/outpost path before advertising

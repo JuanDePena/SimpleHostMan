@@ -13,6 +13,7 @@ import { handleIamRoutes } from "./api-iam-routes.js";
 import { readBearerToken, writeJson } from "./api-http.js";
 import { handleMailRoutes } from "./api-mail-routes.js";
 import { handleNodeAgentRoutes } from "./api-node-agent-routes.js";
+import { handleOAuthResourceRoutes } from "./api-oauth-resource-routes.js";
 import { handleOperationsRoutes } from "./api-operations-routes.js";
 import { handleParameterRoutes } from "./api-parameter-routes.js";
 import { type ApiRouteContext } from "./api-route-context.js";
@@ -24,6 +25,7 @@ const rootEndpoints = [
   "POST /v1/auth/login",
   "GET /v1/auth/me",
   "POST /v1/auth/logout",
+  "GET /v1/oauth/pilot/profile",
   "GET /v1/iam/summary",
   "PUT /v1/iam/bindings/:bindingId",
   "GET /v1/users",
@@ -133,6 +135,7 @@ export function createApiRequestHandler({
 
     for (const handler of [
       handleAuthRoutes,
+      handleOAuthResourceRoutes,
       handleIamRoutes,
       handleResourceRoutes,
       handleParameterRoutes,

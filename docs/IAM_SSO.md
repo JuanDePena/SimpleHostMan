@@ -153,8 +153,8 @@ Phase 5-7 implementation decisions:
 - Pyrosa Accounts capability status is explicit:
   - `ui_auth`: available for compatible Pyrosa-native apps.
   - `oauth`: implemented as a first runtime cut in `pyrosa-accounts`, but kept
-    scaffold-disabled in SimpleHostMan until migration, release deployment and
-    a resource-server pilot are validated.
+    scaffold-disabled for protected browser surfaces in SimpleHostMan until
+    Authorization Code with user MFA/AAL is validated.
   - `oidc` and `gateway_proxy`: future/scaffold-disabled until real runtime
     support exists.
   - `saml`: disabled unless a concrete requirement appears.
@@ -185,9 +185,24 @@ Pyrosa Accounts provider readiness gate:
   OAuth migration was applied on the primary runtime database on 2026-06-08 UTC.
   The primary runtime was restarted with the OAuth build and the isolated
   `oauth-smoke` client was validated locally for `client_credentials`, token
-  introspection and revocation on 2026-06-08 UTC. OAuth may become available in
-  SimpleHostMan only after at least one real resource-server pilot validates
-  scopes, audience, MFA/AAL and fail-closed behavior.
+  introspection and revocation on 2026-06-08 UTC.
+- SimpleHostMan includes a narrow read-only resource-server pilot at
+  `/v1/oauth/pilot/profile`. It is feature-flagged by
+  `SIMPLEHOST_OAUTH_RESOURCE_SERVER_ENABLED`, introspects opaque tokens with
+  Pyrosa Accounts, requires scope and audience checks, and does not create a
+  local `shp_session`.
+- Runtime release `2606.08.02` validated that resource-server pilot on
+  2026-06-08 UTC with the isolated `oauth-smoke` client:
+  - missing bearer token failed closed with `401 invalid_token`;
+  - active `client_credentials` token with `profile:read` and
+    `simplehost-control` audience returned `200`;
+  - revoked token failed closed with `401 invalid_token`;
+  - token issued for another audience failed closed with `403 invalid_audience`.
+- That pilot proves service-token introspection, scope/audience enforcement and
+  fail-closed behavior. It does not prove human browser SSO, MFA/AAL enforcement
+  or an Authentik replacement path.
+- OAuth may become selectable for protected browser surfaces only after a
+  human Authorization Code pilot validates user sessions, MFA/AAL and rollback.
 - `oidc` may become available only after Accounts ships OIDC discovery, JWKS,
   signed ID tokens, `nonce` handling, stable claims and `/userinfo`.
 - `gateway_proxy` may become available only after Accounts ships a real

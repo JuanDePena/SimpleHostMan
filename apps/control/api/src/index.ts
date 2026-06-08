@@ -19,6 +19,7 @@ import { writeJson } from "./api-http.js";
 import { createApiRequestHandler } from "./api-routes.js";
 
 export { writeJson } from "./api-http.js";
+export { createApiRequestHandler } from "./api-routes.js";
 
 export interface ControlApiSurface {
   auth: ControlAuthSurface;

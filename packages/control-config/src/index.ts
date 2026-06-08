@@ -36,6 +36,18 @@ export interface ControlRustDeskRuntimeConfig {
   secondaryDnsTarget: string | null;
 }
 
+export interface ControlOAuthResourceServerRuntimeConfig {
+  enabled: boolean;
+  issuer: string | null;
+  introspectionUrl: string | null;
+  clientId: string | null;
+  clientSecret: string | null;
+  clientSecretFile: string | null;
+  requiredScope: string | null;
+  requiredAudience: string | null;
+  introspectionTimeoutMs: number;
+}
+
 export interface ControlRuntimeConfig {
   env: string;
   version: string;
@@ -46,6 +58,7 @@ export interface ControlRuntimeConfig {
   auth: ControlAuthRuntimeConfig;
   jobs: ControlJobRuntimeConfig;
   rustdesk: ControlRustDeskRuntimeConfig;
+  oauthResourceServer: ControlOAuthResourceServerRuntimeConfig;
 }
 
 function readPackageVersion(fallback: string): string {
@@ -87,6 +100,27 @@ function readPositiveInt(value: string | undefined, fallback: number): number {
 
 function readOptionalString(value: string | undefined): string | null {
   return value && value.trim().length > 0 ? value.trim() : null;
+}
+
+function readBoolean(value: string | undefined, fallback: boolean): boolean {
+  if (value === undefined) {
+    return fallback;
+  }
+
+  switch (value.trim().toLowerCase()) {
+    case "1":
+    case "true":
+    case "yes":
+    case "on":
+      return true;
+    case "0":
+    case "false":
+    case "no":
+    case "off":
+      return false;
+    default:
+      return fallback;
+  }
 }
 
 export function createControlRuntimeConfig(
@@ -138,6 +172,20 @@ export function createControlRuntimeConfig(
       primaryDnsTarget: readOptionalString(env.SIMPLEHOST_RUSTDESK_PRIMARY_DNS_TARGET),
       secondaryNodeId: readOptionalString(env.SIMPLEHOST_RUSTDESK_SECONDARY_NODE_ID),
       secondaryDnsTarget: readOptionalString(env.SIMPLEHOST_RUSTDESK_SECONDARY_DNS_TARGET)
+    },
+    oauthResourceServer: {
+      enabled: readBoolean(env.SIMPLEHOST_OAUTH_RESOURCE_SERVER_ENABLED, false),
+      issuer: readOptionalString(env.SIMPLEHOST_OAUTH_ISSUER),
+      introspectionUrl: readOptionalString(env.SIMPLEHOST_OAUTH_INTROSPECTION_URL),
+      clientId: readOptionalString(env.SIMPLEHOST_OAUTH_CLIENT_ID),
+      clientSecret: readOptionalString(env.SIMPLEHOST_OAUTH_CLIENT_SECRET),
+      clientSecretFile: readOptionalString(env.SIMPLEHOST_OAUTH_CLIENT_SECRET_FILE),
+      requiredScope: readOptionalString(env.SIMPLEHOST_OAUTH_REQUIRED_SCOPE),
+      requiredAudience: readOptionalString(env.SIMPLEHOST_OAUTH_REQUIRED_AUDIENCE),
+      introspectionTimeoutMs: readPositiveInt(
+        env.SIMPLEHOST_OAUTH_INTROSPECTION_TIMEOUT_MS,
+        3000
+      )
     }
   };
 }

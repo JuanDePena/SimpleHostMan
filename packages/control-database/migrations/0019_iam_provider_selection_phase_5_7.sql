@@ -93,7 +93,7 @@ SET config_json = jsonb_set(
         {
           "key": "oauth",
           "status": "future",
-          "notes": "Design track only; no OAuth API surface is enabled by SimpleHostMan yet."
+          "notes": "Service-token resource-server pilot is validated; browser SSO remains future until Authorization Code and MFA/AAL are proven."
         },
         {
           "key": "oidc",

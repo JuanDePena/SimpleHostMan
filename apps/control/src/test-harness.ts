@@ -266,6 +266,17 @@ export function createTestContext(args: {
         secondaryNodeId: null,
         secondaryDnsTarget: null
       },
+      oauthResourceServer: {
+        enabled: false,
+        issuer: null,
+        introspectionUrl: null,
+        clientId: null,
+        clientSecret: null,
+        clientSecretFile: null,
+        requiredScope: null,
+        requiredAudience: null,
+        introspectionTimeoutMs: 3000
+      },
       version: "0.1.0-test",
       web: { host: "127.0.0.1", port: args.webPort ?? 3200 },
       worker: {
