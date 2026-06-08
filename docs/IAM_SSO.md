@@ -181,11 +181,13 @@ Pyrosa Accounts provider readiness gate:
 - The current source of truth for that implementation plan is
   [`oauth2-api-auth-plan.md`](/srv/containers/apps/pyrosa-accounts/app/docs/oauth2-api-auth-plan.md).
 - `oauth` has a first Accounts runtime cut with OAuth metadata, authorization
-  code, token, introspection, revocation and opaque hashed tokens. It may become
-  available in SimpleHostMan only after client metadata is configured, runtime
-  env controls are deployed and at least one resource-server pilot validates
-  scopes, audience, MFA/AAL and fail-closed behavior. The Accounts OAuth
-  migration was applied on the primary runtime database on 2026-06-08 UTC.
+  code, token, introspection, revocation and opaque hashed tokens. The Accounts
+  OAuth migration was applied on the primary runtime database on 2026-06-08 UTC.
+  The primary runtime was restarted with the OAuth build and the isolated
+  `oauth-smoke` client was validated locally for `client_credentials`, token
+  introspection and revocation on 2026-06-08 UTC. OAuth may become available in
+  SimpleHostMan only after at least one real resource-server pilot validates
+  scopes, audience, MFA/AAL and fail-closed behavior.
 - `oidc` may become available only after Accounts ships OIDC discovery, JWKS,
   signed ID tokens, `nonce` handling, stable claims and `/userinfo`.
 - `gateway_proxy` may become available only after Accounts ships a real

@@ -89,19 +89,22 @@ Current state:
 
 - SimpleHostMan models `pyrosa-accounts` as a candidate IAM provider.
 - `ui_auth` is the only available Pyrosa Accounts integration mode today.
-- `oauth` has a first runtime cut in `pyrosa-accounts`, but remains
-  scaffold-disabled in SimpleHostMan until release deployment, client
-  configuration and a pilot are validated.
+- `oauth` has a first runtime cut in `pyrosa-accounts` and is deployed on the
+  primary runtime.
 - The Accounts OAuth migration was applied on the primary runtime database on
   2026-06-08 UTC.
+- The isolated `oauth-smoke` client is configured with `oauth_enabled=true`,
+  `client_credentials`, `profile:read`, and root-only client secret storage.
+- OAuth metadata, token issue, introspection, and revoke were smoke-validated
+  locally on 2026-06-08 UTC.
+- SimpleHostMan still keeps `pyrosa-accounts` OAuth scaffold-disabled for
+  protected surfaces until a real resource-server pilot is complete.
 - `oidc` and `gateway_proxy` remain future/scaffold-disabled in SimpleHostMan.
 
 Pending work:
 
-- deploy the Accounts OAuth runtime release and configure the first OAuth client
-  explicitly with `oauth_enabled=true`
-- validate one resource-server pilot with opaque tokens, introspection, scopes,
-  audience, MFA/AAL and fail-closed behavior
+- validate one real resource-server pilot with opaque tokens, introspection,
+  scopes, audience, MFA/AAL and fail-closed behavior
 - implement OIDC discovery, JWKS, signed ID tokens, claims and `/userinfo`
   before advertising `pyrosa-accounts` as an OIDC provider
 - implement a real gateway/outpost path before advertising
