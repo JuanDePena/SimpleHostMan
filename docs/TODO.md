@@ -1,90 +1,122 @@
 # SimpleHost TODO
 
-Updated on `2026-05-02`.
+Updated on `2026-06-07`.
 
-This file tracks work that is still open after the current monorepo, naming, and runtime cutover work.
-Closed work should stay documented as implemented state elsewhere, not linger here.
+This file tracks only work that is still open. Closed implementation evidence
+belongs in the feature runbook that owns the behavior, not in this tracker.
 
-Current baseline:
+## Baseline
 
 - canonical source tree: `/opt/simplehostman/src`
 - canonical runtime root: `/opt/simplehostman/release`
-- active release: `2605.02.05`
-- primary active services: `simplehost-control`, `simplehost-worker`, `simplehost-agent`
-- secondary active services: `simplehost-control`, `simplehost-agent`
-- secondary intentionally inactive service: `simplehost-worker`
-- backup timers: primary and secondary `simplehost-backup-runner.timer`
+- active control-plane release: `2606.07.23`
+- implemented IAM/SSO state:
+  [`IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md)
+- implemented operational inspection and hardening evidence:
+  [`OPERATIONAL_INSPECTION_20260501.md`](/opt/simplehostman/src/docs/OPERATIONAL_INSPECTION_20260501.md)
+- implemented mail platform behavior:
+  [`MAIL.md`](/opt/simplehostman/src/docs/MAIL.md)
 
-## Current status
+## Open Items
 
-- The mail roadmap that used to live in this file is complete through phase 7 and has been moved out of `TODO`.
-- Implemented mail behavior now lives in [`/opt/simplehostman/src/docs/MAIL.md`](/opt/simplehostman/src/docs/MAIL.md).
-- The migration and cutover workflow now lives in [`/opt/simplehostman/src/docs/MAIL_MIGRATION.md`](/opt/simplehostman/src/docs/MAIL_MIGRATION.md).
-- The first closed live mail-domain migration is documented in [`/opt/simplehostman/src/docs/MIGRATIONS/adudoc-mail-migration.md`](/opt/simplehostman/src/docs/MIGRATIONS/adudoc-mail-migration.md).
-- `TODO.md` should only carry work that is still genuinely open.
+### 1. Protect `pgadmin.pyrosa.com.do` With Authentik
 
-## Open items
+Current state:
 
-Active open items as of `2026-05-02`:
+- SimpleHostMan models `pyrosa-pgadmin` as an IAM binding with
+  `provider=authentik`, `auth_mode=proxy`, `render_mode=metadata_only`, and
+  `provider_provisioning_status=pending`.
+- No automatic Apache or Authentik API apply should happen until parity and
+  rollback are confirmed.
 
-- Post-migration operational hardening, tuning, resilience, and documentation cleanup are tracked in
-  [`/opt/simplehostman/src/docs/OPERATIONAL_INSPECTION_20260501.md`](/opt/simplehostman/src/docs/OPERATIONAL_INSPECTION_20260501.md).
+Pending work:
 
-Current active slice:
+- create or confirm the upstream Authentik application, provider, group policy,
+  and outpost association for `pgadmin.pyrosa.com.do`
+- prepare a direct-vhost rollback copy before enforcement
+- validate unauthenticated redirect, MFA login, pgAdmin behavior after SSO, and
+  local break-glass access
+- run or confirm a post-enforcement backup covering Authentik state
+- record completion evidence in
+  [`IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md)
 
-- Phase 5 resilience and IAM/SSO follow-up:
-  - the initial Authentik rollout tracked in
-    [`/opt/simplehostman/src/docs/IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md)
-    is stable and closed as of `2026-05-02`
-  - admin TOTP MFA and recovery codes are already enrolled for
-    `webmaster@pyrosa.com.do`
-  - Authentik backup and restore-test coverage is complete through
-    SimpleHostMan backup policy `iam-authentik-primary-daily`
-  - latest Authentik backup run
-    `iam-authentik-primary-daily-2026-05-02T15-23-41-791Z` is replicated to
-    the secondary and checksum-matched for all four backup artifacts
-  - SimpleHostMan backup runner now performs generic post-run replication for
-    generated backup artifacts when replication is enabled in
-    `/etc/simplehost/worker.env`; primary-to-secondary and
-    secondary-to-primary paths were both validated
-  - the scheduled `simplehost-backup-runner.timer` invocations at
-    `2026-05-02 16:05 UTC` and `2026-05-02 16:10 UTC` completed successfully
-    on both nodes without manual `--force`; no policy was due in those
-    minutes, so the next natural scheduled checkpoints are `db-adudoc-daily`
-    at `2026-05-03 01:00 UTC` on primary and `code-server-secondary-daily` at
-    `2026-05-03 04:25 UTC` on secondary
-  - `https://code.pyrosa.com.do/` is now protected through Authentik on the
-    primary, with a direct-vhost rollback copy under `/root/simplehost-rollbacks`
-  - `https://vps-prd.pyrosa.com.do:3200/` is now protected through Authentik on
-    the primary, with the direct control-panel vhost saved under
-    `/root/simplehost-rollbacks`
-  - SimpleHostMan trusted-proxy SSO now converts successful Authentik MFA into
-    a local `shp_session` for existing active operators, removing the internal
-    double-login on the primary operator UI
-  - unprovisioned SSO identities now receive a SimpleHostMan `403` access page
-    with the received email and an Authentik outpost sign-out action
-  - SHM logout now clears the local session and redirects SSO sessions through
-    Authentik outpost sign-out before the next login attempt
-  - secondary IAM/DR posture is defined and staged conservatively: Authentik
-    files, vhosts and units are present on the secondary, but startup is held
-    behind `/etc/simplehost/iam/authentik/SECONDARY_PROMOTED`
-  - secondary IAM/DR posture was dry-run validated on `2026-05-02`: Authentik
-    files, vhosts, units, hold drop-ins, pinned image and replicated backup
-    seed are present; `auth.pyrosa.com.do` and `code.pyrosa.com.do` return
-    `503` when resolved to the secondary while Authentik is held inactive;
-    `https://vps-des.pyrosa.com.do:3200/` remains direct and returns `200`
-  - secondary node-name SimpleHostMan UI remains the standby/direct operator
-    route during normal operation
-  - deferred follow-up options to resume after the operator provides the next
-    instructions:
-    - review the natural scheduled backup checkpoints after
-      `2026-05-03 01:00 UTC` on primary and `2026-05-03 04:25 UTC` on
-      secondary
-    - run a controlled restore drill from replicated backups, starting with
-      Authentik or code-server
-    - choose the next internal administrative app for Authentik protection,
-      such as `pgadmin.pyrosa.com.do` or `ldap.pyrosa.com.do`
-  - SSH remains unchanged and outside the Authentik scope
+### 2. Promote IAM Apache Rendering From Metadata
 
-Historical migration runbooks can retain execution records, validation gates, and conditional
-operator notes, but they should not be treated as active TODOs unless this file links to them.
+Current state:
+
+- IAM provider and binding metadata lives in PostgreSQL.
+- Bindings are intentionally `metadata_only` unless explicitly promoted to
+  `apache_managed`.
+- The IAM UI exposes provider capability status, render mode, MFA policy, and
+  provisioning posture.
+
+Pending work:
+
+- validate generated Apache output from IAM PostgreSQL metadata against the
+  current hand-managed Authentik vhosts
+- keep apply disabled until generated output has parity with the live vhosts and
+  a rollback path exists
+- promote one low-risk binding first, preferably the pgAdmin binding after its
+  Authentik provider object is ready
+- document the renderer parity and apply procedure in
+  [`IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md)
+
+### 3. Run An IAM/DR Restore Drill
+
+Current state:
+
+- Authentik runs on the primary during normal operation.
+- The secondary carries restored Authentik files, vhosts, units, pinned image,
+  and standby posture, but services remain held behind
+  `/etc/simplehost/iam/authentik/SECONDARY_PROMOTED`.
+- Automatic IAM failover remains disabled.
+
+Pending work:
+
+- choose a current replicated Authentik backup as the drill source
+- restore database and files into scratch targets
+- verify users, MFA devices, applications, providers, outpost links, branding,
+  and recovery posture from the restored state
+- optionally rehearse the secondary promotion procedure without enabling
+  automatic failover
+- record drill evidence in
+  [`BACKUPS.md`](/opt/simplehostman/src/docs/BACKUPS.md) and
+  [`IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md)
+
+### 4. Implement Pyrosa Accounts OAuth/OIDC/Gateway Provider Support
+
+Current state:
+
+- SimpleHostMan models `pyrosa-accounts` as a candidate IAM provider.
+- `ui_auth` is the only available Pyrosa Accounts integration mode today.
+- `oauth` has a first runtime cut in `pyrosa-accounts`, but remains
+  scaffold-disabled in SimpleHostMan until release deployment, client
+  configuration and a pilot are validated.
+- The Accounts OAuth migration was applied on the primary runtime database on
+  2026-06-08 UTC.
+- `oidc` and `gateway_proxy` remain future/scaffold-disabled in SimpleHostMan.
+
+Pending work:
+
+- deploy the Accounts OAuth runtime release and configure the first OAuth client
+  explicitly with `oauth_enabled=true`
+- validate one resource-server pilot with opaque tokens, introspection, scopes,
+  audience, MFA/AAL and fail-closed behavior
+- implement OIDC discovery, JWKS, signed ID tokens, claims and `/userinfo`
+  before advertising `pyrosa-accounts` as an OIDC provider
+- implement a real gateway/outpost path before advertising
+  `gateway_proxy`
+- update SimpleHostMan provider capability status only after those releases and
+  pilots are complete
+- record SimpleHostMan readiness evidence in
+  [`IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md)
+
+## Deferred Unless Explicitly Requested
+
+- Pyrosa Accounts `saml` support. It remains disabled unless a concrete
+  requirement appears.
+- Automatic IAM failover. Keep manual promotion until a controlled secondary
+  promotion test proves the data and file behavior.
+- SSH changes. SSH remains outside Authentik/IAM scope.
+- Capacity upgrades and broad database retuning. Current inspection guidance
+  does not recommend an urgent VPS size change.

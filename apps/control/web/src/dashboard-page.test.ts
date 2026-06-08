@@ -225,18 +225,14 @@ test("dashboard sidebar renders logical collapsible groups", () => {
     html.indexOf('data-nav-group-id="continuity"')
   );
   assert.ok(controlPlaneGroup.indexOf(">Overview<") < controlPlaneGroup.indexOf(">Audit<"));
-  assert.ok(controlPlaneGroup.indexOf(">Audit<") < controlPlaneGroup.indexOf(">IAM<"));
-  assert.ok(controlPlaneGroup.indexOf(">IAM<") < controlPlaneGroup.indexOf(">Jobs<"));
-  assert.ok(controlPlaneGroup.indexOf(">Jobs<") < controlPlaneGroup.indexOf(">Operators<"));
-  assert.ok(
-    controlPlaneGroup.indexOf(">Operators<") < controlPlaneGroup.indexOf(">Parameters<")
-  );
+  assert.ok(controlPlaneGroup.indexOf(">Audit<") < controlPlaneGroup.indexOf(">Jobs<"));
+  assert.ok(controlPlaneGroup.indexOf(">Jobs<") < controlPlaneGroup.indexOf(">Parameters<"));
   assert.ok(
     controlPlaneGroup.indexOf(">Parameters<") < controlPlaneGroup.indexOf(">Reconciliation<")
   );
   assert.match(controlPlaneGroup, />Parameters<[\s\S]*sidebar-badge[^>]*>2<\/span>/);
-  assert.match(controlPlaneGroup, />Operators<[\s\S]*sidebar-badge[^>]*>2<\/span>/);
-  assert.match(controlPlaneGroup, />IAM<[\s\S]*sidebar-badge[^>]*>2<\/span>/);
+  assert.doesNotMatch(controlPlaneGroup, />Operators</);
+  assert.doesNotMatch(controlPlaneGroup, />IAM</);
 
   const continuityGroup = html.slice(
     html.indexOf('data-nav-group-id="continuity"'),
@@ -248,6 +244,12 @@ test("dashboard sidebar renders logical collapsible groups", () => {
     html.indexOf('data-nav-group-id="package-management"'),
     html.indexOf('data-nav-group-id="resources"')
   );
+  const securityGroup = html.slice(
+    html.indexOf('data-nav-group-id="security"'),
+    html.indexOf('data-nav-group-id="system"')
+  );
+  assert.match(securityGroup, />Operators<[\s\S]*sidebar-badge[^>]*>2<\/span>/);
+  assert.match(securityGroup, />IAM<[\s\S]*sidebar-badge[^>]*>2<\/span>/);
   assert.ok(packageGroup.indexOf(">Packages<") < packageGroup.indexOf(">Reboots<"));
   assert.ok(packageGroup.indexOf(">Reboots<") < packageGroup.indexOf(">Repositories<"));
   assert.ok(packageGroup.indexOf(">Repositories<") < packageGroup.indexOf(">Updates<"));

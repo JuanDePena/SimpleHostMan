@@ -294,20 +294,6 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
           active: view === "parameters"
         },
         {
-          id: "operators",
-          label: copy.navOperators,
-          href: buildDashboardViewUrl("operators"),
-          badge: String(data.users.length),
-          active: view === "operators"
-        },
-        {
-          id: "iam",
-          label: copy.navIam,
-          href: buildDashboardViewUrl("iam"),
-          badge: String(data.iam.bindings.length),
-          active: view === "iam"
-        },
-        {
           id: "audit",
           label: copy.navAudit,
           href: buildDashboardViewUrl("audit"),
@@ -569,6 +555,20 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
           href: buildDashboardViewUrl("fail2ban"),
           badge: String(data.nodeHealth.reduce((count, node) => count + (node.fail2ban?.jails.length ?? 0), 0)),
           active: view === "fail2ban"
+        },
+        {
+          id: "iam",
+          label: copy.navIam,
+          href: buildDashboardViewUrl("iam"),
+          badge: String(data.iam.bindings.length),
+          active: view === "iam"
+        },
+        {
+          id: "operators",
+          label: copy.navOperators,
+          href: buildDashboardViewUrl("operators"),
+          badge: String(data.users.length),
+          active: view === "operators"
         },
         {
           id: "selinux",

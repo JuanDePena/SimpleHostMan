@@ -152,8 +152,11 @@ Phase 5-7 implementation decisions:
   `oidc`, and `saml`.
 - Pyrosa Accounts capability status is explicit:
   - `ui_auth`: available for compatible Pyrosa-native apps.
-  - `oauth`, `oidc`, and `gateway_proxy`: future/scaffold-disabled until real
-    runtime support exists.
+  - `oauth`: implemented as a first runtime cut in `pyrosa-accounts`, but kept
+    scaffold-disabled in SimpleHostMan until migration, release deployment and
+    a resource-server pilot are validated.
+  - `oidc` and `gateway_proxy`: future/scaffold-disabled until real runtime
+    support exists.
   - `saml`: disabled unless a concrete requirement appears.
 - `pyrosa-directory` is recorded as:
   - provider: `pyrosa-accounts`
@@ -169,6 +172,28 @@ Phase 5-7 implementation decisions:
   - secret storage: app runtime env, outside SimpleHostMan.
   - inventory boundary: the binding can exist even while full app inventory
     ownership remains outside PostgreSQL.
+
+Pyrosa Accounts provider readiness gate:
+
+- SimpleHostMan must keep Pyrosa Accounts `oauth`, `oidc`, and `gateway_proxy`
+  as non-offered capabilities until each implementation is released and
+  validated in `pyrosa-accounts`.
+- The current source of truth for that implementation plan is
+  [`oauth2-api-auth-plan.md`](/srv/containers/apps/pyrosa-accounts/app/docs/oauth2-api-auth-plan.md).
+- `oauth` has a first Accounts runtime cut with OAuth metadata, authorization
+  code, token, introspection, revocation and opaque hashed tokens. It may become
+  available in SimpleHostMan only after client metadata is configured, runtime
+  env controls are deployed and at least one resource-server pilot validates
+  scopes, audience, MFA/AAL and fail-closed behavior. The Accounts OAuth
+  migration was applied on the primary runtime database on 2026-06-08 UTC.
+- `oidc` may become available only after Accounts ships OIDC discovery, JWKS,
+  signed ID tokens, `nonce` handling, stable claims and `/userinfo`.
+- `gateway_proxy` may become available only after Accounts ships a real
+  gateway/outpost path that performs HTTP enforcement before upstream apps,
+  emits trusted headers safely, supports logout and passes loopback/internal
+  trust-boundary tests.
+- Authentik remains the default provider for administrative proxy surfaces until
+  there is an explicit replacement decision.
 
 ## Target Architecture
 
