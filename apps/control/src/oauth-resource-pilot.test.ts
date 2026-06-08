@@ -50,12 +50,22 @@ function createConfig(overrides: Partial<ControlRuntimeConfig["oauthResourceServ
     oauthResourceServer: {
       enabled: true,
       issuer: "https://accounts.pyrosa.com.do",
+      authorizationUrl: null,
+      tokenUrl: null,
       introspectionUrl: "http://127.0.0.1/not-configured",
+      revocationUrl: null,
       clientId: "oauth-smoke",
       clientSecret: "test-client-secret",
       clientSecretFile: null,
       requiredScope: "profile:read",
       requiredAudience: "simplehost-control",
+      requiredPrincipalType: null,
+      requiredAssuranceLevel: null,
+      pilotRedirectUri: "https://vps-prd.pyrosa.com.do:3200/v1/oauth/pilot/callback",
+      pilotScope: "profile:read",
+      pilotRequiredPrincipalType: null,
+      pilotRequiredAssuranceLevel: null,
+      pilotRevokeTokens: true,
       introspectionTimeoutMs: 1000,
       ...overrides
     }
@@ -97,6 +107,89 @@ async function startIntrospectionServer(
     url: `http://127.0.0.1:${address.port}/oauth/introspect`,
     close: () => closeHttpServer(server),
     bodies
+  };
+}
+
+async function startOAuthPilotServer(): Promise<{
+  baseUrl: string;
+  close: () => Promise<void>;
+  tokenBodies: URLSearchParams[];
+  introspectionBodies: URLSearchParams[];
+  revocationBodies: URLSearchParams[];
+}> {
+  const tokenBodies: URLSearchParams[] = [];
+  const introspectionBodies: URLSearchParams[] = [];
+  const revocationBodies: URLSearchParams[] = [];
+  const server = createServer(async (request, response) => {
+    const chunks: Buffer[] = [];
+    for await (const chunk of request) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+    const body = new URLSearchParams(Buffer.concat(chunks).toString("utf8"));
+
+    if (request.method === "POST" && request.url === "/oauth/token") {
+      tokenBodies.push(body);
+      assert.equal(body.get("grant_type"), "authorization_code");
+      assert.equal(body.get("client_id"), "oauth-smoke");
+      assert.equal(body.get("client_secret"), "test-client-secret");
+      assert.equal(body.get("code"), "human-code");
+      assert.ok(body.get("code_verifier"));
+      assert.equal(body.get("audience"), "simplehost-control");
+      response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      response.end(JSON.stringify({
+        access_token: "human-access-token",
+        token_type: "Bearer",
+        expires_in: 900,
+        scope: "profile:read mfa:read"
+      }));
+      return;
+    }
+
+    if (request.method === "POST" && request.url === "/oauth/introspect") {
+      introspectionBodies.push(body);
+      assert.equal(body.get("token"), "human-access-token");
+      response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      response.end(JSON.stringify({
+        active: true,
+        token_type: "access_token",
+        client_id: "oauth-smoke",
+        scope: "profile:read mfa:read",
+        aud: "simplehost-control",
+        sub: "42",
+        username: "webmaster@pyrosa.com.do",
+        name: "PYROSA Webmaster",
+        principal_type: "human",
+        assurance_level: "aal2",
+        exp: 1780884963,
+        iat: 1780884063
+      }));
+      return;
+    }
+
+    if (request.method === "POST" && request.url === "/oauth/revoke") {
+      revocationBodies.push(body);
+      assert.equal(body.get("token"), "human-access-token");
+      response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      response.end(JSON.stringify({ revoked: true }));
+      return;
+    }
+
+    response.writeHead(404);
+    response.end();
+  });
+
+  await new Promise<void>((resolve) => {
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  const address = server.address();
+  assert.ok(address && typeof address === "object");
+
+  return {
+    baseUrl: `http://127.0.0.1:${address.port}`,
+    close: () => closeHttpServer(server),
+    tokenBodies,
+    introspectionBodies,
+    revocationBodies
   };
 }
 
@@ -254,5 +347,95 @@ test("OAuth resource-server pilot can read its introspection client secret from 
   } finally {
     await introspection.close();
     rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("OAuth browser pilot completes Authorization Code with human AAL2 claims", async () => {
+  const oauth = await startOAuthPilotServer();
+  const handler = createHandler(createConfig({
+    authorizationUrl: `${oauth.baseUrl}/oauth/authorize`,
+    tokenUrl: `${oauth.baseUrl}/oauth/token`,
+    introspectionUrl: `${oauth.baseUrl}/oauth/introspect`,
+    revocationUrl: `${oauth.baseUrl}/oauth/revoke`,
+    pilotScope: "profile:read mfa:read",
+    pilotRequiredPrincipalType: "human",
+    pilotRequiredAssuranceLevel: "aal2"
+  }));
+
+  try {
+    const startResponse = await invokeRequestHandler(handler, {
+      method: "GET",
+      url: "/v1/oauth/pilot/start"
+    });
+    assert.equal(startResponse.statusCode, 303);
+    const location = String(startResponse.headers.location);
+    const authorize = new URL(location);
+    assert.equal(authorize.pathname, "/oauth/authorize");
+    assert.equal(authorize.searchParams.get("response_type"), "code");
+    assert.equal(authorize.searchParams.get("client_id"), "oauth-smoke");
+    assert.equal(authorize.searchParams.get("scope"), "profile:read mfa:read");
+    assert.equal(authorize.searchParams.get("code_challenge_method"), "S256");
+    assert.ok(authorize.searchParams.get("code_challenge"));
+    const cookie = String(startResponse.headers["set-cookie"]).split(";", 1)[0];
+    assert.match(cookie, /^shp_oauth_pilot=/);
+
+    const callback = await invokeRequestHandler(handler, {
+      method: "GET",
+      url: `/v1/oauth/pilot/callback?format=json&state=${authorize.searchParams.get("state")}&code=human-code`,
+      headers: {
+        cookie
+      }
+    });
+    assert.equal(callback.statusCode, 200);
+    const payload = JSON.parse(callback.bodyText) as {
+      status: string;
+      principalType: string;
+      assuranceLevel: string;
+      username: string;
+      scope: string[];
+    };
+    assert.equal(payload.status, "ok");
+    assert.equal(payload.principalType, "human");
+    assert.equal(payload.assuranceLevel, "aal2");
+    assert.equal(payload.username, "webmaster@pyrosa.com.do");
+    assert.deepEqual(payload.scope, ["profile:read", "mfa:read"]);
+    assert.equal(oauth.tokenBodies.length, 1);
+    assert.equal(oauth.introspectionBodies.length, 1);
+    assert.equal(oauth.revocationBodies.length, 1);
+  } finally {
+    await oauth.close();
+  }
+});
+
+test("OAuth bearer profile fails closed when configured AAL is too low", async () => {
+  const introspection = await startIntrospectionServer(() => ({
+    active: true,
+    token_type: "access_token",
+    client_id: "oauth-smoke",
+    scope: "profile:read mfa:read",
+    aud: "simplehost-control",
+    principal_type: "human",
+    assurance_level: "aal1"
+  }));
+
+  try {
+    const response = await invokeRequestHandler(
+      createHandler(createConfig({
+        introspectionUrl: introspection.url,
+        requiredPrincipalType: "human",
+        requiredAssuranceLevel: "aal2"
+      })),
+      {
+        method: "GET",
+        url: "/v1/oauth/pilot/profile",
+        headers: {
+          authorization: "Bearer low-aal-token"
+        }
+      }
+    );
+    assert.equal(response.statusCode, 403);
+    assert.equal(JSON.parse(response.bodyText).error, "insufficient_assurance");
+  } finally {
+    await introspection.close();
   }
 });

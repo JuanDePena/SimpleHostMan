@@ -1,6 +1,6 @@
 # SimpleHost TODO
 
-Updated on `2026-06-07`.
+Updated on `2026-06-08`.
 
 This file tracks only work that is still open. Closed implementation evidence
 belongs in the feature runbook that owns the behavior, not in this tracker.
@@ -9,7 +9,7 @@ belongs in the feature runbook that owns the behavior, not in this tracker.
 
 - canonical source tree: `/opt/simplehostman/src`
 - canonical runtime root: `/opt/simplehostman/release`
-- active control-plane release: `2606.07.23`
+- active control-plane release: `2606.08.03`
 - implemented IAM/SSO state:
   [`IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md)
 - implemented operational inspection and hardening evidence:
@@ -102,15 +102,26 @@ Current state:
 - Runtime release `2606.08.02` validated the resource-server pilot with opaque
   service tokens, introspection, `profile:read`, `simplehost-control` audience,
   revocation and fail-closed checks on 2026-06-08 UTC.
+- SimpleHostMan release `2606.08.03` adds a feature-flagged browser
+  Authorization Code pilot at `/v1/oauth/pilot/start` and
+  `/v1/oauth/pilot/callback`.
+- The `simplehost-control-oauth-pilot` client is configured in Pyrosa Accounts
+  with `authorization_code`, PKCE, `profile:read mfa:read`, callback
+  `https://vps-prd.pyrosa.com.do:3200/v1/oauth/pilot/callback`, and root-only
+  secret storage.
+- Local runtime validation on 2026-06-08 UTC confirmed SimpleHostMan
+  `2606.08.03` health, OAuth start redirect generation, Accounts authorize
+  redirect to login when no root session exists, and callback fail-closed
+  behavior for invalid state.
 - SimpleHostMan still keeps `pyrosa-accounts` OAuth scaffold-disabled for
-  protected browser surfaces because the service-token pilot does not validate
-  human Authorization Code login, MFA/AAL or browser SSO rollback.
+  protected browser surfaces until the browser pilot is completed interactively
+  by a human operator through Pyrosa Accounts login and MFA.
 - `oidc` and `gateway_proxy` remain future/scaffold-disabled in SimpleHostMan.
 
 Pending work:
 
-- validate a human Authorization Code resource-server/browser pilot with user
-  sessions, MFA/AAL, scopes, audience and rollback
+- complete the interactive browser pilot with a real operator session and MFA
+  to confirm `human`, `aal2`, scopes, audience, token revocation and rollback
 - implement OIDC discovery, JWKS, signed ID tokens, claims and `/userinfo`
   before advertising `pyrosa-accounts` as an OIDC provider
 - implement a real gateway/outpost path before advertising

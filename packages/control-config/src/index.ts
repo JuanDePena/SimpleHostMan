@@ -39,12 +39,22 @@ export interface ControlRustDeskRuntimeConfig {
 export interface ControlOAuthResourceServerRuntimeConfig {
   enabled: boolean;
   issuer: string | null;
+  authorizationUrl: string | null;
+  tokenUrl: string | null;
   introspectionUrl: string | null;
+  revocationUrl: string | null;
   clientId: string | null;
   clientSecret: string | null;
   clientSecretFile: string | null;
   requiredScope: string | null;
   requiredAudience: string | null;
+  requiredPrincipalType: string | null;
+  requiredAssuranceLevel: string | null;
+  pilotRedirectUri: string | null;
+  pilotScope: string | null;
+  pilotRequiredPrincipalType: string | null;
+  pilotRequiredAssuranceLevel: string | null;
+  pilotRevokeTokens: boolean;
   introspectionTimeoutMs: number;
 }
 
@@ -176,12 +186,22 @@ export function createControlRuntimeConfig(
     oauthResourceServer: {
       enabled: readBoolean(env.SIMPLEHOST_OAUTH_RESOURCE_SERVER_ENABLED, false),
       issuer: readOptionalString(env.SIMPLEHOST_OAUTH_ISSUER),
+      authorizationUrl: readOptionalString(env.SIMPLEHOST_OAUTH_AUTHORIZATION_URL),
+      tokenUrl: readOptionalString(env.SIMPLEHOST_OAUTH_TOKEN_URL),
       introspectionUrl: readOptionalString(env.SIMPLEHOST_OAUTH_INTROSPECTION_URL),
+      revocationUrl: readOptionalString(env.SIMPLEHOST_OAUTH_REVOCATION_URL),
       clientId: readOptionalString(env.SIMPLEHOST_OAUTH_CLIENT_ID),
       clientSecret: readOptionalString(env.SIMPLEHOST_OAUTH_CLIENT_SECRET),
       clientSecretFile: readOptionalString(env.SIMPLEHOST_OAUTH_CLIENT_SECRET_FILE),
       requiredScope: readOptionalString(env.SIMPLEHOST_OAUTH_REQUIRED_SCOPE),
       requiredAudience: readOptionalString(env.SIMPLEHOST_OAUTH_REQUIRED_AUDIENCE),
+      requiredPrincipalType: readOptionalString(env.SIMPLEHOST_OAUTH_REQUIRED_PRINCIPAL_TYPE),
+      requiredAssuranceLevel: readOptionalString(env.SIMPLEHOST_OAUTH_REQUIRED_ASSURANCE_LEVEL),
+      pilotRedirectUri: readOptionalString(env.SIMPLEHOST_OAUTH_PILOT_REDIRECT_URI),
+      pilotScope: readOptionalString(env.SIMPLEHOST_OAUTH_PILOT_SCOPE),
+      pilotRequiredPrincipalType: readOptionalString(env.SIMPLEHOST_OAUTH_PILOT_REQUIRED_PRINCIPAL_TYPE),
+      pilotRequiredAssuranceLevel: readOptionalString(env.SIMPLEHOST_OAUTH_PILOT_REQUIRED_ASSURANCE_LEVEL),
+      pilotRevokeTokens: readBoolean(env.SIMPLEHOST_OAUTH_PILOT_REVOKE_TOKENS, true),
       introspectionTimeoutMs: readPositiveInt(
         env.SIMPLEHOST_OAUTH_INTROSPECTION_TIMEOUT_MS,
         3000

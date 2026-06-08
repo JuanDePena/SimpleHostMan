@@ -25,6 +25,8 @@ const rootEndpoints = [
   "POST /v1/auth/login",
   "GET /v1/auth/me",
   "POST /v1/auth/logout",
+  "GET /v1/oauth/pilot/start",
+  "GET /v1/oauth/pilot/callback",
   "GET /v1/oauth/pilot/profile",
   "GET /v1/iam/summary",
   "PUT /v1/iam/bindings/:bindingId",

@@ -1,6 +1,6 @@
 # IAM And SSO Runbook
 
-Updated on `2026-06-07`.
+Updated on `2026-06-08`.
 
 ## Scope
 
@@ -201,7 +201,28 @@ Pyrosa Accounts provider readiness gate:
 - That pilot proves service-token introspection, scope/audience enforcement and
   fail-closed behavior. It does not prove human browser SSO, MFA/AAL enforcement
   or an Authentik replacement path.
-- OAuth may become selectable for protected browser surfaces only after a
+- SimpleHostMan release `2606.08.03` adds a browser Authorization Code pilot:
+  - `GET /v1/oauth/pilot/start` creates PKCE state and redirects to
+    Pyrosa Accounts `/oauth/authorize`;
+  - `GET /v1/oauth/pilot/callback` exchanges the code, introspects the opaque
+    access token, requires `profile:read mfa:read`, audience
+    `simplehost-control`, principal `human` and `aal2`, and revokes the access
+    token after validation;
+  - the callback validation rules use `SIMPLEHOST_OAUTH_PILOT_REQUIRED_*`
+    variables so the bearer `/v1/oauth/pilot/profile` resource rules remain
+    separately configurable.
+- Runtime release `2606.08.03` was deployed on 2026-06-08 UTC. Local runtime
+  validation confirmed healthy SimpleHostMan `2606.08.03`, OAuth start redirect
+  generation with PKCE, Accounts authorize redirect to login when no root
+  session exists, and callback fail-closed behavior for invalid state.
+- Public access to `/v1/oauth/pilot/start` remains behind the existing
+  Authentik outpost when no Authentik session exists. This is intentional for
+  the pilot; no public proxy surface has been moved away from Authentik.
+- The remaining OAuth browser gate is an interactive end-to-end run by a human
+  operator through Pyrosa Accounts login and MFA. Until that confirms a real
+  `aal2` token and rollback behavior, OAuth remains a pilot capability rather
+  than a replacement for Authentik on administrative proxy surfaces.
+- OAuth may become selectable for protected browser surfaces only after that
   human Authorization Code pilot validates user sessions, MFA/AAL and rollback.
 - `oidc` may become available only after Accounts ships OIDC discovery, JWKS,
   signed ID tokens, `nonce` handling, stable claims and `/userinfo`.
