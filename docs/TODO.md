@@ -1,6 +1,6 @@
 # SimpleHost TODO
 
-Updated on `2026-06-08`.
+Updated on `2026-06-09`.
 
 This file tracks only work that is still open. Closed implementation evidence
 belongs in the feature runbook that owns the behavior, not in this tracker.
@@ -113,15 +113,20 @@ Current state:
   `2606.08.03` health, OAuth start redirect generation, Accounts authorize
   redirect to login when no root session exists, and callback fail-closed
   behavior for invalid state.
-- SimpleHostMan still keeps `pyrosa-accounts` OAuth scaffold-disabled for
-  protected browser surfaces until the browser pilot is completed interactively
-  by a human operator through Pyrosa Accounts login and MFA.
+- Interactive operator validation on 2026-06-09 UTC confirmed the browser
+  pilot returns `OK` with provider `pyrosa-accounts`, issuer
+  `https://accounts.pyrosa.com.do`, audience `simplehost-control`, client
+  `simplehost-control-oauth-pilot`, principal `human`, assurance level `aal2`,
+  and scopes `profile:read mfa:read`.
+- SimpleHostMan still keeps Authentik as the default provider for
+  administrative proxy surfaces until there is an explicit promotion and
+  rollback plan for a selected surface.
 - `oidc` and `gateway_proxy` remain future/scaffold-disabled in SimpleHostMan.
 
 Pending work:
 
-- complete the interactive browser pilot with a real operator session and MFA
-  to confirm `human`, `aal2`, scopes, audience, token revocation and rollback
+- decide whether to promote Pyrosa Accounts `oauth` from pilot/scaffold to a
+  supported capability for specific resource-server integrations
 - implement OIDC discovery, JWKS, signed ID tokens, claims and `/userinfo`
   before advertising `pyrosa-accounts` as an OIDC provider
 - implement a real gateway/outpost path before advertising

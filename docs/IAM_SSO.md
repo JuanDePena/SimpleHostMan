@@ -1,6 +1,6 @@
 # IAM And SSO Runbook
 
-Updated on `2026-06-08`.
+Updated on `2026-06-09`.
 
 ## Scope
 
@@ -218,12 +218,20 @@ Pyrosa Accounts provider readiness gate:
 - Public access to `/v1/oauth/pilot/start` remains behind the existing
   Authentik outpost when no Authentik session exists. This is intentional for
   the pilot; no public proxy surface has been moved away from Authentik.
-- The remaining OAuth browser gate is an interactive end-to-end run by a human
-  operator through Pyrosa Accounts login and MFA. Until that confirms a real
-  `aal2` token and rollback behavior, OAuth remains a pilot capability rather
-  than a replacement for Authentik on administrative proxy surfaces.
-- OAuth may become selectable for protected browser surfaces only after that
-  human Authorization Code pilot validates user sessions, MFA/AAL and rollback.
+- Interactive operator validation completed on 2026-06-09 UTC. The browser
+  pilot returned `OK` after Pyrosa Accounts issued and introspected an
+  Authorization Code access token with:
+  - provider `pyrosa-accounts`;
+  - issuer `https://accounts.pyrosa.com.do`;
+  - resource/audience `simplehost-control`;
+  - client `simplehost-control-oauth-pilot`;
+  - principal `human`;
+  - assurance level `aal2`;
+  - scopes `profile:read` and `mfa:read`.
+- That closes the human Authorization Code + MFA/AAL pilot gate for OAuth.
+  Authentik still remains the default provider for administrative proxy
+  surfaces until there is an explicit promotion and rollback plan for a
+  selected surface.
 - `oidc` may become available only after Accounts ships OIDC discovery, JWKS,
   signed ID tokens, `nonce` handling, stable claims and `/userinfo`.
 - `gateway_proxy` may become available only after Accounts ships a real
