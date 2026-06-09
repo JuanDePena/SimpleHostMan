@@ -7,6 +7,7 @@ import type {
   PyrosaAccountsOAuthLoginRequest,
   PyrosaAccountsOAuthRevokeRequest
 } from "@simplehost/control-contracts";
+import { UserAuthorizationError } from "@simplehost/control-database";
 
 import { readJsonBody, writeJson } from "./api-http.js";
 import type { ApiRouteHandler } from "./api-route-context.js";
@@ -45,6 +46,13 @@ function normalizeEmail(value: string | null): string | null {
 
 function hashOAuthToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
+}
+
+function isUserAuthorizationError(error: unknown): boolean {
+  return (
+    error instanceof UserAuthorizationError ||
+    (error instanceof Error && error.name === "UserAuthorizationError")
+  );
 }
 
 function normalizeScopes(scope: unknown): string[] {
@@ -459,7 +467,9 @@ export const handleAuthRoutes: ApiRouteHandler = async ({
     }
 
     const tokenHash = hashOAuthToken(accessToken);
-    const login = await controlPlaneStore.loginOAuthUser({
+    let login;
+    try {
+      login = await controlPlaneStore.loginOAuthUser({
         provider: "pyrosa-accounts",
         email,
         username: readString(introspection.username) ?? undefined,
@@ -480,6 +490,25 @@ export const handleAuthRoutes: ApiRouteHandler = async ({
         oauthTokenHash: tokenHash,
         oauthIssuer: resourceConfig.issuer ?? undefined
       });
+    } catch (error) {
+      if (!isUserAuthorizationError(error)) {
+        throw error;
+      }
+
+      writeJson(response, 403, {
+        error: "local_operator_not_active",
+        message: "Pyrosa Accounts authenticated identity is not an active SimpleHostMan operator."
+      });
+      await controlPlaneStore.recordOAuthLoginRejected({
+        provider: "pyrosa-accounts",
+        reason: "local_operator_not_active",
+        email,
+        clientId: readString(introspection.client_id) ?? undefined,
+        externalSubject: readString(introspection.sub) ?? undefined,
+        assuranceLevel: readString(introspection.assurance_level) ?? undefined
+      });
+      return true;
+    }
     writeJson(response, 200, {
       ...login,
       oauthLogoutToken: accessToken

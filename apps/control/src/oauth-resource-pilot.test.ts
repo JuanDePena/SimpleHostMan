@@ -573,6 +573,62 @@ test("Pyrosa Accounts OAuth login fails closed before local session when AAL is 
   }
 });
 
+test("Pyrosa Accounts OAuth login rejects identities without an active local operator", async () => {
+  const oauth = await startOAuthPilotServer();
+  let rejection: Parameters<ControlPlaneStore["recordOAuthLoginRejected"]>[0] | null = null;
+  const handler = createControlApiHttpHandler(createApiRequestHandler({
+    config: createConfig({
+      loginEnabled: true,
+      tokenUrl: `${oauth.baseUrl}/oauth/token`,
+      introspectionUrl: `${oauth.baseUrl}/oauth/introspect`,
+      loginScope: "profile:read mfa:read",
+      loginRequiredPrincipalType: "human",
+      loginRequiredAssuranceLevel: "aal2"
+    }),
+    startedAt: Date.now() - 1000,
+    controlPlaneStore: {
+      loginOAuthUser: async () => {
+        const error = new Error("OAuth user is not active.");
+        error.name = "UserAuthorizationError";
+        throw error;
+      },
+      recordOAuthLoginRejected: async (
+        request: Parameters<ControlPlaneStore["recordOAuthLoginRejected"]>[0]
+      ) => {
+        rejection = request;
+      }
+    } as unknown as ControlPlaneStore
+  }));
+
+  try {
+    const response = await invokeRequestHandler(handler, {
+      method: "POST",
+      url: "/v1/auth/pyrosa-accounts/oauth-login",
+      headers: {
+        "content-type": "application/json; charset=utf-8"
+      },
+      body: JSON.stringify({
+        code: "human-code",
+        redirectUri: "https://vps-prd.pyrosa.com.do:3200/auth/pyrosa-accounts/callback",
+        codeVerifier: "pkce-verifier"
+      })
+    });
+
+    assert.equal(response.statusCode, 403);
+    assert.equal(JSON.parse(response.bodyText).error, "local_operator_not_active");
+    assert.deepEqual(rejection, {
+      provider: "pyrosa-accounts",
+      reason: "local_operator_not_active",
+      email: "webmaster@pyrosa.com.do",
+      clientId: "oauth-smoke",
+      externalSubject: "42",
+      assuranceLevel: "aal2"
+    });
+  } finally {
+    await oauth.close();
+  }
+});
+
 test("Pyrosa Accounts OAuth revoke endpoint revokes token and audits token hash", async () => {
   const revocationBodies: URLSearchParams[] = [];
   const server = createServer(async (request, response) => {
