@@ -22,8 +22,12 @@ interface OAuthIntrospectionResponse {
   email?: unknown;
   username?: unknown;
   name?: unknown;
+  roles?: unknown;
+  groups?: unknown;
   principal_type?: unknown;
   assurance_level?: unknown;
+  acr?: unknown;
+  amr?: unknown;
 }
 
 interface OAuthTokenResponse {
@@ -85,6 +89,27 @@ function hasAudience(aud: unknown, requiredAudience: string | null): boolean {
   }
 
   return Array.isArray(aud) && aud.includes(requiredAudience);
+}
+
+function normalizeClaimList(value: unknown): string[] {
+  if (typeof value === "string") {
+    return value.split(/[,\s]+/).map((entry) => entry.trim()).filter(Boolean);
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(readString).filter((entry): entry is string => Boolean(entry));
+  }
+
+  return [];
+}
+
+function hasRequiredClaim(values: string[], requiredValue: string | null): boolean {
+  if (!requiredValue) {
+    return true;
+  }
+
+  const normalizedRequired = requiredValue.trim().toLowerCase();
+  return values.some((value) => value.trim().toLowerCase() === normalizedRequired);
 }
 
 function deriveEndpoint(issuer: string | null, path: string): string | null {
@@ -226,6 +251,7 @@ function validateLoginIntrospection(args: {
   requiredAudience: string | null;
   requiredPrincipalType: string | null;
   requiredAssuranceLevel: string | null;
+  requiredGroup: string | null;
 }):
   | { ok: true; scopes: string[] }
   | { ok: false; statusCode: number; error: string; message: string } {
@@ -274,6 +300,19 @@ function validateLoginIntrospection(args: {
       statusCode: 403,
       error: "insufficient_assurance",
       message: "OAuth access token assurance level is below the SimpleHostMan login requirement."
+    };
+  }
+
+  const providerGroups = [
+    ...normalizeClaimList(args.introspection.groups),
+    ...normalizeClaimList(args.introspection.roles)
+  ];
+  if (!hasRequiredClaim(providerGroups, args.requiredGroup)) {
+    return {
+      ok: false,
+      statusCode: 403,
+      error: "missing_provider_group",
+      message: "OAuth access token is missing the required provider group for SimpleHostMan login."
     };
   }
 
@@ -431,7 +470,8 @@ export const handleAuthRoutes: ApiRouteHandler = async ({
       requiredScopes: normalizeScopeList(resourceConfig.loginScope),
       requiredAudience: resourceConfig.requiredAudience,
       requiredPrincipalType: resourceConfig.loginRequiredPrincipalType,
-      requiredAssuranceLevel: resourceConfig.loginRequiredAssuranceLevel
+      requiredAssuranceLevel: resourceConfig.loginRequiredAssuranceLevel,
+      requiredGroup: resourceConfig.loginRequiredGroup
     });
     if (!validation.ok) {
       writeJson(response, validation.statusCode, {

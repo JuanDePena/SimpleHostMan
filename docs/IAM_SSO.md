@@ -250,6 +250,10 @@ Pyrosa Accounts provider readiness gate:
 - The native OAuth login path is gated by `SIMPLEHOST_OAUTH_LOGIN_ENABLED` and
   is still candidate-only. Authentik continues to protect the public
   administrative surface during the pilot.
+- `SIMPLEHOST_OAUTH_LOGIN_REQUIRED_GROUP` can require a provider-emitted group
+  such as `PYROSA Operators` in addition to the active local operator check.
+  Leave it empty to preserve the current local-operator-only authorization
+  behavior.
 - The IAM PostgreSQL catalog records a candidate binding for
   `control:simplehost-control` with provider `pyrosa-accounts` and mode
   `oauth_login`. The existing Authentik `trusted_proxy_headers` binding remains

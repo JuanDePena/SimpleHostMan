@@ -322,6 +322,7 @@ export function createTestContext(args: {
         pilotRequiredPrincipalType: null,
         pilotRequiredAssuranceLevel: null,
         pilotRevokeTokens: true,
+        loginRequiredGroup: null,
         introspectionTimeoutMs: 3000
       },
       version: "0.1.0-test",

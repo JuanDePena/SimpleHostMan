@@ -72,6 +72,7 @@ function createConfig(overrides: Partial<ControlRuntimeConfig["oauthResourceServ
       loginScope: "profile:read mfa:read",
       loginRequiredPrincipalType: "human",
       loginRequiredAssuranceLevel: "aal2",
+      loginRequiredGroup: null,
       loginLogoutUrl: "https://accounts.pyrosa.com.do/logout",
       loginPostLogoutRedirectUri: "https://vps-prd.pyrosa.com.do:3200/login?notice=Session%20closed&kind=info",
       introspectionTimeoutMs: 1000,
@@ -168,6 +169,7 @@ async function startOAuthPilotServer(): Promise<{
         name: "PYROSA Webmaster",
         principal_type: "human",
         assurance_level: "aal2",
+        groups: ["PYROSA Operators"],
         exp: 1780884963,
         iat: 1780884063
       }));
@@ -626,6 +628,83 @@ test("Pyrosa Accounts OAuth login rejects identities without an active local ope
     });
   } finally {
     await oauth.close();
+  }
+});
+
+test("Pyrosa Accounts OAuth login can require a provider group before local session", async () => {
+  const server = createServer(async (request, response) => {
+    if (request.method === "POST" && request.url === "/oauth/token") {
+      response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      response.end(JSON.stringify({
+        access_token: "no-group-token",
+        token_type: "Bearer"
+      }));
+      return;
+    }
+
+    if (request.method === "POST" && request.url === "/oauth/introspect") {
+      response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      response.end(JSON.stringify({
+        active: true,
+        token_type: "access_token",
+        client_id: "oauth-smoke",
+        scope: "profile:read mfa:read",
+        aud: "simplehost-control",
+        username: "webmaster@pyrosa.com.do",
+        principal_type: "human",
+        assurance_level: "aal2",
+        groups: ["Auditors"]
+      }));
+      return;
+    }
+
+    response.writeHead(404);
+    response.end();
+  });
+
+  await new Promise<void>((resolve) => {
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  const address = server.address();
+  assert.ok(address && typeof address === "object");
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+
+  try {
+    const handler = createControlApiHttpHandler(createApiRequestHandler({
+      config: createConfig({
+        loginEnabled: true,
+        tokenUrl: `${baseUrl}/oauth/token`,
+        introspectionUrl: `${baseUrl}/oauth/introspect`,
+        loginRequiredGroup: "PYROSA Operators"
+      }),
+      startedAt: Date.now() - 1000,
+      controlPlaneStore: {
+        loginOAuthUser: async () => {
+          throw new Error("local session should not be created");
+        },
+        recordOAuthLoginRejected: async () => {
+          // Expected path for missing provider group.
+        }
+      } as unknown as ControlPlaneStore
+    }));
+
+    const response = await invokeRequestHandler(handler, {
+      method: "POST",
+      url: "/v1/auth/pyrosa-accounts/oauth-login",
+      headers: {
+        "content-type": "application/json; charset=utf-8"
+      },
+      body: JSON.stringify({
+        code: "human-code",
+        redirectUri: "https://vps-prd.pyrosa.com.do:3200/auth/pyrosa-accounts/callback",
+        codeVerifier: "pkce-verifier"
+      })
+    });
+
+    assert.equal(response.statusCode, 403);
+    assert.equal(JSON.parse(response.bodyText).error, "missing_provider_group");
+  } finally {
+    await closeHttpServer(server);
   }
 });
 

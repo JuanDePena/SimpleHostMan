@@ -198,6 +198,7 @@ function createOAuthLoginConfig(): ControlWebRuntimeConfig {
       loginScope: "profile:read mfa:read",
       loginRequiredPrincipalType: "human",
       loginRequiredAssuranceLevel: "aal2",
+      loginRequiredGroup: null,
       loginLogoutUrl: "https://accounts.pyrosa.com.do/logout",
       loginPostLogoutRedirectUri: "https://vps-prd.pyrosa.com.do:3200/login?notice=Session%20closed&kind=info",
       introspectionTimeoutMs: 1000
