@@ -4,6 +4,7 @@ import type {
   AuthLoginResponse,
   AuthLogoutResponse,
   AuthenticatedUserSummary,
+  OAuthIdentityLoginRequest,
   BackupRunRecordRequest,
   BackupRunSummary,
   BackupsOverview,
@@ -500,6 +501,7 @@ export interface ControlPlaneStore {
   ): Promise<{ accepted: true }>;
   loginUser(request: AuthLoginRequest): Promise<AuthLoginResponse>;
   loginTrustedProxyUser(request: TrustedProxyLoginRequest): Promise<AuthLoginResponse>;
+  loginOAuthUser(request: OAuthIdentityLoginRequest): Promise<AuthLoginResponse>;
   getCurrentUser(presentedToken: string | null): Promise<AuthenticatedUserSummary>;
   logoutUser(presentedToken: string | null): Promise<AuthLogoutResponse>;
   createUser(
@@ -662,6 +664,7 @@ export type ControlPlaneAuthMethods = Pick<
   | "reportJob"
   | "loginUser"
   | "loginTrustedProxyUser"
+  | "loginOAuthUser"
   | "getCurrentUser"
   | "logoutUser"
   | "createUser"

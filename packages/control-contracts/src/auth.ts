@@ -42,6 +42,26 @@ export interface TrustedProxyLoginRequest {
   assuranceLevel?: string;
 }
 
+export interface PyrosaAccountsOAuthLoginRequest {
+  code: string;
+  redirectUri: string;
+  codeVerifier: string;
+}
+
+export interface OAuthIdentityLoginRequest {
+  provider: "pyrosa-accounts";
+  email: string;
+  username?: string;
+  displayName?: string;
+  externalSubject?: string;
+  mfaSatisfied?: boolean;
+  assuranceLevel?: string;
+  clientId?: string;
+  scopes?: string[];
+  audience?: string | string[];
+  issuer?: string;
+}
+
 export interface AuthLogoutResponse {
   revoked: true;
 }

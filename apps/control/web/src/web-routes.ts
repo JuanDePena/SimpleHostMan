@@ -6,6 +6,7 @@ import { isUnauthorizedError } from "@simplehost/control-shared";
 import { type ControlWebApi } from "./api-client.js";
 import { handleDesiredStateResourceRoute } from "./desired-state-resource-routes.js";
 import { handleMailRoute } from "./mail-routes.js";
+import { handlePyrosaAccountsOAuthLoginRoutes } from "./oauth-login-routes.js";
 import {
   type WebLocale,
   writeJson
@@ -30,6 +31,32 @@ export interface ControlWebRuntimeConfig {
   web: {
     host: string;
     port: number;
+  };
+  oauthResourceServer?: {
+    enabled: boolean;
+    issuer: string | null;
+    authorizationUrl: string | null;
+    tokenUrl: string | null;
+    introspectionUrl: string | null;
+    revocationUrl: string | null;
+    clientId: string | null;
+    clientSecret: string | null;
+    clientSecretFile: string | null;
+    requiredScope: string | null;
+    requiredAudience: string | null;
+    requiredPrincipalType: string | null;
+    requiredAssuranceLevel: string | null;
+    pilotRedirectUri: string | null;
+    pilotScope: string | null;
+    pilotRequiredPrincipalType: string | null;
+    pilotRequiredAssuranceLevel: string | null;
+    pilotRevokeTokens: boolean;
+    loginEnabled: boolean;
+    loginRedirectUri: string | null;
+    loginScope: string | null;
+    loginRequiredPrincipalType: string | null;
+    loginRequiredAssuranceLevel: string | null;
+    introspectionTimeoutMs: number;
   };
 }
 
@@ -58,6 +85,7 @@ export function createRequestHandler(args: StartControlWebServerArgs) {
 
     for (const handler of [
       handleCoreWebRoutes,
+      handlePyrosaAccountsOAuthLoginRoutes,
       handleSessionWebRoutes,
       handleActionWebRoutes,
       handleDesiredStateResourceRoute,

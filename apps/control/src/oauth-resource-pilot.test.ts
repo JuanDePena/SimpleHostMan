@@ -66,6 +66,11 @@ function createConfig(overrides: Partial<ControlRuntimeConfig["oauthResourceServ
       pilotRequiredPrincipalType: null,
       pilotRequiredAssuranceLevel: null,
       pilotRevokeTokens: true,
+      loginEnabled: false,
+      loginRedirectUri: "https://vps-prd.pyrosa.com.do:3200/auth/pyrosa-accounts/callback",
+      loginScope: "profile:read mfa:read",
+      loginRequiredPrincipalType: "human",
+      loginRequiredAssuranceLevel: "aal2",
       introspectionTimeoutMs: 1000,
       ...overrides
     }
@@ -404,6 +409,149 @@ test("OAuth browser pilot completes Authorization Code with human AAL2 claims", 
     assert.equal(oauth.revocationBodies.length, 1);
   } finally {
     await oauth.close();
+  }
+});
+
+test("Pyrosa Accounts OAuth login validates code flow before creating a local session", async () => {
+  const oauth = await startOAuthPilotServer();
+  let capturedLogin: unknown;
+  const handler = createControlApiHttpHandler(createApiRequestHandler({
+    config: createConfig({
+      loginEnabled: true,
+      tokenUrl: `${oauth.baseUrl}/oauth/token`,
+      introspectionUrl: `${oauth.baseUrl}/oauth/introspect`,
+      loginScope: "profile:read mfa:read",
+      loginRequiredPrincipalType: "human",
+      loginRequiredAssuranceLevel: "aal2"
+    }),
+    startedAt: Date.now() - 1000,
+    controlPlaneStore: {
+      loginOAuthUser: async (request: Parameters<ControlPlaneStore["loginOAuthUser"]>[0]) => {
+        capturedLogin = request;
+        return {
+          sessionToken: "session-from-oauth",
+          expiresAt: "2026-06-09T12:00:00.000Z",
+          user: {
+            userId: "user-webmaster",
+            email: request.email,
+            displayName: request.displayName ?? "PYROSA Webmaster",
+            status: "active",
+            globalRoles: ["platform_admin"],
+            tenantMemberships: []
+          }
+        };
+      }
+    } as unknown as ControlPlaneStore
+  }));
+
+  try {
+    const response = await invokeRequestHandler(handler, {
+      method: "POST",
+      url: "/v1/auth/pyrosa-accounts/oauth-login",
+      headers: {
+        "content-type": "application/json; charset=utf-8"
+      },
+      body: JSON.stringify({
+        code: "human-code",
+        redirectUri: "https://vps-prd.pyrosa.com.do:3200/auth/pyrosa-accounts/callback",
+        codeVerifier: "pkce-verifier"
+      })
+    });
+
+    assert.equal(response.statusCode, 200);
+    const payload = JSON.parse(response.bodyText) as { sessionToken: string };
+    assert.equal(payload.sessionToken, "session-from-oauth");
+    assert.deepEqual(capturedLogin, {
+      provider: "pyrosa-accounts",
+      email: "webmaster@pyrosa.com.do",
+      username: "webmaster@pyrosa.com.do",
+      displayName: "PYROSA Webmaster",
+      externalSubject: "42",
+      mfaSatisfied: true,
+      assuranceLevel: "aal2",
+      clientId: "oauth-smoke",
+      scopes: ["profile:read", "mfa:read"],
+      audience: "simplehost-control",
+      issuer: "https://accounts.pyrosa.com.do"
+    });
+    assert.equal(oauth.tokenBodies.length, 1);
+    assert.equal(oauth.introspectionBodies.length, 1);
+    assert.equal(oauth.revocationBodies.length, 0);
+  } finally {
+    await oauth.close();
+  }
+});
+
+test("Pyrosa Accounts OAuth login fails closed before local session when AAL is too low", async () => {
+  const server = createServer(async (request, response) => {
+    if (request.method === "POST" && request.url === "/oauth/token") {
+      response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      response.end(JSON.stringify({
+        access_token: "low-aal-token",
+        token_type: "Bearer"
+      }));
+      return;
+    }
+
+    if (request.method === "POST" && request.url === "/oauth/introspect") {
+      response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      response.end(JSON.stringify({
+        active: true,
+        token_type: "access_token",
+        client_id: "oauth-smoke",
+        scope: "profile:read mfa:read",
+        aud: "simplehost-control",
+        username: "webmaster@pyrosa.com.do",
+        principal_type: "human",
+        assurance_level: "aal1"
+      }));
+      return;
+    }
+
+    response.writeHead(404);
+    response.end();
+  });
+
+  await new Promise<void>((resolve) => {
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  const address = server.address();
+  assert.ok(address && typeof address === "object");
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+
+  try {
+    const handler = createControlApiHttpHandler(createApiRequestHandler({
+      config: createConfig({
+        loginEnabled: true,
+        tokenUrl: `${baseUrl}/oauth/token`,
+        introspectionUrl: `${baseUrl}/oauth/introspect`,
+        loginRequiredAssuranceLevel: "aal2"
+      }),
+      startedAt: Date.now() - 1000,
+      controlPlaneStore: {
+        loginOAuthUser: async () => {
+          throw new Error("local session should not be created");
+        }
+      } as unknown as ControlPlaneStore
+    }));
+
+    const response = await invokeRequestHandler(handler, {
+      method: "POST",
+      url: "/v1/auth/pyrosa-accounts/oauth-login",
+      headers: {
+        "content-type": "application/json; charset=utf-8"
+      },
+      body: JSON.stringify({
+        code: "human-code",
+        redirectUri: "https://vps-prd.pyrosa.com.do:3200/auth/pyrosa-accounts/callback",
+        codeVerifier: "pkce-verifier"
+      })
+    });
+
+    assert.equal(response.statusCode, 403);
+    assert.equal(JSON.parse(response.bodyText).error, "insufficient_assurance");
+  } finally {
+    await closeHttpServer(server);
   }
 });
 

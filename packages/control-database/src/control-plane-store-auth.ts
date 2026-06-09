@@ -1017,6 +1017,50 @@ export function createControlPlaneAuthMethods(
       });
     },
 
+    async loginOAuthUser(request) {
+      return withTransaction(pool, async (client) => {
+        const user = await getUserByEmail(client, request.email);
+
+        if (!user || user.status !== "active") {
+          throw new UserAuthorizationError("OAuth user is not active.");
+        }
+
+        const session = await createSession(client, user.user_id, options.sessionTtlSeconds, {
+          authProviderSlug: request.provider,
+          externalSubject: request.externalSubject ?? request.username ?? request.email,
+          mfaSatisfied: request.mfaSatisfied,
+          assuranceLevel: request.assuranceLevel
+        });
+        const summary = await buildAuthenticatedUserSummary(client, user.user_id);
+
+        await insertAuditEvent(client, {
+          actorType: "user",
+          actorId: user.user_id,
+          eventType: "auth.oauth_login",
+          entityType: "user",
+          entityId: user.user_id,
+          payload: {
+            email: user.email,
+            provider: request.provider,
+            username: request.username ?? null,
+            clientId: request.clientId ?? null,
+            scopes: request.scopes ?? [],
+            audience: request.audience ?? null,
+            issuer: request.issuer ?? null,
+            externalSubject: request.externalSubject ?? request.username ?? request.email,
+            mfaSatisfied: request.mfaSatisfied ?? null,
+            assuranceLevel: request.assuranceLevel ?? null
+          }
+        });
+
+        return {
+          sessionToken: session.sessionToken,
+          expiresAt: session.expiresAt,
+          user: summary
+        };
+      });
+    },
+
     async getCurrentUser(presentedToken) {
       return withTransaction(pool, (client) => authenticateSession(client, presentedToken));
     },

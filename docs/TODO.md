@@ -118,6 +118,12 @@ Current state:
   `https://accounts.pyrosa.com.do`, audience `simplehost-control`, client
   `simplehost-control-oauth-pilot`, principal `human`, assurance level `aal2`,
   and scopes `profile:read mfa:read`.
+- SimpleHostMan source now includes native candidate login routes at
+  `/auth/pyrosa-accounts/start` and `/auth/pyrosa-accounts/callback`. The web
+  route owns PKCE/state cookies, while the internal control API exchanges the
+  code, introspects the access token, validates `simplehost-control`, `human`,
+  `aal2`, `profile:read`, and `mfa:read`, and creates `shp_session` only for an
+  active local operator.
 - SimpleHostMan still keeps Authentik as the default provider for
   administrative proxy surfaces until there is an explicit promotion and
   rollback plan for a selected surface.
@@ -125,8 +131,6 @@ Current state:
 
 Pending work:
 
-- implement the native SimpleHostMan `oauth_login` flow outside the diagnostic
-  `/v1/oauth/pilot/*` routes
 - persist provider/session metadata and revoke the OAuth access token on local
   logout
 - expose candidate binding and operational login/failure state in the IAM view

@@ -55,6 +55,11 @@ export interface ControlOAuthResourceServerRuntimeConfig {
   pilotRequiredPrincipalType: string | null;
   pilotRequiredAssuranceLevel: string | null;
   pilotRevokeTokens: boolean;
+  loginEnabled: boolean;
+  loginRedirectUri: string | null;
+  loginScope: string | null;
+  loginRequiredPrincipalType: string | null;
+  loginRequiredAssuranceLevel: string | null;
   introspectionTimeoutMs: number;
 }
 
@@ -202,6 +207,11 @@ export function createControlRuntimeConfig(
       pilotRequiredPrincipalType: readOptionalString(env.SIMPLEHOST_OAUTH_PILOT_REQUIRED_PRINCIPAL_TYPE),
       pilotRequiredAssuranceLevel: readOptionalString(env.SIMPLEHOST_OAUTH_PILOT_REQUIRED_ASSURANCE_LEVEL),
       pilotRevokeTokens: readBoolean(env.SIMPLEHOST_OAUTH_PILOT_REVOKE_TOKENS, true),
+      loginEnabled: readBoolean(env.SIMPLEHOST_OAUTH_LOGIN_ENABLED, false),
+      loginRedirectUri: readOptionalString(env.SIMPLEHOST_OAUTH_LOGIN_REDIRECT_URI),
+      loginScope: readOptionalString(env.SIMPLEHOST_OAUTH_LOGIN_SCOPE),
+      loginRequiredPrincipalType: readOptionalString(env.SIMPLEHOST_OAUTH_LOGIN_REQUIRED_PRINCIPAL_TYPE),
+      loginRequiredAssuranceLevel: readOptionalString(env.SIMPLEHOST_OAUTH_LOGIN_REQUIRED_ASSURANCE_LEVEL),
       introspectionTimeoutMs: readPositiveInt(
         env.SIMPLEHOST_OAUTH_INTROSPECTION_TIMEOUT_MS,
         3000

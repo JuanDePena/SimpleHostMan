@@ -19,6 +19,9 @@ function createStubApi(
     login: async () => {
       throw new Error("Unexpected login request in test");
     },
+    loginPyrosaAccountsOAuth: async () => {
+      throw new Error("Unexpected Pyrosa Accounts OAuth login request in test");
+    },
     logout: async () => {
       throw new Error("Unexpected logout request in test");
     },
@@ -165,6 +168,38 @@ function createConfig(): ControlWebRuntimeConfig {
   };
 }
 
+function createOAuthLoginConfig(): ControlWebRuntimeConfig {
+  return {
+    ...createConfig(),
+    oauthResourceServer: {
+      enabled: true,
+      issuer: "https://accounts.pyrosa.com.do",
+      authorizationUrl: "https://accounts.pyrosa.com.do/oauth/authorize",
+      tokenUrl: "https://accounts.pyrosa.com.do/oauth/token",
+      introspectionUrl: "https://accounts.pyrosa.com.do/oauth/introspect",
+      revocationUrl: "https://accounts.pyrosa.com.do/oauth/revoke",
+      clientId: "simplehost-control-oauth-pilot",
+      clientSecret: null,
+      clientSecretFile: "/etc/simplehost/iam/pyrosa-accounts/simplehost-control-oauth-pilot-secret",
+      requiredScope: "profile:read",
+      requiredAudience: "simplehost-control",
+      requiredPrincipalType: null,
+      requiredAssuranceLevel: null,
+      pilotRedirectUri: "https://vps-prd.pyrosa.com.do:3200/v1/oauth/pilot/callback",
+      pilotScope: "profile:read mfa:read",
+      pilotRequiredPrincipalType: "human",
+      pilotRequiredAssuranceLevel: "aal2",
+      pilotRevokeTokens: true,
+      loginEnabled: true,
+      loginRedirectUri: "https://vps-prd.pyrosa.com.do:3200/auth/pyrosa-accounts/callback",
+      loginScope: "profile:read mfa:read",
+      loginRequiredPrincipalType: "human",
+      loginRequiredAssuranceLevel: "aal2",
+      introspectionTimeoutMs: 1000
+    }
+  };
+}
+
 test("web healthz reports web runtime metadata", async () => {
   const handler = createControlWebSurface(
     {
@@ -257,6 +292,71 @@ test("locale preferences route redirects and sets locale cookie", async () => {
   assert.equal(response.statusCode, 303);
   assert.equal(response.headers.location, "/?view=nodes");
   assert.match(String(response.headers["set-cookie"]), /shp_lang=en/);
+});
+
+test("Pyrosa Accounts OAuth login routes create PKCE state and local session", async () => {
+  let callbackRequest: unknown;
+  const handler = createControlWebSurface(
+    {
+      config: createOAuthLoginConfig(),
+      startedAt: Date.now()
+    },
+    createStubApi({
+      loginPyrosaAccountsOAuth: async (request) => {
+        callbackRequest = request;
+        return {
+          sessionToken: "oauth-session-token",
+          expiresAt: "2026-06-09T12:00:00.000Z",
+          user: {
+            userId: "user-webmaster",
+            email: "webmaster@pyrosa.com.do",
+            displayName: "Webmaster",
+            status: "active",
+            globalRoles: ["platform_admin"],
+            tenantMemberships: []
+          }
+        };
+      }
+    })
+  ).requestListener;
+
+  const startResponse = await invokeRequestHandler(handler, {
+    method: "GET",
+    url: "/auth/pyrosa-accounts/start"
+  });
+  assert.equal(startResponse.statusCode, 303);
+  const authorize = new URL(String(startResponse.headers.location));
+  assert.equal(authorize.pathname, "/oauth/authorize");
+  assert.equal(authorize.searchParams.get("response_type"), "code");
+  assert.equal(authorize.searchParams.get("client_id"), "simplehost-control-oauth-pilot");
+  assert.equal(authorize.searchParams.get("scope"), "profile:read mfa:read");
+  assert.equal(authorize.searchParams.get("code_challenge_method"), "S256");
+  assert.ok(authorize.searchParams.get("code_challenge"));
+  const cookie = String(startResponse.headers["set-cookie"]).split(";", 1)[0];
+  assert.match(cookie, /^shp_oauth_login=/);
+
+  const callbackResponse = await invokeRequestHandler(handler, {
+    method: "GET",
+    url: `/auth/pyrosa-accounts/callback?state=${authorize.searchParams.get("state")}&code=human-code`,
+    headers: {
+      cookie
+    }
+  });
+  assert.equal(callbackResponse.statusCode, 303);
+  assert.equal(callbackResponse.headers.location, "/");
+  assert.match(String(callbackResponse.headers["set-cookie"]), /shp_session=oauth-session-token/);
+  assert.match(String(callbackResponse.headers["set-cookie"]), /shp_oauth_login=;/);
+  assert.deepEqual(
+    {
+      ...(callbackRequest as Record<string, unknown>),
+      codeVerifier: typeof (callbackRequest as Record<string, unknown>).codeVerifier
+    },
+    {
+      code: "human-code",
+      redirectUri: "https://vps-prd.pyrosa.com.do:3200/auth/pyrosa-accounts/callback",
+      codeVerifier: "string"
+    }
+  );
 });
 
 test("unknown routes still return a structured 404 payload", async () => {

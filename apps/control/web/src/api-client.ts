@@ -5,6 +5,7 @@ import {
   type AuthenticatedUserSummary,
   type AuthLoginRequest,
   type AuthLoginResponse,
+  type PyrosaAccountsOAuthLoginRequest,
   type BackupsOverview,
   type CodeServerUpdateRequest,
   type CreateUserRequest,
@@ -79,6 +80,7 @@ export class WebApiError extends Error {
 
 export interface ControlWebApi extends ControlAuthSurface {
   login(credentials: AuthLoginRequest): Promise<AuthLoginResponse>;
+  loginPyrosaAccountsOAuth(request: PyrosaAccountsOAuthLoginRequest): Promise<AuthLoginResponse>;
   logout(token: string | null): Promise<void>;
   getCurrentUser(token: string | null): Promise<AuthenticatedUserSummary>;
   resolveSession(token: string | null): Promise<ControlResolvedSession>;
@@ -285,6 +287,12 @@ export function createControlWebApiFromRequest(request: ControlWebApiRequest): C
       return request<AuthLoginResponse>("/v1/auth/login", {
         method: "POST",
         body: credentials
+      });
+    },
+    loginPyrosaAccountsOAuth(loginRequest: PyrosaAccountsOAuthLoginRequest): Promise<AuthLoginResponse> {
+      return request<AuthLoginResponse>("/v1/auth/pyrosa-accounts/oauth-login", {
+        method: "POST",
+        body: loginRequest
       });
     },
     async logout(token: string | null): Promise<void> {

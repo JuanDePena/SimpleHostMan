@@ -235,6 +235,17 @@ Pyrosa Accounts provider readiness gate:
   Authentik still remains the default provider for administrative proxy
   surfaces until there is an explicit promotion and rollback plan for a
   selected surface.
+- SimpleHostMan now includes a native Pyrosa Accounts OAuth login path:
+  - `GET /auth/pyrosa-accounts/start` creates PKCE state and redirects to
+    Pyrosa Accounts `/oauth/authorize`;
+  - `GET /auth/pyrosa-accounts/callback` validates state and asks the internal
+    control API to exchange the code, introspect the access token, require
+    `simplehost-control`, `human`, `aal2`, `profile:read`, and `mfa:read`, and
+    create `shp_session` only for an active local operator email;
+  - `/v1/oauth/pilot/*` remains diagnostic and separate from the login path.
+- The native OAuth login path is gated by `SIMPLEHOST_OAUTH_LOGIN_ENABLED` and
+  is still candidate-only. Authentik continues to protect the public
+  administrative surface during the pilot.
 - `oidc` may become available only after Accounts ships OIDC discovery, JWKS,
   signed ID tokens, `nonce` handling, stable claims and `/userinfo`.
 - `gateway_proxy` may become available only after Accounts ships a real
