@@ -246,6 +246,15 @@ Pyrosa Accounts provider readiness gate:
 - The native OAuth login path is gated by `SIMPLEHOST_OAUTH_LOGIN_ENABLED` and
   is still candidate-only. Authentik continues to protect the public
   administrative surface during the pilot.
+- OAuth login sessions store non-sensitive provider metadata on
+  `control_plane_sessions`: provider slug, external subject, assurance level,
+  client id, scopes, issuer, and a SHA-256 access-token hash. The raw access
+  token is not persisted in PostgreSQL.
+- The browser receives a separate `HttpOnly`, `Secure`, `SameSite=Lax`
+  `shp_oauth_logout` cookie scoped to `/auth/logout` only. During logout,
+  SimpleHostMan revokes the Pyrosa Accounts access token when the cookie is
+  present, clears both local cookies, records audit events, and redirects to
+  the configured Pyrosa Accounts logout URL with `return_to`.
 - `oidc` may become available only after Accounts ships OIDC discovery, JWKS,
   signed ID tokens, `nonce` handling, stable claims and `/userinfo`.
 - `gateway_proxy` may become available only after Accounts ships a real

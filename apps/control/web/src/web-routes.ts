@@ -56,6 +56,8 @@ export interface ControlWebRuntimeConfig {
     loginScope: string | null;
     loginRequiredPrincipalType: string | null;
     loginRequiredAssuranceLevel: string | null;
+    loginLogoutUrl: string | null;
+    loginPostLogoutRedirectUri: string | null;
     introspectionTimeoutMs: number;
   };
 }

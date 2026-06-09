@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -71,6 +72,8 @@ function createConfig(overrides: Partial<ControlRuntimeConfig["oauthResourceServ
       loginScope: "profile:read mfa:read",
       loginRequiredPrincipalType: "human",
       loginRequiredAssuranceLevel: "aal2",
+      loginLogoutUrl: "https://accounts.pyrosa.com.do/logout",
+      loginPostLogoutRedirectUri: "https://vps-prd.pyrosa.com.do:3200/login?notice=Session%20closed&kind=info",
       introspectionTimeoutMs: 1000,
       ...overrides
     }
@@ -204,6 +207,10 @@ function createHandler(config: ControlRuntimeConfig) {
     startedAt: Date.now() - 1000,
     controlPlaneStore: {} as ControlPlaneStore
   }));
+}
+
+function hashTokenForTest(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
 }
 
 test("OAuth resource-server pilot accepts active scoped tokens with matching audience", async () => {
@@ -459,8 +466,12 @@ test("Pyrosa Accounts OAuth login validates code flow before creating a local se
     });
 
     assert.equal(response.statusCode, 200);
-    const payload = JSON.parse(response.bodyText) as { sessionToken: string };
+    const payload = JSON.parse(response.bodyText) as {
+      sessionToken: string;
+      oauthLogoutToken: string;
+    };
     assert.equal(payload.sessionToken, "session-from-oauth");
+    assert.equal(payload.oauthLogoutToken, "human-access-token");
     assert.deepEqual(capturedLogin, {
       provider: "pyrosa-accounts",
       email: "webmaster@pyrosa.com.do",
@@ -472,7 +483,11 @@ test("Pyrosa Accounts OAuth login validates code flow before creating a local se
       clientId: "oauth-smoke",
       scopes: ["profile:read", "mfa:read"],
       audience: "simplehost-control",
-      issuer: "https://accounts.pyrosa.com.do"
+      issuer: "https://accounts.pyrosa.com.do",
+      oauthClientId: "oauth-smoke",
+      oauthScopes: ["profile:read", "mfa:read"],
+      oauthTokenHash: hashTokenForTest("human-access-token"),
+      oauthIssuer: "https://accounts.pyrosa.com.do"
     });
     assert.equal(oauth.tokenBodies.length, 1);
     assert.equal(oauth.introspectionBodies.length, 1);
@@ -531,6 +546,9 @@ test("Pyrosa Accounts OAuth login fails closed before local session when AAL is 
       controlPlaneStore: {
         loginOAuthUser: async () => {
           throw new Error("local session should not be created");
+        },
+        recordOAuthLoginRejected: async () => {
+          // Expected path for low AAL.
         }
       } as unknown as ControlPlaneStore
     }));
@@ -550,6 +568,78 @@ test("Pyrosa Accounts OAuth login fails closed before local session when AAL is 
 
     assert.equal(response.statusCode, 403);
     assert.equal(JSON.parse(response.bodyText).error, "insufficient_assurance");
+  } finally {
+    await closeHttpServer(server);
+  }
+});
+
+test("Pyrosa Accounts OAuth revoke endpoint revokes token and audits token hash", async () => {
+  const revocationBodies: URLSearchParams[] = [];
+  const server = createServer(async (request, response) => {
+    const chunks: Buffer[] = [];
+    for await (const chunk of request) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+    const body = new URLSearchParams(Buffer.concat(chunks).toString("utf8"));
+
+    if (request.method === "POST" && request.url === "/oauth/revoke") {
+      revocationBodies.push(body);
+      response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      response.end(JSON.stringify({ revoked: true }));
+      return;
+    }
+
+    response.writeHead(404);
+    response.end();
+  });
+
+  await new Promise<void>((resolve) => {
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  const address = server.address();
+  assert.ok(address && typeof address === "object");
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+  let capturedAudit: unknown;
+  let capturedBearerToken: string | null = null;
+
+  try {
+    const handler = createControlApiHttpHandler(createApiRequestHandler({
+      config: createConfig({
+        revocationUrl: `${baseUrl}/oauth/revoke`
+      }),
+      startedAt: Date.now() - 1000,
+      controlPlaneStore: {
+        recordOAuthTokenRevoked: async (
+          request: Parameters<ControlPlaneStore["recordOAuthTokenRevoked"]>[0],
+          presentedToken: string | null
+        ) => {
+          capturedAudit = request;
+          capturedBearerToken = presentedToken;
+        }
+      } as unknown as ControlPlaneStore
+    }));
+
+    const response = await invokeRequestHandler(handler, {
+      method: "POST",
+      url: "/v1/auth/pyrosa-accounts/oauth-revoke",
+      headers: {
+        authorization: "Bearer local-session-token",
+        "content-type": "application/json; charset=utf-8"
+      },
+      body: JSON.stringify({
+        token: "human-access-token"
+      })
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(revocationBodies.length, 1);
+    assert.equal(revocationBodies[0]?.get("token"), "human-access-token");
+    assert.deepEqual(capturedAudit, {
+      provider: "pyrosa-accounts",
+      tokenHash: hashTokenForTest("human-access-token"),
+      clientId: "oauth-smoke"
+    });
+    assert.equal(capturedBearerToken, "local-session-token");
   } finally {
     await closeHttpServer(server);
   }

@@ -25,6 +25,9 @@ function createStubApi(
     logout: async () => {
       throw new Error("Unexpected logout request in test");
     },
+    revokePyrosaAccountsOAuth: async () => {
+      throw new Error("Unexpected Pyrosa Accounts OAuth revoke request in test");
+    },
     getCurrentUser: async () => {
       throw new Error("Unexpected current-user request in test");
     },
@@ -195,6 +198,8 @@ function createOAuthLoginConfig(): ControlWebRuntimeConfig {
       loginScope: "profile:read mfa:read",
       loginRequiredPrincipalType: "human",
       loginRequiredAssuranceLevel: "aal2",
+      loginLogoutUrl: "https://accounts.pyrosa.com.do/logout",
+      loginPostLogoutRedirectUri: "https://vps-prd.pyrosa.com.do:3200/login?notice=Session%20closed&kind=info",
       introspectionTimeoutMs: 1000
     }
   };
@@ -306,6 +311,7 @@ test("Pyrosa Accounts OAuth login routes create PKCE state and local session", a
         callbackRequest = request;
         return {
           sessionToken: "oauth-session-token",
+          oauthLogoutToken: "oauth-access-token",
           expiresAt: "2026-06-09T12:00:00.000Z",
           user: {
             userId: "user-webmaster",
@@ -345,6 +351,7 @@ test("Pyrosa Accounts OAuth login routes create PKCE state and local session", a
   assert.equal(callbackResponse.statusCode, 303);
   assert.equal(callbackResponse.headers.location, "/");
   assert.match(String(callbackResponse.headers["set-cookie"]), /shp_session=oauth-session-token/);
+  assert.match(String(callbackResponse.headers["set-cookie"]), /shp_oauth_logout=oauth-access-token/);
   assert.match(String(callbackResponse.headers["set-cookie"]), /shp_oauth_login=;/);
   assert.deepEqual(
     {
@@ -414,6 +421,7 @@ test("logout clears the local session and redirects to the local login for direc
     createStubApi({
       logout: async (token) => {
         logoutToken = token;
+        return { revoked: true as const };
       }
     })
   ).requestListener;
@@ -442,6 +450,7 @@ test("logout clears the local session and starts Authentik outpost sign-out for 
     createStubApi({
       logout: async (token) => {
         logoutToken = token;
+        return { revoked: true as const };
       }
     })
   ).requestListener;
@@ -462,6 +471,54 @@ test("logout clears the local session and starts Authentik outpost sign-out for 
   assert.equal(location.pathname, "/outpost.goauthentik.io/sign_out");
   assert.equal(location.searchParams.get("rd"), "/login");
   assert.match(String(response.headers["set-cookie"]), /shp_session=;/);
+});
+
+test("logout revokes Pyrosa Accounts OAuth token and redirects to external identity logout", async () => {
+  let logoutToken: string | null = null;
+  let revokedToken: string | null = null;
+  const handler = createControlWebSurface(
+    {
+      config: createOAuthLoginConfig(),
+      startedAt: Date.now()
+    },
+    createStubApi({
+      revokePyrosaAccountsOAuth: async (token, request) => {
+        logoutToken = token;
+        revokedToken = request.token;
+      },
+      logout: async () => ({
+        revoked: true,
+        authProviderSlug: "pyrosa-accounts",
+        externalSubject: "42",
+        assuranceLevel: "aal2",
+        oauthClientId: "simplehost-control-oauth-pilot",
+        oauthScopes: ["profile:read", "mfa:read"],
+        oauthTokenHash: "token-hash",
+        oauthIssuer: "https://accounts.pyrosa.com.do"
+      })
+    })
+  ).requestListener;
+
+  const response = await invokeRequestHandler(handler, {
+    method: "POST",
+    url: "/auth/logout",
+    headers: {
+      cookie: "shp_session=test-token; shp_oauth_logout=oauth-access-token"
+    }
+  });
+  const location = new URL(String(response.headers.location));
+
+  assert.equal(logoutToken, "test-token");
+  assert.equal(revokedToken, "oauth-access-token");
+  assert.equal(response.statusCode, 303);
+  assert.equal(location.origin, "https://accounts.pyrosa.com.do");
+  assert.equal(location.pathname, "/logout");
+  assert.equal(
+    location.searchParams.get("return_to"),
+    "https://vps-prd.pyrosa.com.do:3200/login?notice=Session%20closed&kind=info"
+  );
+  assert.match(String(response.headers["set-cookie"]), /shp_session=;/);
+  assert.match(String(response.headers["set-cookie"]), /shp_oauth_logout=;/);
 });
 
 test("parameter and history actions call the authenticated API and return to the dashboard", async () => {

@@ -58,7 +58,7 @@ test("control bootstrap surface delegates auth and dashboard bootstrap", async (
   const apiSurface = {
     auth: {
       login: async () => createAuthLoginResponse(),
-      logout: async () => {},
+      logout: async () => ({ revoked: true as const }),
       getCurrentUser: async () => {
         currentUserCalls += 1;
         return expectedBootstrap.currentUser;

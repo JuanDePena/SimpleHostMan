@@ -5,6 +5,8 @@ import type {
   AuthLogoutResponse,
   AuthenticatedUserSummary,
   OAuthIdentityLoginRequest,
+  OAuthLoginRejectedAuditRequest,
+  OAuthTokenRevokedAuditRequest,
   BackupRunRecordRequest,
   BackupRunSummary,
   BackupsOverview,
@@ -123,6 +125,14 @@ export interface SessionRow {
   user_id: string;
   expires_at: Date | string;
   revoked_at: Date | string | null;
+  auth_provider_slug?: string | null;
+  external_subject?: string | null;
+  mfa_satisfied?: boolean | null;
+  assurance_level?: string | null;
+  oauth_client_id?: string | null;
+  oauth_scopes?: unknown;
+  oauth_token_hash?: string | null;
+  oauth_issuer?: string | null;
 }
 
 export interface SessionMetadata {
@@ -130,6 +140,10 @@ export interface SessionMetadata {
   externalSubject?: string;
   mfaSatisfied?: boolean;
   assuranceLevel?: string;
+  oauthClientId?: string;
+  oauthScopes?: string[];
+  oauthTokenHash?: string;
+  oauthIssuer?: string;
 }
 
 export interface IamProviderRow {
@@ -502,6 +516,11 @@ export interface ControlPlaneStore {
   loginUser(request: AuthLoginRequest): Promise<AuthLoginResponse>;
   loginTrustedProxyUser(request: TrustedProxyLoginRequest): Promise<AuthLoginResponse>;
   loginOAuthUser(request: OAuthIdentityLoginRequest): Promise<AuthLoginResponse>;
+  recordOAuthLoginRejected(request: OAuthLoginRejectedAuditRequest): Promise<void>;
+  recordOAuthTokenRevoked(
+    request: OAuthTokenRevokedAuditRequest,
+    presentedToken: string | null
+  ): Promise<void>;
   getCurrentUser(presentedToken: string | null): Promise<AuthenticatedUserSummary>;
   logoutUser(presentedToken: string | null): Promise<AuthLogoutResponse>;
   createUser(
@@ -665,6 +684,8 @@ export type ControlPlaneAuthMethods = Pick<
   | "loginUser"
   | "loginTrustedProxyUser"
   | "loginOAuthUser"
+  | "recordOAuthLoginRejected"
+  | "recordOAuthTokenRevoked"
   | "getCurrentUser"
   | "logoutUser"
   | "createUser"

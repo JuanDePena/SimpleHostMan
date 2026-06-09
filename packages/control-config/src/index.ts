@@ -60,6 +60,8 @@ export interface ControlOAuthResourceServerRuntimeConfig {
   loginScope: string | null;
   loginRequiredPrincipalType: string | null;
   loginRequiredAssuranceLevel: string | null;
+  loginLogoutUrl: string | null;
+  loginPostLogoutRedirectUri: string | null;
   introspectionTimeoutMs: number;
 }
 
@@ -212,6 +214,8 @@ export function createControlRuntimeConfig(
       loginScope: readOptionalString(env.SIMPLEHOST_OAUTH_LOGIN_SCOPE),
       loginRequiredPrincipalType: readOptionalString(env.SIMPLEHOST_OAUTH_LOGIN_REQUIRED_PRINCIPAL_TYPE),
       loginRequiredAssuranceLevel: readOptionalString(env.SIMPLEHOST_OAUTH_LOGIN_REQUIRED_ASSURANCE_LEVEL),
+      loginLogoutUrl: readOptionalString(env.SIMPLEHOST_OAUTH_LOGIN_LOGOUT_URL),
+      loginPostLogoutRedirectUri: readOptionalString(env.SIMPLEHOST_OAUTH_LOGIN_POST_LOGOUT_REDIRECT_URI),
       introspectionTimeoutMs: readPositiveInt(
         env.SIMPLEHOST_OAUTH_INTROSPECTION_TIMEOUT_MS,
         3000

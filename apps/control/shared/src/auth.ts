@@ -1,6 +1,7 @@
 import type {
   AuthLoginRequest,
   AuthLoginResponse,
+  AuthLogoutResponse,
   AuthenticatedUserSummary,
   TrustedProxyLoginRequest
 } from "@simplehost/control-contracts";
@@ -8,7 +9,7 @@ import type {
 export interface ControlAuthSurface {
   login(credentials: AuthLoginRequest): Promise<AuthLoginResponse>;
   loginTrustedProxy?(identity: TrustedProxyLoginRequest): Promise<AuthLoginResponse>;
-  logout(token: string | null): Promise<void>;
+  logout(token: string | null): Promise<AuthLogoutResponse>;
   getCurrentUser(token: string | null): Promise<AuthenticatedUserSummary>;
 }
 

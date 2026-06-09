@@ -73,9 +73,7 @@ export function createInProcessControlWebApi(
   return {
     ...api,
     login: (credentials) => auth.login(credentials),
-    logout: async (token) => {
-      await auth.logout(token);
-    },
+    logout: (token) => auth.logout(token),
     getCurrentUser: (token) => auth.getCurrentUser(token)
   };
 }

@@ -57,7 +57,7 @@ function createStubApiSurface(
   return {
     auth: {
       login: async () => createAuthLoginResponse(),
-      logout: async () => {},
+      logout: async () => ({ revoked: true as const }),
       getCurrentUser: async () => createAuthenticatedUserSummary(),
       ...authOverrides
     },

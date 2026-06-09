@@ -124,6 +124,11 @@ Current state:
   code, introspects the access token, validates `simplehost-control`, `human`,
   `aal2`, `profile:read`, and `mfa:read`, and creates `shp_session` only for an
   active local operator.
+- OAuth sessions now persist non-sensitive provider metadata and token hash;
+  logout revokes the raw access token from the path-scoped
+  `shp_oauth_logout` cookie when present, clears local cookies, audits
+  revocation/logout, and redirects to the configured Pyrosa Accounts logout
+  endpoint.
 - SimpleHostMan still keeps Authentik as the default provider for
   administrative proxy surfaces until there is an explicit promotion and
   rollback plan for a selected surface.
@@ -131,8 +136,6 @@ Current state:
 
 Pending work:
 
-- persist provider/session metadata and revoke the OAuth access token on local
-  logout
 - expose candidate binding and operational login/failure state in the IAM view
 - validate active and unprovisioned operator behavior before promotion
 

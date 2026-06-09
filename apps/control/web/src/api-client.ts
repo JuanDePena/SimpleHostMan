@@ -5,7 +5,10 @@ import {
   type AuthenticatedUserSummary,
   type AuthLoginRequest,
   type AuthLoginResponse,
+  type AuthLogoutResponse,
   type PyrosaAccountsOAuthLoginRequest,
+  type PyrosaAccountsOAuthLoginResponse,
+  type PyrosaAccountsOAuthRevokeRequest,
   type BackupsOverview,
   type CodeServerUpdateRequest,
   type CreateUserRequest,
@@ -80,8 +83,12 @@ export class WebApiError extends Error {
 
 export interface ControlWebApi extends ControlAuthSurface {
   login(credentials: AuthLoginRequest): Promise<AuthLoginResponse>;
-  loginPyrosaAccountsOAuth(request: PyrosaAccountsOAuthLoginRequest): Promise<AuthLoginResponse>;
-  logout(token: string | null): Promise<void>;
+  loginPyrosaAccountsOAuth(request: PyrosaAccountsOAuthLoginRequest): Promise<PyrosaAccountsOAuthLoginResponse>;
+  revokePyrosaAccountsOAuth(
+    token: string | null,
+    request: PyrosaAccountsOAuthRevokeRequest
+  ): Promise<void>;
+  logout(token: string | null): Promise<AuthLogoutResponse>;
   getCurrentUser(token: string | null): Promise<AuthenticatedUserSummary>;
   resolveSession(token: string | null): Promise<ControlResolvedSession>;
   loadAuthenticatedDashboard(
@@ -289,14 +296,24 @@ export function createControlWebApiFromRequest(request: ControlWebApiRequest): C
         body: credentials
       });
     },
-    loginPyrosaAccountsOAuth(loginRequest: PyrosaAccountsOAuthLoginRequest): Promise<AuthLoginResponse> {
-      return request<AuthLoginResponse>("/v1/auth/pyrosa-accounts/oauth-login", {
+    loginPyrosaAccountsOAuth(loginRequest: PyrosaAccountsOAuthLoginRequest): Promise<PyrosaAccountsOAuthLoginResponse> {
+      return request<PyrosaAccountsOAuthLoginResponse>("/v1/auth/pyrosa-accounts/oauth-login", {
         method: "POST",
         body: loginRequest
       });
     },
-    async logout(token: string | null): Promise<void> {
-      await request("/v1/auth/logout", {
+    async revokePyrosaAccountsOAuth(
+      token: string | null,
+      revokeRequest: PyrosaAccountsOAuthRevokeRequest
+    ): Promise<void> {
+      await request("/v1/auth/pyrosa-accounts/oauth-revoke", {
+        method: "POST",
+        token,
+        body: revokeRequest
+      });
+    },
+    logout(token: string | null): Promise<AuthLogoutResponse> {
+      return request<AuthLogoutResponse>("/v1/auth/logout", {
         method: "POST",
         token
       });

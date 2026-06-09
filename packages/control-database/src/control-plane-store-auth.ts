@@ -60,6 +60,10 @@ const reclaimableClaimedJobKinds = [
 
 const reclaimableJobClaimTimeoutMs = 5 * 60 * 1000;
 
+function parseStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : [];
+}
+
 function normalizeReportedInstalledPackage(value: unknown): ReportedInstalledPackage | undefined {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return undefined;
@@ -467,9 +471,13 @@ export async function createSession(
        auth_provider_slug,
        external_subject,
        mfa_satisfied,
-       assurance_level
+       assurance_level,
+       oauth_client_id,
+       oauth_scopes,
+       oauth_token_hash,
+       oauth_issuer
      )
-     VALUES ($1, $2, $3, $4, $5, $4, $6, $7, $8, $9)`,
+     VALUES ($1, $2, $3, $4, $5, $4, $6, $7, $8, $9, $10, $11, $12, $13)`,
     [
       randomUUID(),
       userId,
@@ -479,7 +487,11 @@ export async function createSession(
       metadata.authProviderSlug ?? null,
       metadata.externalSubject ?? null,
       metadata.mfaSatisfied ?? null,
-      metadata.assuranceLevel ?? null
+      metadata.assuranceLevel ?? null,
+      metadata.oauthClientId ?? null,
+      JSON.stringify(metadata.oauthScopes ?? []),
+      metadata.oauthTokenHash ?? null,
+      metadata.oauthIssuer ?? null
     ]
   );
 
@@ -1029,7 +1041,11 @@ export function createControlPlaneAuthMethods(
           authProviderSlug: request.provider,
           externalSubject: request.externalSubject ?? request.username ?? request.email,
           mfaSatisfied: request.mfaSatisfied,
-          assuranceLevel: request.assuranceLevel
+          assuranceLevel: request.assuranceLevel,
+          oauthClientId: request.oauthClientId ?? request.clientId,
+          oauthScopes: request.oauthScopes ?? request.scopes,
+          oauthTokenHash: request.oauthTokenHash,
+          oauthIssuer: request.oauthIssuer ?? request.issuer
         });
         const summary = await buildAuthenticatedUserSummary(client, user.user_id);
 
@@ -1047,6 +1063,7 @@ export function createControlPlaneAuthMethods(
             scopes: request.scopes ?? [],
             audience: request.audience ?? null,
             issuer: request.issuer ?? null,
+            oauthTokenHash: request.oauthTokenHash ?? null,
             externalSubject: request.externalSubject ?? request.username ?? request.email,
             mfaSatisfied: request.mfaSatisfied ?? null,
             assuranceLevel: request.assuranceLevel ?? null
@@ -1061,6 +1078,46 @@ export function createControlPlaneAuthMethods(
       });
     },
 
+    async recordOAuthLoginRejected(request) {
+      return withTransaction(pool, async (client) => {
+        await insertAuditEvent(client, {
+          actorType: "system",
+          actorId: request.provider,
+          eventType: "auth.oauth_callback_rejected",
+          entityType: "iam_provider",
+          entityId: request.provider,
+          payload: {
+            provider: request.provider,
+            reason: request.reason,
+            email: request.email ?? null,
+            clientId: request.clientId ?? null,
+            externalSubject: request.externalSubject ?? null,
+            assuranceLevel: request.assuranceLevel ?? null
+          }
+        });
+      });
+    },
+
+    async recordOAuthTokenRevoked(request, presentedToken) {
+      return withTransaction(pool, async (client) => {
+        const user = await authenticateSession(client, presentedToken);
+
+        await insertAuditEvent(client, {
+          actorType: "user",
+          actorId: user.userId,
+          eventType: "auth.oauth_token_revoked",
+          entityType: "iam_provider",
+          entityId: request.provider,
+          payload: {
+            provider: request.provider,
+            tokenHash: request.tokenHash ?? null,
+            clientId: request.clientId ?? null,
+            externalSubject: request.externalSubject ?? null
+          }
+        });
+      });
+    },
+
     async getCurrentUser(presentedToken) {
       return withTransaction(pool, (client) => authenticateSession(client, presentedToken));
     },
@@ -1068,6 +1125,25 @@ export function createControlPlaneAuthMethods(
     async logoutUser(presentedToken) {
       return withTransaction(pool, async (client) => {
         const user = await authenticateSession(client, presentedToken);
+        const sessionResult = await client.query<SessionRow>(
+          `SELECT
+             session_id,
+             user_id,
+             expires_at,
+             revoked_at,
+             auth_provider_slug,
+             external_subject,
+             mfa_satisfied,
+             assurance_level,
+             oauth_client_id,
+             oauth_scopes,
+             oauth_token_hash,
+             oauth_issuer
+           FROM control_plane_sessions
+           WHERE session_token_hash = $1`,
+          [hashToken(presentedToken!)]
+        );
+        const sessionMetadata = sessionResult.rows[0];
 
         await client.query(
           `UPDATE control_plane_sessions
@@ -1081,11 +1157,27 @@ export function createControlPlaneAuthMethods(
           actorId: user.userId,
           eventType: "auth.logout",
           entityType: "user",
-          entityId: user.userId
+          entityId: user.userId,
+          payload: {
+            provider: sessionMetadata?.auth_provider_slug ?? null,
+            externalSubject: sessionMetadata?.external_subject ?? null,
+            assuranceLevel: sessionMetadata?.assurance_level ?? null,
+            oauthClientId: sessionMetadata?.oauth_client_id ?? null,
+            oauthScopes: parseStringArray(sessionMetadata?.oauth_scopes),
+            oauthTokenHash: sessionMetadata?.oauth_token_hash ?? null,
+            oauthIssuer: sessionMetadata?.oauth_issuer ?? null
+          }
         });
 
         return {
-          revoked: true as const
+          revoked: true as const,
+          authProviderSlug: sessionMetadata?.auth_provider_slug ?? undefined,
+          externalSubject: sessionMetadata?.external_subject ?? undefined,
+          assuranceLevel: sessionMetadata?.assurance_level ?? undefined,
+          oauthClientId: sessionMetadata?.oauth_client_id ?? undefined,
+          oauthScopes: parseStringArray(sessionMetadata?.oauth_scopes),
+          oauthTokenHash: sessionMetadata?.oauth_token_hash ?? undefined,
+          oauthIssuer: sessionMetadata?.oauth_issuer ?? undefined
         };
       });
     },

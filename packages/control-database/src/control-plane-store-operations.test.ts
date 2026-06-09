@@ -213,6 +213,18 @@ test("iam pyrosa accounts oauth pilot migration records validated capability sta
   assert.match(migrationSql, /"surfaceReadiness": "candidate_only"/);
 });
 
+test("oauth session metadata migration stores non-sensitive logout references", () => {
+  const migrationSql = readFileSync(
+    new URL("../migrations/0022_oauth_session_metadata.sql", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(migrationSql, /ADD COLUMN IF NOT EXISTS oauth_client_id/);
+  assert.match(migrationSql, /ADD COLUMN IF NOT EXISTS oauth_scopes/);
+  assert.match(migrationSql, /ADD COLUMN IF NOT EXISTS oauth_token_hash/);
+  assert.match(migrationSql, /control_plane_sessions_auth_provider_idx/);
+});
+
 test("buildIamOverview maps provider capabilities and protected bindings", async () => {
   const overview = await buildIamOverview(
     createSequenceStubClient([

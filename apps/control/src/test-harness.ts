@@ -330,7 +330,7 @@ export function createStubApiSurface(args: {
 
       return args.loginResponse;
     },
-    logout: async () => {},
+    logout: async () => ({ revoked: true as const }),
     getCurrentUser: async (token: string | null) => {
       if (args.currentUserError && token === args.loginResponse.sessionToken) {
         throw createStubApiError(args.currentUserError);

@@ -24,6 +24,7 @@ const rootEndpoints = [
   "GET /v1/meta",
   "POST /v1/auth/login",
   "POST /v1/auth/pyrosa-accounts/oauth-login",
+  "POST /v1/auth/pyrosa-accounts/oauth-revoke",
   "GET /v1/auth/me",
   "POST /v1/auth/logout",
   "GET /v1/oauth/pilot/start",

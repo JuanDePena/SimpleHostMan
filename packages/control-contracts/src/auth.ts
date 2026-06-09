@@ -30,6 +30,10 @@ export interface AuthLoginResponse {
   user: AuthenticatedUserSummary;
 }
 
+export interface PyrosaAccountsOAuthLoginResponse extends AuthLoginResponse {
+  oauthLogoutToken: string;
+}
+
 export interface TrustedProxyLoginRequest {
   email: string;
   provider: string;
@@ -60,10 +64,41 @@ export interface OAuthIdentityLoginRequest {
   scopes?: string[];
   audience?: string | string[];
   issuer?: string;
+  oauthClientId?: string;
+  oauthScopes?: string[];
+  oauthTokenHash?: string;
+  oauthIssuer?: string;
 }
 
 export interface AuthLogoutResponse {
   revoked: true;
+  authProviderSlug?: string;
+  externalSubject?: string;
+  assuranceLevel?: string;
+  oauthClientId?: string;
+  oauthScopes?: string[];
+  oauthTokenHash?: string;
+  oauthIssuer?: string;
+}
+
+export interface PyrosaAccountsOAuthRevokeRequest {
+  token: string;
+}
+
+export interface OAuthLoginRejectedAuditRequest {
+  provider: "pyrosa-accounts";
+  reason: string;
+  email?: string;
+  clientId?: string;
+  externalSubject?: string;
+  assuranceLevel?: string;
+}
+
+export interface OAuthTokenRevokedAuditRequest {
+  provider: "pyrosa-accounts";
+  tokenHash?: string;
+  clientId?: string;
+  externalSubject?: string;
 }
 
 export interface CreateUserTenantMembershipInput {

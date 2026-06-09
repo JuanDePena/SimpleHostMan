@@ -87,9 +87,7 @@ export async function createControlApiSurface(
     login: async (credentials) => controlPlaneStore.loginUser(credentials),
     loginTrustedProxy: async (identity) =>
       controlPlaneStore.loginTrustedProxyUser(identity),
-    logout: async (token) => {
-      await controlPlaneStore.logoutUser(token);
-    },
+    logout: async (token) => controlPlaneStore.logoutUser(token),
     getCurrentUser: async (token) => controlPlaneStore.getCurrentUser(token)
   };
 

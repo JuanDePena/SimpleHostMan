@@ -1,4 +1,5 @@
 import {
+  type AuthLogoutResponse,
   type AuthLoginRequest
 } from "@simplehost/control-contracts";
 
@@ -11,8 +12,13 @@ import {
   serializeLocaleCookie,
   serializeSessionCookie
 } from "./request.js";
+import {
+  clearOAuthLogoutTokenCookie,
+  oauthLogoutTokenCookieName
+} from "./oauth-login-routes.js";
 import { renderLoginError } from "./web-auth-helpers.js";
 import type { WebRouteHandler } from "./web-route-context.js";
+import type { ControlWebRuntimeConfig } from "./web-routes.js";
 
 function readHeader(
   headers: Record<string, string | string[] | undefined>,
@@ -28,8 +34,14 @@ function readHeader(
 }
 
 function buildExternalSsoSignOutLocation(
-  headers: Record<string, string | string[] | undefined>
+  headers: Record<string, string | string[] | undefined>,
+  logout: AuthLogoutResponse | null,
+  config: ControlWebRuntimeConfig
 ): string | null {
+  if (logout?.authProviderSlug === "pyrosa-accounts") {
+    return buildPyrosaAccountsSignOutLocation(config);
+  }
+
   if (
     readHeader(headers, "x-authentik-email") ??
     readHeader(headers, "x-authentik-username") ??
@@ -42,6 +54,26 @@ function buildExternalSsoSignOutLocation(
   return null;
 }
 
+function buildPyrosaAccountsSignOutLocation(config: {
+  oauthResourceServer?: {
+    loginLogoutUrl: string | null;
+    loginPostLogoutRedirectUri: string | null;
+  };
+}): string | null {
+  const logoutUrl = config.oauthResourceServer?.loginLogoutUrl;
+  if (!logoutUrl) {
+    return null;
+  }
+
+  const location = new URL(logoutUrl);
+  location.searchParams.set(
+    "return_to",
+    config.oauthResourceServer?.loginPostLogoutRedirectUri ??
+      "/login?notice=Session%20closed&kind=info"
+  );
+  return location.toString();
+}
+
 export const handleSessionWebRoutes: WebRouteHandler = async ({
   request,
   response,
@@ -49,7 +81,8 @@ export const handleSessionWebRoutes: WebRouteHandler = async ({
   locale,
   api,
   renderLoginPage,
-  sessionToken
+  sessionToken,
+  config
 }) => {
   if (request.method === "POST" && url.pathname === "/preferences/locale") {
     const form = await readFormBody(request);
@@ -83,9 +116,27 @@ export const handleSessionWebRoutes: WebRouteHandler = async ({
   }
 
   if (request.method === "POST" && url.pathname === "/auth/logout") {
+    const oauthLogoutToken = readHeader(request.headers, "cookie")
+      ?.split(";")
+      .map((part) => part.trim())
+      .find((part) => part.startsWith(`${oauthLogoutTokenCookieName}=`))
+      ?.split("=")
+      .slice(1)
+      .join("=");
+    if (sessionToken && oauthLogoutToken) {
+      try {
+        await api.revokePyrosaAccountsOAuth(sessionToken, {
+          token: decodeURIComponent(oauthLogoutToken)
+        });
+      } catch {
+        // Local logout must still close the SimpleHostMan session.
+      }
+    }
+
+    let logout: AuthLogoutResponse | null = null;
     if (sessionToken) {
       try {
-        await api.logout(sessionToken);
+        logout = await api.logout(sessionToken);
       } catch {
         // Ignore logout errors and clear the local cookie anyway.
       }
@@ -93,9 +144,12 @@ export const handleSessionWebRoutes: WebRouteHandler = async ({
 
     redirect(
       response,
-      buildExternalSsoSignOutLocation(request.headers) ??
+      buildExternalSsoSignOutLocation(request.headers, logout, config) ??
         "/login?notice=Session%20closed&kind=info",
-      clearSessionCookie()
+      [
+        clearSessionCookie(),
+        clearOAuthLogoutTokenCookie()
+      ]
     );
     return true;
   }

@@ -12,7 +12,9 @@ interface OAuthLoginState {
 }
 
 const oauthLoginCookieName = "shp_oauth_login";
+export const oauthLogoutTokenCookieName = "shp_oauth_logout";
 const oauthLoginCookiePath = "/auth/pyrosa-accounts";
+const oauthLogoutCookiePath = "/auth/logout";
 const oauthLoginCookieMaxAgeSeconds = 10 * 60;
 
 function createPkcePair(): { verifier: string; challenge: string } {
@@ -78,6 +80,19 @@ function serializeLoginCookie(value: string): string {
 
 function clearLoginCookie(): string {
   return `${oauthLoginCookieName}=; Path=${oauthLoginCookiePath}; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
+}
+
+export function serializeOAuthLogoutTokenCookie(value: string, expiresAt: string): string {
+  const maxAgeSeconds = Math.max(
+    0,
+    Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000)
+  );
+
+  return `${oauthLogoutTokenCookieName}=${encodeURIComponent(value)}; Path=${oauthLogoutCookiePath}; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAgeSeconds}`;
+}
+
+export function clearOAuthLogoutTokenCookie(): string {
+  return `${oauthLogoutTokenCookieName}=; Path=${oauthLogoutCookiePath}; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
 }
 
 function failClosedLocation(message: string): string {
@@ -192,6 +207,7 @@ export const handlePyrosaAccountsOAuthLoginRoutes: WebRouteHandler = async ({
       "/",
       [
         serializeSessionCookie(login.sessionToken, login.expiresAt),
+        serializeOAuthLogoutTokenCookie(login.oauthLogoutToken, login.expiresAt),
         clearLoginCookie()
       ]
     );

@@ -1,9 +1,11 @@
 import { readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 
 import type {
   AuthLoginRequest,
   CreateUserRequest,
-  PyrosaAccountsOAuthLoginRequest
+  PyrosaAccountsOAuthLoginRequest,
+  PyrosaAccountsOAuthRevokeRequest
 } from "@simplehost/control-contracts";
 
 import { readJsonBody, writeJson } from "./api-http.js";
@@ -39,6 +41,10 @@ function normalizeEmail(value: string | null): string | null {
 
   const email = value.trim().toLowerCase();
   return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? email : null;
+}
+
+function hashOAuthToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
 }
 
 function normalizeScopes(scope: unknown): string[] {
@@ -173,6 +179,39 @@ async function introspectToken(args: {
   }
 }
 
+async function revokeToken(args: {
+  revocationUrl: string;
+  token: string;
+  clientId: string;
+  clientSecret: string;
+  timeoutMs: number;
+}): Promise<void> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), args.timeoutMs);
+
+  try {
+    const response = await fetch(args.revocationUrl, {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded"
+      },
+      body: new URLSearchParams({
+        token: args.token,
+        token_type_hint: "access_token",
+        client_id: args.clientId,
+        client_secret: args.clientSecret
+      }),
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      throw new Error(`OAuth revocation failed with HTTP ${response.status}.`);
+    }
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 function validateLoginIntrospection(args: {
   introspection: OAuthIntrospectionResponse;
   requiredScopes: string[];
@@ -258,6 +297,10 @@ export const handleAuthRoutes: ApiRouteHandler = async ({
         error: "oauth_login_disabled",
         message: "Pyrosa Accounts OAuth login is not enabled."
       });
+      await controlPlaneStore.recordOAuthLoginRejected({
+        provider: "pyrosa-accounts",
+        reason: "oauth_login_disabled"
+      });
       return true;
     }
 
@@ -275,6 +318,10 @@ export const handleAuthRoutes: ApiRouteHandler = async ({
         error: "oauth_login_unavailable",
         message: "Pyrosa Accounts OAuth login is not fully configured."
       });
+      await controlPlaneStore.recordOAuthLoginRejected({
+        provider: "pyrosa-accounts",
+        reason: "oauth_login_unavailable"
+      });
       return true;
     }
 
@@ -286,6 +333,10 @@ export const handleAuthRoutes: ApiRouteHandler = async ({
       writeJson(response, 400, {
         error: "invalid_oauth_login_request",
         message: "OAuth login callback request is invalid."
+      });
+      await controlPlaneStore.recordOAuthLoginRejected({
+        provider: "pyrosa-accounts",
+        reason: "invalid_oauth_login_request"
       });
       return true;
     }
@@ -301,6 +352,10 @@ export const handleAuthRoutes: ApiRouteHandler = async ({
       writeJson(response, 503, {
         error: "oauth_login_unavailable",
         message: "Pyrosa Accounts OAuth client secret is unavailable."
+      });
+      await controlPlaneStore.recordOAuthLoginRejected({
+        provider: "pyrosa-accounts",
+        reason: "oauth_client_secret_unavailable"
       });
       return true;
     }
@@ -322,6 +377,10 @@ export const handleAuthRoutes: ApiRouteHandler = async ({
         error: "oauth_token_exchange_failed",
         message: "Pyrosa Accounts OAuth authorization code exchange failed closed."
       });
+      await controlPlaneStore.recordOAuthLoginRejected({
+        provider: "pyrosa-accounts",
+        reason: "oauth_token_exchange_failed"
+      });
       return true;
     }
 
@@ -330,6 +389,10 @@ export const handleAuthRoutes: ApiRouteHandler = async ({
       writeJson(response, 502, {
         error: "invalid_token_response",
         message: "Pyrosa Accounts returned an invalid access token response."
+      });
+      await controlPlaneStore.recordOAuthLoginRejected({
+        provider: "pyrosa-accounts",
+        reason: "invalid_token_response"
       });
       return true;
     }
@@ -348,6 +411,10 @@ export const handleAuthRoutes: ApiRouteHandler = async ({
         error: "oauth_introspection_unavailable",
         message: "Pyrosa Accounts OAuth introspection failed closed."
       });
+      await controlPlaneStore.recordOAuthLoginRejected({
+        provider: "pyrosa-accounts",
+        reason: "oauth_introspection_unavailable"
+      });
       return true;
     }
 
@@ -363,6 +430,13 @@ export const handleAuthRoutes: ApiRouteHandler = async ({
         error: validation.error,
         message: validation.message
       });
+      await controlPlaneStore.recordOAuthLoginRejected({
+        provider: "pyrosa-accounts",
+        reason: validation.error,
+        clientId: readString(introspection.client_id) ?? undefined,
+        externalSubject: readString(introspection.sub) ?? undefined,
+        assuranceLevel: readString(introspection.assurance_level) ?? undefined
+      });
       return true;
     }
 
@@ -374,13 +448,18 @@ export const handleAuthRoutes: ApiRouteHandler = async ({
         error: "missing_email",
         message: "Pyrosa Accounts did not expose a valid email for SimpleHostMan login."
       });
+      await controlPlaneStore.recordOAuthLoginRejected({
+        provider: "pyrosa-accounts",
+        reason: "missing_email",
+        clientId: readString(introspection.client_id) ?? undefined,
+        externalSubject: readString(introspection.sub) ?? undefined,
+        assuranceLevel: readString(introspection.assurance_level) ?? undefined
+      });
       return true;
     }
 
-    writeJson(
-      response,
-      200,
-      await controlPlaneStore.loginOAuthUser({
+    const tokenHash = hashOAuthToken(accessToken);
+    const login = await controlPlaneStore.loginOAuthUser({
         provider: "pyrosa-accounts",
         email,
         username: readString(introspection.username) ?? undefined,
@@ -395,9 +474,69 @@ export const handleAuthRoutes: ApiRouteHandler = async ({
         audience: typeof introspection.aud === "string" || Array.isArray(introspection.aud)
           ? introspection.aud
           : undefined,
-        issuer: resourceConfig.issuer ?? undefined
-      })
+        issuer: resourceConfig.issuer ?? undefined,
+        oauthClientId: readString(introspection.client_id) ?? undefined,
+        oauthScopes: validation.scopes,
+        oauthTokenHash: tokenHash,
+        oauthIssuer: resourceConfig.issuer ?? undefined
+      });
+    writeJson(response, 200, {
+      ...login,
+      oauthLogoutToken: accessToken
+    });
+    return true;
+  }
+
+  if (request.method === "POST" && url.pathname === "/v1/auth/pyrosa-accounts/oauth-revoke") {
+    const resourceConfig = config.oauthResourceServer;
+    const revocationUrl =
+      resourceConfig.revocationUrl ?? deriveEndpoint(resourceConfig.issuer, "/oauth/revoke");
+    const requestBody = await readJsonBody<PyrosaAccountsOAuthRevokeRequest>(request);
+    const token = readString(requestBody.token);
+
+    if (!token) {
+      writeJson(response, 400, {
+        error: "invalid_oauth_revoke_request",
+        message: "OAuth revoke request is missing a token."
+      });
+      return true;
+    }
+
+    let clientSecret: string | null;
+    try {
+      clientSecret = await readClientSecret(resourceConfig);
+    } catch {
+      clientSecret = null;
+    }
+
+    if (!revocationUrl || !resourceConfig.clientId || !clientSecret) {
+      writeJson(response, 503, {
+        error: "oauth_revoke_unavailable",
+        message: "Pyrosa Accounts OAuth revocation is not fully configured."
+      });
+      return true;
+    }
+
+    await revokeToken({
+      revocationUrl,
+      token,
+      clientId: resourceConfig.clientId,
+      clientSecret,
+      timeoutMs: resourceConfig.introspectionTimeoutMs
+    });
+
+    await controlPlaneStore.recordOAuthTokenRevoked(
+      {
+        provider: "pyrosa-accounts",
+        tokenHash: hashOAuthToken(token),
+        clientId: resourceConfig.clientId
+      },
+      bearerToken
     );
+
+    writeJson(response, 200, {
+      revoked: true
+    });
     return true;
   }
 
