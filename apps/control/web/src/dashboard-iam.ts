@@ -51,6 +51,8 @@ function renderCapabilityStatus(
       const tone =
         capability.status === "available"
           ? "success"
+          : capability.status === "pilot_validated"
+            ? "default"
           : capability.status === "disabled"
             ? "danger"
             : "muted";

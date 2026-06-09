@@ -201,6 +201,18 @@ test("iam provider selection phase 5-7 migration adds render state and ui-auth b
   assert.match(migrationSql, /PYROSA_SYNC_UI_AUTH_CLIENT_SECRET/);
 });
 
+test("iam pyrosa accounts oauth pilot migration records validated capability state", () => {
+  const migrationSql = readFileSync(
+    new URL("../migrations/0021_iam_pyrosa_accounts_oauth_pilot_validated.sql", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(migrationSql, /"status": "pilot_validated"/);
+  assert.match(migrationSql, /simplehost-control-oauth-pilot/);
+  assert.match(migrationSql, /"requiredAssuranceLevel": "aal2"/);
+  assert.match(migrationSql, /"surfaceReadiness": "candidate_only"/);
+});
+
 test("buildIamOverview maps provider capabilities and protected bindings", async () => {
   const overview = await buildIamOverview(
     createSequenceStubClient([
@@ -217,6 +229,7 @@ test("buildIamOverview maps provider capabilities and protected bindings", async
             signOutPath: "/outpost.goauthentik.io/sign_out",
             capabilityStatus: [
               { key: "proxy", status: "available" },
+              { key: "oauth", status: "pilot_validated" },
               { key: "gateway_proxy", status: "future" }
             ]
           },
@@ -252,6 +265,7 @@ test("buildIamOverview maps provider capabilities and protected bindings", async
   assert.deepEqual(overview.providers[0]?.capabilities, ["proxy", "trusted_proxy_headers"]);
   assert.deepEqual(overview.providers[0]?.capabilityStatus, [
     { key: "proxy", status: "available", notes: undefined },
+    { key: "oauth", status: "pilot_validated", notes: undefined },
     { key: "gateway_proxy", status: "future", notes: undefined }
   ]);
   assert.equal(overview.bindings[0]?.targetSlug, "simplehost-control");

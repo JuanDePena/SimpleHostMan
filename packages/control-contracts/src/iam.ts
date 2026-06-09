@@ -24,7 +24,12 @@ export const iamProviderCapabilityKeys = [
 ] as const;
 export type IamProviderCapabilityKey = (typeof iamProviderCapabilityKeys)[number];
 
-export const iamProviderCapabilityStatuses = ["available", "future", "disabled"] as const;
+export const iamProviderCapabilityStatuses = [
+  "available",
+  "pilot_validated",
+  "future",
+  "disabled"
+] as const;
 export type IamProviderCapabilityStatus = (typeof iamProviderCapabilityStatuses)[number];
 
 export const iamMfaPolicies = ["provider_default", "required", "optional", "none"] as const;

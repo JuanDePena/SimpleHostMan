@@ -83,14 +83,14 @@ Pending work:
   [`BACKUPS.md`](/opt/simplehostman/src/docs/BACKUPS.md) and
   [`IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md)
 
-### 4. Implement Pyrosa Accounts OAuth/OIDC/Gateway Provider Support
+### 4. Promote Pyrosa Accounts OAuth Login For SimpleHostMan
 
 Current state:
 
 - SimpleHostMan models `pyrosa-accounts` as a candidate IAM provider.
 - `ui_auth` is the only available Pyrosa Accounts integration mode today.
-- `oauth` has a first runtime cut in `pyrosa-accounts` and is deployed on the
-  primary runtime.
+- `oauth` has a validated browser Authorization Code + PKCE + MFA/AAL2 pilot
+  for SimpleHostMan and remains candidate-only until promotion.
 - The Accounts OAuth migration was applied on the primary runtime database on
   2026-06-08 UTC.
 - The isolated `oauth-smoke` client is configured with `oauth_enabled=true`,
@@ -125,8 +125,23 @@ Current state:
 
 Pending work:
 
-- decide whether to promote Pyrosa Accounts `oauth` from pilot/scaffold to a
-  supported capability for specific resource-server integrations
+- implement the native SimpleHostMan `oauth_login` flow outside the diagnostic
+  `/v1/oauth/pilot/*` routes
+- persist provider/session metadata and revoke the OAuth access token on local
+  logout
+- expose candidate binding and operational login/failure state in the IAM view
+- validate active and unprovisioned operator behavior before promotion
+
+### 5. Implement Pyrosa Accounts OIDC/Gateway Provider Support
+
+Current state:
+
+- Pyrosa Accounts `oauth` is pilot validated for SimpleHostMan but not promoted.
+- `oidc` and `gateway_proxy` are intentionally future/scaffold-disabled.
+- Authentik remains the provider for generic reverse-proxy enforcement.
+
+Pending work:
+
 - implement OIDC discovery, JWKS, signed ID tokens, claims and `/userinfo`
   before advertising `pyrosa-accounts` as an OIDC provider
 - implement a real gateway/outpost path before advertising

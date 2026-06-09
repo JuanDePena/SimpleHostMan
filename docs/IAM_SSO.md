@@ -152,9 +152,9 @@ Phase 5-7 implementation decisions:
   `oidc`, and `saml`.
 - Pyrosa Accounts capability status is explicit:
   - `ui_auth`: available for compatible Pyrosa-native apps.
-  - `oauth`: implemented as a first runtime cut in `pyrosa-accounts`, but kept
-    scaffold-disabled for protected browser surfaces in SimpleHostMan until
-    Authorization Code with user MFA/AAL is validated.
+  - `oauth`: pilot validated for SimpleHostMan browser Authorization Code with
+    PKCE, human principal, `aal2`, `profile:read`, and `mfa:read`; it remains
+    candidate-only until promoted for a selected surface.
   - `oidc` and `gateway_proxy`: future/scaffold-disabled until real runtime
     support exists.
   - `saml`: disabled unless a concrete requirement appears.
@@ -175,9 +175,12 @@ Phase 5-7 implementation decisions:
 
 Pyrosa Accounts provider readiness gate:
 
-- SimpleHostMan must keep Pyrosa Accounts `oauth`, `oidc`, and `gateway_proxy`
-  as non-offered capabilities until each implementation is released and
-  validated in `pyrosa-accounts`.
+- SimpleHostMan must keep Pyrosa Accounts `oidc` and `gateway_proxy` as
+  non-offered capabilities until each implementation is released and validated
+  in `pyrosa-accounts`.
+- Pyrosa Accounts `oauth` is validated only as a candidate path for
+  SimpleHostMan. It is not the default administrative provider until a selected
+  surface receives a promotion and rollback decision.
 - The current source of truth for that implementation plan is
   [`oauth2-api-auth-plan.md`](/srv/containers/apps/pyrosa-accounts/app/docs/oauth2-api-auth-plan.md).
 - `oauth` has a first Accounts runtime cut with OAuth metadata, authorization
