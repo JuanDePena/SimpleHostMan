@@ -9,7 +9,7 @@ belongs in the feature runbook that owns the behavior, not in this tracker.
 
 - canonical source tree: `/opt/simplehostman/src`
 - canonical runtime root: `/opt/simplehostman/release`
-- active control-plane release: `2606.09.02`
+- active control-plane release: `2606.09.22`
 - implemented IAM/SSO state:
   [`IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md)
 - implemented operational inspection and hardening evidence:
@@ -168,6 +168,13 @@ Current state:
   Quadlet runtime.
 - Backup policies now cover the `app_pyrosa_iam` database and the app storage
   root. Root-only env/signing-key backup coverage is still incomplete.
+- `pyrosa-iam` now has a reproducible SimpleHostMan OAuth/OIDC pilot client
+  seeded by `database/migrations/0008_simplehostman_oauth_oidc_pilot.sql`.
+- Loopback validation on 2026-06-09 UTC confirmed health, OAuth/OIDC discovery,
+  JWKS, authorize redirect preservation, gateway fail-closed behavior, SAML
+  disabled posture, and invalid token exchange fail-closed behavior.
+- Human login remains held because `app_pyrosa_iam` has no migrated users or
+  MFA factors yet.
 
 Pending work:
 
@@ -201,7 +208,8 @@ Current state:
 Pending work:
 
 - provision and validate a real SimpleHostMan OIDC client pilot against
-  `pyrosa-iam` before promoting it as the active IAM provider
+  `pyrosa-iam` with migrated/provisioned human identities and MFA before
+  promoting it as the active IAM provider
 - validate an Apache forward-auth pilot against a non-critical app before
   promoting `gateway_proxy`
 - update SimpleHostMan provider capability status only after those releases and

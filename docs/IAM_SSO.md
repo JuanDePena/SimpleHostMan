@@ -233,6 +233,17 @@ Pyrosa Accounts / Pyrosa IAM split:
   `/etc/containers/systemd/env/app-pyrosa-iam.env` and the signing key under
   `/etc/pyrosa-iam` still require either a generic path selector in the backup
   runner or a dedicated IAM backup handler before promotion.
+- `pyrosa-iam` migration `0008_simplehostman_oauth_oidc_pilot.sql` seeds the
+  `simplehost-control-oauth-pilot` OAuth/OIDC client for SimpleHostMan:
+  public PKCE, `authorization_code`, `refresh_token`, OIDC enabled, gateway
+  disabled, and callback URLs for the existing pilot and future native
+  `pyrosa-iam` callback.
+- On 2026-06-09 UTC the `pyrosa-iam` loopback pilot validated health, OAuth
+  authorization-server metadata, OIDC discovery, JWKS Ed25519 signing metadata,
+  authorize-to-login redirect preservation, gateway fail-closed behavior, SAML
+  disabled posture, and invalid token exchange fail-closed behavior.
+- Full human browser login against `pyrosa-iam` remains intentionally held
+  because `app_pyrosa_iam` currently has no migrated users or MFA factors.
 
 - `oauth` has a first Accounts runtime cut with OAuth metadata, authorization
   code, token, introspection, revocation and opaque hashed tokens. The Accounts
