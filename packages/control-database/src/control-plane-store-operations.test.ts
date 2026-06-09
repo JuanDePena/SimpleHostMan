@@ -269,6 +269,21 @@ test("iam pyrosa accounts gateway readiness migration keeps gateway future-gated
   assert.match(migrationSql, /pilot_app/);
 });
 
+test("iam pyrosa accounts saml migration keeps saml disabled by decision", () => {
+  const migrationSql = readFileSync(
+    new URL("../migrations/0026_iam_pyrosa_accounts_saml_disabled.sql", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(migrationSql, /"samlDecision"/);
+  assert.match(migrationSql, /"status": "disabled"/);
+  assert.match(migrationSql, /"advertiseAsProvider": false/);
+  assert.match(migrationSql, /no_concrete_saml_requirement/);
+  assert.match(migrationSql, /concrete_saml_requirement/);
+  assert.match(migrationSql, /SAML metadata/);
+  assert.match(migrationSql, /ACS handling/);
+});
+
 test("buildIamOverview maps provider capabilities and protected bindings", async () => {
   const overview = await buildIamOverview(
     createSequenceStubClient([

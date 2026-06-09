@@ -168,6 +168,9 @@ Current state:
 - Pyrosa Accounts keeps `/oauth/gateway` fail-closed with
   `gateway_proxy_not_available` and required-feature metadata; it is not a
   reverse proxy or outpost yet.
+- SAML remains disabled by decision with promotion gate
+  `concrete_saml_requirement`; public SAML-provider endpoints fail closed with
+  `saml_not_available`.
 - Authentik remains the provider for generic reverse-proxy enforcement.
 
 Pending work:

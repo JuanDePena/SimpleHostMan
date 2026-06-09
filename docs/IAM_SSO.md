@@ -307,6 +307,15 @@ Pyrosa Accounts provider readiness gate:
 - Pyrosa Accounts responds to `/oauth/gateway` as fail-closed with
   `gateway_proxy_not_available` plus required-feature metadata. This is
   documentation-grade scaffold only, not an active reverse proxy.
+- SimpleHostMan migration `0026_iam_pyrosa_accounts_saml_disabled.sql` records
+  `saml` as disabled by decision with promotion gate
+  `concrete_saml_requirement`. Pyrosa Accounts must not be advertised as a
+  SAML IAM provider unless a real application requirement appears and the full
+  protocol is implemented.
+- Pyrosa Accounts public SAML-provider endpoints such as `/saml/metadata`
+  respond fail-closed with `saml_not_available`. This does not remove the
+  internal account UI section used to display future or linked SAML
+  connections for an identity.
 - Authentik remains the default provider for administrative proxy surfaces until
   there is an explicit replacement decision.
 
