@@ -208,6 +208,14 @@ Pyrosa Accounts / Pyrosa IAM split:
 - Authentik remains the active/default administrative provider until
   `pyrosa-iam` has a real runtime, backup/restore posture, client provisioning,
   MFA/AAL validation, logout/revocation validation, and rollback evidence.
+- SimpleHostMan migration `0030_iam_pyrosa_iam_provider.sql` registers
+  `pyrosa-iam` as a parallel provider row with provider kind `pyrosa_iam`,
+  base URL `https://iam.pyrosa.com.do`, and metadata-only candidate bindings
+  for `control:simplehost-control` using `oauth_login`, `oidc`, and gateway
+  `proxy`.
+- Those `pyrosa-iam` bindings are intentionally `metadata_only` with provider
+  provisioning state `future`: they document the target posture but do not
+  render Apache, change vhosts, or move public traffic away from Authentik.
 
 - `oauth` has a first Accounts runtime cut with OAuth metadata, authorization
   code, token, introspection, revocation and opaque hashed tokens. The Accounts
@@ -335,6 +343,10 @@ Pyrosa Accounts / Pyrosa IAM split:
   `saml` disabled with promotion gate `saml_sp_pilot` and intentionally creates
   no SAML binding. Pyrosa Accounts must not be advertised as an operational
   SAML IAM provider until a concrete SP pilot requires it.
+- SimpleHostMan migration `0030_iam_pyrosa_iam_provider.sql` records the formal
+  `pyrosa-iam` provider split. Accounts remains the inherited pilot and
+  compatibility base; the long-term promotion target is the separate
+  `pyrosa-iam` runtime.
 - Authentik remains the default provider for administrative proxy surfaces until
   there is an explicit replacement decision.
 

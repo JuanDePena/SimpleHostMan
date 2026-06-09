@@ -328,6 +328,22 @@ test("iam pyrosa accounts saml scaffold migration keeps saml disabled", () => {
   assert.doesNotMatch(migrationSql, /INSERT INTO control_plane_iam_bindings/);
 });
 
+test("iam pyrosa iam provider migration registers the split provider metadata-only", () => {
+  const migrationSql = readFileSync(
+    new URL("../migrations/0030_iam_pyrosa_iam_provider.sql", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(migrationSql, /'pyrosa_iam'/);
+  assert.match(migrationSql, /iam-provider-pyrosa-iam/);
+  assert.match(migrationSql, /https:\/\/iam\.pyrosa\.com\.do/);
+  assert.match(migrationSql, /iam-binding-simplehost-control-pyrosa-iam-oauth/);
+  assert.match(migrationSql, /iam-binding-simplehost-control-pyrosa-iam-oidc/);
+  assert.match(migrationSql, /iam-binding-simplehost-control-pyrosa-iam-gateway/);
+  assert.match(migrationSql, /"mode": "metadata_only"/);
+  assert.match(migrationSql, /"activeOuterGate": "authentik"/);
+});
+
 test("buildIamOverview maps provider capabilities and protected bindings", async () => {
   const overview = await buildIamOverview(
     createSequenceStubClient([

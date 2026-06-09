@@ -137,6 +137,11 @@ Current state:
 - The IAM PostgreSQL catalog and UI now expose a candidate
   `control:simplehost-control` binding with provider `pyrosa-accounts`,
   `auth_mode=oauth_login`, `status=candidate`, and `render_mode=metadata_only`.
+- SimpleHostMan migration `0030_iam_pyrosa_iam_provider.sql` adds the parallel
+  `pyrosa-iam` provider row and metadata-only candidate bindings for
+  `control:simplehost-control` using `oauth_login`, `oidc`, and gateway
+  `proxy`. Authentik remains active; these bindings do not render Apache or
+  change traffic.
 - The IAM view shows active provider, OAuth candidate provider, latest OAuth
   login and latest OAuth callback rejection when audit evidence exists.
 - Runtime release `2606.09.02` is active on the primary. Startup applied IAM
@@ -156,9 +161,8 @@ Current state:
 
 Pending work:
 
-- decide whether SimpleHostMan keeps the transitional provider slug
-  `pyrosa-accounts` until runtime cutover or adds a parallel `pyrosa-iam`
-  provider row before promotion
+- provision `pyrosa-iam` runtime metadata as deployable templates without
+  activating public traffic
 - validate active operator login, unprovisioned/inactive identity rejection,
   token revocation and external logout redirect against the eventual
   `pyrosa-iam` runtime before promotion
@@ -177,6 +181,9 @@ Current state:
 - Pyrosa Accounts keeps `/oauth/gateway` fail-closed with
   `gateway_proxy_not_available` and required-feature metadata; it is not a
   reverse proxy or outpost yet.
+- SimpleHostMan now has a separate `pyrosa-iam` provider catalog entry with
+  candidate metadata for OAuth login, OIDC, and gateway proxy. All remain
+  metadata-only until the runtime exists and pilots validate rollback.
 - SAML remains disabled by decision. Accounts has a metadata scaffold, but SSO
   assertions, SP registry and a pilot app are still required before promotion.
 - Authentik remains the provider for generic reverse-proxy enforcement.

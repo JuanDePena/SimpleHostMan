@@ -1,4 +1,4 @@
-export const iamProviderKinds = ["authentik", "pyrosa_accounts"] as const;
+export const iamProviderKinds = ["authentik", "pyrosa_accounts", "pyrosa_iam"] as const;
 export type IamProviderKind = (typeof iamProviderKinds)[number];
 
 export const iamProviderStatuses = ["active", "candidate", "future", "disabled"] as const;
