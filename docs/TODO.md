@@ -157,12 +157,10 @@ Pending work:
 Current state:
 
 - Pyrosa Accounts `oauth` is pilot validated for SimpleHostMan but not promoted.
-- `oidc` and `gateway_proxy` are intentionally future/scaffold-disabled.
-- OIDC readiness is now modeled in SimpleHostMan metadata with promotion gate
-  `accounts_oidc_release` and `advertiseAsProvider=false`.
-- Pyrosa Accounts keeps OIDC discovery fail-closed with
-  `oidc_not_available` and required-feature metadata instead of publishing
-  partial OIDC discovery.
+- Pyrosa Accounts OIDC provider support is implemented in Accounts and modeled
+  in SimpleHostMan as a candidate metadata-only binding with promotion gate
+  `simplehost_oidc_login_pilot`.
+- `gateway_proxy` remains future/scaffold-disabled.
 - Gateway readiness is now modeled in SimpleHostMan metadata with promotion
   gate `accounts_gateway_proxy_release` and `advertiseAsProvider=false`.
 - Pyrosa Accounts keeps `/oauth/gateway` fail-closed with
@@ -175,8 +173,8 @@ Current state:
 
 Pending work:
 
-- implement OIDC discovery, JWKS, signed ID tokens, claims and `/userinfo`
-  before advertising `pyrosa-accounts` as an OIDC provider
+- provision and validate a real SimpleHostMan OIDC client pilot before
+  promoting `pyrosa-accounts` as the active IAM provider
 - implement a real gateway/outpost path before advertising
   `gateway_proxy`
 - update SimpleHostMan provider capability status only after those releases and

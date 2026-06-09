@@ -269,6 +269,21 @@ test("iam pyrosa accounts gateway readiness migration keeps gateway future-gated
   assert.match(migrationSql, /pilot_app/);
 });
 
+test("iam pyrosa accounts oidc candidate migration keeps authentik active", () => {
+  const migrationSql = readFileSync(
+    new URL("../migrations/0027_iam_pyrosa_accounts_oidc_candidate.sql", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(migrationSql, /"oidcReadiness"/);
+  assert.match(migrationSql, /"status": "pilot_validated"/);
+  assert.match(migrationSql, /simplehost_oidc_login_pilot/);
+  assert.match(migrationSql, /iam-binding-simplehost-control-pyrosa-oidc/);
+  assert.match(migrationSql, /'oidc'/);
+  assert.match(migrationSql, /"activeOuterGate": "authentik"/);
+  assert.match(migrationSql, /"mode": "metadata_only"/);
+});
+
 test("iam pyrosa accounts saml migration keeps saml disabled by decision", () => {
   const migrationSql = readFileSync(
     new URL("../migrations/0026_iam_pyrosa_accounts_saml_disabled.sql", import.meta.url),

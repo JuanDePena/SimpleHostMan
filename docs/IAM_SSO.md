@@ -290,15 +290,14 @@ Pyrosa Accounts provider readiness gate:
   SimpleHostMan revokes the Pyrosa Accounts access token when the cookie is
   present, clears both local cookies, records audit events, and redirects to
   the configured Pyrosa Accounts logout URL with `return_to`.
-- `oidc` may become available only after Accounts ships OIDC discovery, JWKS,
-  signed ID tokens, `nonce` handling, stable claims and `/userinfo`.
-- SimpleHostMan migration `0024_iam_pyrosa_accounts_oidc_readiness.sql`
-  records the OIDC promotion gate as `accounts_oidc_release` and keeps
-  `advertiseAsProvider=false` until those runtime features and a real OIDC
-  app pilot exist.
-- Pyrosa Accounts responds to OIDC discovery as fail-closed with
-  `oidc_not_available` plus required-feature metadata instead of publishing a
-  partial `.well-known/openid-configuration`.
+- Pyrosa Accounts now ships minimum OIDC provider support: discovery, JWKS,
+  EdDSA-signed ID tokens, `nonce` handling, stable profile/email/group claims,
+  and `/oidc/userinfo`.
+- SimpleHostMan migration `0027_iam_pyrosa_accounts_oidc_candidate.sql`
+  records OIDC as `pilot_validated`/candidate metadata and adds a
+  metadata-only `control:simplehost-control` OIDC binding. Authentik remains
+  the active external gate until a real SimpleHostMan OIDC client pilot is
+  provisioned, validated and explicitly promoted.
 - `gateway_proxy` may become available only after Accounts ships a real
   gateway/outpost path that performs HTTP enforcement before upstream apps,
   emits trusted headers safely, supports logout and passes loopback/internal
