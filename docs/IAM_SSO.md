@@ -298,18 +298,14 @@ Pyrosa Accounts provider readiness gate:
   metadata-only `control:simplehost-control` OIDC binding. Authentik remains
   the active external gate until a real SimpleHostMan OIDC client pilot is
   provisioned, validated and explicitly promoted.
-- `gateway_proxy` may become available only after Accounts ships a real
-  gateway/outpost path that performs HTTP enforcement before upstream apps,
-  emits trusted headers safely, supports logout and passes loopback/internal
-  trust-boundary tests.
-- SimpleHostMan migration `0025_iam_pyrosa_accounts_gateway_readiness.sql`
-  records the gateway promotion gate as `accounts_gateway_proxy_release` and
-  keeps `advertiseAsProvider=false` until a real forward-auth/outpost path,
-  trusted-header mapping, unsafe-method tests, logout and pilot app validation
-  exist.
-- Pyrosa Accounts responds to `/oauth/gateway` as fail-closed with
-  `gateway_proxy_not_available` plus required-feature metadata. This is
-  documentation-grade scaffold only, not an active reverse proxy.
+- Pyrosa Accounts now ships an internal forward-auth gateway check at
+  `/oauth/gateway/check`. It is loopback/private allowlist gated, requires an
+  authenticated `aal2` Accounts session, and emits trusted account headers for
+  an upstream proxy.
+- SimpleHostMan migration `0028_iam_pyrosa_accounts_gateway_candidate.sql`
+  records gateway proxy as `pilot_validated`/candidate metadata and adds a
+  metadata-only SimpleHostMan gateway binding. No Apache/vhost traffic is
+  rendered or switched yet.
 - SimpleHostMan migration `0026_iam_pyrosa_accounts_saml_disabled.sql` records
   `saml` as disabled by decision with promotion gate
   `concrete_saml_requirement`. Pyrosa Accounts must not be advertised as a

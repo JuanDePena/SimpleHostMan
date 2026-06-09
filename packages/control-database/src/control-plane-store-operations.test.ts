@@ -284,6 +284,21 @@ test("iam pyrosa accounts oidc candidate migration keeps authentik active", () =
   assert.match(migrationSql, /"mode": "metadata_only"/);
 });
 
+test("iam pyrosa accounts gateway candidate migration keeps apache metadata-only", () => {
+  const migrationSql = readFileSync(
+    new URL("../migrations/0028_iam_pyrosa_accounts_gateway_candidate.sql", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(migrationSql, /"gatewayProxyReadiness"/);
+  assert.match(migrationSql, /"status": "pilot_validated"/);
+  assert.match(migrationSql, /apache_forward_auth_pilot/);
+  assert.match(migrationSql, /iam-binding-simplehost-control-pyrosa-gateway/);
+  assert.match(migrationSql, /internal_allowlist_only/);
+  assert.match(migrationSql, /X-Pyrosa-Account-Email/);
+  assert.match(migrationSql, /"mode": "metadata_only"/);
+});
+
 test("iam pyrosa accounts saml migration keeps saml disabled by decision", () => {
   const migrationSql = readFileSync(
     new URL("../migrations/0026_iam_pyrosa_accounts_saml_disabled.sql", import.meta.url),
