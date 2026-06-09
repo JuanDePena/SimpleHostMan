@@ -9,7 +9,7 @@ belongs in the feature runbook that owns the behavior, not in this tracker.
 
 - canonical source tree: `/opt/simplehostman/src`
 - canonical runtime root: `/opt/simplehostman/release`
-- active control-plane release: `2606.08.03`
+- active control-plane release: `2606.09.02`
 - implemented IAM/SSO state:
   [`IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md)
 - implemented operational inspection and hardening evidence:
@@ -135,6 +135,12 @@ Current state:
   `auth_mode=oauth_login`, `status=candidate`, and `render_mode=metadata_only`.
 - The IAM view shows active provider, OAuth candidate provider, latest OAuth
   login and latest OAuth callback rejection when audit evidence exists.
+- Runtime release `2606.09.02` is active on the primary. Startup applied IAM
+  migrations through `0023`, preserved Authentik as the active
+  `trusted_proxy_headers` binding, and registered Pyrosa Accounts as the
+  candidate `oauth_login` binding for `control:simplehost-control`.
+- Non-interactive runtime smoke confirmed health, PKCE start redirect to
+  Pyrosa Accounts, and fail-closed invalid callback behavior.
 - SimpleHostMan still keeps Authentik as the default provider for
   administrative proxy surfaces until there is an explicit promotion and
   rollback plan for a selected surface.
@@ -142,7 +148,9 @@ Current state:
 
 Pending work:
 
-- validate active and unprovisioned operator behavior before promotion
+- validate active operator login, unprovisioned/inactive identity rejection,
+  token revocation and external logout redirect in an interactive browser
+  session before promotion
 
 ### 5. Implement Pyrosa Accounts OIDC/Gateway Provider Support
 

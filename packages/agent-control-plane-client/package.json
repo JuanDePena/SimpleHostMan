@@ -1,6 +1,6 @@
 {
   "name": "@simplehost/agent-control-plane-client",
-  "version": "2606.08.03",
+  "version": "2606.09.02",
   "private": true,
   "type": "module",
   "main": "dist/index.js",

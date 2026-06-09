@@ -258,6 +258,25 @@ Pyrosa Accounts provider readiness gate:
   required `simplehost-control` audience, `profile:read mfa:read` scopes,
   `aal2` requirement, active provider, candidate provider, latest successful
   OAuth login, and latest OAuth callback rejection when present.
+- Runtime release `2606.09.02` was deployed on 2026-06-09 UTC. Validation
+  confirmed:
+  - `simplehost-control.service`, `simplehost-worker.service`, and
+    `simplehost-backup-runner.timer` are active;
+  - `/healthz` returns version `2606.09.02`;
+  - migrations `0021`, `0022`, and `0023` are applied in
+    `control_plane_schema_migrations`;
+  - `control:simplehost-control` still has Authentik as the active
+    `trusted_proxy_headers` binding;
+  - Pyrosa Accounts is present as the candidate `oauth_login` binding with
+    `render_mode=metadata_only`;
+  - `/auth/pyrosa-accounts/start` redirects to Pyrosa Accounts with
+    Authorization Code + PKCE and callback
+    `/auth/pyrosa-accounts/callback`;
+  - invalid/missing callback state redirects with an error and clears only the
+    OAuth state cookie.
+- The remaining promotion gate is an interactive browser validation of native
+  login/logout with MFA for an active operator plus rejection of an
+  unprovisioned or inactive Pyrosa Accounts identity.
 - OAuth login sessions store non-sensitive provider metadata on
   `control_plane_sessions`: provider slug, external subject, assurance level,
   client id, scopes, issuer, and a SHA-256 access-token hash. The raw access
