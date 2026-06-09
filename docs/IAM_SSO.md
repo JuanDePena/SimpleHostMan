@@ -299,6 +299,14 @@ Pyrosa Accounts provider readiness gate:
   gateway/outpost path that performs HTTP enforcement before upstream apps,
   emits trusted headers safely, supports logout and passes loopback/internal
   trust-boundary tests.
+- SimpleHostMan migration `0025_iam_pyrosa_accounts_gateway_readiness.sql`
+  records the gateway promotion gate as `accounts_gateway_proxy_release` and
+  keeps `advertiseAsProvider=false` until a real forward-auth/outpost path,
+  trusted-header mapping, unsafe-method tests, logout and pilot app validation
+  exist.
+- Pyrosa Accounts responds to `/oauth/gateway` as fail-closed with
+  `gateway_proxy_not_available` plus required-feature metadata. This is
+  documentation-grade scaffold only, not an active reverse proxy.
 - Authentik remains the default provider for administrative proxy surfaces until
   there is an explicit replacement decision.
 

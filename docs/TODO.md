@@ -163,6 +163,11 @@ Current state:
 - Pyrosa Accounts keeps OIDC discovery fail-closed with
   `oidc_not_available` and required-feature metadata instead of publishing
   partial OIDC discovery.
+- Gateway readiness is now modeled in SimpleHostMan metadata with promotion
+  gate `accounts_gateway_proxy_release` and `advertiseAsProvider=false`.
+- Pyrosa Accounts keeps `/oauth/gateway` fail-closed with
+  `gateway_proxy_not_available` and required-feature metadata; it is not a
+  reverse proxy or outpost yet.
 - Authentik remains the provider for generic reverse-proxy enforcement.
 
 Pending work:

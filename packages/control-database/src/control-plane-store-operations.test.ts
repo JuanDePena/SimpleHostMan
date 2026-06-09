@@ -253,6 +253,22 @@ test("iam pyrosa accounts oidc readiness migration keeps oidc future-gated", () 
   assert.match(migrationSql, /userinfo/);
 });
 
+test("iam pyrosa accounts gateway readiness migration keeps gateway future-gated", () => {
+  const migrationSql = readFileSync(
+    new URL("../migrations/0025_iam_pyrosa_accounts_gateway_readiness.sql", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(migrationSql, /"gatewayProxyReadiness"/);
+  assert.match(migrationSql, /"advertiseAsProvider": false/);
+  assert.match(migrationSql, /accounts_gateway_proxy_release/);
+  assert.match(migrationSql, /forward_auth_or_outpost/);
+  assert.match(migrationSql, /internal_trust_boundary/);
+  assert.match(migrationSql, /upstream_header_mapping/);
+  assert.match(migrationSql, /unsafe_method_tests/);
+  assert.match(migrationSql, /pilot_app/);
+});
+
 test("buildIamOverview maps provider capabilities and protected bindings", async () => {
   const overview = await buildIamOverview(
     createSequenceStubClient([
