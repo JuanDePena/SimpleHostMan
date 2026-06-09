@@ -216,6 +216,23 @@ Pyrosa Accounts / Pyrosa IAM split:
 - Those `pyrosa-iam` bindings are intentionally `metadata_only` with provider
   provisioning state `future`: they document the target posture but do not
   render Apache, change vhosts, or move public traffic away from Authentik.
+- SimpleHostMan migration `0031_pyrosa_iam_runtime_resources.sql` registers
+  the `pyrosa-iam` loopback pilot in the app/database/backup catalogs:
+  app slug `pyrosa-iam`, canonical domain `iam.pyrosa.com.do`, backend port
+  `10134`, database `app_pyrosa_iam`, and daily backup policies
+  `pyrosa-iam-database-daily` plus `pyrosa-iam-files-daily`.
+- The `pyrosa-iam` app catalog row is intentionally `metadata-only`. The
+  reconciler skips proxy/container/database jobs for that mode so catalog
+  visibility does not publish Apache, overwrite the hand-provisioned Quadlet,
+  or try to manage the runtime-owned database credential.
+- The active pilot remains loopback-only on the primary. No public vhost is
+  installed and Authentik remains the active/default provider for
+  SimpleHostMan.
+- Current backup coverage for `pyrosa-iam` includes the PostgreSQL database
+  dump and app storage root. Root-only runtime secrets under
+  `/etc/containers/systemd/env/app-pyrosa-iam.env` and the signing key under
+  `/etc/pyrosa-iam` still require either a generic path selector in the backup
+  runner or a dedicated IAM backup handler before promotion.
 
 - `oauth` has a first Accounts runtime cut with OAuth metadata, authorization
   code, token, introspection, revocation and opaque hashed tokens. The Accounts

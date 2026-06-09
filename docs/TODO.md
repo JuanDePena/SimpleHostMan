@@ -158,11 +158,21 @@ Current state:
   `PYROSA_ACCOUNTS_*` fallback, defaults for `iam.pyrosa.com.do` and
   `app_pyrosa_iam`, and gateway headers `X-Pyrosa-IAM-*` plus legacy
   compatibility headers.
+- `pyrosa-iam` is provisioned as a loopback-only pilot on the primary at
+  `127.0.0.1:10134` with PostgreSQL database `app_pyrosa_iam`.
+- SimpleHostMan migration `0031_pyrosa_iam_runtime_resources.sql` registers
+  `pyrosa-iam` in the app, site, database, and backup policy catalogs with
+  app mode `metadata-only`.
+- The reconciler skips `metadata-only` apps for proxy/container/database jobs,
+  so the catalog row does not publish Apache or replace the hand-provisioned
+  Quadlet runtime.
+- Backup policies now cover the `app_pyrosa_iam` database and the app storage
+  root. Root-only env/signing-key backup coverage is still incomplete.
 
 Pending work:
 
-- provision `pyrosa-iam` runtime metadata as deployable templates without
-  activating public traffic
+- add backup runner support for root-only IAM runtime config paths, or a
+  dedicated `iam:pyrosa-iam` handler, before promotion
 - validate active operator login, unprovisioned/inactive identity rejection,
   token revocation and external logout redirect against the eventual
   `pyrosa-iam` runtime before promotion

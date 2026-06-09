@@ -1445,6 +1445,13 @@ export async function buildProxyPayload(
     throw new Error(`Application ${appSlug} does not exist in SimpleHost Control inventory.`);
   }
 
+  if (app.mode === "metadata-only") {
+    return {
+      zoneName: app.zone_name,
+      plans: []
+    };
+  }
+
   const payload: ProxyRenderPayload = {
     vhostName: app.slug,
     serverName: app.canonical_domain,
@@ -1524,6 +1531,13 @@ export async function buildAppContainerPlans(
 
   if (!app) {
     throw new Error(`Application ${appSlug} does not exist in SimpleHost Control inventory.`);
+  }
+
+  if (app.mode === "metadata-only") {
+    return {
+      plans: [],
+      credentialMissing: false
+    };
   }
 
   const desiredPassword = decodeDesiredPassword(app.desired_password, payloadKey);
@@ -1932,6 +1946,7 @@ export async function listAppContainerCredentialGaps(
      LEFT JOIN control_plane_database_credentials credentials
        ON credentials.database_id = databases.database_id
      WHERE credentials.database_id IS NULL
+       AND apps.mode <> 'metadata-only'
      ORDER BY apps.slug ASC`
   );
   const gaps: Array<{ resourceKey: string; nodeId: string }> = [];
@@ -1994,6 +2009,7 @@ export async function buildReconciliationCandidates(
   const appResult = await client.query<{ slug: string }>(
     `SELECT slug
      FROM control_plane_apps
+     WHERE mode <> 'metadata-only'
      ORDER BY slug ASC`
   );
 
@@ -2037,6 +2053,7 @@ export async function buildReconciliationCandidates(
      FROM control_plane_databases databases
      INNER JOIN control_plane_apps apps
        ON apps.app_id = databases.app_id
+     WHERE apps.mode <> 'metadata-only'
      ORDER BY apps.slug ASC`
   );
 

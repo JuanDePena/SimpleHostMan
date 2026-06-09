@@ -344,6 +344,54 @@ test("iam pyrosa iam provider migration registers the split provider metadata-on
   assert.match(migrationSql, /"activeOuterGate": "authentik"/);
 });
 
+test("pyrosa iam runtime resources migration registers metadata-only catalog coverage", () => {
+  const migrationSql = readFileSync(
+    new URL("../migrations/0031_pyrosa_iam_runtime_resources.sql", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(migrationSql, /'app-pyrosa-iam'/);
+  assert.match(migrationSql, /'pyrosa-iam'/);
+  assert.match(migrationSql, /'metadata-only'/);
+  assert.match(migrationSql, /'iam.pyrosa.com.do'/);
+  assert.match(migrationSql, /'app_pyrosa_iam'/);
+  assert.match(migrationSql, /'pyrosa-iam-database-daily'/);
+  assert.match(migrationSql, /database:app_pyrosa_iam/);
+  assert.match(migrationSql, /'pyrosa-iam-files-daily'/);
+  assert.match(migrationSql, /app-files:pyrosa-iam/);
+  assert.match(migrationSql, /"loopback_pilot_active"/);
+});
+
+test("metadata-only apps do not emit proxy or container reconciliation plans", async () => {
+  const appRow = {
+    app_id: "app-pyrosa-iam",
+    slug: "pyrosa-iam",
+    backend_port: 10134,
+    runtime_image: "docker.io/library/node:22-bookworm-slim",
+    primary_node_id: "primary",
+    standby_node_id: null,
+    mode: "metadata-only",
+    zone_name: "pyrosa.com.do",
+    canonical_domain: "iam.pyrosa.com.do",
+    aliases: [],
+    storage_root: "/srv/containers/apps/pyrosa-iam",
+    database_engine: "postgresql",
+    database_name: "app_pyrosa_iam",
+    database_user: "app_pyrosa_iam",
+    database_primary_node_id: "primary",
+    database_primary_wireguard_address: "10.0.0.1/32",
+    desired_password: null
+  };
+
+  const proxyPlan = await buildProxyPayload(createStubClient([appRow]), "pyrosa-iam");
+  const containerPlan = await buildAppContainerPlans(createStubClient([appRow]), "pyrosa-iam", null);
+
+  assert.deepEqual(proxyPlan.plans, []);
+  assert.equal(proxyPlan.zoneName, "pyrosa.com.do");
+  assert.deepEqual(containerPlan.plans, []);
+  assert.equal(containerPlan.credentialMissing, false);
+});
+
 test("buildIamOverview maps provider capabilities and protected bindings", async () => {
   const overview = await buildIamOverview(
     createSequenceStubClient([
