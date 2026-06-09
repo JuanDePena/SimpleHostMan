@@ -83,11 +83,15 @@ Pending work:
   [`BACKUPS.md`](/opt/simplehostman/src/docs/BACKUPS.md) and
   [`IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md)
 
-### 4. Promote Pyrosa Accounts OAuth Login For SimpleHostMan
+### 4. Promote Pyrosa IAM OAuth Login For SimpleHostMan
 
 Current state:
 
-- SimpleHostMan models `pyrosa-accounts` as a candidate IAM provider.
+- SimpleHostMan currently models `pyrosa-accounts` as the inherited candidate
+  IAM provider because the pilot implementation started inside Accounts.
+- Product direction changed on 2026-06-09: `pyrosa-accounts` remains the
+  user-facing Account Center, while `pyrosa-iam` becomes the formal candidate
+  IAM provider for future promotion.
 - `ui_auth` is available for compatible Pyrosa apps, and `oauth_login` is
   modeled as the candidate SimpleHostMan browser login mode.
 - `oauth` has a validated browser Authorization Code + PKCE + MFA/AAL2 pilot
@@ -145,24 +149,29 @@ Current state:
   administrative proxy surfaces until there is an explicit promotion and
   rollback plan for a selected surface.
 - `oidc` and `gateway_proxy` remain future/scaffold-disabled in SimpleHostMan.
+- The `pyrosa-iam` clone now starts the namespace split: `PYROSA_IAM_*` first,
+  `PYROSA_ACCOUNTS_*` fallback, defaults for `iam.pyrosa.com.do` and
+  `app_pyrosa_iam`, and gateway headers `X-Pyrosa-IAM-*` plus legacy
+  compatibility headers.
 
 Pending work:
 
+- decide whether SimpleHostMan keeps the transitional provider slug
+  `pyrosa-accounts` until runtime cutover or adds a parallel `pyrosa-iam`
+  provider row before promotion
 - validate active operator login, unprovisioned/inactive identity rejection,
-  token revocation and external logout redirect in an interactive browser
-  session before promotion
+  token revocation and external logout redirect against the eventual
+  `pyrosa-iam` runtime before promotion
 
-### 5. Implement Pyrosa Accounts OIDC/Gateway Provider Support
+### 5. Implement Pyrosa IAM OIDC/Gateway Provider Support
 
 Current state:
 
 - Pyrosa Accounts `oauth` is pilot validated for SimpleHostMan but not promoted.
-- Pyrosa Accounts OIDC provider support is implemented in Accounts and modeled
-  in SimpleHostMan as a candidate metadata-only binding with promotion gate
-  `simplehost_oidc_login_pilot`.
-- Pyrosa Accounts `gateway_proxy` has an internal forward-auth check endpoint
-  and is modeled in SimpleHostMan as candidate metadata-only with promotion
-  gate `apache_forward_auth_pilot`.
+- OIDC provider support is implemented in the inherited Accounts codebase and
+  should move behind the `pyrosa-iam` runtime boundary before being promoted.
+- The inherited gateway check endpoint should move behind the `pyrosa-iam`
+  runtime boundary before being promoted.
 - Gateway readiness is now modeled in SimpleHostMan metadata with promotion
   gate `accounts_gateway_proxy_release` and `advertiseAsProvider=false`.
 - Pyrosa Accounts keeps `/oauth/gateway` fail-closed with
@@ -174,8 +183,8 @@ Current state:
 
 Pending work:
 
-- provision and validate a real SimpleHostMan OIDC client pilot before
-  promoting `pyrosa-accounts` as the active IAM provider
+- provision and validate a real SimpleHostMan OIDC client pilot against
+  `pyrosa-iam` before promoting it as the active IAM provider
 - validate an Apache forward-auth pilot against a non-critical app before
   promoting `gateway_proxy`
 - update SimpleHostMan provider capability status only after those releases and

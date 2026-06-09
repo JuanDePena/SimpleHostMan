@@ -187,6 +187,28 @@ Pyrosa Accounts provider readiness gate:
   surface receives a promotion and rollback decision.
 - The current source of truth for that implementation plan is
   [`oauth2-api-auth-plan.md`](/srv/containers/apps/pyrosa-accounts/app/docs/oauth2-api-auth-plan.md).
+
+Pyrosa Accounts / Pyrosa IAM split:
+
+- `pyrosa-accounts` remains the user-facing Account Center: profile,
+  preferences, contact data, personal security UX, MFA enrollment UX, visible
+  user sessions/devices and account notifications.
+- `pyrosa-iam` is the formal candidate for IAM provider capabilities:
+  OAuth/OIDC authorization server, gateway/forward-auth, SAML if required,
+  clients, scopes, audiences, MFA/AAL policies, claims and access-decision
+  audit.
+- The existing `pyrosa-accounts` OAuth/OIDC/gateway work remains useful as the
+  inherited pilot implementation and compatibility base, but new provider
+  runtime naming should move toward `PYROSA_IAM_*`, `iam.pyrosa.com.do`,
+  `app_pyrosa_iam` and provider slug `pyrosa-iam`.
+- SimpleHostMan must not promote Accounts-as-portal as the long-term IAM
+  replacement for Authentik. Any future promotion should explicitly target a
+  validated `pyrosa-iam` runtime or an intentionally documented transitional
+  binding.
+- Authentik remains the active/default administrative provider until
+  `pyrosa-iam` has a real runtime, backup/restore posture, client provisioning,
+  MFA/AAL validation, logout/revocation validation, and rollback evidence.
+
 - `oauth` has a first Accounts runtime cut with OAuth metadata, authorization
   code, token, introspection, revocation and opaque hashed tokens. The Accounts
   OAuth migration was applied on the primary runtime database on 2026-06-08 UTC.
