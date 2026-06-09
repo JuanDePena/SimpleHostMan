@@ -9,7 +9,7 @@ belongs in the feature runbook that owns the behavior, not in this tracker.
 
 - canonical source tree: `/opt/simplehostman/src`
 - canonical runtime root: `/opt/simplehostman/release`
-- active control-plane release: `2606.09.22`
+- active control-plane release: `2606.09.23`
 - implemented IAM/SSO state:
   [`IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md)
 - implemented operational inspection and hardening evidence:
@@ -166,8 +166,9 @@ Current state:
 - The reconciler skips `metadata-only` apps for proxy/container/database jobs,
   so the catalog row does not publish Apache or replace the hand-provisioned
   Quadlet runtime.
-- Backup policies now cover the `app_pyrosa_iam` database and the app storage
-  root. Root-only env/signing-key backup coverage is still incomplete.
+- Backup policies now cover the `app_pyrosa_iam` database, the app storage
+  root, and root-only runtime configuration through
+  `pyrosa-iam-root-config-daily`.
 - `pyrosa-iam` now has a reproducible SimpleHostMan OAuth/OIDC pilot client
   seeded by `database/migrations/0008_simplehostman_oauth_oidc_pilot.sql`.
 - Loopback validation on 2026-06-09 UTC confirmed health, OAuth/OIDC discovery,
@@ -178,8 +179,6 @@ Current state:
 
 Pending work:
 
-- add backup runner support for root-only IAM runtime config paths, or a
-  dedicated `iam:pyrosa-iam` handler, before promotion
 - validate active operator login, unprovisioned/inactive identity rejection,
   token revocation and external logout redirect against the eventual
   `pyrosa-iam` runtime before promotion

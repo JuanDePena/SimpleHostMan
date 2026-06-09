@@ -67,6 +67,15 @@ export interface BackupAuthentikRunDetails {
   globalsPath: string;
 }
 
+export interface BackupPyrosaIamRunDetails {
+  artifactPaths: {
+    config: string[];
+    env: string[];
+    httpd: string[];
+  };
+  archivePath: string;
+}
+
 export interface BackupReplicationRunDetails {
   sourceNodeId: string;
   targetNodeId: string;
@@ -83,6 +92,7 @@ export interface BackupRunDetails {
   postgresqlCluster?: BackupPostgresqlClusterRunDetails;
   codeServer?: BackupCodeServerRunDetails;
   authentik?: BackupAuthentikRunDetails;
+  pyrosaIam?: BackupPyrosaIamRunDetails;
   replication?: BackupReplicationRunDetails;
 }
 

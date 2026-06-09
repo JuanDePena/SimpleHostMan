@@ -64,6 +64,9 @@ interface BackupRuntimeEnv {
   SIMPLEHOST_BACKUP_AUTHENTIK_RUNTIME_ROOT?: string;
   SIMPLEHOST_BACKUP_AUTHENTIK_DATABASE?: string;
   SIMPLEHOST_BACKUP_AUTHENTIK_PGPORT?: string;
+  SIMPLEHOST_BACKUP_PYROSA_IAM_CONFIG_ROOT?: string;
+  SIMPLEHOST_BACKUP_PYROSA_IAM_ENV_FILE?: string;
+  SIMPLEHOST_BACKUP_PYROSA_IAM_HTTPD_VHOST?: string;
   SIMPLEHOST_BACKUP_REPLICATION_ENABLED?: string;
   SIMPLEHOST_BACKUP_REPLICATION_TARGET_NODE_ID?: string;
   SIMPLEHOST_BACKUP_REPLICATION_TARGET_HOST?: string;
@@ -467,6 +470,16 @@ export function policyCoversAuthentik(policy: BackupPolicySummary): boolean {
     selectors.includes("iam:authentik") ||
     selectors.includes("sso:authentik") ||
     selectors.includes("host-service:authentik")
+  );
+}
+
+export function policyCoversPyrosaIam(policy: BackupPolicySummary): boolean {
+  const selectors = normalizeSelectors(policy.resourceSelectors);
+
+  return (
+    selectors.includes("pyrosa-iam") ||
+    selectors.includes("iam:pyrosa-iam") ||
+    selectors.includes("host-service:pyrosa-iam")
   );
 }
 
@@ -1352,6 +1365,68 @@ async function createAuthentikBackup(args: {
   };
 }
 
+function resolvePyrosaIamConfigRoot(runtimeEnv: BackupRuntimeEnv): string {
+  return runtimeEnv.SIMPLEHOST_BACKUP_PYROSA_IAM_CONFIG_ROOT?.trim() || "/etc/pyrosa-iam";
+}
+
+function resolvePyrosaIamEnvFile(runtimeEnv: BackupRuntimeEnv): string {
+  return (
+    runtimeEnv.SIMPLEHOST_BACKUP_PYROSA_IAM_ENV_FILE?.trim() ||
+    "/etc/containers/systemd/env/app-pyrosa-iam.env"
+  );
+}
+
+function resolvePyrosaIamHttpdVhost(runtimeEnv: BackupRuntimeEnv): string {
+  return runtimeEnv.SIMPLEHOST_BACKUP_PYROSA_IAM_HTTPD_VHOST?.trim() || "/etc/httpd/conf.d/pyrosa-iam.conf";
+}
+
+async function createPyrosaIamBackup(args: {
+  policy: BackupPolicySummary;
+  runDirectory: string;
+  runtimeEnv: BackupRuntimeEnv;
+}): Promise<{
+  details: NonNullable<BackupRunDetails["pyrosaIam"]>;
+  artifacts: string[];
+  summary: string;
+}> {
+  const configPaths = await collectExistingPaths([resolvePyrosaIamConfigRoot(args.runtimeEnv)]);
+  const envPaths = await collectExistingPaths([resolvePyrosaIamEnvFile(args.runtimeEnv)]);
+  const httpdPaths = await collectExistingPaths([resolvePyrosaIamHttpdVhost(args.runtimeEnv)]);
+  const archiveSourcePaths = [...new Set([...configPaths, ...envPaths, ...httpdPaths])];
+
+  if (archiveSourcePaths.length === 0) {
+    throw new Error(`Policy ${args.policy.policySlug} did not find pyrosa-iam root-only paths to archive.`);
+  }
+
+  const archivePath = join(args.runDirectory, "pyrosa-iam-root-config.tar.gz");
+
+  await runCommand({
+    command: "/usr/bin/tar",
+    commandArgs: [
+      "--ignore-failed-read",
+      "--warning=no-file-changed",
+      "-czf",
+      archivePath,
+      "-P",
+      ...archiveSourcePaths
+    ]
+  });
+  await chmod(archivePath, 0o600);
+
+  return {
+    details: {
+      artifactPaths: {
+        config: configPaths,
+        env: envPaths,
+        httpd: httpdPaths
+      },
+      archivePath
+    },
+    artifacts: [archivePath],
+    summary: `Backed up pyrosa-iam root-only runtime config into ${args.policy.storageLocation}.`
+  };
+}
+
 async function executePolicy(
   context: BackupExecutionContext,
   policy: BackupPolicySummary,
@@ -1385,6 +1460,7 @@ async function executePolicy(
     const handlesPostgresqlControl = policyCoversPostgresqlControl(policy);
     const handlesCodeServer = policyCoversCodeServer(policy);
     const handlesAuthentik = policyCoversAuthentik(policy);
+    const handlesPyrosaIam = policyCoversPyrosaIam(policy);
 
     let details: BackupRunDetails | undefined;
     const artifacts: string[] = [];
@@ -1494,6 +1570,21 @@ async function executePolicy(
       };
       artifacts.push(...authentikResult.artifacts);
       summaryParts.push(authentikResult.summary);
+    }
+
+    if (handlesPyrosaIam) {
+      const pyrosaIamResult = await createPyrosaIamBackup({
+        policy,
+        runDirectory,
+        runtimeEnv: context.runtimeEnv
+      });
+
+      details = {
+        ...(details ?? {}),
+        pyrosaIam: pyrosaIamResult.details
+      };
+      artifacts.push(...pyrosaIamResult.artifacts);
+      summaryParts.push(pyrosaIamResult.summary);
     }
 
     if (artifacts.length === 0) {

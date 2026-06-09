@@ -225,14 +225,22 @@ Pyrosa Accounts / Pyrosa IAM split:
   reconciler skips proxy/container/database jobs for that mode so catalog
   visibility does not publish Apache, overwrite the hand-provisioned Quadlet,
   or try to manage the runtime-owned database credential.
-- The active pilot remains loopback-only on the primary. No public vhost is
-  installed and Authentik remains the active/default provider for
-  SimpleHostMan.
+- The active pilot remains loopback-only on the primary. A public HTTPS hold
+  vhost exists for `iam.pyrosa.com.do` so the hostname presents the
+  `*.pyrosa.com.do` certificate and returns HTTP 503 while the runtime stays
+  private. Authentik remains the active/default provider for SimpleHostMan.
 - Current backup coverage for `pyrosa-iam` includes the PostgreSQL database
-  dump and app storage root. Root-only runtime secrets under
-  `/etc/containers/systemd/env/app-pyrosa-iam.env` and the signing key under
-  `/etc/pyrosa-iam` still require either a generic path selector in the backup
-  runner or a dedicated IAM backup handler before promotion.
+  dump, app storage root, and root-only runtime configuration through
+  `pyrosa-iam-root-config-daily`. The root-only archive covers
+  `/etc/containers/systemd/env/app-pyrosa-iam.env`, `/etc/pyrosa-iam`, and
+  `/etc/httpd/conf.d/pyrosa-iam.conf`.
+- On 2026-06-09 UTC, SimpleHostMan release `2606.09.23` added the dedicated
+  `iam:pyrosa-iam` backup handler and forced run
+  `backup-run-a0fda97b-c2b6-4c5e-b23e-0864dc73e76b` succeeded. Primary
+  artifact directory:
+  `/srv/backups/iam/pyrosa-iam/root-config/pyrosa-iam-root-config-daily-2026-06-09T23-53-10-780Z`.
+  Replicated secondary directory:
+  `/srv/backups/iam/pyrosa-iam/root-config/primary-replicated/pyrosa-iam-root-config-daily-2026-06-09T23-53-10-780Z`.
 - `pyrosa-iam` migration `0008_simplehostman_oauth_oidc_pilot.sql` seeds the
   `simplehost-control-oauth-pilot` OAuth/OIDC client for SimpleHostMan:
   public PKCE, `authorization_code`, `refresh_token`, OIDC enabled, gateway

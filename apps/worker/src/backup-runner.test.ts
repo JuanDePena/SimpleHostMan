@@ -11,6 +11,7 @@ import {
   policyCoversDatabase,
   policyCoversMailDomain,
   policyCoversPostgresqlControl,
+  policyCoversPyrosaIam,
   resolveLocalNodeId,
   shouldRunPolicyAtTime
 } from "./backup-runner.js";
@@ -263,6 +264,33 @@ test("policyCoversAuthentik recognizes IAM Authentik selectors", () => {
       retentionDays: 14,
       storageLocation: "/srv/backups/code-server/primary",
       resourceSelectors: ["code-server"]
+    }),
+    false
+  );
+});
+
+test("policyCoversPyrosaIam recognizes pyrosa-iam IAM selectors", () => {
+  assert.equal(
+    policyCoversPyrosaIam({
+      policySlug: "pyrosa-iam-root-config-daily",
+      tenantSlug: "pyrosa",
+      targetNodeId: "primary",
+      schedule: "5 2 * * *",
+      retentionDays: 14,
+      storageLocation: "/srv/backups/iam/pyrosa-iam/root-config",
+      resourceSelectors: ["iam:pyrosa-iam"]
+    }),
+    true
+  );
+  assert.equal(
+    policyCoversPyrosaIam({
+      policySlug: "iam-authentik-primary-daily",
+      tenantSlug: "pyrosa",
+      targetNodeId: "primary",
+      schedule: "35 4 * * *",
+      retentionDays: 14,
+      storageLocation: "/srv/backups/iam/authentik/primary",
+      resourceSelectors: ["iam:authentik"]
     }),
     false
   );
