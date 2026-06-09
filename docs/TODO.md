@@ -158,6 +158,11 @@ Current state:
 
 - Pyrosa Accounts `oauth` is pilot validated for SimpleHostMan but not promoted.
 - `oidc` and `gateway_proxy` are intentionally future/scaffold-disabled.
+- OIDC readiness is now modeled in SimpleHostMan metadata with promotion gate
+  `accounts_oidc_release` and `advertiseAsProvider=false`.
+- Pyrosa Accounts keeps OIDC discovery fail-closed with
+  `oidc_not_available` and required-feature metadata instead of publishing
+  partial OIDC discovery.
 - Authentik remains the provider for generic reverse-proxy enforcement.
 
 Pending work:

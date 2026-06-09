@@ -288,6 +288,13 @@ Pyrosa Accounts provider readiness gate:
   the configured Pyrosa Accounts logout URL with `return_to`.
 - `oidc` may become available only after Accounts ships OIDC discovery, JWKS,
   signed ID tokens, `nonce` handling, stable claims and `/userinfo`.
+- SimpleHostMan migration `0024_iam_pyrosa_accounts_oidc_readiness.sql`
+  records the OIDC promotion gate as `accounts_oidc_release` and keeps
+  `advertiseAsProvider=false` until those runtime features and a real OIDC
+  app pilot exist.
+- Pyrosa Accounts responds to OIDC discovery as fail-closed with
+  `oidc_not_available` plus required-feature metadata instead of publishing a
+  partial `.well-known/openid-configuration`.
 - `gateway_proxy` may become available only after Accounts ships a real
   gateway/outpost path that performs HTTP enforcement before upstream apps,
   emits trusted headers safely, supports logout and passes loopback/internal

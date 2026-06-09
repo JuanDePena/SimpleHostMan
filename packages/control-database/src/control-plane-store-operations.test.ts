@@ -238,6 +238,21 @@ test("iam pyrosa accounts oauth login candidate migration keeps authentik active
   assert.match(migrationSql, /"activeOuterGate": "authentik"/);
 });
 
+test("iam pyrosa accounts oidc readiness migration keeps oidc future-gated", () => {
+  const migrationSql = readFileSync(
+    new URL("../migrations/0024_iam_pyrosa_accounts_oidc_readiness.sql", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(migrationSql, /"oidcReadiness"/);
+  assert.match(migrationSql, /"advertiseAsProvider": false/);
+  assert.match(migrationSql, /accounts_oidc_release/);
+  assert.match(migrationSql, /openid-configuration/);
+  assert.match(migrationSql, /jwks/);
+  assert.match(migrationSql, /signed_id_tokens/);
+  assert.match(migrationSql, /userinfo/);
+});
+
 test("buildIamOverview maps provider capabilities and protected bindings", async () => {
   const overview = await buildIamOverview(
     createSequenceStubClient([
