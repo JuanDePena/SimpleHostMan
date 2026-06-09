@@ -225,6 +225,19 @@ test("oauth session metadata migration stores non-sensitive logout references", 
   assert.match(migrationSql, /control_plane_sessions_auth_provider_idx/);
 });
 
+test("iam pyrosa accounts oauth login candidate migration keeps authentik active", () => {
+  const migrationSql = readFileSync(
+    new URL("../migrations/0023_iam_pyrosa_accounts_oauth_login_candidate.sql", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(migrationSql, /'oauth_login'/);
+  assert.match(migrationSql, /control_plane_iam_bindings_active_target_idx/);
+  assert.match(migrationSql, /iam-binding-simplehost-control-pyrosa-oauth/);
+  assert.match(migrationSql, /"promotionState": "candidate"/);
+  assert.match(migrationSql, /"activeOuterGate": "authentik"/);
+});
+
 test("buildIamOverview maps provider capabilities and protected bindings", async () => {
   const overview = await buildIamOverview(
     createSequenceStubClient([
@@ -269,6 +282,48 @@ test("buildIamOverview maps provider capabilities and protected bindings", async
           notes: "Existing handoff.",
           created_at: "2026-06-07T00:00:00.000Z",
           updated_at: "2026-06-07T00:00:00.000Z"
+        },
+        {
+          binding_id: "iam-binding-simplehost-control-pyrosa-oauth",
+          provider_slug: "pyrosa-accounts",
+          provider_display_name: "Pyrosa Accounts",
+          target_kind: "control",
+          target_slug: "simplehost-control",
+          external_url: "https://vps-prd.pyrosa.com.do:3200/",
+          internal_url: "http://host.containers.internal:13200",
+          auth_mode: "oauth_login",
+          mfa_policy: "required",
+          status: "candidate",
+          render_mode: "metadata_only",
+          provider_provisioning_status: "manual_ready",
+          allowed_groups: ["PYROSA Operators"],
+          config_json: {
+            oauthLogin: {
+              clientId: "simplehost-control-oauth-pilot",
+              promotionState: "candidate"
+            }
+          },
+          notes: "OAuth candidate.",
+          created_at: "2026-06-09T00:00:00.000Z",
+          updated_at: "2026-06-09T00:00:00.000Z"
+        }
+      ],
+      [
+        {
+          occurred_at: "2026-06-09T00:20:35.000Z",
+          provider: "pyrosa-accounts",
+          email: "it@pyrosa.com.do",
+          reason: null,
+          assurance_level: "aal2"
+        }
+      ],
+      [
+        {
+          occurred_at: "2026-06-09T00:25:00.000Z",
+          provider: "pyrosa-accounts",
+          email: null,
+          reason: "missing_email",
+          assurance_level: "aal2"
         }
       ]
     ])
@@ -286,6 +341,14 @@ test("buildIamOverview maps provider capabilities and protected bindings", async
   assert.equal(overview.bindings[0]?.renderEnabled, false);
   assert.equal(overview.bindings[0]?.providerProvisioningStatus, "manual_ready");
   assert.deepEqual(overview.bindings[0]?.allowedGroups, ["PYROSA Operators"]);
+  assert.equal(overview.bindings[1]?.authMode, "oauth_login");
+  assert.equal(overview.bindings[1]?.status, "candidate");
+  assert.equal(overview.operationalState.activeControlProviderSlug, "authentik");
+  assert.equal(overview.operationalState.activeControlAuthMode, "trusted_proxy_headers");
+  assert.equal(overview.operationalState.candidateControlProviderSlug, "pyrosa-accounts");
+  assert.equal(overview.operationalState.candidateControlAuthMode, "oauth_login");
+  assert.equal(overview.operationalState.lastOAuthLoginEmail, "it@pyrosa.com.do");
+  assert.equal(overview.operationalState.lastOAuthFailureReason, "missing_email");
 });
 
 test("purgeOperationalHistoryRows preserves latest resource jobs while deleting old history", async () => {

@@ -88,7 +88,8 @@ Pending work:
 Current state:
 
 - SimpleHostMan models `pyrosa-accounts` as a candidate IAM provider.
-- `ui_auth` is the only available Pyrosa Accounts integration mode today.
+- `ui_auth` is available for compatible Pyrosa apps, and `oauth_login` is
+  modeled as the candidate SimpleHostMan browser login mode.
 - `oauth` has a validated browser Authorization Code + PKCE + MFA/AAL2 pilot
   for SimpleHostMan and remains candidate-only until promotion.
 - The Accounts OAuth migration was applied on the primary runtime database on
@@ -129,6 +130,11 @@ Current state:
   `shp_oauth_logout` cookie when present, clears local cookies, audits
   revocation/logout, and redirects to the configured Pyrosa Accounts logout
   endpoint.
+- The IAM PostgreSQL catalog and UI now expose a candidate
+  `control:simplehost-control` binding with provider `pyrosa-accounts`,
+  `auth_mode=oauth_login`, `status=candidate`, and `render_mode=metadata_only`.
+- The IAM view shows active provider, OAuth candidate provider, latest OAuth
+  login and latest OAuth callback rejection when audit evidence exists.
 - SimpleHostMan still keeps Authentik as the default provider for
   administrative proxy surfaces until there is an explicit promotion and
   rollback plan for a selected surface.
@@ -136,7 +142,6 @@ Current state:
 
 Pending work:
 
-- expose candidate binding and operational login/failure state in the IAM view
 - validate active and unprovisioned operator behavior before promotion
 
 ### 5. Implement Pyrosa Accounts OIDC/Gateway Provider Support

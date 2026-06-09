@@ -102,6 +102,137 @@ function renderUiAuthMetadata(binding: IamBindingSummary, copy: WebCopy): string
   </div>`;
 }
 
+function renderOauthLoginMetadata(binding: IamBindingSummary, copy: WebCopy): string {
+  const oauthLogin =
+    binding.config.oauthLogin && typeof binding.config.oauthLogin === "object"
+      ? (binding.config.oauthLogin as Record<string, unknown>)
+      : undefined;
+
+  if (!oauthLogin) {
+    return "";
+  }
+
+  const requiredScopes = Array.isArray(oauthLogin.requiredScopes)
+    ? oauthLogin.requiredScopes.filter((value): value is string => typeof value === "string")
+    : [];
+  const facts = [
+    {
+      label: copy.iamClientIdLabel,
+      value:
+        typeof oauthLogin.clientId === "string"
+          ? `<span class="mono">${escapeHtml(oauthLogin.clientId)}</span>`
+          : escapeHtml(copy.none)
+    },
+    {
+      label: copy.iamLoginStartPathLabel,
+      value:
+        typeof oauthLogin.loginStartPath === "string"
+          ? `<span class="mono">${escapeHtml(oauthLogin.loginStartPath)}</span>`
+          : escapeHtml(copy.none)
+    },
+    {
+      label: copy.iamCallbackUrlLabel,
+      value:
+        typeof oauthLogin.loginCallbackPath === "string"
+          ? `<span class="mono">${escapeHtml(oauthLogin.loginCallbackPath)}</span>`
+          : escapeHtml(copy.none)
+    },
+    {
+      label: copy.iamRequiredAudienceLabel,
+      value:
+        typeof oauthLogin.requiredAudience === "string"
+          ? `<span class="mono">${escapeHtml(oauthLogin.requiredAudience)}</span>`
+          : escapeHtml(copy.none)
+    },
+    {
+      label: copy.iamRequiredScopesLabel,
+      value: requiredScopes.length > 0
+        ? `<span class="mono">${escapeHtml(requiredScopes.join(" "))}</span>`
+        : escapeHtml(copy.none)
+    },
+    {
+      label: copy.iamAssuranceLevelLabel,
+      value:
+        typeof oauthLogin.requiredAssuranceLevel === "string"
+          ? escapeHtml(oauthLogin.requiredAssuranceLevel)
+          : escapeHtml(copy.none)
+    },
+    {
+      label: copy.iamPromotionStateLabel,
+      value:
+        typeof oauthLogin.promotionState === "string"
+          ? escapeHtml(oauthLogin.promotionState)
+          : escapeHtml(copy.none)
+    }
+  ];
+
+  return `<div class="stack">
+    <h4>${escapeHtml(copy.iamOauthLoginTitle)}</h4>
+    ${renderActionFacts(facts, { className: "action-card-facts-wide-labels" })}
+  </div>`;
+}
+
+function renderOperationalState(args: {
+  data: DashboardData;
+  renderPill: (value: string, tone?: "default" | "success" | "danger" | "muted") => string;
+  copy: WebCopy;
+}): string {
+  const { data, renderPill, copy } = args;
+  const state = data.iam.operationalState;
+  const activeProvider = state.activeControlProviderSlug
+    ? `${state.activeControlProviderSlug} / ${state.activeControlAuthMode ?? copy.none}`
+    : copy.none;
+  const candidateProvider = state.candidateControlProviderSlug
+    ? `${state.candidateControlProviderSlug} / ${state.candidateControlAuthMode ?? copy.none}`
+    : copy.none;
+  const lastLogin = state.lastOAuthLoginAt
+    ? [
+        state.lastOAuthLoginEmail ?? copy.none,
+        state.lastOAuthLoginProvider ?? copy.none,
+        state.lastOAuthLoginAssuranceLevel ?? copy.none,
+        state.lastOAuthLoginAt
+      ].join(" / ")
+    : copy.never;
+  const lastFailure = state.lastOAuthFailureAt
+    ? [
+        state.lastOAuthFailureReason ?? copy.none,
+        state.lastOAuthFailureProvider ?? copy.none,
+        state.lastOAuthFailureAt
+      ].join(" / ")
+    : copy.never;
+
+  return `<article class="panel">
+    <div class="section-head">
+      <div>
+        <h3>${escapeHtml(copy.iamOperationalStateTitle)}</h3>
+        <p class="muted section-description">${escapeHtml(copy.iamOperationalStateDescription)}</p>
+      </div>
+      ${renderPill(state.candidateControlAuthMode ?? copy.none, state.candidateControlAuthMode ? "default" : "muted")}
+    </div>
+    ${renderActionFacts(
+      [
+        {
+          label: copy.iamActiveProviderLabel,
+          value: `<span class="mono">${escapeHtml(activeProvider)}</span>`
+        },
+        {
+          label: copy.iamCandidateProviderLabel,
+          value: `<span class="mono">${escapeHtml(candidateProvider)}</span>`
+        },
+        {
+          label: copy.iamLastOAuthLoginLabel,
+          value: escapeHtml(lastLogin)
+        },
+        {
+          label: copy.iamLastOAuthFailureLabel,
+          value: escapeHtml(lastFailure)
+        }
+      ],
+      { className: "action-card-facts-wide-labels" }
+    )}
+  </article>`;
+}
+
 function selectBinding(
   bindings: IamBindingSummary[],
   focus: string | undefined
@@ -170,7 +301,14 @@ function buildBindingRows(args: {
           copy.selectedStateLabel
         ),
         escapeHtml(binding.providerDisplayName),
-        renderPill(binding.authMode, binding.authMode === "ui_auth" ? "success" : "default"),
+        renderPill(
+          binding.authMode,
+          binding.authMode === "ui_auth"
+            ? "success"
+            : binding.authMode === "oauth_login"
+              ? "default"
+              : "default"
+        ),
         renderPill(binding.renderMode, binding.renderEnabled ? "success" : "muted"),
         renderPill(
           binding.providerProvisioningStatus,
@@ -339,6 +477,7 @@ function renderBindingDetailPanel(args: {
       }
     </form>
     ${renderUiAuthMetadata(binding, copy)}
+    ${renderOauthLoginMetadata(binding, copy)}
     ${binding.notes ? `<p class="muted">${escapeHtml(binding.notes)}</p>` : ""}
   </article>`;
 }
@@ -372,6 +511,7 @@ export function renderIamWorkspace(args: {
       { label: copy.iamActiveBindingsLabel, value: String(activeBindings.length), tone: activeBindings.length > 0 ? "success" : "muted" },
       { label: copy.iamPyrosaAccountsLabel, value: providers.some((provider) => provider.slug === "pyrosa-accounts") ? copy.availableLabel : copy.unavailableLabel, tone: providers.some((provider) => provider.slug === "pyrosa-accounts") ? "success" : "muted" }
     ])}
+    ${renderOperationalState({ data, renderPill, copy })}
     ${renderDataTable({
       id: "section-iam-providers-table",
       heading: copy.iamProvidersTitle,

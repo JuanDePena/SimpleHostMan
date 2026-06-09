@@ -295,66 +295,143 @@ function toIamBindingSummary(row: IamBindingRow): IamOverview["bindings"][number
   };
 }
 
+interface IamOperationalAuditRow {
+  occurred_at: Date | string;
+  provider: string | null;
+  email: string | null;
+  reason: string | null;
+  assurance_level: string | null;
+}
+
+function buildIamOperationalState(args: {
+  bindings: IamOverview["bindings"];
+  lastOAuthLogin: IamOperationalAuditRow | undefined;
+  lastOAuthFailure: IamOperationalAuditRow | undefined;
+}): IamOverview["operationalState"] {
+  const activeControlBinding = args.bindings.find(
+    (binding) =>
+      binding.targetKind === "control" &&
+      binding.targetSlug === "simplehost-control" &&
+      binding.status === "active"
+  );
+  const candidateControlBinding = args.bindings.find(
+    (binding) =>
+      binding.targetKind === "control" &&
+      binding.targetSlug === "simplehost-control" &&
+      binding.status === "candidate" &&
+      binding.authMode === "oauth_login"
+  );
+
+  return {
+    activeControlProviderSlug: activeControlBinding?.providerSlug,
+    activeControlAuthMode: activeControlBinding?.authMode,
+    candidateControlProviderSlug: candidateControlBinding?.providerSlug,
+    candidateControlAuthMode: candidateControlBinding?.authMode,
+    lastOAuthLoginAt: args.lastOAuthLogin
+      ? normalizeDatabaseTimestamp(args.lastOAuthLogin.occurred_at)
+      : undefined,
+    lastOAuthLoginProvider: args.lastOAuthLogin?.provider ?? undefined,
+    lastOAuthLoginEmail: args.lastOAuthLogin?.email ?? undefined,
+    lastOAuthLoginAssuranceLevel: args.lastOAuthLogin?.assurance_level ?? undefined,
+    lastOAuthFailureAt: args.lastOAuthFailure
+      ? normalizeDatabaseTimestamp(args.lastOAuthFailure.occurred_at)
+      : undefined,
+    lastOAuthFailureProvider: args.lastOAuthFailure?.provider ?? undefined,
+    lastOAuthFailureReason: args.lastOAuthFailure?.reason ?? undefined
+  };
+}
+
 export async function buildIamOverview(client: PoolClient): Promise<IamOverview> {
-  const [providersResult, bindingsResult] = await Promise.all([
-    client.query<IamProviderRow>(
-      `SELECT
-         provider_id,
-         slug,
-         display_name,
-         kind,
-         status,
-         base_url,
-         capabilities,
-         config_json,
-         notes,
-         created_at,
-         updated_at
-       FROM control_plane_iam_providers
-       ORDER BY
-         CASE status
-           WHEN 'active' THEN 1
-           WHEN 'candidate' THEN 2
-           WHEN 'future' THEN 3
-           ELSE 4
-         END,
-         display_name`
-    ),
-    client.query<IamBindingRow>(
-      `SELECT
-         bindings.binding_id,
-         providers.slug AS provider_slug,
-         providers.display_name AS provider_display_name,
-         bindings.target_kind,
-         bindings.target_slug,
-         bindings.external_url,
-         bindings.internal_url,
-         bindings.auth_mode,
-         bindings.mfa_policy,
-         bindings.status,
-         bindings.render_mode,
-         bindings.provider_provisioning_status,
-         bindings.allowed_groups,
-         bindings.config_json,
-         bindings.notes,
-         bindings.created_at,
-         bindings.updated_at
-       FROM control_plane_iam_bindings bindings
-       INNER JOIN control_plane_iam_providers providers
-         ON providers.provider_id = bindings.provider_id
-       ORDER BY
-         CASE bindings.target_kind
-           WHEN 'control' THEN 1
-           WHEN 'host_service' THEN 2
-           ELSE 3
-         END,
-         bindings.target_slug`
-    )
-  ]);
+  const [providersResult, bindingsResult, lastOAuthLoginResult, lastOAuthFailureResult] =
+    await Promise.all([
+      client.query<IamProviderRow>(
+        `SELECT
+           provider_id,
+           slug,
+           display_name,
+           kind,
+           status,
+           base_url,
+           capabilities,
+           config_json,
+           notes,
+           created_at,
+           updated_at
+         FROM control_plane_iam_providers
+         ORDER BY
+           CASE status
+             WHEN 'active' THEN 1
+             WHEN 'candidate' THEN 2
+             WHEN 'future' THEN 3
+             ELSE 4
+           END,
+           display_name`
+      ),
+      client.query<IamBindingRow>(
+        `SELECT
+           bindings.binding_id,
+           providers.slug AS provider_slug,
+           providers.display_name AS provider_display_name,
+           bindings.target_kind,
+           bindings.target_slug,
+           bindings.external_url,
+           bindings.internal_url,
+           bindings.auth_mode,
+           bindings.mfa_policy,
+           bindings.status,
+           bindings.render_mode,
+           bindings.provider_provisioning_status,
+           bindings.allowed_groups,
+           bindings.config_json,
+           bindings.notes,
+           bindings.created_at,
+           bindings.updated_at
+         FROM control_plane_iam_bindings bindings
+         INNER JOIN control_plane_iam_providers providers
+           ON providers.provider_id = bindings.provider_id
+         ORDER BY
+           CASE bindings.target_kind
+             WHEN 'control' THEN 1
+             WHEN 'host_service' THEN 2
+             ELSE 3
+           END,
+           bindings.target_slug`
+      ),
+      client.query<IamOperationalAuditRow>(
+        `SELECT
+           occurred_at,
+           payload->>'provider' AS provider,
+           payload->>'email' AS email,
+           NULL::text AS reason,
+           payload->>'assuranceLevel' AS assurance_level
+         FROM control_plane_audit_events
+         WHERE event_type = 'auth.oauth_login'
+         ORDER BY occurred_at DESC
+         LIMIT 1`
+      ),
+      client.query<IamOperationalAuditRow>(
+        `SELECT
+           occurred_at,
+           payload->>'provider' AS provider,
+           payload->>'email' AS email,
+           payload->>'reason' AS reason,
+           payload->>'assuranceLevel' AS assurance_level
+         FROM control_plane_audit_events
+         WHERE event_type = 'auth.oauth_callback_rejected'
+         ORDER BY occurred_at DESC
+         LIMIT 1`
+      )
+    ]);
+  const bindings = bindingsResult.rows.map(toIamBindingSummary);
 
   return {
     providers: providersResult.rows.map(toIamProviderSummary),
-    bindings: bindingsResult.rows.map(toIamBindingSummary)
+    bindings,
+    operationalState: buildIamOperationalState({
+      bindings,
+      lastOAuthLogin: lastOAuthLoginResult.rows[0],
+      lastOAuthFailure: lastOAuthFailureResult.rows[0]
+    })
   };
 }
 

@@ -8,6 +8,7 @@ export const iamAuthModes = [
   "proxy",
   "trusted_proxy_headers",
   "ui_auth",
+  "oauth_login",
   "oidc",
   "saml"
 ] as const;
@@ -96,9 +97,24 @@ export interface IamBindingSummary {
   updatedAt: string;
 }
 
+export interface IamOperationalState {
+  activeControlProviderSlug?: string;
+  activeControlAuthMode?: IamAuthMode;
+  candidateControlProviderSlug?: string;
+  candidateControlAuthMode?: IamAuthMode;
+  lastOAuthLoginAt?: string;
+  lastOAuthLoginProvider?: string;
+  lastOAuthLoginEmail?: string;
+  lastOAuthLoginAssuranceLevel?: string;
+  lastOAuthFailureAt?: string;
+  lastOAuthFailureProvider?: string;
+  lastOAuthFailureReason?: string;
+}
+
 export interface IamOverview {
   providers: IamProviderSummary[];
   bindings: IamBindingSummary[];
+  operationalState: IamOperationalState;
 }
 
 export interface IamBindingMutationRequest {

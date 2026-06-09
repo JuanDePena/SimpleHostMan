@@ -987,7 +987,11 @@ test("operators workspace lists control-plane users and create form", () => {
 });
 
 test("iam workspace lists providers and protected bindings", () => {
-  const html = renderView(createDashboardData(), "iam", "iam-binding-simplehost-control");
+  const html = renderView(
+    createDashboardData(),
+    "iam",
+    "iam-binding-simplehost-control-pyrosa-oauth"
+  );
 
   assert.match(html, /id="section-iam"/);
   assert.match(html, /Authentik/);
@@ -996,6 +1000,10 @@ test("iam workspace lists providers and protected bindings", () => {
   assert.match(html, /pyrosa-directory/);
   assert.match(html, /pyrosa-newsync/);
   assert.match(html, /trusted_proxy_headers/);
+  assert.match(html, /oauth_login/);
+  assert.match(html, /pilot_validated/);
+  assert.match(html, /simplehost-control-oauth-pilot/);
+  assert.match(html, /it@pyrosa\.com\.do/);
   assert.match(html, /ui_auth/);
   assert.match(html, /metadata_only/);
   assert.match(html, /not_required/);

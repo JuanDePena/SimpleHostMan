@@ -198,10 +198,10 @@ export function createDashboardBootstrap(
           kind: "pyrosa_accounts",
           status: "candidate",
           baseUrl: "https://accounts.pyrosa.com.do",
-          capabilities: ["ui_auth"],
+          capabilities: ["ui_auth", "oauth_login"],
           capabilityStatus: [
             { key: "ui_auth", status: "available" },
-            { key: "oauth", status: "future" },
+            { key: "oauth", status: "pilot_validated" },
             { key: "oidc", status: "future" },
             { key: "gateway_proxy", status: "future" },
             { key: "saml", status: "disabled" }
@@ -232,8 +232,45 @@ export function createDashboardBootstrap(
           notes: "Existing Authentik trusted-proxy handoff.",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
+        },
+        {
+          bindingId: "iam-binding-simplehost-control-pyrosa-oauth",
+          providerSlug: "pyrosa-accounts",
+          providerDisplayName: "Pyrosa Accounts",
+          targetKind: "control",
+          targetSlug: "simplehost-control",
+          externalUrl: "https://vps-prd.pyrosa.com.do:3200/",
+          internalUrl: "http://host.containers.internal:13200",
+          authMode: "oauth_login",
+          mfaPolicy: "required",
+          status: "candidate",
+          renderMode: "metadata_only",
+          renderEnabled: false,
+          providerProvisioningStatus: "manual_ready",
+          allowedGroups: ["PYROSA Operators"],
+          config: {
+            authHandledByControlPlane: true,
+            oauthLogin: {
+              clientId: "simplehost-control-oauth-pilot",
+              loginStartPath: "/auth/pyrosa-accounts/start",
+              loginCallbackPath: "/auth/pyrosa-accounts/callback",
+              requiredAudience: "simplehost-control",
+              requiredScopes: ["profile:read", "mfa:read"],
+              requiredAssuranceLevel: "aal2",
+              promotionState: "candidate"
+            }
+          },
+          notes: "Candidate native OAuth login for SimpleHostMan.",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
         }
-      ]
+      ],
+      operationalState: {
+        activeControlProviderSlug: "authentik",
+        activeControlAuthMode: "trusted_proxy_headers",
+        candidateControlProviderSlug: "pyrosa-accounts",
+        candidateControlAuthMode: "oauth_login"
+      }
     }
   } as unknown as ControlDashboardBootstrap;
 }

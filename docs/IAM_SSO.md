@@ -111,6 +111,9 @@ Initial integration modes:
 - `trusted_proxy_headers`: SimpleHostMan consumes trusted identity headers after
   upstream provider enforcement and creates a local `shp_session`.
 - `ui_auth`: Pyrosa apps delegate UI session exchange to Pyrosa Accounts.
+- `oauth_login`: SimpleHostMan performs browser Authorization Code + PKCE
+  login with Pyrosa Accounts and creates a local `shp_session` only after
+  token introspection and active-operator checks.
 - `oidc` and `saml`: reserved for providers that actually implement those
   protocols for the selected application.
 
@@ -119,7 +122,8 @@ Operational defaults:
 - Authentik remains selected for `code-server`, SimpleHostMan operator access,
   and `pgadmin` metadata.
 - Pyrosa Accounts remains selectable only where the application supports
-  `ui_auth`.
+  `ui_auth` or where SimpleHostMan explicitly models a candidate
+  `oauth_login` binding.
 - `pyrosa-directory` and `pyrosa-newsync` already implement Pyrosa Accounts
   `ui_auth`; SimpleHostMan models these bindings as app-handled authentication
   without taking ownership of their client secrets.
@@ -246,6 +250,14 @@ Pyrosa Accounts provider readiness gate:
 - The native OAuth login path is gated by `SIMPLEHOST_OAUTH_LOGIN_ENABLED` and
   is still candidate-only. Authentik continues to protect the public
   administrative surface during the pilot.
+- The IAM PostgreSQL catalog records a candidate binding for
+  `control:simplehost-control` with provider `pyrosa-accounts` and mode
+  `oauth_login`. The existing Authentik `trusted_proxy_headers` binding remains
+  the only active binding for SimpleHostMan.
+- The IAM UI shows the candidate OAuth binding, its PKCE callback/start paths,
+  required `simplehost-control` audience, `profile:read mfa:read` scopes,
+  `aal2` requirement, active provider, candidate provider, latest successful
+  OAuth login, and latest OAuth callback rejection when present.
 - OAuth login sessions store non-sensitive provider metadata on
   `control_plane_sessions`: provider slug, external subject, assurance level,
   client id, scopes, issuer, and a SHA-256 access-token hash. The raw access

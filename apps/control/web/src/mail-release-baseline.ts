@@ -366,10 +366,10 @@ export function createMailReleaseBaselineData(): DashboardData {
           kind: "pyrosa_accounts",
           status: "candidate",
           baseUrl: "https://accounts.pyrosa.com.do",
-          capabilities: ["ui_auth"],
+          capabilities: ["ui_auth", "oauth_login"],
           capabilityStatus: [
             { key: "ui_auth", status: "available" },
-            { key: "oauth", status: "future" },
+            { key: "oauth", status: "pilot_validated" },
             { key: "oidc", status: "future" },
             { key: "gateway_proxy", status: "future" },
             { key: "saml", status: "disabled" }
@@ -420,6 +420,37 @@ export function createMailReleaseBaselineData(): DashboardData {
           notes: "Existing Authentik trusted-proxy handoff.",
           createdAt: "2026-06-07T00:00:00.000Z",
           updatedAt: "2026-06-07T00:00:00.000Z"
+        },
+        {
+          bindingId: "iam-binding-simplehost-control-pyrosa-oauth",
+          providerSlug: "pyrosa-accounts",
+          providerDisplayName: "Pyrosa Accounts",
+          targetKind: "control",
+          targetSlug: "simplehost-control",
+          externalUrl: "https://vps-prd.pyrosa.com.do:3200/",
+          internalUrl: "http://host.containers.internal:13200",
+          authMode: "oauth_login",
+          mfaPolicy: "required",
+          status: "candidate",
+          renderMode: "metadata_only",
+          renderEnabled: false,
+          providerProvisioningStatus: "manual_ready",
+          allowedGroups: ["PYROSA Operators"],
+          config: {
+            authHandledByControlPlane: true,
+            oauthLogin: {
+              clientId: "simplehost-control-oauth-pilot",
+              loginStartPath: "/auth/pyrosa-accounts/start",
+              loginCallbackPath: "/auth/pyrosa-accounts/callback",
+              requiredAudience: "simplehost-control",
+              requiredScopes: ["profile:read", "mfa:read"],
+              requiredAssuranceLevel: "aal2",
+              promotionState: "candidate"
+            }
+          },
+          notes: "Candidate native OAuth login for SimpleHostMan.",
+          createdAt: "2026-06-09T00:00:00.000Z",
+          updatedAt: "2026-06-09T00:00:00.000Z"
         },
         {
           bindingId: "iam-binding-pyrosa-directory",
@@ -473,7 +504,17 @@ export function createMailReleaseBaselineData(): DashboardData {
           createdAt: "2026-06-07T00:00:00.000Z",
           updatedAt: "2026-06-07T00:00:00.000Z"
         }
-      ]
+      ],
+      operationalState: {
+        activeControlProviderSlug: "authentik",
+        activeControlAuthMode: "trusted_proxy_headers",
+        candidateControlProviderSlug: "pyrosa-accounts",
+        candidateControlAuthMode: "oauth_login",
+        lastOAuthLoginAt: "2026-06-09T00:20:35.000Z",
+        lastOAuthLoginProvider: "pyrosa-accounts",
+        lastOAuthLoginEmail: "it@pyrosa.com.do",
+        lastOAuthLoginAssuranceLevel: "aal2"
+      }
     }
   } as unknown as DashboardData;
 }
