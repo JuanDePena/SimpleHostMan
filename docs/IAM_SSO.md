@@ -306,15 +306,13 @@ Pyrosa Accounts provider readiness gate:
   records gateway proxy as `pilot_validated`/candidate metadata and adds a
   metadata-only SimpleHostMan gateway binding. No Apache/vhost traffic is
   rendered or switched yet.
-- SimpleHostMan migration `0026_iam_pyrosa_accounts_saml_disabled.sql` records
-  `saml` as disabled by decision with promotion gate
-  `concrete_saml_requirement`. Pyrosa Accounts must not be advertised as a
-  SAML IAM provider unless a real application requirement appears and the full
-  protocol is implemented.
-- Pyrosa Accounts public SAML-provider endpoints such as `/saml/metadata`
-  respond fail-closed with `saml_not_available`. This does not remove the
-  internal account UI section used to display future or linked SAML
-  connections for an identity.
+- Pyrosa Accounts now has a disabled SAML metadata scaffold. `/saml/metadata`
+  only publishes XML if SAML is explicitly enabled and a signing certificate is
+  configured; SSO assertions and SP registry are not implemented.
+- SimpleHostMan migration `0029_iam_pyrosa_accounts_saml_scaffold.sql` keeps
+  `saml` disabled with promotion gate `saml_sp_pilot` and intentionally creates
+  no SAML binding. Pyrosa Accounts must not be advertised as an operational
+  SAML IAM provider until a concrete SP pilot requires it.
 - Authentik remains the default provider for administrative proxy surfaces until
   there is an explicit replacement decision.
 

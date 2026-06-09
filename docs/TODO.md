@@ -168,9 +168,8 @@ Current state:
 - Pyrosa Accounts keeps `/oauth/gateway` fail-closed with
   `gateway_proxy_not_available` and required-feature metadata; it is not a
   reverse proxy or outpost yet.
-- SAML remains disabled by decision with promotion gate
-  `concrete_saml_requirement`; public SAML-provider endpoints fail closed with
-  `saml_not_available`.
+- SAML remains disabled by decision. Accounts has a metadata scaffold, but SSO
+  assertions, SP registry and a pilot app are still required before promotion.
 - Authentik remains the provider for generic reverse-proxy enforcement.
 
 Pending work:
@@ -186,8 +185,8 @@ Pending work:
 
 ## Deferred Unless Explicitly Requested
 
-- Pyrosa Accounts `saml` support. It remains disabled unless a concrete
-  requirement appears.
+- Pyrosa Accounts operational `saml` support. Metadata scaffold exists, but it
+  remains disabled unless a concrete SP pilot requirement appears.
 - Automatic IAM failover. Keep manual promotion until a controlled secondary
   promotion test proves the data and file behavior.
 - SSH changes. SSH remains outside Authentik/IAM scope.

@@ -314,6 +314,20 @@ test("iam pyrosa accounts saml migration keeps saml disabled by decision", () =>
   assert.match(migrationSql, /ACS handling/);
 });
 
+test("iam pyrosa accounts saml scaffold migration keeps saml disabled", () => {
+  const migrationSql = readFileSync(
+    new URL("../migrations/0029_iam_pyrosa_accounts_saml_scaffold.sql", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(migrationSql, /"samlDecision"/);
+  assert.match(migrationSql, /providerMetadataScaffold/);
+  assert.match(migrationSql, /saml_provider_disabled_until_sp_pilot/);
+  assert.match(migrationSql, /saml_sp_pilot/);
+  assert.match(migrationSql, /signed_saml_responses/);
+  assert.doesNotMatch(migrationSql, /INSERT INTO control_plane_iam_bindings/);
+});
+
 test("buildIamOverview maps provider capabilities and protected bindings", async () => {
   const overview = await buildIamOverview(
     createSequenceStubClient([
