@@ -395,6 +395,29 @@ test("pyrosa accounts app catalog decommission migration removes retired app met
   assert.match(migrationSql, /pyrosa-iam-root-config-daily/);
 });
 
+test("pyrosa accounts account center migration restores non-IAM app catalog metadata", () => {
+  const migrationSql = readFileSync(
+    new URL(
+      "../migrations/0035_restore_pyrosa_accounts_account_center_catalog.sql",
+      import.meta.url
+    ),
+    "utf8"
+  );
+
+  assert.match(migrationSql, /'app-pyrosa-accounts'/);
+  assert.match(migrationSql, /'pyrosa-accounts'/);
+  assert.match(migrationSql, /'accounts.pyrosa.com.do'/);
+  assert.match(migrationSql, /10124/);
+  assert.match(migrationSql, /'app_pyrosa_accounts'/);
+  assert.match(migrationSql, /'pyrosa-accounts-database-daily'/);
+  assert.match(migrationSql, /database:app_pyrosa_accounts/);
+  assert.match(migrationSql, /'pyrosa-accounts-files-daily'/);
+  assert.match(migrationSql, /app-files:pyrosa-accounts/);
+  assert.match(migrationSql, /"purpose": "user_account_center"/);
+  assert.match(migrationSql, /"iamProvider": false/);
+  assert.doesNotMatch(migrationSql, /INSERT INTO control_plane_iam_providers/);
+});
+
 test("metadata-only apps do not emit proxy or container reconciliation plans", async () => {
   const appRow = {
     app_id: "app-pyrosa-iam",

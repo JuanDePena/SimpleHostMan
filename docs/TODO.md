@@ -87,8 +87,9 @@ Pending work:
 
 Current state:
 
-- `pyrosa-accounts` is decommissioned from SimpleHostMan IAM provider
-  selection and app catalog metadata.
+- `pyrosa-accounts` is decommissioned only from SimpleHostMan IAM provider
+  selection. It remains the user-facing Account Center portal and is cataloged
+  as app/site/database/backup metadata.
 - `pyrosa-iam` owns Pyrosa authentication concerns: OAuth login, OIDC,
   gateway/forward-auth metadata and app-native `ui_auth` tickets.
 - SimpleHostMan release `2606.10.06` supports

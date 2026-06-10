@@ -182,13 +182,17 @@ Pyrosa Accounts decommission decision:
 - Authentication-owned features move to `pyrosa-iam`: login sessions, MFA/AAL,
   OAuth/OIDC, gateway/forward-auth, app-native `ui-auth` tickets and
   access-decision audit.
-- Any remaining Accounts runtime must be treated as account/profile portal or
-  transitional compatibility only, not as an IAM provider.
+- `pyrosa-accounts` remains a user-facing Account Center where people can view
+  and edit profile, contact, preference, session and account security data. It
+  delegates authentication to `pyrosa-iam` and is not an IAM provider.
+- SimpleHostMan migration `0035_restore_pyrosa_accounts_account_center_catalog.sql`
+  restores Accounts as an app/site/database/backup resource in the control-plane
+  catalog while keeping it absent from IAM provider selection.
 
 Pyrosa Accounts / Pyrosa IAM split:
 
-- `pyrosa-accounts`, if kept later, can only own non-authentication account
-  portal concerns such as profile, contact data and preferences.
+- `pyrosa-accounts` owns non-authentication account portal concerns such as
+  profile, contact data, preferences and user self-service views.
 - `pyrosa-iam` owns IAM provider capabilities: OAuth/OIDC authorization server,
   gateway/forward-auth, SAML if required, clients, scopes, audiences, MFA/AAL
   policies, claims, app-native `ui-auth` and access-decision audit.
@@ -216,6 +220,10 @@ Pyrosa app login routing as of `2026-06-10`:
 - SimpleHostMan migration `0033_decommission_pyrosa_accounts_iam.sql`
   decommissions `pyrosa-accounts` from IAM provider selection and moves the
   Directory, NewSync and DemoERP `ui_auth` bindings to `pyrosa-iam`.
+- SimpleHostMan migration `0035_restore_pyrosa_accounts_account_center_catalog.sql`
+  restores Accounts as an Account Center app at `accounts.pyrosa.com.do`, using
+  backend port `10124`, database `app_pyrosa_accounts` and app/database backup
+  policy metadata. It intentionally does not recreate an IAM provider row.
 - SimpleHostMan migration `0030_iam_pyrosa_iam_provider.sql` registers
   `pyrosa-iam` as a parallel provider row with provider kind `pyrosa_iam`,
   base URL `https://iam.pyrosa.com.do`, and metadata-only candidate bindings
@@ -359,10 +367,13 @@ Historical Accounts OAuth pilot:
 - As of 2026-06-10, Accounts is not an operational IAM provider. The active
   candidate path is `pyrosa-iam`, using `/auth/pyrosa-iam/*` and
   `/v1/auth/pyrosa-iam/*`; `/auth/pyrosa-accounts/*` is intentionally rejected.
+  Accounts remains available as the Account Center portal and delegates user
+  login to IAM.
 - The historical migrations `0021` through `0029` remain in the schema history
   because they describe the path that led to the split. Migration `0033`
-  removes Accounts from the IAM provider catalog, and migration `0034` removes
-  the retired Accounts app metadata from the SimpleHostMan app catalog.
+  removes Accounts from the IAM provider catalog. Migration `0034` removed the
+  app metadata during the split, and migration `0035` restores that metadata for
+  the non-IAM Account Center role.
 - OAuth login sessions still store only non-sensitive provider metadata on
   `control_plane_sessions`: provider slug, external subject, assurance level,
   client id, scopes, issuer, and a SHA-256 access-token hash. The raw access
