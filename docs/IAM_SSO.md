@@ -156,8 +156,12 @@ Phase 5-7 implementation decisions:
   - `oauth`: pilot validated for SimpleHostMan browser Authorization Code with
     PKCE, human principal, `aal2`, `profile:read`, and `mfa:read`; it remains
     candidate-only until promoted for a selected surface.
-  - `oidc` and `gateway_proxy`: future/scaffold-disabled until real runtime
-    support exists.
+  - `oidc`: pilot validated for public discovery and JWKS on
+    `https://iam.pyrosa.com.do`; it remains candidate-only until a consumer
+    pilot explicitly selects OIDC.
+  - `gateway_proxy`: pilot validated as a fail-closed runtime check endpoint;
+    Apache forward-auth rendering and traffic changes remain future work until
+    a non-critical surface pilot passes rollback.
   - `saml`: disabled unless a concrete requirement appears.
 - `pyrosa-directory` is recorded as:
   - provider: `pyrosa-iam`
@@ -358,6 +362,21 @@ Pyrosa app login routing as of `2026-06-10`:
   and `simplehost-backup-runner.timer` were active. The live OAuth runtime env
   was later switched to `pyrosa-iam` for the controlled pilot described above;
   Authentik still guards the public SimpleHostMan surface.
+- `pyrosa-iam` release `v2606.101205` was published on 2026-06-10 UTC after
+  `npm run typecheck`, `npm run test:run` and `npm run build` passed in the
+  IAM repository. Runtime smoke checks after the release confirmed:
+  - `app-pyrosa-iam.service` active;
+  - loopback health returned `{"ok":true,"service":"pyrosa-iam"}`;
+  - `/login` served the IAM UI and set the new `PYROSA_IAM_SESSION` cookie
+    while keeping the legacy `PYROSA_ACCOUNTS_SESSION` compatibility cookie;
+  - public OIDC discovery returned issuer `https://iam.pyrosa.com.do` with the
+    expected authorization, token and JWKS endpoints;
+  - the gateway endpoint stayed fail-closed where no valid session was present.
+- SimpleHostMan migration `0036_pyrosa_iam_release_candidate_metadata.sql`
+  records that release evidence in the IAM provider catalog. The provider and
+  SimpleHostMan `oauth_login`, OIDC and gateway bindings stay
+  `candidate`/`metadata_only`; Authentik remains the active outer
+  administrative gate.
 
 Historical Accounts OAuth pilot:
 

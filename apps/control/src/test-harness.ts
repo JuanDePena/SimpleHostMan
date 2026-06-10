@@ -198,16 +198,17 @@ export function createDashboardBootstrap(
           kind: "pyrosa_iam",
           status: "candidate",
           baseUrl: "https://iam.pyrosa.com.do",
-          capabilities: ["ui_auth", "oauth_login"],
+          capabilities: ["ui_auth", "oauth_login", "oidc", "gateway_proxy"],
           capabilityStatus: [
             { key: "ui_auth", status: "available" },
             { key: "oauth", status: "pilot_validated" },
-            { key: "oidc", status: "future" },
-            { key: "gateway_proxy", status: "future" },
+            { key: "oidc", status: "pilot_validated" },
+            { key: "gateway_proxy", status: "pilot_validated" },
             { key: "saml", status: "disabled" }
           ],
           config: {},
-          notes: "Pyrosa-native ui-auth candidate.",
+          notes:
+            "Release-validated Pyrosa IAM candidate for OAuth/OIDC/gateway pilots.",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         }
@@ -258,9 +259,14 @@ export function createDashboardBootstrap(
               requiredScopes: ["profile:read", "mfa:read"],
               requiredAssuranceLevel: "aal2",
               promotionState: "candidate"
+            },
+            releaseValidation: {
+              status: "release_validated_candidate",
+              releaseTag: "v2606.101205",
+              activeOuterGate: "authentik"
             }
           },
-          notes: "Candidate native OAuth login for SimpleHostMan.",
+          notes: "Release-validated native OAuth login candidate for SimpleHostMan.",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         }

@@ -418,6 +418,25 @@ test("pyrosa accounts account center migration restores non-IAM app catalog meta
   assert.doesNotMatch(migrationSql, /INSERT INTO control_plane_iam_providers/);
 });
 
+test("pyrosa iam release candidate migration records validated provider metadata", () => {
+  const migrationSql = readFileSync(
+    new URL("../migrations/0036_pyrosa_iam_release_candidate_metadata.sql", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(migrationSql, /WHERE slug = 'pyrosa-iam'/);
+  assert.match(migrationSql, /v2606\.101205/);
+  assert.match(migrationSql, /release_validated_candidate/);
+  assert.match(migrationSql, /public_oidc_discovery/);
+  assert.match(migrationSql, /gateway_fail_closed/);
+  assert.match(migrationSql, /"slug": "pyrosa-accounts"/);
+  assert.match(migrationSql, /"iamProvider": false/);
+  assert.match(migrationSql, /iam-binding-simplehost-control-pyrosa-iam-oauth/);
+  assert.match(migrationSql, /iam-binding-simplehost-control-pyrosa-iam-oidc/);
+  assert.match(migrationSql, /iam-binding-simplehost-control-pyrosa-iam-gateway/);
+  assert.doesNotMatch(migrationSql, /INSERT INTO control_plane_iam_providers/);
+});
+
 test("metadata-only apps do not emit proxy or container reconciliation plans", async () => {
   const appRow = {
     app_id: "app-pyrosa-iam",

@@ -101,6 +101,10 @@ Current state:
 - Public `https://iam.pyrosa.com.do` now proxies to the loopback IAM runtime
   for OAuth/OIDC pilots. Authentik still guards the public SimpleHostMan
   administrative surface.
+- `pyrosa-iam` release `v2606.101205` is published and smoke-validated. The
+  provider catalog records this as release-validated candidate metadata while
+  keeping Authentik active and every SimpleHostMan `pyrosa-iam` binding
+  `metadata_only`.
 - On 2026-06-10 UTC, the controlled IAM switch was rehearsed successfully:
   active operator login + TOTP created a local `shp_session`, logout revoked
   the OAuth token and redirected to IAM logout, and a temporarily inactive
@@ -117,18 +121,18 @@ Current state:
 
 Pending work:
 
-- decide whether to mark the `control:simplehost-control`
-  `pyrosa-iam/oauth_login` binding as active metadata while Authentik remains
-  the outer public gate
+- decide whether to promote the `control:simplehost-control`
+  `pyrosa-iam/oauth_login` binding from candidate metadata to the selected
+  native login policy while Authentik remains the outer public gate
 - keep Authentik as rollback and as the active reverse-proxy provider until a
   separate explicit cutover is approved
 - run one manual operator browser validation through the normal public
   Authentik-protected SimpleHostMan URL before changing any user-facing entry
   point
 - select the next administrative pilot surface, expected to be pgAdmin
-- clean up inherited `X-Pyrosa-Accounts-*`, cookie, storage and UI naming in
-  `pyrosa-iam`; compatibility aliases may remain only where they are
-  intentionally consumed during migration
+- retire inherited `X-Pyrosa-Accounts-*`, cookie and storage aliases after all
+  dependent clients have moved to the new `PYROSA_IAM_*` and
+  `X-Pyrosa-IAM-*` names
 
 ### 5. Implement Pyrosa IAM OIDC/Gateway Provider Support
 
@@ -136,15 +140,15 @@ Current state:
 
 - Pyrosa IAM `oauth_login` is pilot validated for SimpleHostMan but not
   promoted as the only administrative login path.
-- SimpleHostMan has a `pyrosa-iam` provider catalog entry with candidate
-  metadata for OAuth login, OIDC and gateway proxy. All remain metadata-only
-  until pilots validate rollback.
-- `pyrosa-iam` OIDC discovery and JWKS are available on the loopback runtime,
-  and the SimpleHostMan pilot client validates Authorization Code + PKCE with a
-  real MFA-backed identity.
-- `pyrosa-iam` `/oauth/gateway/check` has a loopback forward-auth smoke:
+- SimpleHostMan has a `pyrosa-iam` provider catalog entry with release
+  candidate metadata for OAuth login, OIDC and gateway proxy. All remain
+  metadata-only until pilots validate rollback.
+- `pyrosa-iam` OIDC discovery and JWKS are available publicly at
+  `https://iam.pyrosa.com.do`, and the SimpleHostMan pilot client validates
+  Authorization Code + PKCE with a real MFA-backed identity.
+- `pyrosa-iam` `/oauth/gateway/check` has a forward-auth smoke:
   unauthenticated requests fail closed and authenticated AAL2 sessions return
-  trusted headers.
+  trusted headers; an Apache-rendered pilot is still pending.
 - SAML remains disabled by decision. Accounts has a metadata scaffold, but SSO
   assertions, SP registry and a pilot app are still required before promotion.
 - Authentik remains the provider for generic reverse-proxy enforcement.
@@ -155,8 +159,8 @@ Pending work:
   introspection directly, or both before any promotion from Authentik
 - validate an Apache forward-auth pilot against a non-critical app before
   promoting `gateway_proxy`
-- update SimpleHostMan provider capability status only after those releases and
-  pilots are complete
+- promote `gateway_proxy` only after a non-critical Apache forward-auth pilot
+  validates rollback and unsafe-method behavior
 - record SimpleHostMan readiness evidence in
   [`IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md)
 
