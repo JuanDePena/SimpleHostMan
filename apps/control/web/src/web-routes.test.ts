@@ -19,14 +19,14 @@ function createStubApi(
     login: async () => {
       throw new Error("Unexpected login request in test");
     },
-    loginPyrosaAccountsOAuth: async () => {
-      throw new Error("Unexpected Pyrosa Accounts OAuth login request in test");
+    loginOAuthProvider: async () => {
+      throw new Error("Unexpected OAuth provider login request in test");
     },
     logout: async () => {
       throw new Error("Unexpected logout request in test");
     },
-    revokePyrosaAccountsOAuth: async () => {
-      throw new Error("Unexpected Pyrosa Accounts OAuth revoke request in test");
+    revokeOAuthProvider: async () => {
+      throw new Error("Unexpected OAuth provider revoke request in test");
     },
     getCurrentUser: async () => {
       throw new Error("Unexpected current-user request in test");
@@ -171,7 +171,9 @@ function createConfig(): ControlWebRuntimeConfig {
   };
 }
 
-function createOAuthLoginConfig(): ControlWebRuntimeConfig {
+function createOAuthLoginConfig(
+  overrides: Partial<NonNullable<ControlWebRuntimeConfig["oauthResourceServer"]>> = {}
+): ControlWebRuntimeConfig {
   return {
     ...createConfig(),
     oauthResourceServer: {
@@ -193,6 +195,7 @@ function createOAuthLoginConfig(): ControlWebRuntimeConfig {
       pilotRequiredPrincipalType: "human",
       pilotRequiredAssuranceLevel: "aal2",
       pilotRevokeTokens: true,
+      loginProviderSlug: "pyrosa-accounts",
       loginEnabled: true,
       loginRedirectUri: "https://vps-prd.pyrosa.com.do:3200/auth/pyrosa-accounts/callback",
       loginScope: "profile:read mfa:read",
@@ -201,7 +204,8 @@ function createOAuthLoginConfig(): ControlWebRuntimeConfig {
       loginRequiredGroup: null,
       loginLogoutUrl: "https://accounts.pyrosa.com.do/logout",
       loginPostLogoutRedirectUri: "https://vps-prd.pyrosa.com.do:3200/login?notice=Session%20closed&kind=info",
-      introspectionTimeoutMs: 1000
+      introspectionTimeoutMs: 1000,
+      ...overrides
     }
   };
 }
@@ -308,7 +312,8 @@ test("Pyrosa Accounts OAuth login routes create PKCE state and local session", a
       startedAt: Date.now()
     },
     createStubApi({
-      loginPyrosaAccountsOAuth: async (request) => {
+      loginOAuthProvider: async (provider, request) => {
+        assert.equal(provider, "pyrosa-accounts");
         callbackRequest = request;
         return {
           sessionToken: "oauth-session-token",
@@ -362,6 +367,81 @@ test("Pyrosa Accounts OAuth login routes create PKCE state and local session", a
     {
       code: "human-code",
       redirectUri: "https://vps-prd.pyrosa.com.do:3200/auth/pyrosa-accounts/callback",
+      codeVerifier: "string"
+    }
+  );
+});
+
+test("Pyrosa IAM OAuth login routes use the configured provider path", async () => {
+  let callbackProvider: string | null = null;
+  let callbackRequest: unknown;
+  const handler = createControlWebSurface(
+    {
+      config: createOAuthLoginConfig({
+        issuer: "https://iam.pyrosa.com.do",
+        authorizationUrl: "https://iam.pyrosa.com.do/oauth/authorize",
+        tokenUrl: "https://iam.pyrosa.com.do/oauth/token",
+        introspectionUrl: "https://iam.pyrosa.com.do/oauth/introspect",
+        revocationUrl: "https://iam.pyrosa.com.do/oauth/revoke",
+        clientId: "client-simplehost-control-oauth-pilot",
+        clientSecretFile: null,
+        loginProviderSlug: "pyrosa-iam",
+        loginRedirectUri: "https://vps-prd.pyrosa.com.do:3200/auth/pyrosa-iam/callback",
+        loginLogoutUrl: "https://iam.pyrosa.com.do/logout"
+      }),
+      startedAt: Date.now()
+    },
+    createStubApi({
+      loginOAuthProvider: async (provider, request) => {
+        callbackProvider = provider;
+        callbackRequest = request;
+        return {
+          sessionToken: "iam-session-token",
+          oauthLogoutToken: "iam-access-token",
+          expiresAt: "2026-06-10T12:00:00.000Z",
+          user: {
+            userId: "user-webmaster",
+            email: "webmaster@pyrosa.com.do",
+            displayName: "Webmaster",
+            status: "active",
+            globalRoles: ["platform_admin"],
+            tenantMemberships: []
+          }
+        };
+      }
+    })
+  ).requestListener;
+
+  const startResponse = await invokeRequestHandler(handler, {
+    method: "GET",
+    url: "/auth/pyrosa-iam/start"
+  });
+  assert.equal(startResponse.statusCode, 303);
+  const authorize = new URL(String(startResponse.headers.location));
+  assert.equal(authorize.origin, "https://iam.pyrosa.com.do");
+  assert.equal(authorize.pathname, "/oauth/authorize");
+  assert.equal(authorize.searchParams.get("client_id"), "client-simplehost-control-oauth-pilot");
+  const cookie = String(startResponse.headers["set-cookie"]).split(";", 1)[0];
+  assert.match(cookie, /^shp_oauth_login=/);
+
+  const callbackResponse = await invokeRequestHandler(handler, {
+    method: "GET",
+    url: `/auth/pyrosa-iam/callback?state=${authorize.searchParams.get("state")}&code=human-code`,
+    headers: {
+      cookie
+    }
+  });
+  assert.equal(callbackResponse.statusCode, 303);
+  assert.equal(callbackProvider, "pyrosa-iam");
+  assert.match(String(callbackResponse.headers["set-cookie"]), /shp_session=iam-session-token/);
+  assert.deepEqual(
+    {
+      ...(callbackRequest as Record<string, unknown>),
+      codeVerifier: typeof (callbackRequest as Record<string, unknown>).codeVerifier
+    },
+    {
+      code: "human-code",
+      redirectUri: "https://vps-prd.pyrosa.com.do:3200/auth/pyrosa-iam/callback",
       codeVerifier: "string"
     }
   );
@@ -483,7 +563,8 @@ test("logout revokes Pyrosa Accounts OAuth token and redirects to external ident
       startedAt: Date.now()
     },
     createStubApi({
-      revokePyrosaAccountsOAuth: async (token, request) => {
+      revokeOAuthProvider: async (provider, token, request) => {
+        assert.equal(provider, "pyrosa-accounts");
         logoutToken = token;
         revokedToken = request.token;
       },

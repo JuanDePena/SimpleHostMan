@@ -13,9 +13,10 @@ interface OAuthLoginState {
 
 const oauthLoginCookieName = "shp_oauth_login";
 export const oauthLogoutTokenCookieName = "shp_oauth_logout";
-const oauthLoginCookiePath = "/auth/pyrosa-accounts";
 const oauthLogoutCookiePath = "/auth/logout";
 const oauthLoginCookieMaxAgeSeconds = 10 * 60;
+
+type OAuthLoginProviderSlug = "pyrosa-accounts" | "pyrosa-iam";
 
 function createPkcePair(): { verifier: string; challenge: string } {
   const verifier = randomBytes(32).toString("base64url");
@@ -74,12 +75,24 @@ function readCookie(header: string | string[] | undefined, name: string): string
   return null;
 }
 
-function serializeLoginCookie(value: string): string {
-  return `${oauthLoginCookieName}=${encodeURIComponent(value)}; Path=${oauthLoginCookiePath}; HttpOnly; Secure; SameSite=Lax; Max-Age=${oauthLoginCookieMaxAgeSeconds}`;
+function readOAuthLoginProviderSlug(value: string | null | undefined): OAuthLoginProviderSlug {
+  return value === "pyrosa-iam" ? "pyrosa-iam" : "pyrosa-accounts";
 }
 
-function clearLoginCookie(): string {
-  return `${oauthLoginCookieName}=; Path=${oauthLoginCookiePath}; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
+function formatOAuthProviderName(provider: OAuthLoginProviderSlug): string {
+  return provider === "pyrosa-iam" ? "Pyrosa IAM" : "Pyrosa Accounts";
+}
+
+function oauthLoginCookiePath(provider: OAuthLoginProviderSlug): string {
+  return `/auth/${provider}`;
+}
+
+function serializeLoginCookie(provider: OAuthLoginProviderSlug, value: string): string {
+  return `${oauthLoginCookieName}=${encodeURIComponent(value)}; Path=${oauthLoginCookiePath(provider)}; HttpOnly; Secure; SameSite=Lax; Max-Age=${oauthLoginCookieMaxAgeSeconds}`;
+}
+
+function clearLoginCookie(provider: OAuthLoginProviderSlug): string {
+  return `${oauthLoginCookieName}=; Path=${oauthLoginCookiePath(provider)}; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
 }
 
 export function serializeOAuthLogoutTokenCookie(value: string, expiresAt: string): string {
@@ -99,7 +112,7 @@ function failClosedLocation(message: string): string {
   return noticeLocation(message, "error");
 }
 
-export const handlePyrosaAccountsOAuthLoginRoutes: WebRouteHandler = async ({
+export const handleOAuthLoginRoutes: WebRouteHandler = async ({
   request,
   response,
   url,
@@ -107,8 +120,11 @@ export const handlePyrosaAccountsOAuthLoginRoutes: WebRouteHandler = async ({
   config
 }) => {
   const oauthConfig = config.oauthResourceServer;
+  const provider = readOAuthLoginProviderSlug(oauthConfig?.loginProviderSlug);
+  const providerName = formatOAuthProviderName(provider);
+  const providerPath = oauthLoginCookiePath(provider);
 
-  if (!url.pathname.startsWith(oauthLoginCookiePath)) {
+  if (url.pathname !== providerPath && !url.pathname.startsWith(`${providerPath}/`)) {
     return false;
   }
 
@@ -119,13 +135,13 @@ export const handlePyrosaAccountsOAuthLoginRoutes: WebRouteHandler = async ({
   if (!oauthConfig?.loginEnabled) {
     redirect(
       response,
-      failClosedLocation("Pyrosa Accounts OAuth login is not enabled."),
-      clearLoginCookie()
+      failClosedLocation(`${providerName} OAuth login is not enabled.`),
+      clearLoginCookie(provider)
     );
     return true;
   }
 
-  if (url.pathname === `${oauthLoginCookiePath}/start`) {
+  if (url.pathname === `${providerPath}/start`) {
     const authorizationUrl =
       oauthConfig.authorizationUrl ?? deriveEndpoint(oauthConfig.issuer, "/oauth/authorize");
     const redirectUri = oauthConfig.loginRedirectUri;
@@ -133,8 +149,8 @@ export const handlePyrosaAccountsOAuthLoginRoutes: WebRouteHandler = async ({
     if (!authorizationUrl || !oauthConfig.clientId || !redirectUri) {
       redirect(
         response,
-        failClosedLocation("Pyrosa Accounts OAuth login is not fully configured."),
-        clearLoginCookie()
+        failClosedLocation(`${providerName} OAuth login is not fully configured.`),
+        clearLoginCookie(provider)
       );
       return true;
     }
@@ -153,7 +169,7 @@ export const handlePyrosaAccountsOAuthLoginRoutes: WebRouteHandler = async ({
     redirect(
       response,
       authorize.toString(),
-      serializeLoginCookie(encodeLoginState({
+      serializeLoginCookie(provider, encodeLoginState({
         state,
         codeVerifier: pkce.verifier,
         redirectUri,
@@ -163,7 +179,7 @@ export const handlePyrosaAccountsOAuthLoginRoutes: WebRouteHandler = async ({
     return true;
   }
 
-  if (url.pathname !== `${oauthLoginCookiePath}/callback`) {
+  if (url.pathname !== `${providerPath}/callback`) {
     return false;
   }
 
@@ -171,8 +187,8 @@ export const handlePyrosaAccountsOAuthLoginRoutes: WebRouteHandler = async ({
   if (upstreamError) {
     redirect(
       response,
-      failClosedLocation(url.searchParams.get("error_description") ?? "Pyrosa Accounts returned an OAuth error."),
-      clearLoginCookie()
+      failClosedLocation(url.searchParams.get("error_description") ?? `${providerName} returned an OAuth error.`),
+      clearLoginCookie(provider)
     );
     return true;
   }
@@ -190,13 +206,13 @@ export const handlePyrosaAccountsOAuthLoginRoutes: WebRouteHandler = async ({
     redirect(
       response,
       failClosedLocation("OAuth login state is missing, expired or mismatched."),
-      clearLoginCookie()
+      clearLoginCookie(provider)
     );
     return true;
   }
 
   try {
-    const login = await api.loginPyrosaAccountsOAuth({
+    const login = await api.loginOAuthProvider(provider, {
       code,
       redirectUri: loginState.redirectUri,
       codeVerifier: loginState.codeVerifier
@@ -208,15 +224,15 @@ export const handlePyrosaAccountsOAuthLoginRoutes: WebRouteHandler = async ({
       [
         serializeSessionCookie(login.sessionToken, login.expiresAt),
         serializeOAuthLogoutTokenCookie(login.oauthLogoutToken, login.expiresAt),
-        clearLoginCookie()
+        clearLoginCookie(provider)
       ]
     );
   } catch (error) {
     const message =
       error instanceof WebApiError
         ? error.message
-        : "Pyrosa Accounts OAuth login failed closed.";
-    redirect(response, failClosedLocation(message), clearLoginCookie());
+        : `${providerName} OAuth login failed closed.`;
+    redirect(response, failClosedLocation(message), clearLoginCookie(provider));
   }
 
   return true;

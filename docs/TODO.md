@@ -9,7 +9,7 @@ belongs in the feature runbook that owns the behavior, not in this tracker.
 
 - canonical source tree: `/opt/simplehostman/src`
 - canonical runtime root: `/opt/simplehostman/release`
-- active control-plane release: `2606.09.23`
+- active control-plane release: `2606.10.01`
 - implemented IAM/SSO state:
   [`IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md)
 - implemented operational inspection and hardening evidence:
@@ -180,17 +180,23 @@ Current state:
   with the real pilot identity, `aal2`, `profile:read`, `mfa:read`, successful
   token revocation, post-revocation inactive introspection, and
   `/oauth/gateway/check` fail-closed/allow behavior.
+- SimpleHostMan source now supports `SIMPLEHOST_OAUTH_LOGIN_PROVIDER_SLUG=pyrosa-iam`,
+  `/auth/pyrosa-iam/*`, `/v1/auth/pyrosa-iam/*`, public PKCE clients without
+  `client_secret`, and both IAM snake_case claims plus inherited compatibility
+  aliases.
+- SimpleHostMan release `2606.10.01` is deployed on the primary with this
+  source support. Runtime OAuth env still points at Accounts until a deliberate
+  IAM switch is rehearsed.
 - Public `iam.pyrosa.com.do` remains an HTTPS hold vhost returning HTTP 503.
   Authentik remains the active provider for SimpleHostMan.
 
 Pending work:
 
-- align the native SimpleHostMan OAuth login adapter with `pyrosa-iam`
-  introspection claim names (`aud`, `principal_type`, `assurance_level`) or add
-  compatibility aliases from IAM for the earlier Accounts pilot fields
-  (`audience`, `principalType`, `assuranceLevel`)
+- configure a controlled runtime switch to
+  `SIMPLEHOST_OAUTH_LOGIN_PROVIDER_SLUG=pyrosa-iam`, IAM issuer/endpoints and
+  callback `/auth/pyrosa-iam/callback` while keeping Authentik outside it
 - validate active operator login through the native SimpleHostMan
-  `/auth/pyrosa-iam/*` path after that compatibility decision
+  `/auth/pyrosa-iam/*` path
 - validate unprovisioned and inactive local operator rejection against
   `pyrosa-iam`
 - validate local logout plus external IAM logout redirect against `pyrosa-iam`

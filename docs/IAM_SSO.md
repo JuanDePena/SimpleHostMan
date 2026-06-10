@@ -279,13 +279,34 @@ Pyrosa Accounts / Pyrosa IAM split:
 - `pyrosa-iam` is still not promoted for SimpleHostMan. The active provider
   remains Authentik and public `iam.pyrosa.com.do` stays on the HTTPS hold
   vhost returning HTTP 503 until a promotion decision is explicit.
-- Remaining SimpleHostMan promotion work is compatibility and policy
-  validation: either adapt the native OAuth login adapter to accept IAM
-  introspection fields `aud`, `principal_type` and `assurance_level`, or emit
-  compatibility aliases from IAM for the earlier Accounts pilot fields
-  `audience`, `principalType` and `assuranceLevel`. After that, validate
-  missing/inactive local operator rejection and external logout redirect
-  against `pyrosa-iam`.
+- Remaining SimpleHostMan promotion work is now runtime policy validation:
+  switch a controlled release to the `pyrosa-iam` provider variables, validate
+  active operator login, missing/inactive local operator rejection and external
+  logout redirect, then decide whether to promote the binding from
+  candidate/metadata-only.
+- SimpleHostMan source now supports `pyrosa-iam` as the native OAuth login
+  provider without changing Authentik or public vhosts:
+  - `SIMPLEHOST_OAUTH_LOGIN_PROVIDER_SLUG=pyrosa-iam` selects the
+    `/auth/pyrosa-iam/start` and `/auth/pyrosa-iam/callback` web paths plus
+    `/v1/auth/pyrosa-iam/oauth-login` and `/v1/auth/pyrosa-iam/oauth-revoke`
+    internal API paths.
+  - `SIMPLEHOST_OAUTH_PROVIDER_SLUG=pyrosa-iam` is also accepted as a
+    compatibility selector when the login-specific variable is not set.
+  - Public PKCE clients are supported: `client_secret` is omitted when no
+    `SIMPLEHOST_OAUTH_CLIENT_SECRET` or `SIMPLEHOST_OAUTH_CLIENT_SECRET_FILE`
+    is configured.
+  - The adapter accepts the current IAM fields `aud`, `principal_type` and
+    `assurance_level`, and compatibility aliases `audience`,
+    `principalType`, `assuranceLevel`, `subject`, `clientId` and `tokenType`.
+  - The source-level tests validate both the legacy `pyrosa-accounts` path and
+    the new `pyrosa-iam` path, but the live runtime still requires a controlled
+    env switch and manual browser validation before promotion.
+- SimpleHostMan release `2606.10.01` was deployed on the primary on
+  2026-06-10 UTC with this source support. Health returned version
+  `2606.10.01`, and `simplehost-control.service`, `simplehost-worker.service`
+  and `simplehost-backup-runner.timer` were active. The live OAuth runtime env
+  intentionally still points to Accounts until the IAM endpoint switch is
+  rehearsed, because public `iam.pyrosa.com.do` is still the hold vhost.
 
 - `oauth` has a first Accounts runtime cut with OAuth metadata, authorization
   code, token, introspection, revocation and opaque hashed tokens. The Accounts

@@ -38,8 +38,8 @@ function buildExternalSsoSignOutLocation(
   logout: AuthLogoutResponse | null,
   config: ControlWebRuntimeConfig
 ): string | null {
-  if (logout?.authProviderSlug === "pyrosa-accounts") {
-    return buildPyrosaAccountsSignOutLocation(config);
+  if (logout?.authProviderSlug === readOAuthLoginProviderSlug(config.oauthResourceServer?.loginProviderSlug)) {
+    return buildOAuthProviderSignOutLocation(config);
   }
 
   if (
@@ -54,8 +54,13 @@ function buildExternalSsoSignOutLocation(
   return null;
 }
 
-function buildPyrosaAccountsSignOutLocation(config: {
+function readOAuthLoginProviderSlug(value: string | null | undefined): "pyrosa-accounts" | "pyrosa-iam" {
+  return value === "pyrosa-iam" ? "pyrosa-iam" : "pyrosa-accounts";
+}
+
+function buildOAuthProviderSignOutLocation(config: {
   oauthResourceServer?: {
+    loginProviderSlug?: "pyrosa-accounts" | "pyrosa-iam";
     loginLogoutUrl: string | null;
     loginPostLogoutRedirectUri: string | null;
   };
@@ -125,9 +130,13 @@ export const handleSessionWebRoutes: WebRouteHandler = async ({
       .join("=");
     if (sessionToken && oauthLogoutToken) {
       try {
-        await api.revokePyrosaAccountsOAuth(sessionToken, {
-          token: decodeURIComponent(oauthLogoutToken)
-        });
+        await api.revokeOAuthProvider(
+          readOAuthLoginProviderSlug(config.oauthResourceServer?.loginProviderSlug),
+          sessionToken,
+          {
+            token: decodeURIComponent(oauthLogoutToken)
+          }
+        );
       } catch {
         // Local logout must still close the SimpleHostMan session.
       }

@@ -6,9 +6,10 @@ import {
   type AuthLoginRequest,
   type AuthLoginResponse,
   type AuthLogoutResponse,
-  type PyrosaAccountsOAuthLoginRequest,
-  type PyrosaAccountsOAuthLoginResponse,
-  type PyrosaAccountsOAuthRevokeRequest,
+  type OAuthLoginProviderSlug,
+  type OAuthProviderLoginRequest,
+  type OAuthProviderLoginResponse,
+  type OAuthProviderRevokeRequest,
   type BackupsOverview,
   type CodeServerUpdateRequest,
   type CreateUserRequest,
@@ -83,10 +84,14 @@ export class WebApiError extends Error {
 
 export interface ControlWebApi extends ControlAuthSurface {
   login(credentials: AuthLoginRequest): Promise<AuthLoginResponse>;
-  loginPyrosaAccountsOAuth(request: PyrosaAccountsOAuthLoginRequest): Promise<PyrosaAccountsOAuthLoginResponse>;
-  revokePyrosaAccountsOAuth(
+  loginOAuthProvider(
+    provider: OAuthLoginProviderSlug,
+    request: OAuthProviderLoginRequest
+  ): Promise<OAuthProviderLoginResponse>;
+  revokeOAuthProvider(
+    provider: OAuthLoginProviderSlug,
     token: string | null,
-    request: PyrosaAccountsOAuthRevokeRequest
+    request: OAuthProviderRevokeRequest
   ): Promise<void>;
   logout(token: string | null): Promise<AuthLogoutResponse>;
   getCurrentUser(token: string | null): Promise<AuthenticatedUserSummary>;
@@ -296,17 +301,21 @@ export function createControlWebApiFromRequest(request: ControlWebApiRequest): C
         body: credentials
       });
     },
-    loginPyrosaAccountsOAuth(loginRequest: PyrosaAccountsOAuthLoginRequest): Promise<PyrosaAccountsOAuthLoginResponse> {
-      return request<PyrosaAccountsOAuthLoginResponse>("/v1/auth/pyrosa-accounts/oauth-login", {
+    loginOAuthProvider(
+      provider: OAuthLoginProviderSlug,
+      loginRequest: OAuthProviderLoginRequest
+    ): Promise<OAuthProviderLoginResponse> {
+      return request<OAuthProviderLoginResponse>(`/v1/auth/${provider}/oauth-login`, {
         method: "POST",
         body: loginRequest
       });
     },
-    async revokePyrosaAccountsOAuth(
+    async revokeOAuthProvider(
+      provider: OAuthLoginProviderSlug,
       token: string | null,
-      revokeRequest: PyrosaAccountsOAuthRevokeRequest
+      revokeRequest: OAuthProviderRevokeRequest
     ): Promise<void> {
-      await request("/v1/auth/pyrosa-accounts/oauth-revoke", {
+      await request(`/v1/auth/${provider}/oauth-revoke`, {
         method: "POST",
         token,
         body: revokeRequest

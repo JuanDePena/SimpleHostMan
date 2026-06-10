@@ -6,7 +6,7 @@ import { isUnauthorizedError } from "@simplehost/control-shared";
 import { type ControlWebApi } from "./api-client.js";
 import { handleDesiredStateResourceRoute } from "./desired-state-resource-routes.js";
 import { handleMailRoute } from "./mail-routes.js";
-import { handlePyrosaAccountsOAuthLoginRoutes } from "./oauth-login-routes.js";
+import { handleOAuthLoginRoutes } from "./oauth-login-routes.js";
 import {
   type WebLocale,
   writeJson
@@ -51,6 +51,7 @@ export interface ControlWebRuntimeConfig {
     pilotRequiredPrincipalType: string | null;
     pilotRequiredAssuranceLevel: string | null;
     pilotRevokeTokens: boolean;
+    loginProviderSlug: "pyrosa-accounts" | "pyrosa-iam";
     loginEnabled: boolean;
     loginRedirectUri: string | null;
     loginScope: string | null;
@@ -88,7 +89,7 @@ export function createRequestHandler(args: StartControlWebServerArgs) {
 
     for (const handler of [
       handleCoreWebRoutes,
-      handlePyrosaAccountsOAuthLoginRoutes,
+      handleOAuthLoginRoutes,
       handleSessionWebRoutes,
       handleActionWebRoutes,
       handleDesiredStateResourceRoute,

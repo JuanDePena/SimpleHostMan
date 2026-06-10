@@ -55,6 +55,7 @@ export interface ControlOAuthResourceServerRuntimeConfig {
   pilotRequiredPrincipalType: string | null;
   pilotRequiredAssuranceLevel: string | null;
   pilotRevokeTokens: boolean;
+  loginProviderSlug: "pyrosa-accounts" | "pyrosa-iam";
   loginEnabled: boolean;
   loginRedirectUri: string | null;
   loginScope: string | null;
@@ -141,6 +142,16 @@ function readBoolean(value: string | undefined, fallback: boolean): boolean {
   }
 }
 
+function readOAuthLoginProviderSlug(value: string | undefined): "pyrosa-accounts" | "pyrosa-iam" {
+  switch (value?.trim()) {
+    case "pyrosa-iam":
+      return "pyrosa-iam";
+    case "pyrosa-accounts":
+    default:
+      return "pyrosa-accounts";
+  }
+}
+
 export function createControlRuntimeConfig(
   env: NodeJS.ProcessEnv = process.env
 ): ControlRuntimeConfig {
@@ -210,6 +221,9 @@ export function createControlRuntimeConfig(
       pilotRequiredPrincipalType: readOptionalString(env.SIMPLEHOST_OAUTH_PILOT_REQUIRED_PRINCIPAL_TYPE),
       pilotRequiredAssuranceLevel: readOptionalString(env.SIMPLEHOST_OAUTH_PILOT_REQUIRED_ASSURANCE_LEVEL),
       pilotRevokeTokens: readBoolean(env.SIMPLEHOST_OAUTH_PILOT_REVOKE_TOKENS, true),
+      loginProviderSlug: readOAuthLoginProviderSlug(
+        env.SIMPLEHOST_OAUTH_LOGIN_PROVIDER_SLUG ?? env.SIMPLEHOST_OAUTH_PROVIDER_SLUG
+      ),
       loginEnabled: readBoolean(env.SIMPLEHOST_OAUTH_LOGIN_ENABLED, false),
       loginRedirectUri: readOptionalString(env.SIMPLEHOST_OAUTH_LOGIN_REDIRECT_URI),
       loginScope: readOptionalString(env.SIMPLEHOST_OAUTH_LOGIN_SCOPE),

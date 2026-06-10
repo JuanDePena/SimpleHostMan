@@ -67,6 +67,7 @@ function createConfig(overrides: Partial<ControlRuntimeConfig["oauthResourceServ
       pilotRequiredPrincipalType: null,
       pilotRequiredAssuranceLevel: null,
       pilotRevokeTokens: true,
+      loginProviderSlug: "pyrosa-accounts",
       loginEnabled: false,
       loginRedirectUri: "https://vps-prd.pyrosa.com.do:3200/auth/pyrosa-accounts/callback",
       loginScope: "profile:read mfa:read",
@@ -496,6 +497,141 @@ test("Pyrosa Accounts OAuth login validates code flow before creating a local se
     assert.equal(oauth.revocationBodies.length, 0);
   } finally {
     await oauth.close();
+  }
+});
+
+test("Pyrosa IAM OAuth login supports public PKCE clients and compatible claims", async () => {
+  const tokenBodies: URLSearchParams[] = [];
+  const introspectionBodies: URLSearchParams[] = [];
+  const server = createServer(async (request, response) => {
+    const chunks: Buffer[] = [];
+    for await (const chunk of request) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+    const body = new URLSearchParams(Buffer.concat(chunks).toString("utf8"));
+
+    if (request.method === "POST" && request.url === "/oauth/token") {
+      tokenBodies.push(body);
+      assert.equal(body.get("grant_type"), "authorization_code");
+      assert.equal(body.get("client_id"), "client-simplehost-control-oauth-pilot");
+      assert.equal(body.get("client_secret"), null);
+      assert.equal(body.get("audience"), "simplehost-control");
+      response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      response.end(JSON.stringify({
+        access_token: "iam-access-token",
+        token_type: "Bearer"
+      }));
+      return;
+    }
+
+    if (request.method === "POST" && request.url === "/oauth/introspect") {
+      introspectionBodies.push(body);
+      assert.equal(body.get("token"), "iam-access-token");
+      assert.equal(body.get("client_id"), "client-simplehost-control-oauth-pilot");
+      assert.equal(body.get("client_secret"), null);
+      response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      response.end(JSON.stringify({
+        active: true,
+        tokenType: "access_token",
+        clientId: "client-simplehost-control-oauth-pilot",
+        scope: ["openid", "profile", "email", "profile:read", "mfa:read"],
+        audience: "simplehost-control",
+        subject: "1",
+        issuer: "https://iam.pyrosa.com.do",
+        email: "webmaster@pyrosa.com.do",
+        username: "webmaster@pyrosa.com.do",
+        name: "PYROSA - IT",
+        principalType: "human",
+        assuranceLevel: "aal2",
+        groups: ["PYROSA Operators"]
+      }));
+      return;
+    }
+
+    response.writeHead(404);
+    response.end();
+  });
+
+  await new Promise<void>((resolve) => {
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  const address = server.address();
+  assert.ok(address && typeof address === "object");
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+  let capturedLogin: unknown;
+
+  try {
+    const handler = createControlApiHttpHandler(createApiRequestHandler({
+      config: createConfig({
+        issuer: "https://iam.pyrosa.com.do",
+        loginProviderSlug: "pyrosa-iam",
+        loginEnabled: true,
+        tokenUrl: `${baseUrl}/oauth/token`,
+        introspectionUrl: `${baseUrl}/oauth/introspect`,
+        clientId: "client-simplehost-control-oauth-pilot",
+        clientSecret: null,
+        clientSecretFile: null,
+        loginRedirectUri: "https://vps-prd.pyrosa.com.do:3200/auth/pyrosa-iam/callback",
+        loginScope: "profile:read mfa:read",
+        loginRequiredPrincipalType: "human",
+        loginRequiredAssuranceLevel: "aal2"
+      }),
+      startedAt: Date.now() - 1000,
+      controlPlaneStore: {
+        loginOAuthUser: async (request: Parameters<ControlPlaneStore["loginOAuthUser"]>[0]) => {
+          capturedLogin = request;
+          return {
+            sessionToken: "session-from-iam",
+            expiresAt: "2026-06-10T12:00:00.000Z",
+            user: {
+              userId: "user-webmaster",
+              email: request.email,
+              displayName: request.displayName ?? "PYROSA - IT",
+              status: "active",
+              globalRoles: ["platform_admin"],
+              tenantMemberships: []
+            }
+          };
+        }
+      } as unknown as ControlPlaneStore
+    }));
+
+    const response = await invokeRequestHandler(handler, {
+      method: "POST",
+      url: "/v1/auth/pyrosa-iam/oauth-login",
+      headers: {
+        "content-type": "application/json; charset=utf-8"
+      },
+      body: JSON.stringify({
+        code: "human-code",
+        redirectUri: "https://vps-prd.pyrosa.com.do:3200/auth/pyrosa-iam/callback",
+        codeVerifier: "pkce-verifier"
+      })
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(JSON.parse(response.bodyText).sessionToken, "session-from-iam");
+    assert.deepEqual(capturedLogin, {
+      provider: "pyrosa-iam",
+      email: "webmaster@pyrosa.com.do",
+      username: "webmaster@pyrosa.com.do",
+      displayName: "PYROSA - IT",
+      externalSubject: "1",
+      mfaSatisfied: true,
+      assuranceLevel: "aal2",
+      clientId: "client-simplehost-control-oauth-pilot",
+      scopes: ["openid", "profile", "email", "profile:read", "mfa:read"],
+      audience: "simplehost-control",
+      issuer: "https://iam.pyrosa.com.do",
+      oauthClientId: "client-simplehost-control-oauth-pilot",
+      oauthScopes: ["openid", "profile", "email", "profile:read", "mfa:read"],
+      oauthTokenHash: hashTokenForTest("iam-access-token"),
+      oauthIssuer: "https://iam.pyrosa.com.do"
+    });
+    assert.equal(tokenBodies.length, 1);
+    assert.equal(introspectionBodies.length, 1);
+  } finally {
+    await closeHttpServer(server);
   }
 });
 

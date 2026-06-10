@@ -4,8 +4,9 @@ import { createHash } from "node:crypto";
 import type {
   AuthLoginRequest,
   CreateUserRequest,
-  PyrosaAccountsOAuthLoginRequest,
-  PyrosaAccountsOAuthRevokeRequest
+  OAuthLoginProviderSlug,
+  OAuthProviderLoginRequest,
+  OAuthProviderRevokeRequest
 } from "@simplehost/control-contracts";
 import { UserAuthorizationError } from "@simplehost/control-database";
 
@@ -15,17 +16,24 @@ import type { ApiRouteHandler } from "./api-route-context.js";
 interface OAuthIntrospectionResponse {
   active?: unknown;
   token_type?: unknown;
+  tokenType?: unknown;
   client_id?: unknown;
+  clientId?: unknown;
   scope?: unknown;
   aud?: unknown;
+  audience?: unknown;
   sub?: unknown;
+  subject?: unknown;
   email?: unknown;
   username?: unknown;
   name?: unknown;
   roles?: unknown;
   groups?: unknown;
   principal_type?: unknown;
+  principalType?: unknown;
   assurance_level?: unknown;
+  assuranceLevel?: unknown;
+  issuer?: unknown;
   acr?: unknown;
   amr?: unknown;
 }
@@ -37,6 +45,30 @@ interface OAuthTokenResponse {
 
 function readString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+}
+
+function readOAuthLoginProviderSlug(value: string | null | undefined): OAuthLoginProviderSlug {
+  return value === "pyrosa-iam" ? "pyrosa-iam" : "pyrosa-accounts";
+}
+
+function formatOAuthProviderName(provider: OAuthLoginProviderSlug): string {
+  return provider === "pyrosa-iam" ? "Pyrosa IAM" : "Pyrosa Accounts";
+}
+
+function matchOAuthProviderRoute(
+  pathname: string,
+  action: "oauth-login" | "oauth-revoke"
+): OAuthLoginProviderSlug | null {
+  const match = /^\/v1\/auth\/([^/]+)\/(oauth-login|oauth-revoke)$/.exec(pathname);
+  if (!match || match[2] !== action) {
+    return null;
+  }
+
+  if (match[1] === "pyrosa-accounts" || match[1] === "pyrosa-iam") {
+    return match[1];
+  }
+
+  return null;
 }
 
 function normalizeEmail(value: string | null): string | null {
@@ -91,6 +123,38 @@ function hasAudience(aud: unknown, requiredAudience: string | null): boolean {
   return Array.isArray(aud) && aud.includes(requiredAudience);
 }
 
+function readTokenType(introspection: OAuthIntrospectionResponse): string | null {
+  return readString(introspection.token_type) ?? readString(introspection.tokenType);
+}
+
+function readClientId(introspection: OAuthIntrospectionResponse): string | null {
+  return readString(introspection.client_id) ?? readString(introspection.clientId);
+}
+
+function readAudience(introspection: OAuthIntrospectionResponse): unknown {
+  return introspection.aud ?? introspection.audience;
+}
+
+function readSubject(introspection: OAuthIntrospectionResponse): string | null {
+  return readString(introspection.sub) ?? readString(introspection.subject);
+}
+
+function readPrincipalType(introspection: OAuthIntrospectionResponse): string | null {
+  return readString(introspection.principal_type) ?? readString(introspection.principalType);
+}
+
+function readAssuranceLevel(introspection: OAuthIntrospectionResponse): string | null {
+  return (
+    readString(introspection.assurance_level) ??
+    readString(introspection.assuranceLevel) ??
+    readString(introspection.acr)
+  );
+}
+
+function readIssuer(introspection: OAuthIntrospectionResponse): string | null {
+  return readString(introspection.issuer);
+}
+
 function normalizeClaimList(value: unknown): string[] {
   if (typeof value === "string") {
     return value.split(/[,\s]+/).map((entry) => entry.trim()).filter(Boolean);
@@ -138,7 +202,7 @@ async function exchangeAuthorizationCode(args: {
   redirectUri: string;
   codeVerifier: string;
   clientId: string;
-  clientSecret: string;
+  clientSecret: string | null;
   audience: string | null;
   timeoutMs: number;
 }): Promise<OAuthTokenResponse> {
@@ -149,9 +213,12 @@ async function exchangeAuthorizationCode(args: {
     code: args.code,
     redirect_uri: args.redirectUri,
     code_verifier: args.codeVerifier,
-    client_id: args.clientId,
-    client_secret: args.clientSecret
+    client_id: args.clientId
   });
+
+  if (args.clientSecret) {
+    body.set("client_secret", args.clientSecret);
+  }
 
   if (args.audience) {
     body.set("audience", args.audience);
@@ -181,11 +248,20 @@ async function introspectToken(args: {
   introspectionUrl: string;
   token: string;
   clientId: string;
-  clientSecret: string;
+  clientSecret: string | null;
   timeoutMs: number;
 }): Promise<OAuthIntrospectionResponse> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), args.timeoutMs);
+  const body = new URLSearchParams({
+    token: args.token,
+    token_type_hint: "access_token",
+    client_id: args.clientId
+  });
+
+  if (args.clientSecret) {
+    body.set("client_secret", args.clientSecret);
+  }
 
   try {
     const response = await fetch(args.introspectionUrl, {
@@ -193,12 +269,7 @@ async function introspectToken(args: {
       headers: {
         "content-type": "application/x-www-form-urlencoded"
       },
-      body: new URLSearchParams({
-        token: args.token,
-        token_type_hint: "access_token",
-        client_id: args.clientId,
-        client_secret: args.clientSecret
-      }),
+      body,
       signal: controller.signal
     });
 
@@ -216,11 +287,20 @@ async function revokeToken(args: {
   revocationUrl: string;
   token: string;
   clientId: string;
-  clientSecret: string;
+  clientSecret: string | null;
   timeoutMs: number;
 }): Promise<void> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), args.timeoutMs);
+  const body = new URLSearchParams({
+    token: args.token,
+    token_type_hint: "access_token",
+    client_id: args.clientId
+  });
+
+  if (args.clientSecret) {
+    body.set("client_secret", args.clientSecret);
+  }
 
   try {
     const response = await fetch(args.revocationUrl, {
@@ -228,12 +308,7 @@ async function revokeToken(args: {
       headers: {
         "content-type": "application/x-www-form-urlencoded"
       },
-      body: new URLSearchParams({
-        token: args.token,
-        token_type_hint: "access_token",
-        client_id: args.clientId,
-        client_secret: args.clientSecret
-      }),
+      body,
       signal: controller.signal
     });
 
@@ -255,7 +330,7 @@ function validateLoginIntrospection(args: {
 }):
   | { ok: true; scopes: string[] }
   | { ok: false; statusCode: number; error: string; message: string } {
-  if (args.introspection.active !== true || args.introspection.token_type !== "access_token") {
+  if (args.introspection.active !== true || readTokenType(args.introspection) !== "access_token") {
     return {
       ok: false,
       statusCode: 401,
@@ -274,7 +349,7 @@ function validateLoginIntrospection(args: {
     };
   }
 
-  if (!hasAudience(args.introspection.aud, args.requiredAudience)) {
+  if (!hasAudience(readAudience(args.introspection), args.requiredAudience)) {
     return {
       ok: false,
       statusCode: 403,
@@ -283,7 +358,7 @@ function validateLoginIntrospection(args: {
     };
   }
 
-  const principalType = readString(args.introspection.principal_type);
+  const principalType = readPrincipalType(args.introspection);
   if (args.requiredPrincipalType && principalType !== args.requiredPrincipalType) {
     return {
       ok: false,
@@ -293,7 +368,7 @@ function validateLoginIntrospection(args: {
     };
   }
 
-  const assuranceLevel = readString(args.introspection.assurance_level);
+  const assuranceLevel = readAssuranceLevel(args.introspection);
   if (args.requiredAssuranceLevel && assuranceLevel !== args.requiredAssuranceLevel) {
     return {
       ok: false,
@@ -336,16 +411,27 @@ export const handleAuthRoutes: ApiRouteHandler = async ({
     return true;
   }
 
-  if (request.method === "POST" && url.pathname === "/v1/auth/pyrosa-accounts/oauth-login") {
+  const oauthLoginProvider = matchOAuthProviderRoute(url.pathname, "oauth-login");
+  if (request.method === "POST" && oauthLoginProvider) {
     const resourceConfig = config.oauthResourceServer;
+    const provider = readOAuthLoginProviderSlug(resourceConfig.loginProviderSlug);
+    const providerName = formatOAuthProviderName(provider);
+
+    if (oauthLoginProvider !== provider) {
+      writeJson(response, 404, {
+        error: "oauth_provider_not_configured",
+        message: `${formatOAuthProviderName(oauthLoginProvider)} OAuth login is not configured on this SimpleHostMan runtime.`
+      });
+      return true;
+    }
 
     if (!resourceConfig.loginEnabled) {
       writeJson(response, 503, {
         error: "oauth_login_disabled",
-        message: "Pyrosa Accounts OAuth login is not enabled."
+        message: `${providerName} OAuth login is not enabled.`
       });
       await controlPlaneStore.recordOAuthLoginRejected({
-        provider: "pyrosa-accounts",
+        provider,
         reason: "oauth_login_disabled"
       });
       return true;
@@ -353,7 +439,7 @@ export const handleAuthRoutes: ApiRouteHandler = async ({
 
     const tokenUrl = resourceConfig.tokenUrl ?? deriveEndpoint(resourceConfig.issuer, "/oauth/token");
     const introspectionUrl = resourceConfig.introspectionUrl;
-    const requestBody = await readJsonBody<PyrosaAccountsOAuthLoginRequest>(request);
+    const requestBody = await readJsonBody<OAuthProviderLoginRequest>(request);
 
     if (
       !tokenUrl ||
@@ -363,10 +449,10 @@ export const handleAuthRoutes: ApiRouteHandler = async ({
     ) {
       writeJson(response, 503, {
         error: "oauth_login_unavailable",
-        message: "Pyrosa Accounts OAuth login is not fully configured."
+        message: `${providerName} OAuth login is not fully configured.`
       });
       await controlPlaneStore.recordOAuthLoginRejected({
-        provider: "pyrosa-accounts",
+        provider,
         reason: "oauth_login_unavailable"
       });
       return true;
@@ -382,7 +468,7 @@ export const handleAuthRoutes: ApiRouteHandler = async ({
         message: "OAuth login callback request is invalid."
       });
       await controlPlaneStore.recordOAuthLoginRejected({
-        provider: "pyrosa-accounts",
+        provider,
         reason: "invalid_oauth_login_request"
       });
       return true;
@@ -392,16 +478,12 @@ export const handleAuthRoutes: ApiRouteHandler = async ({
     try {
       clientSecret = await readClientSecret(resourceConfig);
     } catch {
-      clientSecret = null;
-    }
-
-    if (!clientSecret) {
       writeJson(response, 503, {
         error: "oauth_login_unavailable",
-        message: "Pyrosa Accounts OAuth client secret is unavailable."
+        message: `${providerName} OAuth client secret is unavailable.`
       });
       await controlPlaneStore.recordOAuthLoginRejected({
-        provider: "pyrosa-accounts",
+        provider,
         reason: "oauth_client_secret_unavailable"
       });
       return true;
@@ -422,10 +504,10 @@ export const handleAuthRoutes: ApiRouteHandler = async ({
     } catch {
       writeJson(response, 502, {
         error: "oauth_token_exchange_failed",
-        message: "Pyrosa Accounts OAuth authorization code exchange failed closed."
+        message: `${providerName} OAuth authorization code exchange failed closed.`
       });
       await controlPlaneStore.recordOAuthLoginRejected({
-        provider: "pyrosa-accounts",
+        provider,
         reason: "oauth_token_exchange_failed"
       });
       return true;
@@ -435,10 +517,10 @@ export const handleAuthRoutes: ApiRouteHandler = async ({
     if (!accessToken || readString(token.token_type) !== "Bearer") {
       writeJson(response, 502, {
         error: "invalid_token_response",
-        message: "Pyrosa Accounts returned an invalid access token response."
+        message: `${providerName} returned an invalid access token response.`
       });
       await controlPlaneStore.recordOAuthLoginRejected({
-        provider: "pyrosa-accounts",
+        provider,
         reason: "invalid_token_response"
       });
       return true;
@@ -456,10 +538,10 @@ export const handleAuthRoutes: ApiRouteHandler = async ({
     } catch {
       writeJson(response, 503, {
         error: "oauth_introspection_unavailable",
-        message: "Pyrosa Accounts OAuth introspection failed closed."
+        message: `${providerName} OAuth introspection failed closed.`
       });
       await controlPlaneStore.recordOAuthLoginRejected({
-        provider: "pyrosa-accounts",
+        provider,
         reason: "oauth_introspection_unavailable"
       });
       return true;
@@ -479,11 +561,11 @@ export const handleAuthRoutes: ApiRouteHandler = async ({
         message: validation.message
       });
       await controlPlaneStore.recordOAuthLoginRejected({
-        provider: "pyrosa-accounts",
+        provider,
         reason: validation.error,
-        clientId: readString(introspection.client_id) ?? undefined,
-        externalSubject: readString(introspection.sub) ?? undefined,
-        assuranceLevel: readString(introspection.assurance_level) ?? undefined
+        clientId: readClientId(introspection) ?? undefined,
+        externalSubject: readSubject(introspection) ?? undefined,
+        assuranceLevel: readAssuranceLevel(introspection) ?? undefined
       });
       return true;
     }
@@ -494,41 +576,46 @@ export const handleAuthRoutes: ApiRouteHandler = async ({
     if (!email) {
       writeJson(response, 403, {
         error: "missing_email",
-        message: "Pyrosa Accounts did not expose a valid email for SimpleHostMan login."
+        message: `${providerName} did not expose a valid email for SimpleHostMan login.`
       });
       await controlPlaneStore.recordOAuthLoginRejected({
-        provider: "pyrosa-accounts",
+        provider,
         reason: "missing_email",
-        clientId: readString(introspection.client_id) ?? undefined,
-        externalSubject: readString(introspection.sub) ?? undefined,
-        assuranceLevel: readString(introspection.assurance_level) ?? undefined
+        clientId: readClientId(introspection) ?? undefined,
+        externalSubject: readSubject(introspection) ?? undefined,
+        assuranceLevel: readAssuranceLevel(introspection) ?? undefined
       });
       return true;
     }
 
     const tokenHash = hashOAuthToken(accessToken);
+    const clientId = readClientId(introspection);
+    const externalSubject = readSubject(introspection) ?? email;
+    const assuranceLevel = readAssuranceLevel(introspection);
+    const audience = readAudience(introspection);
+    const issuer = readIssuer(introspection) ?? resourceConfig.issuer ?? undefined;
     let login;
     try {
       login = await controlPlaneStore.loginOAuthUser({
-        provider: "pyrosa-accounts",
+        provider,
         email,
         username: readString(introspection.username) ?? undefined,
         displayName: readString(introspection.name) ?? undefined,
-        externalSubject: readString(introspection.sub) ?? email,
+        externalSubject,
         mfaSatisfied: resourceConfig.loginRequiredAssuranceLevel
-          ? readString(introspection.assurance_level) === resourceConfig.loginRequiredAssuranceLevel
+          ? assuranceLevel === resourceConfig.loginRequiredAssuranceLevel
           : undefined,
-        assuranceLevel: readString(introspection.assurance_level) ?? undefined,
-        clientId: readString(introspection.client_id) ?? undefined,
+        assuranceLevel: assuranceLevel ?? undefined,
+        clientId: clientId ?? undefined,
         scopes: validation.scopes,
-        audience: typeof introspection.aud === "string" || Array.isArray(introspection.aud)
-          ? introspection.aud
+        audience: typeof audience === "string" || Array.isArray(audience)
+          ? audience
           : undefined,
-        issuer: resourceConfig.issuer ?? undefined,
-        oauthClientId: readString(introspection.client_id) ?? undefined,
+        issuer,
+        oauthClientId: clientId ?? undefined,
         oauthScopes: validation.scopes,
         oauthTokenHash: tokenHash,
-        oauthIssuer: resourceConfig.issuer ?? undefined
+        oauthIssuer: issuer
       });
     } catch (error) {
       if (!isUserAuthorizationError(error)) {
@@ -537,15 +624,15 @@ export const handleAuthRoutes: ApiRouteHandler = async ({
 
       writeJson(response, 403, {
         error: "local_operator_not_active",
-        message: "Pyrosa Accounts authenticated identity is not an active SimpleHostMan operator."
+        message: `${providerName} authenticated identity is not an active SimpleHostMan operator.`
       });
       await controlPlaneStore.recordOAuthLoginRejected({
-        provider: "pyrosa-accounts",
+        provider,
         reason: "local_operator_not_active",
         email,
-        clientId: readString(introspection.client_id) ?? undefined,
-        externalSubject: readString(introspection.sub) ?? undefined,
-        assuranceLevel: readString(introspection.assurance_level) ?? undefined
+        clientId: clientId ?? undefined,
+        externalSubject,
+        assuranceLevel: assuranceLevel ?? undefined
       });
       return true;
     }
@@ -556,12 +643,22 @@ export const handleAuthRoutes: ApiRouteHandler = async ({
     return true;
   }
 
-  if (request.method === "POST" && url.pathname === "/v1/auth/pyrosa-accounts/oauth-revoke") {
+  const oauthRevokeProvider = matchOAuthProviderRoute(url.pathname, "oauth-revoke");
+  if (request.method === "POST" && oauthRevokeProvider) {
     const resourceConfig = config.oauthResourceServer;
+    const provider = readOAuthLoginProviderSlug(resourceConfig.loginProviderSlug);
     const revocationUrl =
       resourceConfig.revocationUrl ?? deriveEndpoint(resourceConfig.issuer, "/oauth/revoke");
-    const requestBody = await readJsonBody<PyrosaAccountsOAuthRevokeRequest>(request);
+    const requestBody = await readJsonBody<OAuthProviderRevokeRequest>(request);
     const token = readString(requestBody.token);
+
+    if (oauthRevokeProvider !== provider) {
+      writeJson(response, 404, {
+        error: "oauth_provider_not_configured",
+        message: `${formatOAuthProviderName(oauthRevokeProvider)} OAuth revocation is not configured on this SimpleHostMan runtime.`
+      });
+      return true;
+    }
 
     if (!token) {
       writeJson(response, 400, {
@@ -575,13 +672,17 @@ export const handleAuthRoutes: ApiRouteHandler = async ({
     try {
       clientSecret = await readClientSecret(resourceConfig);
     } catch {
-      clientSecret = null;
-    }
-
-    if (!revocationUrl || !resourceConfig.clientId || !clientSecret) {
       writeJson(response, 503, {
         error: "oauth_revoke_unavailable",
-        message: "Pyrosa Accounts OAuth revocation is not fully configured."
+        message: `${formatOAuthProviderName(provider)} OAuth client secret is unavailable.`
+      });
+      return true;
+    }
+
+    if (!revocationUrl || !resourceConfig.clientId) {
+      writeJson(response, 503, {
+        error: "oauth_revoke_unavailable",
+        message: `${formatOAuthProviderName(provider)} OAuth revocation is not fully configured.`
       });
       return true;
     }
@@ -596,7 +697,7 @@ export const handleAuthRoutes: ApiRouteHandler = async ({
 
     await controlPlaneStore.recordOAuthTokenRevoked(
       {
-        provider: "pyrosa-accounts",
+        provider,
         tokenHash: hashOAuthToken(token),
         clientId: resourceConfig.clientId
       },
