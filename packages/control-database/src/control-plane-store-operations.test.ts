@@ -437,6 +437,25 @@ test("pyrosa iam release candidate migration records validated provider metadata
   assert.doesNotMatch(migrationSql, /INSERT INTO control_plane_iam_providers/);
 });
 
+test("pyrosa iam pgAdmin candidate migration records loopback validation and gateway pilot", () => {
+  const migrationSql = readFileSync(
+    new URL("../migrations/0037_pyrosa_iam_pgadmin_candidate.sql", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(migrationSql, /WHERE slug = 'pyrosa-iam'/);
+  assert.match(migrationSql, /v2606\.102227/);
+  assert.match(migrationSql, /simplehostman_loopback_oauth_login/);
+  assert.match(migrationSql, /shp_session issued and temporary OAuth cookie cleared/);
+  assert.match(migrationSql, /iam-binding-pyrosa-pgadmin-pyrosa-iam-gateway/);
+  assert.match(migrationSql, /https:\/\/pgadmin\.pyrosa\.com\.do\//);
+  assert.match(migrationSql, /http:\/\/host\.containers\.internal:10143/);
+  assert.match(migrationSql, /metadata_only/);
+  assert.match(migrationSql, /PYROSA_IAM/);
+  assert.match(migrationSql, /X-Pyrosa-IAM-\*/);
+  assert.match(migrationSql, /PYROSA_ACCOUNTS_SESSION/);
+});
+
 test("metadata-only apps do not emit proxy or container reconciliation plans", async () => {
   const appRow = {
     app_id: "app-pyrosa-iam",

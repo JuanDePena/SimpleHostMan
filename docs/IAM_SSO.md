@@ -377,6 +377,26 @@ Pyrosa app login routing as of `2026-06-10`:
   SimpleHostMan `oauth_login`, OIDC and gateway bindings stay
   `candidate`/`metadata_only`; Authentik remains the active outer
   administrative gate.
+- `pyrosa-iam` release `v2606.102227` was published and deployed on
+  2026-06-10 UTC after the IAM console API client moved to the canonical
+  `/api/iam/*` namespace. Validation passed `npm run test:run`,
+  `npm run build`, `app-pyrosa-iam.service` health, public OIDC discovery,
+  public gateway fail-closed behavior, and a browser-like SimpleHostMan
+  loopback OAuth login:
+  `SimpleHostMan /auth/pyrosa-iam/start -> IAM login -> MFA -> callback`.
+  The callback issued `shp_session` and cleared `shp_oauth_login` while
+  Authentik remained the public outer gate.
+- SimpleHostMan migration `0037_pyrosa_iam_pgadmin_candidate.sql` records
+  the `v2606.102227` evidence, keeps SimpleHostMan `pyrosa-iam` bindings
+  `candidate`/`metadata_only`, and adds
+  `iam-binding-pyrosa-pgadmin-pyrosa-iam-gateway` as the next administrative
+  pilot candidate. The pgAdmin binding is metadata-only and does not render
+  Apache or change public traffic.
+- Legacy `PYROSA_ACCOUNTS_SESSION` and `X-Pyrosa-Account(s)-*`
+  compatibility names remain accepted during the migration, but the canonical
+  target is now `PYROSA_IAM_*` and `X-Pyrosa-IAM-*`. They should be retired
+  only after dependent apps and proxy pilots report clean canonical-name usage
+  for one release.
 
 Historical Accounts OAuth pilot:
 
