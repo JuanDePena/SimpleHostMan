@@ -225,10 +225,11 @@ Pyrosa Accounts / Pyrosa IAM split:
   reconciler skips proxy/container/database jobs for that mode so catalog
   visibility does not publish Apache, overwrite the hand-provisioned Quadlet,
   or try to manage the runtime-owned database credential.
-- The active pilot remains loopback-only on the primary. A public HTTPS hold
-  vhost exists for `iam.pyrosa.com.do` so the hostname presents the
-  `*.pyrosa.com.do` certificate and returns HTTP 503 while the runtime stays
-  private. Authentik remains the active/default provider for SimpleHostMan.
+- The pilot now has a public HTTPS proxy at `iam.pyrosa.com.do` on the primary.
+  Apache terminates TLS with the `*.pyrosa.com.do` certificate and proxies to
+  the loopback runtime at `127.0.0.1:10134`. Authentik remains the active outer
+  gate for SimpleHostMan, code-server and pgAdmin; this change only publishes
+  the IAM provider endpoint needed by OAuth/OIDC pilots.
 - Current backup coverage for `pyrosa-iam` includes the PostgreSQL database
   dump, app storage root, and root-only runtime configuration through
   `pyrosa-iam-root-config-daily`. The root-only archive covers
@@ -276,14 +277,49 @@ Pyrosa Accounts / Pyrosa IAM split:
   fail-closed with HTTP 401 without a session and HTTP 204 for the
   authenticated AAL2 pilot session, including `X-Pyrosa-IAM-*` trusted headers
   plus legacy compatibility headers.
-- `pyrosa-iam` is still not promoted for SimpleHostMan. The active provider
-  remains Authentik and public `iam.pyrosa.com.do` stays on the HTTPS hold
-  vhost returning HTTP 503 until a promotion decision is explicit.
-- Remaining SimpleHostMan promotion work is now runtime policy validation:
-  switch a controlled release to the `pyrosa-iam` provider variables, validate
-  active operator login, missing/inactive local operator rejection and external
-  logout redirect, then decide whether to promote the binding from
-  candidate/metadata-only.
+- `pyrosa-iam` is still not promoted as the only SimpleHostMan gate. Authentik
+  remains in front of the public SimpleHostMan administrative surface, while the
+  native SimpleHostMan OAuth login path can now be exercised against
+  `pyrosa-iam` behind that outer gate.
+- On 2026-06-10 UTC, the controlled runtime switch was rehearsed on the
+  primary:
+  - rollback snapshot:
+    `/etc/simplehost/rollback/pyrosa-iam-oauth-20260610T014436Z`;
+  - `/etc/httpd/conf.d/pyrosa-iam.conf` moved from the HTTP 503 hold to a
+    proxy for `http://127.0.0.1:10134`;
+  - `/etc/simplehost/control.env` now selects
+    `SIMPLEHOST_OAUTH_LOGIN_PROVIDER_SLUG=pyrosa-iam`, issuer
+    `https://iam.pyrosa.com.do`, public authorize/logout URLs, and loopback
+    token/introspection/revocation URLs;
+  - `apachectl configtest`, `httpd` reload and `simplehost-control.service`
+    restart succeeded;
+  - `https://iam.pyrosa.com.do/.well-known/openid-configuration` returned the
+    expected issuer and OAuth/OIDC endpoints;
+  - `/auth/pyrosa-iam/start` generated Authorization Code + PKCE with callback
+    `https://vps-prd.pyrosa.com.do:3200/auth/pyrosa-iam/callback`.
+- The same rehearsal completed an end-to-end browser-like validation without
+  exposing secrets:
+  - login and TOTP MFA for `webmaster@pyrosa.com.do` completed at
+    `iam.pyrosa.com.do`;
+  - the SimpleHostMan callback exchanged the code with loopback token and
+    introspection endpoints, created `shp_session`, persisted provider metadata
+    and redirected to `/`;
+  - `/auth/logout` revoked the OAuth access token, revoked the local session,
+    cleared local cookies and redirected to `https://iam.pyrosa.com.do/logout`
+    with `return_to`;
+  - temporarily marking the local operator inactive made the callback fail
+    closed with no `shp_session`, then the operator was restored to `active`;
+  - audit events include `auth.oauth_login`, `auth.oauth_token_revoked`,
+    `auth.logout` and `auth.oauth_callback_rejected` with
+    `local_operator_not_active`.
+- Forced run `backup-run-7c91dd58-bcdb-4e78-91e0-cbdf19931830` then captured
+  the updated root-only IAM config and replicated it to the secondary:
+  `/srv/backups/iam/pyrosa-iam/root-config/primary-replicated/pyrosa-iam-root-config-daily-2026-06-10T02-06-37-278Z`.
+- Remaining promotion work is now an explicit policy decision: keep Authentik
+  as the outer administrative gate, decide whether the
+  `control:simplehost-control` `pyrosa-iam/oauth_login` binding should become
+  active metadata, and choose the next administrative surface, expected to be
+  pgAdmin, for a separate IAM pilot.
 - SimpleHostMan source now supports `pyrosa-iam` as the native OAuth login
   provider without changing Authentik or public vhosts:
   - `SIMPLEHOST_OAUTH_LOGIN_PROVIDER_SLUG=pyrosa-iam` selects the
@@ -305,8 +341,8 @@ Pyrosa Accounts / Pyrosa IAM split:
   2026-06-10 UTC with this source support. Health returned version
   `2606.10.01`, and `simplehost-control.service`, `simplehost-worker.service`
   and `simplehost-backup-runner.timer` were active. The live OAuth runtime env
-  intentionally still points to Accounts until the IAM endpoint switch is
-  rehearsed, because public `iam.pyrosa.com.do` is still the hold vhost.
+  was later switched to `pyrosa-iam` for the controlled pilot described above;
+  Authentik still guards the public SimpleHostMan surface.
 
 - `oauth` has a first Accounts runtime cut with OAuth metadata, authorization
   code, token, introspection, revocation and opaque hashed tokens. The Accounts
