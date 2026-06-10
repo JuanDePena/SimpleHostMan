@@ -30,13 +30,13 @@ export interface AuthLoginResponse {
   user: AuthenticatedUserSummary;
 }
 
-export type OAuthLoginProviderSlug = "pyrosa-accounts" | "pyrosa-iam";
+export type OAuthLoginProviderSlug = "pyrosa-iam";
 
 export interface OAuthProviderLoginResponse extends AuthLoginResponse {
   oauthLogoutToken: string;
 }
 
-export type PyrosaAccountsOAuthLoginResponse = OAuthProviderLoginResponse;
+export type PyrosaIamOAuthLoginResponse = OAuthProviderLoginResponse;
 
 export interface TrustedProxyLoginRequest {
   email: string;
@@ -56,7 +56,7 @@ export interface OAuthProviderLoginRequest {
   codeVerifier: string;
 }
 
-export type PyrosaAccountsOAuthLoginRequest = OAuthProviderLoginRequest;
+export type PyrosaIamOAuthLoginRequest = OAuthProviderLoginRequest;
 
 export interface OAuthIdentityLoginRequest {
   provider: OAuthLoginProviderSlug;
@@ -91,7 +91,7 @@ export interface OAuthProviderRevokeRequest {
   token: string;
 }
 
-export type PyrosaAccountsOAuthRevokeRequest = OAuthProviderRevokeRequest;
+export type PyrosaIamOAuthRevokeRequest = OAuthProviderRevokeRequest;
 
 export interface OAuthLoginRejectedAuditRequest {
   provider: OAuthLoginProviderSlug;

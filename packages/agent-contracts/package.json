@@ -1,6 +1,6 @@
 {
   "name": "@simplehost/agent-contracts",
-  "version": "2606.10.01",
+  "version": "2606.10.06",
   "private": true,
   "type": "module",
   "main": "dist/index.js",

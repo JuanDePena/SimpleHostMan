@@ -82,16 +82,15 @@ Official Authentik references checked during this planning pass:
 Status: accepted for phases 1-7 on `2026-06-07`.
 
 SimpleHostMan should model IAM as a selectable control-plane resource instead
-of hard-coding every SSO integration to a single product. The first supported
-providers are:
+of hard-coding every SSO integration to a single product. The current supported
+provider catalog is:
 
 - `authentik`: active/default for administrative and infrastructure browser
   surfaces. It currently provides proxy protection, trusted-proxy headers, MFA,
   and can later expose OIDC/SAML for apps that support those protocols.
-- `pyrosa-accounts`: candidate provider for Pyrosa-native applications that can
-  integrate with the in-house `ui-auth` ticket/introspection flow. It should
-  not be presented as an OIDC or SAML provider until those protocols are
-  implemented in Pyrosa Accounts.
+- `pyrosa-iam`: Pyrosa-owned candidate/provider for app-native `ui_auth`,
+  OAuth login, OIDC, future gateway/forward-auth and, only if required later,
+  SAML.
 
 Provider selection was metadata-only during phases 1-4. Phases 5-7 add render
 state and richer capability metadata, but they still do not rewrite Apache
@@ -110,9 +109,9 @@ Initial integration modes:
 - `proxy`: provider performs the HTTP reverse-proxy enforcement before the app.
 - `trusted_proxy_headers`: SimpleHostMan consumes trusted identity headers after
   upstream provider enforcement and creates a local `shp_session`.
-- `ui_auth`: Pyrosa apps delegate UI session exchange to Pyrosa Accounts.
+- `ui_auth`: Pyrosa apps delegate UI session exchange to Pyrosa IAM.
 - `oauth_login`: SimpleHostMan performs browser Authorization Code + PKCE
-  login with Pyrosa Accounts and creates a local `shp_session` only after
+  login with Pyrosa IAM and creates a local `shp_session` only after
   token introspection and active-operator checks.
 - `oidc` and `saml`: reserved for providers that actually implement those
   protocols for the selected application.
@@ -121,12 +120,11 @@ Operational defaults:
 
 - Authentik remains selected for `code-server`, SimpleHostMan operator access,
   and `pgadmin` metadata.
-- Pyrosa Accounts remains selectable only where the application supports
-  `ui_auth` or where SimpleHostMan explicitly models a candidate
-  `oauth_login` binding.
-- `pyrosa-directory` and `pyrosa-newsync` already implement Pyrosa Accounts
-  `ui_auth`; SimpleHostMan models these bindings as app-handled authentication
-  without taking ownership of their client secrets.
+- Pyrosa IAM is selectable for Pyrosa-native `ui_auth` apps and metadata-only
+  candidate `oauth_login`/OIDC/gateway work.
+- `pyrosa-directory`, `pyrosa-newsync` and `pyrosa-demoerp` delegate `ui_auth`
+  directly to Pyrosa IAM; SimpleHostMan models these bindings as app-handled
+  authentication without taking ownership of their client secrets.
 - Non-HTTP services such as SSH and RustDesk transport remain outside IAM.
 
 Implementation phases:
@@ -137,9 +135,8 @@ Implementation phases:
    Authentik behavior.
 4. Add an initial Control Plane IAM view for providers and protected bindings.
 5. Render protected Apache/provider state from PostgreSQL metadata.
-6. Integrate Pyrosa Accounts with compatible Pyrosa-native apps through
-   `ui_auth`.
-7. Add or reject Pyrosa Accounts gateway/OIDC/SAML support based on concrete app
+6. Integrate Pyrosa IAM with compatible Pyrosa-native apps through `ui_auth`.
+7. Add or reject Pyrosa IAM gateway/OIDC/SAML support based on concrete app
    requirements.
 
 Phase 5-7 implementation decisions:
@@ -154,7 +151,7 @@ Phase 5-7 implementation decisions:
   pending, future-only, or unknown.
 - Authentik capabilities remain available for `proxy`, `trusted_proxy_headers`,
   `oidc`, and `saml`.
-- Pyrosa Accounts capability status is explicit:
+- Pyrosa IAM capability status is explicit:
   - `ui_auth`: available for compatible Pyrosa-native apps.
   - `oauth`: pilot validated for SimpleHostMan browser Authorization Code with
     PKCE, human principal, `aal2`, `profile:read`, and `mfa:read`; it remains
@@ -163,13 +160,13 @@ Phase 5-7 implementation decisions:
     support exists.
   - `saml`: disabled unless a concrete requirement appears.
 - `pyrosa-directory` is recorded as:
-  - provider: `pyrosa-accounts`
+  - provider: `pyrosa-iam`
   - mode: `ui_auth`
   - client: `directory`
   - callback: `https://directory.pyrosa.com.do/auth/callback`
   - secret storage: app runtime env, outside SimpleHostMan.
 - `pyrosa-newsync` is recorded as:
-  - provider: `pyrosa-accounts`
+  - provider: `pyrosa-iam`
   - mode: `ui_auth`
   - client: `sync`
   - callback: `https://newsync.pyrosa.com.do/auth/callback`
@@ -177,44 +174,37 @@ Phase 5-7 implementation decisions:
   - inventory boundary: the binding can exist even while full app inventory
     ownership remains outside PostgreSQL.
 
-Pyrosa Accounts provider readiness gate:
+Pyrosa Accounts decommission decision:
 
-- SimpleHostMan must keep Pyrosa Accounts `oidc` and `gateway_proxy` as
-  non-offered capabilities until each implementation is released and validated
-  in `pyrosa-accounts`.
-- Pyrosa Accounts `oauth` is validated only as a candidate path for
-  SimpleHostMan. It is not the default administrative provider until a selected
-  surface receives a promotion and rollback decision.
-- The current source of truth for that implementation plan is
-  [`oauth2-api-auth-plan.md`](/srv/containers/apps/pyrosa-accounts/app/docs/oauth2-api-auth-plan.md).
+- As of 2026-06-10, `pyrosa-accounts` is removed from the SimpleHostMan IAM
+  provider-selection catalog. It must not be offered as `ui_auth`, OAuth/OIDC,
+  gateway or SAML provider.
+- Authentication-owned features move to `pyrosa-iam`: login sessions, MFA/AAL,
+  OAuth/OIDC, gateway/forward-auth, app-native `ui-auth` tickets and
+  access-decision audit.
+- Any remaining Accounts runtime must be treated as account/profile portal or
+  transitional compatibility only, not as an IAM provider.
 
 Pyrosa Accounts / Pyrosa IAM split:
 
-- `pyrosa-accounts` remains the user-facing Account Center: profile,
-  preferences, contact data, personal security UX, MFA enrollment UX, visible
-  user sessions/devices and account notifications.
-- `pyrosa-iam` is the formal candidate for IAM provider capabilities:
-  OAuth/OIDC authorization server, gateway/forward-auth, SAML if required,
-  clients, scopes, audiences, MFA/AAL policies, claims and access-decision
-  audit.
-- The existing `pyrosa-accounts` OAuth/OIDC/gateway work remains useful as the
-  inherited pilot implementation and compatibility base, but new provider
-  runtime naming should move toward `PYROSA_IAM_*`, `iam.pyrosa.com.do`,
-  `app_pyrosa_iam` and provider slug `pyrosa-iam`.
-- SimpleHostMan must not promote Accounts-as-portal as the long-term IAM
-  replacement for Authentik. Any future promotion should explicitly target a
-  validated `pyrosa-iam` runtime or an intentionally documented transitional
-  binding.
+- `pyrosa-accounts`, if kept later, can only own non-authentication account
+  portal concerns such as profile, contact data and preferences.
+- `pyrosa-iam` owns IAM provider capabilities: OAuth/OIDC authorization server,
+  gateway/forward-auth, SAML if required, clients, scopes, audiences, MFA/AAL
+  policies, claims, app-native `ui-auth` and access-decision audit.
+- Runtime naming for IAM provider work is canonicalized on `PYROSA_IAM_*`,
+  `iam.pyrosa.com.do`, `app_pyrosa_iam` and provider slug `pyrosa-iam`.
+- SimpleHostMan must not promote Accounts-as-portal as an IAM replacement for
+  Authentik. Any future promotion should explicitly target `pyrosa-iam`.
 - Authentik remains the active/default administrative provider until
   `pyrosa-iam` has a real runtime, backup/restore posture, client provisioning,
   MFA/AAL validation, logout/revocation validation, and rollback evidence.
 
 Pyrosa app login routing as of `2026-06-10`:
 
-- Accounts remains the `ui_auth` ticket issuer for Pyrosa-native apps. Its
-  interactive root login is now IAM-first through `pyrosa-iam` Authorization
-  Code + PKCE, so `ui-auth` consumers inherit IAM/MFA without receiving IAM
-  client secrets.
+- `pyrosa-iam` is now the `ui_auth` ticket issuer for Pyrosa-native apps.
+  Apps redirect directly to `https://iam.pyrosa.com.do/ui-auth/authorize` and
+  use IAM internal `ui-auth` exchange/introspection endpoints.
 - `pyrosa-directory` uses `client=directory` and callback
   `https://directory.pyrosa.com.do/auth/callback`.
 - `pyrosa-newsync` uses `client=sync` and callback
@@ -223,6 +213,9 @@ Pyrosa app login routing as of `2026-06-10`:
   `https://demoerp.pyrosa.com.do/auth/callback`.
 - `pyrosa-demosync` and legacy `pyrosa-sync` are explicitly excluded from this
   transition because they retain local/application-owned login for now.
+- SimpleHostMan migration `0033_decommission_pyrosa_accounts_iam.sql`
+  decommissions `pyrosa-accounts` from IAM provider selection and moves the
+  Directory, NewSync and DemoERP `ui_auth` bindings to `pyrosa-iam`.
 - SimpleHostMan migration `0030_iam_pyrosa_iam_provider.sql` registers
   `pyrosa-iam` as a parallel provider row with provider kind `pyrosa_iam`,
   base URL `https://iam.pyrosa.com.do`, and metadata-only candidate bindings
@@ -349,9 +342,8 @@ Pyrosa app login routing as of `2026-06-10`:
   - The adapter accepts the current IAM fields `aud`, `principal_type` and
     `assurance_level`, and compatibility aliases `audience`,
     `principalType`, `assuranceLevel`, `subject`, `clientId` and `tokenType`.
-  - The source-level tests validate both the legacy `pyrosa-accounts` path and
-    the new `pyrosa-iam` path, but the live runtime still requires a controlled
-    env switch and manual browser validation before promotion.
+  - The source-level tests validate the `pyrosa-iam` path and explicitly reject
+    the retired `/auth/pyrosa-accounts/*` login path.
 - SimpleHostMan release `2606.10.01` was deployed on the primary on
   2026-06-10 UTC with this source support. Health returned version
   `2606.10.01`, and `simplehost-control.service`, `simplehost-worker.service`
@@ -359,136 +351,22 @@ Pyrosa app login routing as of `2026-06-10`:
   was later switched to `pyrosa-iam` for the controlled pilot described above;
   Authentik still guards the public SimpleHostMan surface.
 
-- `oauth` has a first Accounts runtime cut with OAuth metadata, authorization
-  code, token, introspection, revocation and opaque hashed tokens. The Accounts
-  OAuth migration was applied on the primary runtime database on 2026-06-08 UTC.
-  The primary runtime was restarted with the OAuth build and the isolated
-  `oauth-smoke` client was validated locally for `client_credentials`, token
-  introspection and revocation on 2026-06-08 UTC.
-- SimpleHostMan includes a narrow read-only resource-server pilot at
-  `/v1/oauth/pilot/profile`. It is feature-flagged by
-  `SIMPLEHOST_OAUTH_RESOURCE_SERVER_ENABLED`, introspects opaque tokens with
-  Pyrosa Accounts, requires scope and audience checks, and does not create a
-  local `shp_session`.
-- Runtime release `2606.08.02` validated that resource-server pilot on
-  2026-06-08 UTC with the isolated `oauth-smoke` client:
-  - missing bearer token failed closed with `401 invalid_token`;
-  - active `client_credentials` token with `profile:read` and
-    `simplehost-control` audience returned `200`;
-  - revoked token failed closed with `401 invalid_token`;
-  - token issued for another audience failed closed with `403 invalid_audience`.
-- That pilot proves service-token introspection, scope/audience enforcement and
-  fail-closed behavior. It does not prove human browser SSO, MFA/AAL enforcement
-  or an Authentik replacement path.
-- SimpleHostMan release `2606.08.03` adds a browser Authorization Code pilot:
-  - `GET /v1/oauth/pilot/start` creates PKCE state and redirects to
-    Pyrosa Accounts `/oauth/authorize`;
-  - `GET /v1/oauth/pilot/callback` exchanges the code, introspects the opaque
-    access token, requires `profile:read mfa:read`, audience
-    `simplehost-control`, principal `human` and `aal2`, and revokes the access
-    token after validation;
-  - the callback validation rules use `SIMPLEHOST_OAUTH_PILOT_REQUIRED_*`
-    variables so the bearer `/v1/oauth/pilot/profile` resource rules remain
-    separately configurable.
-- Runtime release `2606.08.03` was deployed on 2026-06-08 UTC. Local runtime
-  validation confirmed healthy SimpleHostMan `2606.08.03`, OAuth start redirect
-  generation with PKCE, Accounts authorize redirect to login when no root
-  session exists, and callback fail-closed behavior for invalid state.
-- Public access to `/v1/oauth/pilot/start` remains behind the existing
-  Authentik outpost when no Authentik session exists. This is intentional for
-  the pilot; no public proxy surface has been moved away from Authentik.
-- Interactive operator validation completed on 2026-06-09 UTC. The browser
-  pilot returned `OK` after Pyrosa Accounts issued and introspected an
-  Authorization Code access token with:
-  - provider `pyrosa-accounts`;
-  - issuer `https://accounts.pyrosa.com.do`;
-  - resource/audience `simplehost-control`;
-  - client `simplehost-control-oauth-pilot`;
-  - principal `human`;
-  - assurance level `aal2`;
-  - scopes `profile:read` and `mfa:read`.
-- That closes the human Authorization Code + MFA/AAL pilot gate for OAuth.
-  Authentik still remains the default provider for administrative proxy
-  surfaces until there is an explicit promotion and rollback plan for a
-  selected surface.
-- SimpleHostMan now includes a native Pyrosa Accounts OAuth login path:
-  - `GET /auth/pyrosa-accounts/start` creates PKCE state and redirects to
-    Pyrosa Accounts `/oauth/authorize`;
-  - `GET /auth/pyrosa-accounts/callback` validates state and asks the internal
-    control API to exchange the code, introspect the access token, require
-    `simplehost-control`, `human`, `aal2`, `profile:read`, and `mfa:read`, and
-    create `shp_session` only for an active local operator email;
-  - `/v1/oauth/pilot/*` remains diagnostic and separate from the login path.
-- The native OAuth login path is gated by `SIMPLEHOST_OAUTH_LOGIN_ENABLED` and
-  is still candidate-only. Authentik continues to protect the public
-  administrative surface during the pilot.
-- `SIMPLEHOST_OAUTH_LOGIN_REQUIRED_GROUP` can require a provider-emitted group
-  such as `PYROSA Operators` in addition to the active local operator check.
-  Leave it empty to preserve the current local-operator-only authorization
-  behavior.
-- The IAM PostgreSQL catalog records a candidate binding for
-  `control:simplehost-control` with provider `pyrosa-accounts` and mode
-  `oauth_login`. The existing Authentik `trusted_proxy_headers` binding remains
-  the only active binding for SimpleHostMan.
-- The IAM UI shows the candidate OAuth binding, its PKCE callback/start paths,
-  required `simplehost-control` audience, `profile:read mfa:read` scopes,
-  `aal2` requirement, active provider, candidate provider, latest successful
-  OAuth login, and latest OAuth callback rejection when present.
-- Runtime release `2606.09.02` was deployed on 2026-06-09 UTC. Validation
-  confirmed:
-  - `simplehost-control.service`, `simplehost-worker.service`, and
-    `simplehost-backup-runner.timer` are active;
-  - `/healthz` returns version `2606.09.02`;
-  - migrations `0021`, `0022`, and `0023` are applied in
-    `control_plane_schema_migrations`;
-  - `control:simplehost-control` still has Authentik as the active
-    `trusted_proxy_headers` binding;
-  - Pyrosa Accounts is present as the candidate `oauth_login` binding with
-    `render_mode=metadata_only`;
-  - `/auth/pyrosa-accounts/start` redirects to Pyrosa Accounts with
-    Authorization Code + PKCE and callback
-    `/auth/pyrosa-accounts/callback`;
-  - invalid/missing callback state redirects with an error and clears only the
-    OAuth state cookie.
-- The remaining promotion gate is an interactive browser validation of native
-  login/logout with MFA for an active operator plus rejection of an
-  unprovisioned or inactive Pyrosa Accounts identity.
-- OAuth login sessions store non-sensitive provider metadata on
+Historical Accounts OAuth pilot:
+
+- The 2026-06-08 and 2026-06-09 Accounts OAuth pilots validated the original
+  service-token, browser Authorization Code, MFA/AAL and fail-closed behavior.
+  Those results are preserved only as implementation history.
+- As of 2026-06-10, Accounts is not an operational IAM provider. The active
+  candidate path is `pyrosa-iam`, using `/auth/pyrosa-iam/*` and
+  `/v1/auth/pyrosa-iam/*`; `/auth/pyrosa-accounts/*` is intentionally rejected.
+- The historical migrations `0021` through `0029` remain in the schema history
+  because they describe the path that led to the split. Migration `0033`
+  removes Accounts from the IAM provider catalog, and migration `0034` removes
+  the retired Accounts app metadata from the SimpleHostMan app catalog.
+- OAuth login sessions still store only non-sensitive provider metadata on
   `control_plane_sessions`: provider slug, external subject, assurance level,
   client id, scopes, issuer, and a SHA-256 access-token hash. The raw access
   token is not persisted in PostgreSQL.
-- The browser receives a separate `HttpOnly`, `Secure`, `SameSite=Lax`
-  `shp_oauth_logout` cookie scoped to `/auth/logout` only. During logout,
-  SimpleHostMan revokes the Pyrosa Accounts access token when the cookie is
-  present, clears both local cookies, records audit events, and redirects to
-  the configured Pyrosa Accounts logout URL with `return_to`.
-- Pyrosa Accounts now ships minimum OIDC provider support: discovery, JWKS,
-  EdDSA-signed ID tokens, `nonce` handling, stable profile/email/group claims,
-  and `/oidc/userinfo`.
-- SimpleHostMan migration `0027_iam_pyrosa_accounts_oidc_candidate.sql`
-  records OIDC as `pilot_validated`/candidate metadata and adds a
-  metadata-only `control:simplehost-control` OIDC binding. Authentik remains
-  the active external gate until a real SimpleHostMan OIDC client pilot is
-  provisioned, validated and explicitly promoted.
-- Pyrosa Accounts now ships an internal forward-auth gateway check at
-  `/oauth/gateway/check`. It is loopback/private allowlist gated, requires an
-  authenticated `aal2` Accounts session, and emits trusted account headers for
-  an upstream proxy.
-- SimpleHostMan migration `0028_iam_pyrosa_accounts_gateway_candidate.sql`
-  records gateway proxy as `pilot_validated`/candidate metadata and adds a
-  metadata-only SimpleHostMan gateway binding. No Apache/vhost traffic is
-  rendered or switched yet.
-- Pyrosa Accounts now has a disabled SAML metadata scaffold. `/saml/metadata`
-  only publishes XML if SAML is explicitly enabled and a signing certificate is
-  configured; SSO assertions and SP registry are not implemented.
-- SimpleHostMan migration `0029_iam_pyrosa_accounts_saml_scaffold.sql` keeps
-  `saml` disabled with promotion gate `saml_sp_pilot` and intentionally creates
-  no SAML binding. Pyrosa Accounts must not be advertised as an operational
-  SAML IAM provider until a concrete SP pilot requires it.
-- SimpleHostMan migration `0030_iam_pyrosa_iam_provider.sql` records the formal
-  `pyrosa-iam` provider split. Accounts remains the inherited pilot and
-  compatibility base; the long-term promotion target is the separate
-  `pyrosa-iam` runtime.
 - Authentik remains the default provider for administrative proxy surfaces until
   there is an explicit replacement decision.
 

@@ -51,7 +51,7 @@ export interface ControlWebRuntimeConfig {
     pilotRequiredPrincipalType: string | null;
     pilotRequiredAssuranceLevel: string | null;
     pilotRevokeTokens: boolean;
-    loginProviderSlug: "pyrosa-accounts" | "pyrosa-iam";
+    loginProviderSlug: "pyrosa-iam";
     loginEnabled: boolean;
     loginRedirectUri: string | null;
     loginScope: string | null;

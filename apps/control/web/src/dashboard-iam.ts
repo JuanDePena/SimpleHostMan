@@ -509,7 +509,7 @@ export function renderIamWorkspace(args: {
       { label: copy.iamProvidersTitle, value: String(providers.length), tone: providers.length > 0 ? "success" : "muted" },
       { label: copy.iamBindingsTitle, value: String(bindings.length), tone: bindings.length > 0 ? "success" : "muted" },
       { label: copy.iamActiveBindingsLabel, value: String(activeBindings.length), tone: activeBindings.length > 0 ? "success" : "muted" },
-      { label: copy.iamPyrosaAccountsLabel, value: providers.some((provider) => provider.slug === "pyrosa-accounts") ? copy.availableLabel : copy.unavailableLabel, tone: providers.some((provider) => provider.slug === "pyrosa-accounts") ? "success" : "muted" }
+      { label: copy.iamPyrosaIamLabel, value: providers.some((provider) => provider.slug === "pyrosa-iam") ? copy.availableLabel : copy.unavailableLabel, tone: providers.some((provider) => provider.slug === "pyrosa-iam") ? "success" : "muted" }
     ])}
     ${renderOperationalState({ data, renderPill, copy })}
     ${renderDataTable({

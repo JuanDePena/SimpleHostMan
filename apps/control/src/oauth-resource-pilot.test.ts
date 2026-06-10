@@ -50,7 +50,7 @@ function createConfig(overrides: Partial<ControlRuntimeConfig["oauthResourceServ
     },
     oauthResourceServer: {
       enabled: true,
-      issuer: "https://accounts.pyrosa.com.do",
+      issuer: "https://iam.pyrosa.com.do",
       authorizationUrl: null,
       tokenUrl: null,
       introspectionUrl: "http://127.0.0.1/not-configured",
@@ -67,14 +67,14 @@ function createConfig(overrides: Partial<ControlRuntimeConfig["oauthResourceServ
       pilotRequiredPrincipalType: null,
       pilotRequiredAssuranceLevel: null,
       pilotRevokeTokens: true,
-      loginProviderSlug: "pyrosa-accounts",
+      loginProviderSlug: "pyrosa-iam",
       loginEnabled: false,
-      loginRedirectUri: "https://vps-prd.pyrosa.com.do:3200/auth/pyrosa-accounts/callback",
+      loginRedirectUri: "https://vps-prd.pyrosa.com.do:3200/auth/pyrosa-iam/callback",
       loginScope: "profile:read mfa:read",
       loginRequiredPrincipalType: "human",
       loginRequiredAssuranceLevel: "aal2",
       loginRequiredGroup: null,
-      loginLogoutUrl: "https://accounts.pyrosa.com.do/logout",
+      loginLogoutUrl: "https://iam.pyrosa.com.do/logout",
       loginPostLogoutRedirectUri: "https://vps-prd.pyrosa.com.do:3200/login?notice=Session%20closed&kind=info",
       introspectionTimeoutMs: 1000,
       ...overrides
@@ -258,7 +258,7 @@ test("OAuth resource-server pilot accepts active scoped tokens with matching aud
       principalType: string;
     };
     assert.equal(payload.status, "ok");
-    assert.equal(payload.provider, "pyrosa-accounts");
+    assert.equal(payload.provider, "pyrosa-iam");
     assert.equal(payload.clientId, "oauth-smoke");
     assert.deepEqual(payload.scope, ["profile:read", "sessions:read"]);
     assert.equal(payload.audience, "simplehost-control");
@@ -422,7 +422,7 @@ test("OAuth browser pilot completes Authorization Code with human AAL2 claims", 
   }
 });
 
-test("Pyrosa Accounts OAuth login validates code flow before creating a local session", async () => {
+test("Pyrosa IAM OAuth login validates code flow before creating a local session", async () => {
   const oauth = await startOAuthPilotServer();
   let capturedLogin: unknown;
   const handler = createControlApiHttpHandler(createApiRequestHandler({
@@ -457,13 +457,13 @@ test("Pyrosa Accounts OAuth login validates code flow before creating a local se
   try {
     const response = await invokeRequestHandler(handler, {
       method: "POST",
-      url: "/v1/auth/pyrosa-accounts/oauth-login",
+      url: "/v1/auth/pyrosa-iam/oauth-login",
       headers: {
         "content-type": "application/json; charset=utf-8"
       },
       body: JSON.stringify({
         code: "human-code",
-        redirectUri: "https://vps-prd.pyrosa.com.do:3200/auth/pyrosa-accounts/callback",
+        redirectUri: "https://vps-prd.pyrosa.com.do:3200/auth/pyrosa-iam/callback",
         codeVerifier: "pkce-verifier"
       })
     });
@@ -476,7 +476,7 @@ test("Pyrosa Accounts OAuth login validates code flow before creating a local se
     assert.equal(payload.sessionToken, "session-from-oauth");
     assert.equal(payload.oauthLogoutToken, "human-access-token");
     assert.deepEqual(capturedLogin, {
-      provider: "pyrosa-accounts",
+      provider: "pyrosa-iam",
       email: "webmaster@pyrosa.com.do",
       username: "webmaster@pyrosa.com.do",
       displayName: "PYROSA Webmaster",
@@ -486,11 +486,11 @@ test("Pyrosa Accounts OAuth login validates code flow before creating a local se
       clientId: "oauth-smoke",
       scopes: ["profile:read", "mfa:read"],
       audience: "simplehost-control",
-      issuer: "https://accounts.pyrosa.com.do",
+      issuer: "https://iam.pyrosa.com.do",
       oauthClientId: "oauth-smoke",
       oauthScopes: ["profile:read", "mfa:read"],
       oauthTokenHash: hashTokenForTest("human-access-token"),
-      oauthIssuer: "https://accounts.pyrosa.com.do"
+      oauthIssuer: "https://iam.pyrosa.com.do"
     });
     assert.equal(oauth.tokenBodies.length, 1);
     assert.equal(oauth.introspectionBodies.length, 1);
@@ -635,7 +635,7 @@ test("Pyrosa IAM OAuth login supports public PKCE clients and compatible claims"
   }
 });
 
-test("Pyrosa Accounts OAuth login fails closed before local session when AAL is too low", async () => {
+test("Pyrosa IAM OAuth login fails closed before local session when AAL is too low", async () => {
   const server = createServer(async (request, response) => {
     if (request.method === "POST" && request.url === "/oauth/token") {
       response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
@@ -693,13 +693,13 @@ test("Pyrosa Accounts OAuth login fails closed before local session when AAL is 
 
     const response = await invokeRequestHandler(handler, {
       method: "POST",
-      url: "/v1/auth/pyrosa-accounts/oauth-login",
+      url: "/v1/auth/pyrosa-iam/oauth-login",
       headers: {
         "content-type": "application/json; charset=utf-8"
       },
       body: JSON.stringify({
         code: "human-code",
-        redirectUri: "https://vps-prd.pyrosa.com.do:3200/auth/pyrosa-accounts/callback",
+        redirectUri: "https://vps-prd.pyrosa.com.do:3200/auth/pyrosa-iam/callback",
         codeVerifier: "pkce-verifier"
       })
     });
@@ -711,7 +711,7 @@ test("Pyrosa Accounts OAuth login fails closed before local session when AAL is 
   }
 });
 
-test("Pyrosa Accounts OAuth login rejects identities without an active local operator", async () => {
+test("Pyrosa IAM OAuth login rejects identities without an active local operator", async () => {
   const oauth = await startOAuthPilotServer();
   let rejection: Parameters<ControlPlaneStore["recordOAuthLoginRejected"]>[0] | null = null;
   const handler = createControlApiHttpHandler(createApiRequestHandler({
@@ -741,13 +741,13 @@ test("Pyrosa Accounts OAuth login rejects identities without an active local ope
   try {
     const response = await invokeRequestHandler(handler, {
       method: "POST",
-      url: "/v1/auth/pyrosa-accounts/oauth-login",
+      url: "/v1/auth/pyrosa-iam/oauth-login",
       headers: {
         "content-type": "application/json; charset=utf-8"
       },
       body: JSON.stringify({
         code: "human-code",
-        redirectUri: "https://vps-prd.pyrosa.com.do:3200/auth/pyrosa-accounts/callback",
+        redirectUri: "https://vps-prd.pyrosa.com.do:3200/auth/pyrosa-iam/callback",
         codeVerifier: "pkce-verifier"
       })
     });
@@ -755,7 +755,7 @@ test("Pyrosa Accounts OAuth login rejects identities without an active local ope
     assert.equal(response.statusCode, 403);
     assert.equal(JSON.parse(response.bodyText).error, "local_operator_not_active");
     assert.deepEqual(rejection, {
-      provider: "pyrosa-accounts",
+      provider: "pyrosa-iam",
       reason: "local_operator_not_active",
       email: "webmaster@pyrosa.com.do",
       clientId: "oauth-smoke",
@@ -767,7 +767,7 @@ test("Pyrosa Accounts OAuth login rejects identities without an active local ope
   }
 });
 
-test("Pyrosa Accounts OAuth login can require a provider group before local session", async () => {
+test("Pyrosa IAM OAuth login can require a provider group before local session", async () => {
   const server = createServer(async (request, response) => {
     if (request.method === "POST" && request.url === "/oauth/token") {
       response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
@@ -826,13 +826,13 @@ test("Pyrosa Accounts OAuth login can require a provider group before local sess
 
     const response = await invokeRequestHandler(handler, {
       method: "POST",
-      url: "/v1/auth/pyrosa-accounts/oauth-login",
+      url: "/v1/auth/pyrosa-iam/oauth-login",
       headers: {
         "content-type": "application/json; charset=utf-8"
       },
       body: JSON.stringify({
         code: "human-code",
-        redirectUri: "https://vps-prd.pyrosa.com.do:3200/auth/pyrosa-accounts/callback",
+        redirectUri: "https://vps-prd.pyrosa.com.do:3200/auth/pyrosa-iam/callback",
         codeVerifier: "pkce-verifier"
       })
     });
@@ -844,7 +844,7 @@ test("Pyrosa Accounts OAuth login can require a provider group before local sess
   }
 });
 
-test("Pyrosa Accounts OAuth revoke endpoint revokes token and audits token hash", async () => {
+test("Pyrosa IAM OAuth revoke endpoint revokes token and audits token hash", async () => {
   const revocationBodies: URLSearchParams[] = [];
   const server = createServer(async (request, response) => {
     const chunks: Buffer[] = [];
@@ -892,7 +892,7 @@ test("Pyrosa Accounts OAuth revoke endpoint revokes token and audits token hash"
 
     const response = await invokeRequestHandler(handler, {
       method: "POST",
-      url: "/v1/auth/pyrosa-accounts/oauth-revoke",
+      url: "/v1/auth/pyrosa-iam/oauth-revoke",
       headers: {
         authorization: "Bearer local-session-token",
         "content-type": "application/json; charset=utf-8"
@@ -906,7 +906,7 @@ test("Pyrosa Accounts OAuth revoke endpoint revokes token and audits token hash"
     assert.equal(revocationBodies.length, 1);
     assert.equal(revocationBodies[0]?.get("token"), "human-access-token");
     assert.deepEqual(capturedAudit, {
-      provider: "pyrosa-accounts",
+      provider: "pyrosa-iam",
       tokenHash: hashTokenForTest("human-access-token"),
       clientId: "oauth-smoke"
     });

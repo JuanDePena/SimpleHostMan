@@ -47,12 +47,12 @@ function readString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 }
 
-function readOAuthLoginProviderSlug(value: string | null | undefined): OAuthLoginProviderSlug {
-  return value === "pyrosa-iam" ? "pyrosa-iam" : "pyrosa-accounts";
+function readOAuthLoginProviderSlug(_value: string | null | undefined): OAuthLoginProviderSlug {
+  return "pyrosa-iam";
 }
 
-function formatOAuthProviderName(provider: OAuthLoginProviderSlug): string {
-  return provider === "pyrosa-iam" ? "Pyrosa IAM" : "Pyrosa Accounts";
+function formatOAuthProviderName(_provider: OAuthLoginProviderSlug): string {
+  return "Pyrosa IAM";
 }
 
 function matchOAuthProviderRoute(
@@ -64,7 +64,7 @@ function matchOAuthProviderRoute(
     return null;
   }
 
-  if (match[1] === "pyrosa-accounts" || match[1] === "pyrosa-iam") {
+  if (match[1] === "pyrosa-iam") {
     return match[1];
   }
 

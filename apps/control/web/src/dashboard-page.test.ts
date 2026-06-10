@@ -990,19 +990,19 @@ test("iam workspace lists providers and protected bindings", () => {
   const html = renderView(
     createDashboardData(),
     "iam",
-    "iam-binding-simplehost-control-pyrosa-oauth"
+    "iam-binding-simplehost-control-pyrosa-iam-oauth"
   );
 
   assert.match(html, /id="section-iam"/);
   assert.match(html, /Authentik/);
-  assert.match(html, /Pyrosa Accounts/);
+  assert.match(html, /Pyrosa IAM/);
   assert.match(html, /simplehost-control/);
   assert.match(html, /pyrosa-directory/);
   assert.match(html, /pyrosa-newsync/);
   assert.match(html, /trusted_proxy_headers/);
   assert.match(html, /oauth_login/);
   assert.match(html, /pilot_validated/);
-  assert.match(html, /simplehost-control-oauth-pilot/);
+  assert.match(html, /client-simplehost-control-oauth-pilot/);
   assert.match(html, /it@pyrosa\.com\.do/);
   assert.match(html, /ui_auth/);
   assert.match(html, /metadata_only/);

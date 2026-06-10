@@ -333,7 +333,7 @@ function buildProfilePayload(args: {
 }): Record<string, unknown> {
   return {
     status: "ok",
-    provider: "pyrosa-accounts",
+    provider: "pyrosa-iam",
     issuer: args.resourceConfig.issuer,
     resource: "simplehost-control",
     clientId: readString(args.introspection.client_id),
@@ -619,7 +619,7 @@ export const handleOAuthResourceRoutes: ApiRouteHandler = async ({
       renderPilotResultHtml({
         title: "OAuth pilot validated",
         status: "ok",
-        message: "Pyrosa Accounts issued and introspected a browser Authorization Code token successfully.",
+        message: "Pyrosa IAM issued and introspected a browser Authorization Code token successfully.",
         details: payload
       }),
       clearPilotCookie()

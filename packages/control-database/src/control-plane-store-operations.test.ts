@@ -362,6 +362,39 @@ test("pyrosa iam runtime resources migration registers metadata-only catalog cov
   assert.match(migrationSql, /"loopback_pilot_active"/);
 });
 
+test("pyrosa accounts decommission migration moves app ui-auth bindings to pyrosa iam", () => {
+  const migrationSql = readFileSync(
+    new URL("../migrations/0033_decommission_pyrosa_accounts_iam.sql", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(migrationSql, /WHERE slug = 'pyrosa-accounts'/);
+  assert.match(migrationSql, /DELETE FROM control_plane_iam_providers/);
+  assert.match(migrationSql, /'pyrosa-iam'/);
+  assert.match(migrationSql, /'iam-binding-pyrosa-directory'/);
+  assert.match(migrationSql, /'iam-binding-pyrosa-newsync'/);
+  assert.match(migrationSql, /'iam-binding-pyrosa-demoerp'/);
+  assert.match(migrationSql, /PYROSA_DIRECTORY_IAM_CLIENT_SECRET/);
+  assert.match(migrationSql, /PYROSA_SYNC_UI_AUTH_CLIENT_SECRET/);
+  assert.match(migrationSql, /PYROSA_ERP_IAM_CLIENT_SECRET/);
+  assert.match(migrationSql, /"excludedLegacySurfaces": \["pyrosa-demosync", "pyrosa-sync"\]/);
+});
+
+test("pyrosa accounts app catalog decommission migration removes retired app metadata", () => {
+  const migrationSql = readFileSync(
+    new URL("../migrations/0034_decommission_pyrosa_accounts_app_catalog.sql", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(migrationSql, /DELETE FROM control_plane_apps/);
+  assert.match(migrationSql, /WHERE slug = 'pyrosa-accounts'/);
+  assert.match(migrationSql, /"replacesRetiredAppSlug": "pyrosa-accounts"/);
+  assert.match(migrationSql, /client-simplehost-control-oauth-pilot/);
+  assert.match(migrationSql, /"public_active"/);
+  assert.match(migrationSql, /"traffic": "public"/);
+  assert.match(migrationSql, /pyrosa-iam-root-config-daily/);
+});
+
 test("metadata-only apps do not emit proxy or container reconciliation plans", async () => {
   const appRow = {
     app_id: "app-pyrosa-iam",
@@ -438,9 +471,9 @@ test("buildIamOverview maps provider capabilities and protected bindings", async
           updated_at: "2026-06-07T00:00:00.000Z"
         },
         {
-          binding_id: "iam-binding-simplehost-control-pyrosa-oauth",
-          provider_slug: "pyrosa-accounts",
-          provider_display_name: "Pyrosa Accounts",
+          binding_id: "iam-binding-simplehost-control-pyrosa-iam-oauth",
+          provider_slug: "pyrosa-iam",
+          provider_display_name: "Pyrosa IAM",
           target_kind: "control",
           target_slug: "simplehost-control",
           external_url: "https://vps-prd.pyrosa.com.do:3200/",
@@ -453,7 +486,7 @@ test("buildIamOverview maps provider capabilities and protected bindings", async
           allowed_groups: ["PYROSA Operators"],
           config_json: {
             oauthLogin: {
-              clientId: "simplehost-control-oauth-pilot",
+              clientId: "client-simplehost-control-oauth-pilot",
               promotionState: "candidate"
             }
           },
@@ -465,7 +498,7 @@ test("buildIamOverview maps provider capabilities and protected bindings", async
       [
         {
           occurred_at: "2026-06-09T00:20:35.000Z",
-          provider: "pyrosa-accounts",
+          provider: "pyrosa-iam",
           email: "it@pyrosa.com.do",
           reason: null,
           assurance_level: "aal2"
@@ -474,7 +507,7 @@ test("buildIamOverview maps provider capabilities and protected bindings", async
       [
         {
           occurred_at: "2026-06-09T00:25:00.000Z",
-          provider: "pyrosa-accounts",
+          provider: "pyrosa-iam",
           email: null,
           reason: "missing_email",
           assurance_level: "aal2"
@@ -499,7 +532,7 @@ test("buildIamOverview maps provider capabilities and protected bindings", async
   assert.equal(overview.bindings[1]?.status, "candidate");
   assert.equal(overview.operationalState.activeControlProviderSlug, "authentik");
   assert.equal(overview.operationalState.activeControlAuthMode, "trusted_proxy_headers");
-  assert.equal(overview.operationalState.candidateControlProviderSlug, "pyrosa-accounts");
+  assert.equal(overview.operationalState.candidateControlProviderSlug, "pyrosa-iam");
   assert.equal(overview.operationalState.candidateControlAuthMode, "oauth_login");
   assert.equal(overview.operationalState.lastOAuthLoginEmail, "it@pyrosa.com.do");
   assert.equal(overview.operationalState.lastOAuthFailureReason, "missing_email");

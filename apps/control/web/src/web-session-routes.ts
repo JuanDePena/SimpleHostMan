@@ -54,13 +54,13 @@ function buildExternalSsoSignOutLocation(
   return null;
 }
 
-function readOAuthLoginProviderSlug(value: string | null | undefined): "pyrosa-accounts" | "pyrosa-iam" {
-  return value === "pyrosa-iam" ? "pyrosa-iam" : "pyrosa-accounts";
+function readOAuthLoginProviderSlug(_value: string | null | undefined): "pyrosa-iam" {
+  return "pyrosa-iam";
 }
 
 function buildOAuthProviderSignOutLocation(config: {
   oauthResourceServer?: {
-    loginProviderSlug?: "pyrosa-accounts" | "pyrosa-iam";
+    loginProviderSlug?: "pyrosa-iam";
     loginLogoutUrl: string | null;
     loginPostLogoutRedirectUri: string | null;
   };

@@ -360,22 +360,22 @@ export function createMailReleaseBaselineData(): DashboardData {
           updatedAt: "2026-06-07T00:00:00.000Z"
         },
         {
-          providerId: "iam-provider-pyrosa-accounts",
-          slug: "pyrosa-accounts",
-          displayName: "Pyrosa Accounts",
-          kind: "pyrosa_accounts",
+          providerId: "iam-provider-pyrosa-iam",
+          slug: "pyrosa-iam",
+          displayName: "Pyrosa IAM",
+          kind: "pyrosa_iam",
           status: "candidate",
-          baseUrl: "https://accounts.pyrosa.com.do",
-          capabilities: ["ui_auth", "oauth_login"],
+          baseUrl: "https://iam.pyrosa.com.do",
+          capabilities: ["ui_auth", "oauth_login", "oidc", "gateway_proxy"],
           capabilityStatus: [
             { key: "ui_auth", status: "available" },
             { key: "oauth", status: "pilot_validated" },
-            { key: "oidc", status: "future" },
-            { key: "gateway_proxy", status: "future" },
+            { key: "oidc", status: "pilot_validated" },
+            { key: "gateway_proxy", status: "pilot_validated" },
             { key: "saml", status: "disabled" }
           ],
           config: {},
-          notes: "Pyrosa-native ui-auth candidate.",
+          notes: "Authentication, MFA, OAuth/OIDC, gateway and app-native ui-auth provider.",
           createdAt: "2026-06-07T00:00:00.000Z",
           updatedAt: "2026-06-07T00:00:00.000Z"
         }
@@ -422,9 +422,9 @@ export function createMailReleaseBaselineData(): DashboardData {
           updatedAt: "2026-06-07T00:00:00.000Z"
         },
         {
-          bindingId: "iam-binding-simplehost-control-pyrosa-oauth",
-          providerSlug: "pyrosa-accounts",
-          providerDisplayName: "Pyrosa Accounts",
+          bindingId: "iam-binding-simplehost-control-pyrosa-iam-oauth",
+          providerSlug: "pyrosa-iam",
+          providerDisplayName: "Pyrosa IAM",
           targetKind: "control",
           targetSlug: "simplehost-control",
           externalUrl: "https://vps-prd.pyrosa.com.do:3200/",
@@ -439,9 +439,9 @@ export function createMailReleaseBaselineData(): DashboardData {
           config: {
             authHandledByControlPlane: true,
             oauthLogin: {
-              clientId: "simplehost-control-oauth-pilot",
-              loginStartPath: "/auth/pyrosa-accounts/start",
-              loginCallbackPath: "/auth/pyrosa-accounts/callback",
+              clientId: "client-simplehost-control-oauth-pilot",
+              loginStartPath: "/auth/pyrosa-iam/start",
+              loginCallbackPath: "/auth/pyrosa-iam/callback",
               requiredAudience: "simplehost-control",
               requiredScopes: ["profile:read", "mfa:read"],
               requiredAssuranceLevel: "aal2",
@@ -454,8 +454,8 @@ export function createMailReleaseBaselineData(): DashboardData {
         },
         {
           bindingId: "iam-binding-pyrosa-directory",
-          providerSlug: "pyrosa-accounts",
-          providerDisplayName: "Pyrosa Accounts",
+          providerSlug: "pyrosa-iam",
+          providerDisplayName: "Pyrosa IAM",
           targetKind: "app",
           targetSlug: "pyrosa-directory",
           externalUrl: "https://directory.pyrosa.com.do/",
@@ -471,17 +471,18 @@ export function createMailReleaseBaselineData(): DashboardData {
             uiAuth: {
               clientSlug: "directory",
               callbackUrl: "https://directory.pyrosa.com.do/auth/callback",
-              secretStorage: "PYROSA_DIRECTORY_ACCOUNTS_CLIENT_SECRET in app runtime env"
+              issuer: "https://iam.pyrosa.com.do",
+              secretStorage: "PYROSA_DIRECTORY_IAM_CLIENT_SECRET in app runtime env"
             }
           },
-          notes: "Existing Pyrosa Accounts ui-auth integration.",
+          notes: "Existing Pyrosa IAM ui-auth integration.",
           createdAt: "2026-06-07T00:00:00.000Z",
           updatedAt: "2026-06-07T00:00:00.000Z"
         },
         {
           bindingId: "iam-binding-pyrosa-newsync",
-          providerSlug: "pyrosa-accounts",
-          providerDisplayName: "Pyrosa Accounts",
+          providerSlug: "pyrosa-iam",
+          providerDisplayName: "Pyrosa IAM",
           targetKind: "app",
           targetSlug: "pyrosa-newsync",
           externalUrl: "https://newsync.pyrosa.com.do/",
@@ -497,21 +498,49 @@ export function createMailReleaseBaselineData(): DashboardData {
             uiAuth: {
               clientSlug: "sync",
               callbackUrl: "https://newsync.pyrosa.com.do/auth/callback",
+              issuer: "https://iam.pyrosa.com.do",
               secretStorage: "PYROSA_SYNC_UI_AUTH_CLIENT_SECRET in app runtime env"
             }
           },
-          notes: "Existing Pyrosa Accounts ui-auth integration.",
+          notes: "Existing Pyrosa IAM ui-auth integration.",
           createdAt: "2026-06-07T00:00:00.000Z",
           updatedAt: "2026-06-07T00:00:00.000Z"
+        },
+        {
+          bindingId: "iam-binding-pyrosa-demoerp",
+          providerSlug: "pyrosa-iam",
+          providerDisplayName: "Pyrosa IAM",
+          targetKind: "app",
+          targetSlug: "pyrosa-demoerp",
+          externalUrl: "https://demoerp.pyrosa.com.do/",
+          authMode: "ui_auth",
+          mfaPolicy: "required",
+          status: "active",
+          renderMode: "metadata_only",
+          renderEnabled: false,
+          providerProvisioningStatus: "manual_ready",
+          allowedGroups: [],
+          config: {
+            authHandledByApp: true,
+            uiAuth: {
+              clientSlug: "erp",
+              callbackUrl: "https://demoerp.pyrosa.com.do/auth/callback",
+              issuer: "https://iam.pyrosa.com.do",
+              secretStorage: "PYROSA_ERP_IAM_CLIENT_SECRET in app runtime env"
+            }
+          },
+          notes: "Existing Pyrosa IAM ui-auth integration.",
+          createdAt: "2026-06-10T00:00:00.000Z",
+          updatedAt: "2026-06-10T00:00:00.000Z"
         }
       ],
       operationalState: {
         activeControlProviderSlug: "authentik",
         activeControlAuthMode: "trusted_proxy_headers",
-        candidateControlProviderSlug: "pyrosa-accounts",
+        candidateControlProviderSlug: "pyrosa-iam",
         candidateControlAuthMode: "oauth_login",
         lastOAuthLoginAt: "2026-06-09T00:20:35.000Z",
-        lastOAuthLoginProvider: "pyrosa-accounts",
+        lastOAuthLoginProvider: "pyrosa-iam",
         lastOAuthLoginEmail: "it@pyrosa.com.do",
         lastOAuthLoginAssuranceLevel: "aal2"
       }

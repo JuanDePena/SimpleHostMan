@@ -23,8 +23,6 @@ const rootEndpoints = [
   "GET /healthz",
   "GET /v1/meta",
   "POST /v1/auth/login",
-  "POST /v1/auth/pyrosa-accounts/oauth-login",
-  "POST /v1/auth/pyrosa-accounts/oauth-revoke",
   "POST /v1/auth/pyrosa-iam/oauth-login",
   "POST /v1/auth/pyrosa-iam/oauth-revoke",
   "GET /v1/auth/me",

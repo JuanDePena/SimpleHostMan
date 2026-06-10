@@ -192,12 +192,12 @@ export function createDashboardBootstrap(
           updatedAt: new Date().toISOString()
         },
         {
-          providerId: "iam-provider-pyrosa-accounts",
-          slug: "pyrosa-accounts",
-          displayName: "Pyrosa Accounts",
-          kind: "pyrosa_accounts",
+          providerId: "iam-provider-pyrosa-iam",
+          slug: "pyrosa-iam",
+          displayName: "Pyrosa IAM",
+          kind: "pyrosa_iam",
           status: "candidate",
-          baseUrl: "https://accounts.pyrosa.com.do",
+          baseUrl: "https://iam.pyrosa.com.do",
           capabilities: ["ui_auth", "oauth_login"],
           capabilityStatus: [
             { key: "ui_auth", status: "available" },
@@ -234,9 +234,9 @@ export function createDashboardBootstrap(
           updatedAt: new Date().toISOString()
         },
         {
-          bindingId: "iam-binding-simplehost-control-pyrosa-oauth",
-          providerSlug: "pyrosa-accounts",
-          providerDisplayName: "Pyrosa Accounts",
+          bindingId: "iam-binding-simplehost-control-pyrosa-iam-oauth",
+          providerSlug: "pyrosa-iam",
+          providerDisplayName: "Pyrosa IAM",
           targetKind: "control",
           targetSlug: "simplehost-control",
           externalUrl: "https://vps-prd.pyrosa.com.do:3200/",
@@ -251,9 +251,9 @@ export function createDashboardBootstrap(
           config: {
             authHandledByControlPlane: true,
             oauthLogin: {
-              clientId: "simplehost-control-oauth-pilot",
-              loginStartPath: "/auth/pyrosa-accounts/start",
-              loginCallbackPath: "/auth/pyrosa-accounts/callback",
+              clientId: "client-simplehost-control-oauth-pilot",
+              loginStartPath: "/auth/pyrosa-iam/start",
+              loginCallbackPath: "/auth/pyrosa-iam/callback",
               requiredAudience: "simplehost-control",
               requiredScopes: ["profile:read", "mfa:read"],
               requiredAssuranceLevel: "aal2",
@@ -268,7 +268,7 @@ export function createDashboardBootstrap(
       operationalState: {
         activeControlProviderSlug: "authentik",
         activeControlAuthMode: "trusted_proxy_headers",
-        candidateControlProviderSlug: "pyrosa-accounts",
+        candidateControlProviderSlug: "pyrosa-iam",
         candidateControlAuthMode: "oauth_login"
       }
     }
@@ -322,7 +322,7 @@ export function createTestContext(args: {
         pilotRequiredPrincipalType: null,
         pilotRequiredAssuranceLevel: null,
         pilotRevokeTokens: true,
-        loginProviderSlug: "pyrosa-accounts",
+        loginProviderSlug: "pyrosa-iam",
         loginEnabled: false,
         loginRedirectUri: null,
         loginScope: null,

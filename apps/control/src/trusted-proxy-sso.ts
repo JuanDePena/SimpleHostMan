@@ -34,7 +34,7 @@ interface TrustedProxyProviderAdapter {
 }
 
 // Only adapters in this list can mint local sessions from upstream headers.
-// Pyrosa Accounts stays metadata-only for trusted-proxy until a gateway exists.
+// Pyrosa IAM gateway remains metadata-only for trusted-proxy until an explicit promotion exists.
 const trustedProxyProviderAdapters: TrustedProxyProviderAdapter[] = [
   {
     provider: "authentik",

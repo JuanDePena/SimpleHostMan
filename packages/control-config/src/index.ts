@@ -55,7 +55,7 @@ export interface ControlOAuthResourceServerRuntimeConfig {
   pilotRequiredPrincipalType: string | null;
   pilotRequiredAssuranceLevel: string | null;
   pilotRevokeTokens: boolean;
-  loginProviderSlug: "pyrosa-accounts" | "pyrosa-iam";
+  loginProviderSlug: "pyrosa-iam";
   loginEnabled: boolean;
   loginRedirectUri: string | null;
   loginScope: string | null;
@@ -142,14 +142,8 @@ function readBoolean(value: string | undefined, fallback: boolean): boolean {
   }
 }
 
-function readOAuthLoginProviderSlug(value: string | undefined): "pyrosa-accounts" | "pyrosa-iam" {
-  switch (value?.trim()) {
-    case "pyrosa-iam":
-      return "pyrosa-iam";
-    case "pyrosa-accounts":
-    default:
-      return "pyrosa-accounts";
-  }
+function readOAuthLoginProviderSlug(_value: string | undefined): "pyrosa-iam" {
+  return "pyrosa-iam";
 }
 
 export function createControlRuntimeConfig(

@@ -9,7 +9,7 @@ belongs in the feature runbook that owns the behavior, not in this tracker.
 
 - canonical source tree: `/opt/simplehostman/src`
 - canonical runtime root: `/opt/simplehostman/release`
-- active control-plane release: `2606.10.01`
+- active control-plane release: `2606.10.06`
 - implemented IAM/SSO state:
   [`IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md)
 - implemented operational inspection and hardening evidence:
@@ -87,10 +87,11 @@ Pending work:
 
 Current state:
 
-- `pyrosa-accounts` remains the user-facing Account Center, while
-  `pyrosa-iam` is the formal candidate IAM provider for future administrative
-  promotion.
-- SimpleHostMan release `2606.10.01` supports
+- `pyrosa-accounts` is decommissioned from SimpleHostMan IAM provider
+  selection and app catalog metadata.
+- `pyrosa-iam` owns Pyrosa authentication concerns: OAuth login, OIDC,
+  gateway/forward-auth metadata and app-native `ui_auth` tickets.
+- SimpleHostMan release `2606.10.06` supports
   `SIMPLEHOST_OAUTH_LOGIN_PROVIDER_SLUG=pyrosa-iam`,
   `/auth/pyrosa-iam/*`, `/v1/auth/pyrosa-iam/*`, public PKCE clients without
   `client_secret`, IAM snake_case claims and inherited compatibility aliases.
@@ -108,6 +109,10 @@ Current state:
   `local_operator_not_active`.
 - Backup run `backup-run-7c91dd58-bcdb-4e78-91e0-cbdf19931830` captured the
   updated root-only IAM runtime config and replicated it to the secondary.
+- Pyrosa Directory, NewSync and DemoERP redirect app-native login directly to
+  `https://iam.pyrosa.com.do/ui-auth/authorize`.
+- `pyrosa-demosync` and legacy `pyrosa-sync` remain intentionally outside this
+  transition because they keep local/application-owned login.
 
 Pending work:
 
@@ -120,27 +125,19 @@ Pending work:
   Authentik-protected SimpleHostMan URL before changing any user-facing entry
   point
 - select the next administrative pilot surface, expected to be pgAdmin
-- clean up inherited `X-Pyrosa-Accounts-*` response/header naming in
-  `pyrosa-iam` when convenient; compatibility headers may remain where they
-  are intentionally consumed
+- clean up inherited `X-Pyrosa-Accounts-*`, cookie, storage and UI naming in
+  `pyrosa-iam`; compatibility aliases may remain only where they are
+  intentionally consumed during migration
 
 ### 5. Implement Pyrosa IAM OIDC/Gateway Provider Support
 
 Current state:
 
-- Pyrosa Accounts `oauth` is pilot validated for SimpleHostMan but not promoted.
-- OIDC provider support is implemented in the inherited Accounts codebase and
-  should move behind the `pyrosa-iam` runtime boundary before being promoted.
-- The inherited gateway check endpoint should move behind the `pyrosa-iam`
-  runtime boundary before being promoted.
-- Gateway readiness is now modeled in SimpleHostMan metadata with promotion
-  gate `accounts_gateway_proxy_release` and `advertiseAsProvider=false`.
-- Pyrosa Accounts keeps `/oauth/gateway` fail-closed with
-  `gateway_proxy_not_available` and required-feature metadata; it is not a
-  reverse proxy or outpost yet.
-- SimpleHostMan now has a separate `pyrosa-iam` provider catalog entry with
-  candidate metadata for OAuth login, OIDC, and gateway proxy. All remain
-  metadata-only until the runtime exists and pilots validate rollback.
+- Pyrosa IAM `oauth_login` is pilot validated for SimpleHostMan but not
+  promoted as the only administrative login path.
+- SimpleHostMan has a `pyrosa-iam` provider catalog entry with candidate
+  metadata for OAuth login, OIDC and gateway proxy. All remain metadata-only
+  until pilots validate rollback.
 - `pyrosa-iam` OIDC discovery and JWKS are available on the loopback runtime,
   and the SimpleHostMan pilot client validates Authorization Code + PKCE with a
   real MFA-backed identity.
@@ -164,8 +161,8 @@ Pending work:
 
 ## Deferred Unless Explicitly Requested
 
-- Pyrosa Accounts operational `saml` support. Metadata scaffold exists, but it
-  remains disabled unless a concrete SP pilot requirement appears.
+- Pyrosa IAM operational `saml` support. Metadata scaffold remains disabled
+  unless a concrete SP pilot requirement appears.
 - Automatic IAM failover. Keep manual promotion until a controlled secondary
   promotion test proves the data and file behavior.
 - SSH changes. SSH remains outside Authentik/IAM scope.

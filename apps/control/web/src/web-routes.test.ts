@@ -178,14 +178,14 @@ function createOAuthLoginConfig(
     ...createConfig(),
     oauthResourceServer: {
       enabled: true,
-      issuer: "https://accounts.pyrosa.com.do",
-      authorizationUrl: "https://accounts.pyrosa.com.do/oauth/authorize",
-      tokenUrl: "https://accounts.pyrosa.com.do/oauth/token",
-      introspectionUrl: "https://accounts.pyrosa.com.do/oauth/introspect",
-      revocationUrl: "https://accounts.pyrosa.com.do/oauth/revoke",
-      clientId: "simplehost-control-oauth-pilot",
+      issuer: "https://iam.pyrosa.com.do",
+      authorizationUrl: "https://iam.pyrosa.com.do/oauth/authorize",
+      tokenUrl: "https://iam.pyrosa.com.do/oauth/token",
+      introspectionUrl: "https://iam.pyrosa.com.do/oauth/introspect",
+      revocationUrl: "https://iam.pyrosa.com.do/oauth/revoke",
+      clientId: "client-simplehost-control-oauth-pilot",
       clientSecret: null,
-      clientSecretFile: "/etc/simplehost/iam/pyrosa-accounts/simplehost-control-oauth-pilot-secret",
+      clientSecretFile: "/etc/simplehost/iam/pyrosa-iam/simplehost-control-oauth-pilot-secret",
       requiredScope: "profile:read",
       requiredAudience: "simplehost-control",
       requiredPrincipalType: null,
@@ -195,14 +195,14 @@ function createOAuthLoginConfig(
       pilotRequiredPrincipalType: "human",
       pilotRequiredAssuranceLevel: "aal2",
       pilotRevokeTokens: true,
-      loginProviderSlug: "pyrosa-accounts",
+      loginProviderSlug: "pyrosa-iam",
       loginEnabled: true,
-      loginRedirectUri: "https://vps-prd.pyrosa.com.do:3200/auth/pyrosa-accounts/callback",
+      loginRedirectUri: "https://vps-prd.pyrosa.com.do:3200/auth/pyrosa-iam/callback",
       loginScope: "profile:read mfa:read",
       loginRequiredPrincipalType: "human",
       loginRequiredAssuranceLevel: "aal2",
       loginRequiredGroup: null,
-      loginLogoutUrl: "https://accounts.pyrosa.com.do/logout",
+      loginLogoutUrl: "https://iam.pyrosa.com.do/logout",
       loginPostLogoutRedirectUri: "https://vps-prd.pyrosa.com.do:3200/login?notice=Session%20closed&kind=info",
       introspectionTimeoutMs: 1000,
       ...overrides
@@ -304,7 +304,7 @@ test("locale preferences route redirects and sets locale cookie", async () => {
   assert.match(String(response.headers["set-cookie"]), /shp_lang=en/);
 });
 
-test("Pyrosa Accounts OAuth login routes create PKCE state and local session", async () => {
+test("Pyrosa IAM OAuth login routes create PKCE state and local session", async () => {
   let callbackRequest: unknown;
   const handler = createControlWebSurface(
     {
@@ -313,7 +313,7 @@ test("Pyrosa Accounts OAuth login routes create PKCE state and local session", a
     },
     createStubApi({
       loginOAuthProvider: async (provider, request) => {
-        assert.equal(provider, "pyrosa-accounts");
+        assert.equal(provider, "pyrosa-iam");
         callbackRequest = request;
         return {
           sessionToken: "oauth-session-token",
@@ -334,13 +334,14 @@ test("Pyrosa Accounts OAuth login routes create PKCE state and local session", a
 
   const startResponse = await invokeRequestHandler(handler, {
     method: "GET",
-    url: "/auth/pyrosa-accounts/start"
+    url: "/auth/pyrosa-iam/start"
   });
   assert.equal(startResponse.statusCode, 303);
   const authorize = new URL(String(startResponse.headers.location));
+  assert.equal(authorize.origin, "https://iam.pyrosa.com.do");
   assert.equal(authorize.pathname, "/oauth/authorize");
   assert.equal(authorize.searchParams.get("response_type"), "code");
-  assert.equal(authorize.searchParams.get("client_id"), "simplehost-control-oauth-pilot");
+  assert.equal(authorize.searchParams.get("client_id"), "client-simplehost-control-oauth-pilot");
   assert.equal(authorize.searchParams.get("scope"), "profile:read mfa:read");
   assert.equal(authorize.searchParams.get("code_challenge_method"), "S256");
   assert.ok(authorize.searchParams.get("code_challenge"));
@@ -349,7 +350,7 @@ test("Pyrosa Accounts OAuth login routes create PKCE state and local session", a
 
   const callbackResponse = await invokeRequestHandler(handler, {
     method: "GET",
-    url: `/auth/pyrosa-accounts/callback?state=${authorize.searchParams.get("state")}&code=human-code`,
+    url: `/auth/pyrosa-iam/callback?state=${authorize.searchParams.get("state")}&code=human-code`,
     headers: {
       cookie
     }
@@ -366,10 +367,27 @@ test("Pyrosa Accounts OAuth login routes create PKCE state and local session", a
     },
     {
       code: "human-code",
-      redirectUri: "https://vps-prd.pyrosa.com.do:3200/auth/pyrosa-accounts/callback",
+      redirectUri: "https://vps-prd.pyrosa.com.do:3200/auth/pyrosa-iam/callback",
       codeVerifier: "string"
     }
   );
+});
+
+test("legacy Pyrosa Accounts OAuth login path is not accepted", async () => {
+  const handler = createControlWebSurface(
+    {
+      config: createOAuthLoginConfig(),
+      startedAt: Date.now()
+    },
+    createStubApi()
+  ).requestListener;
+
+  const response = await invokeRequestHandler(handler, {
+    method: "GET",
+    url: "/auth/pyrosa-accounts/start"
+  });
+
+  assert.equal(response.statusCode, 404);
 });
 
 test("Pyrosa IAM OAuth login routes use the configured provider path", async () => {
@@ -554,7 +572,7 @@ test("logout clears the local session and starts Authentik outpost sign-out for 
   assert.match(String(response.headers["set-cookie"]), /shp_session=;/);
 });
 
-test("logout revokes Pyrosa Accounts OAuth token and redirects to external identity logout", async () => {
+test("logout revokes Pyrosa IAM OAuth token and redirects to external identity logout", async () => {
   let logoutToken: string | null = null;
   let revokedToken: string | null = null;
   const handler = createControlWebSurface(
@@ -564,19 +582,19 @@ test("logout revokes Pyrosa Accounts OAuth token and redirects to external ident
     },
     createStubApi({
       revokeOAuthProvider: async (provider, token, request) => {
-        assert.equal(provider, "pyrosa-accounts");
+        assert.equal(provider, "pyrosa-iam");
         logoutToken = token;
         revokedToken = request.token;
       },
       logout: async () => ({
         revoked: true,
-        authProviderSlug: "pyrosa-accounts",
+        authProviderSlug: "pyrosa-iam",
         externalSubject: "42",
         assuranceLevel: "aal2",
-        oauthClientId: "simplehost-control-oauth-pilot",
+        oauthClientId: "client-simplehost-control-oauth-pilot",
         oauthScopes: ["profile:read", "mfa:read"],
         oauthTokenHash: "token-hash",
-        oauthIssuer: "https://accounts.pyrosa.com.do"
+        oauthIssuer: "https://iam.pyrosa.com.do"
       })
     })
   ).requestListener;
@@ -593,7 +611,7 @@ test("logout revokes Pyrosa Accounts OAuth token and redirects to external ident
   assert.equal(logoutToken, "test-token");
   assert.equal(revokedToken, "oauth-access-token");
   assert.equal(response.statusCode, 303);
-  assert.equal(location.origin, "https://accounts.pyrosa.com.do");
+  assert.equal(location.origin, "https://iam.pyrosa.com.do");
   assert.equal(location.pathname, "/logout");
   assert.equal(
     location.searchParams.get("return_to"),
