@@ -208,6 +208,21 @@ Pyrosa Accounts / Pyrosa IAM split:
 - Authentik remains the active/default administrative provider until
   `pyrosa-iam` has a real runtime, backup/restore posture, client provisioning,
   MFA/AAL validation, logout/revocation validation, and rollback evidence.
+
+Pyrosa app login routing as of `2026-06-10`:
+
+- Accounts remains the `ui_auth` ticket issuer for Pyrosa-native apps. Its
+  interactive root login is now IAM-first through `pyrosa-iam` Authorization
+  Code + PKCE, so `ui-auth` consumers inherit IAM/MFA without receiving IAM
+  client secrets.
+- `pyrosa-directory` uses `client=directory` and callback
+  `https://directory.pyrosa.com.do/auth/callback`.
+- `pyrosa-newsync` uses `client=sync` and callback
+  `https://newsync.pyrosa.com.do/auth/callback`.
+- `pyrosa-demoerp` uses `client=erp` and callback
+  `https://demoerp.pyrosa.com.do/auth/callback`.
+- `pyrosa-demosync` and legacy `pyrosa-sync` are explicitly excluded from this
+  transition because they retain local/application-owned login for now.
 - SimpleHostMan migration `0030_iam_pyrosa_iam_provider.sql` registers
   `pyrosa-iam` as a parallel provider row with provider kind `pyrosa_iam`,
   base URL `https://iam.pyrosa.com.do`, and metadata-only candidate bindings
