@@ -1,6 +1,6 @@
 # IAM And SSO Runbook
 
-Updated on `2026-06-09`.
+Updated on `2026-06-10`.
 
 ## Scope
 
@@ -241,6 +241,14 @@ Pyrosa Accounts / Pyrosa IAM split:
   `/srv/backups/iam/pyrosa-iam/root-config/pyrosa-iam-root-config-daily-2026-06-09T23-53-10-780Z`.
   Replicated secondary directory:
   `/srv/backups/iam/pyrosa-iam/root-config/primary-replicated/pyrosa-iam-root-config-daily-2026-06-09T23-53-10-780Z`.
+- On 2026-06-10 UTC, after the pilot operator password/TOTP files and
+  `/etc/pyrosa-iam` permission posture were finalized, forced run
+  `backup-run-ddddafdc-ad2b-43f5-8d2b-5081e8fc3739` succeeded. Primary
+  artifact directory:
+  `/srv/backups/iam/pyrosa-iam/root-config/pyrosa-iam-root-config-daily-2026-06-10T00-27-42-819Z`.
+  Replicated secondary directory:
+  `/srv/backups/iam/pyrosa-iam/root-config/primary-replicated/pyrosa-iam-root-config-daily-2026-06-10T00-27-42-819Z`.
+  Both primary and secondary artifacts were verified as `0600 root:root`.
 - `pyrosa-iam` migration `0008_simplehostman_oauth_oidc_pilot.sql` seeds the
   `simplehost-control-oauth-pilot` OAuth/OIDC client for SimpleHostMan:
   public PKCE, `authorization_code`, `refresh_token`, OIDC enabled, gateway
@@ -250,8 +258,34 @@ Pyrosa Accounts / Pyrosa IAM split:
   authorization-server metadata, OIDC discovery, JWKS Ed25519 signing metadata,
   authorize-to-login redirect preservation, gateway fail-closed behavior, SAML
   disabled posture, and invalid token exchange fail-closed behavior.
-- Full human browser login against `pyrosa-iam` remains intentionally held
-  because `app_pyrosa_iam` currently has no migrated users or MFA factors.
+- On 2026-06-10 UTC, a real pilot identity was provisioned in `app_pyrosa_iam`
+  for the existing active SimpleHostMan operator `webmaster@pyrosa.com.do`.
+  The IAM user is active, has a primary verified email, requires MFA and has
+  one active TOTP factor. The temporary password and TOTP seed remain root-only
+  runtime files under `/etc/pyrosa-iam`.
+- `/etc/pyrosa-iam` was corrected to `0750 root:almalinux` so the container
+  `node` user can traverse the mounted secret directory. The OIDC signing key
+  remains restricted to the runtime process and JWKS now returns the
+  `pyrosa-iam-oidc-1` Ed25519 public key.
+- Full human Authorization Code + PKCE login against `pyrosa-iam` was
+  validated on loopback with `aud=simplehost-control`, `principal_type=human`,
+  `assurance_level=aal2`, email/username `webmaster@pyrosa.com.do`, and scopes
+  `openid profile email profile:read mfa:read`. Token revocation succeeded and
+  post-revocation introspection returned inactive.
+- The gateway forward-auth pilot endpoint `/oauth/gateway/check` was validated
+  fail-closed with HTTP 401 without a session and HTTP 204 for the
+  authenticated AAL2 pilot session, including `X-Pyrosa-IAM-*` trusted headers
+  plus legacy compatibility headers.
+- `pyrosa-iam` is still not promoted for SimpleHostMan. The active provider
+  remains Authentik and public `iam.pyrosa.com.do` stays on the HTTPS hold
+  vhost returning HTTP 503 until a promotion decision is explicit.
+- Remaining SimpleHostMan promotion work is compatibility and policy
+  validation: either adapt the native OAuth login adapter to accept IAM
+  introspection fields `aud`, `principal_type` and `assurance_level`, or emit
+  compatibility aliases from IAM for the earlier Accounts pilot fields
+  `audience`, `principalType` and `assuranceLevel`. After that, validate
+  missing/inactive local operator rejection and external logout redirect
+  against `pyrosa-iam`.
 
 - `oauth` has a first Accounts runtime cut with OAuth metadata, authorization
   code, token, introspection, revocation and opaque hashed tokens. The Accounts
