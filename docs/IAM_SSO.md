@@ -501,10 +501,10 @@ Pyrosa app login routing as of `2026-06-10`:
   - the generated candidate
     `platform/httpd/vhosts/pyrosa-pgadmin-iam-bridge.conf.candidate` matches
     the live pgAdmin vhost after comment/blank-line normalization;
-  - `apps/control/src/iam-apache-renderer.ts` now renders the Pyrosa IAM
-    gateway-proxy Apache vhost from IAM binding metadata;
-  - `apps/control/src/iam-apache-renderer.test.ts` validates the pgAdmin
-    generated output against the committed candidate artifact;
+  - `packages/control-contracts/src/iam-apache-renderer.ts` now renders the
+    Pyrosa IAM gateway-proxy Apache vhost from IAM binding metadata;
+  - `packages/control-contracts/src/iam-apache-renderer.test.ts` validates the
+    pgAdmin generated output against the committed candidate artifact;
   - normalized generated/candidate/live parity passed for the pgAdmin vhost
     with `36` normalized lines on both sides;
   - `httpd -t` returned `Syntax OK`;
@@ -521,6 +521,32 @@ Pyrosa app login routing as of `2026-06-10`:
   - loopback `/auth/pyrosa-iam/start -> IAM login -> MFA -> callback` still
     creates `shp_session` and clears the temporary OAuth cookie, preserving the
     inner Pyrosa IAM pilot behind the Authentik outer gate.
+- On 2026-06-11 UTC, SimpleHostMan release `2606.11.18` promoted the pgAdmin
+  IAM bridge from manual parity evidence to a guarded PostgreSQL-driven Apache
+  apply path:
+  - `iam-binding-pyrosa-pgadmin-pyrosa-iam-gateway` is
+    `active`/`apache_managed` with `provider_provisioning_status=manual_ready`;
+  - the API endpoint
+    `/v1/iam/bindings/iam-binding-pyrosa-pgadmin-pyrosa-iam-gateway/apache/apply`
+    renders the vhost from binding metadata, writes the rendered file to
+    `/var/lib/simplehost/iam-apache`, and delegates the privileged Apache write
+    to the root-owned sudo helper
+    `/opt/simplehostman/release/current/scripts/control/apply-iam-apache-vhost-root.sh`;
+  - the helper restricts source, live vhost and rollback paths, backs up the
+    previous live vhost, validates `httpd -t`, reloads Apache and restores the
+    prior vhost on failure;
+  - the successful apply wrote `/etc/httpd/conf.d/pyrosa-pgadmin.conf`, saved
+    rollback under
+    `/etc/simplehost/rollback/iam-apache-iam-binding-pyrosa-pgadmin-pyrosa-iam-gateway-2026-06-11T183729868Z`,
+    recorded checksum
+    `fdc031ac2256b30689f338e7d6400eca4eece5b0c8bdce775f31b24048f37ec9`, and
+    stored `lastApacheApply` in the binding metadata;
+  - public `https://pgadmin.pyrosa.com.do/` now returns the expected
+    `302 gateway_login_required` redirect to
+    `https://iam.pyrosa.com.do/oauth/gateway/start`;
+  - `pyrosa-iam` provider metadata now marks `gateway_proxy` as `available`
+    based on the Apache-managed pgAdmin pilot, while Authentik remains the
+    active outer provider for SimpleHostMan.
 - Decision on 2026-06-11 UTC: because Pyrosa IAM is still in development and
   the dependent apps are being adjusted in the same window, legacy technical
   aliases do not need a telemetry-release grace period. Pyrosa IAM source now

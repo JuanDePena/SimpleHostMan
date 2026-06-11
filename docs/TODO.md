@@ -9,7 +9,7 @@ belongs in the feature runbook that owns the behavior, not in this tracker.
 
 - canonical source tree: `/opt/simplehostman/src`
 - canonical runtime root: `/opt/simplehostman/release`
-- active control-plane release: `2606.11.14`
+- active control-plane release: `2606.11.18`
 - implemented IAM/SSO state:
   [`IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md)
 - implemented operational inspection and hardening evidence:
@@ -19,36 +19,7 @@ belongs in the feature runbook that owns the behavior, not in this tracker.
 
 ## Open Items
 
-### 1. Promote IAM Apache Apply Path From Metadata
-
-Current state:
-
-- IAM provider and binding metadata lives in PostgreSQL.
-- Bindings are intentionally `metadata_only` unless explicitly promoted to
-  `apache_managed`.
-- The IAM UI exposes provider capability status, render mode, MFA policy, and
-  provisioning posture.
-- The pgAdmin bridge is active by controlled manual promotion, with rollback
-  saved under `/etc/simplehost/rollback/pgadmin-iam-promote-20260611T115746Z`.
-- `apps/control/src/iam-apache-renderer.ts` can render the Pyrosa IAM
-  gateway-proxy Apache vhost from IAM binding metadata.
-- The renderer test compares the generated pgAdmin vhost with
-  `platform/httpd/vhosts/pyrosa-pgadmin-iam-bridge.conf.candidate` after
-  comment/blank-line normalization.
-- The generated candidate, committed candidate artifact and live
-  `/etc/httpd/conf.d/pyrosa-pgadmin.conf` match after normalization, and
-  `httpd -t` returned `Syntax OK`.
-
-Pending work:
-
-- implement the guarded apply/dispatch path that writes Apache vhosts from
-  PostgreSQL metadata only when a binding is explicitly `apache_managed`
-- record rendered output checksums and rollback paths in binding metadata
-- decide whether the active pgAdmin bridge should become the first
-  `apache_managed` binding, or remain manual until another low-risk binding is
-  available
-
-### 2. Decide SimpleHostMan Public Pyrosa IAM Promotion
+### 1. Decide SimpleHostMan Public Pyrosa IAM Promotion
 
 Current state:
 
@@ -61,7 +32,7 @@ Current state:
 - Pyrosa IAM OAuth login is validated behind that outer gate: MFA, callback,
   local active-operator enforcement, `shp_session` creation, logout and token
   revocation all have audit evidence.
-- Release `2606.11.14` is active from `/opt/simplehostman/release/current`.
+- Release `2606.11.18` is active from `/opt/simplehostman/release/current`.
 - The post-release Pyrosa IAM root-config backup succeeded from
   `release/current` as
   `backup-run-d4b78600-6160-44bb-9901-0d69517eb2a1` and replicated two
@@ -77,6 +48,33 @@ Pending work:
 - if promotion is approved, execute it as a separate change with live rollback
   verification and post-change burn-in logs
 
+### 2. Expand Apache-Managed IAM Bindings Deliberately
+
+Current state:
+
+- IAM provider and binding metadata lives in PostgreSQL.
+- Bindings remain `metadata_only` unless explicitly promoted to
+  `apache_managed`.
+- SimpleHostMan release `2606.11.18` includes the guarded Apache apply path:
+  render from binding metadata, spool under `/var/lib/simplehost/iam-apache`,
+  privileged root helper, `httpd -t`, Apache reload, rollback copy and
+  `lastApacheApply` metadata.
+- `iam-binding-pyrosa-pgadmin-pyrosa-iam-gateway` is the first active
+  `apache_managed` binding. Its successful apply wrote
+  `/etc/httpd/conf.d/pyrosa-pgadmin.conf`, recorded checksum
+  `fdc031ac2256b30689f338e7d6400eca4eece5b0c8bdce775f31b24048f37ec9`, and
+  saved rollback under
+  `/etc/simplehost/rollback/iam-apache-iam-binding-pyrosa-pgadmin-pyrosa-iam-gateway-2026-06-11T183729868Z`.
+- `https://pgadmin.pyrosa.com.do/` returns the expected Pyrosa IAM gateway
+  redirect and `pyrosa-iam` now marks `gateway_proxy` as `available`.
+
+Pending work:
+
+- choose the next low-risk administrative surface before promoting any
+  additional binding to `apache_managed`
+- keep each future apply scoped to one binding with an explicit rollback path
+  and post-change smoke check
+
 ### 3. Complete Pyrosa IAM Provider Capability Decisions
 
 Current state:
@@ -89,9 +87,9 @@ Current state:
   real MFA-backed identity.
 - Pyrosa IAM `/oauth/gateway/check` has a forward-auth smoke: unauthenticated
   requests fail closed and authenticated AAL2 sessions return trusted headers.
-- The pgAdmin bridge is the first manual Apache enforcement pilot for
-  `gateway_proxy`; burn-in, webserver-auth handoff, root-config backup and
-  renderer parity are complete.
+- The pgAdmin bridge is the first Apache-managed enforcement pilot for
+  `gateway_proxy`; burn-in, webserver-auth handoff, root-config backup,
+  renderer parity and PostgreSQL-driven apply are complete.
 - SAML remains disabled by decision. SSO assertions, SP registry and a pilot
   app are still required before any SAML capability can be promoted.
 - Authentik remains the provider for generic reverse-proxy enforcement.
@@ -100,8 +98,8 @@ Pending work:
 
 - decide whether SimpleHostMan should consume OIDC directly, OAuth
   introspection directly, or both before any promotion from Authentik
-- decide whether the pgAdmin evidence is enough to mark `gateway_proxy`
-  available for selected administrative apps
+- decide which additional administrative apps, if any, should use
+  `gateway_proxy` after pgAdmin burn-in
 - keep SAML disabled unless a concrete SP pilot requirement appears
 
 ## Deferred Unless Explicitly Requested
