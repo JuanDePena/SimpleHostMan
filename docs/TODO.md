@@ -30,15 +30,30 @@ Current state:
 - SimpleHostMan migration `0040_pgadmin_iam_bridge_promoted.sql` records the
   Pyrosa IAM pgAdmin binding as `active`/`metadata_only` with
   `provider_provisioning_status=manual_ready`.
+- pgAdmin now accepts the IAM bridge identity through webserver auth using
+  `X-Pyrosa-IAM-Email`, with internal pgAdmin auth retained as fallback.
+- `webmaster@pyrosa.com.do` remains the internal pgAdmin Administrator and
+  `it@pyrosa.com.do` is provisioned as a pgAdmin `webserver` User.
+- Operator browser validation confirmed that `it@pyrosa.com.do (webserver)`
+  lands in the pgAdmin browser workspace without the internal pgAdmin login
+  form.
+- Post-enforcement backup runs for Pyrosa IAM database, files and root config
+  succeeded on `2026-06-11T14:05Z` and replicated to the secondary. The
+  root-config archive includes the IAM config/env/vhost, active pgAdmin bridge
+  service, promoted pgAdmin vhost and pgAdmin `config_local.py`.
+- The expanded root-config handler was built and used from the source tree for
+  the forced verification run; `release/current` still needs a SimpleHostMan
+  release activation before the scheduled timer gets that expanded coverage.
+- Post-fix bridge, IAM, httpd and pgAdmin logs showed no unexplained errors
+  after `2026-06-11T13:40:00Z`; IAM 401s observed in that window were expected
+  `gateway_login_required` responses for clients without a session.
 - Evidence for the dry-run, promotion and smoke checks is recorded in
   [`IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md).
 
 Pending work:
 
-- perform one real operator browser login to pgAdmin through IAM/MFA and record
-  the outcome
-- run or confirm a post-enforcement backup covering Pyrosa IAM config/database,
-  the active pgAdmin bridge service, and the promoted vhost
+- publish/activate a SimpleHostMan release that includes the expanded
+  Pyrosa IAM root-config backup handler
 - monitor bridge, IAM and httpd logs through the burn-in window before removing
   the manual rollback hold
 
@@ -53,18 +68,19 @@ Current state:
   provisioning posture.
 - The pgAdmin bridge is active by controlled manual promotion, not by the
   automatic renderer.
+- The pgAdmin candidate vhost in
+  `platform/httpd/vhosts/pyrosa-pgadmin-iam-bridge.conf.candidate` matches the
+  live `/etc/httpd/conf.d/pyrosa-pgadmin.conf` after comment/blank-line
+  normalization, and `httpd -t` returned `Syntax OK`.
 
 Pending work:
 
-- validate generated Apache output from IAM PostgreSQL metadata against the
-  current hand-managed Authentik vhosts
-- keep apply disabled until generated output has parity with the live vhosts and
-  a rollback path exists
 - decide whether the active pgAdmin bridge should become the first
   `apache_managed` binding after burn-in, or remain manual until another
   low-risk binding is available
-- document the renderer parity and apply procedure in
-  [`IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md)
+- implement a real IAM Apache renderer/apply path from PostgreSQL metadata;
+  current validation still uses committed candidate artifacts and manual
+  promotion evidence
 
 ### 3. Confirm Pyrosa IAM Promotion Policy Before Any Public Cutover
 
@@ -122,6 +138,10 @@ Current state:
   `native_oauth_login_under_authentik_outer_gate`.
 - Authentik remains the active public outer gate and rollback provider; this
   policy does not change vhosts, DNS or public entry points.
+- Promotion gates are documented in
+  [`IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md): explicit maintenance
+  window, public operator validation, backup/replication evidence, renderer
+  parity, logout/rollback validation and clean burn-in logs.
 
 Pending work:
 

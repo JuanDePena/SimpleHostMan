@@ -67,6 +67,9 @@ interface BackupRuntimeEnv {
   SIMPLEHOST_BACKUP_PYROSA_IAM_CONFIG_ROOT?: string;
   SIMPLEHOST_BACKUP_PYROSA_IAM_ENV_FILE?: string;
   SIMPLEHOST_BACKUP_PYROSA_IAM_HTTPD_VHOST?: string;
+  SIMPLEHOST_BACKUP_PYROSA_IAM_PGADMIN_BRIDGE_SERVICE?: string;
+  SIMPLEHOST_BACKUP_PYROSA_IAM_PGADMIN_BRIDGE_VHOST?: string;
+  SIMPLEHOST_BACKUP_PYROSA_IAM_PGADMIN_CONFIG?: string;
   SIMPLEHOST_BACKUP_REPLICATION_ENABLED?: string;
   SIMPLEHOST_BACKUP_REPLICATION_TARGET_NODE_ID?: string;
   SIMPLEHOST_BACKUP_REPLICATION_TARGET_HOST?: string;
@@ -1380,6 +1383,27 @@ function resolvePyrosaIamHttpdVhost(runtimeEnv: BackupRuntimeEnv): string {
   return runtimeEnv.SIMPLEHOST_BACKUP_PYROSA_IAM_HTTPD_VHOST?.trim() || "/etc/httpd/conf.d/pyrosa-iam.conf";
 }
 
+function resolvePyrosaIamPgadminBridgeService(runtimeEnv: BackupRuntimeEnv): string {
+  return (
+    runtimeEnv.SIMPLEHOST_BACKUP_PYROSA_IAM_PGADMIN_BRIDGE_SERVICE?.trim() ||
+    "/etc/systemd/system/pyrosa-iam-pgadmin-gateway-bridge.service"
+  );
+}
+
+function resolvePyrosaIamPgadminBridgeVhost(runtimeEnv: BackupRuntimeEnv): string {
+  return (
+    runtimeEnv.SIMPLEHOST_BACKUP_PYROSA_IAM_PGADMIN_BRIDGE_VHOST?.trim() ||
+    "/etc/httpd/conf.d/pyrosa-pgadmin.conf"
+  );
+}
+
+function resolvePyrosaIamPgadminConfig(runtimeEnv: BackupRuntimeEnv): string {
+  return (
+    runtimeEnv.SIMPLEHOST_BACKUP_PYROSA_IAM_PGADMIN_CONFIG?.trim() ||
+    "/srv/containers/apps/pyrosa-pgadmin/config/config_local.py"
+  );
+}
+
 async function createPyrosaIamBackup(args: {
   policy: BackupPolicySummary;
   runDirectory: string;
@@ -1392,7 +1416,23 @@ async function createPyrosaIamBackup(args: {
   const configPaths = await collectExistingPaths([resolvePyrosaIamConfigRoot(args.runtimeEnv)]);
   const envPaths = await collectExistingPaths([resolvePyrosaIamEnvFile(args.runtimeEnv)]);
   const httpdPaths = await collectExistingPaths([resolvePyrosaIamHttpdVhost(args.runtimeEnv)]);
-  const archiveSourcePaths = [...new Set([...configPaths, ...envPaths, ...httpdPaths])];
+  const pgadminBridgeServicePaths = await collectExistingPaths([
+    resolvePyrosaIamPgadminBridgeService(args.runtimeEnv)
+  ]);
+  const pgadminBridgeVhostPaths = await collectExistingPaths([
+    resolvePyrosaIamPgadminBridgeVhost(args.runtimeEnv)
+  ]);
+  const pgadminConfigPaths = await collectExistingPaths([resolvePyrosaIamPgadminConfig(args.runtimeEnv)]);
+  const archiveSourcePaths = [
+    ...new Set([
+      ...configPaths,
+      ...envPaths,
+      ...httpdPaths,
+      ...pgadminBridgeServicePaths,
+      ...pgadminBridgeVhostPaths,
+      ...pgadminConfigPaths
+    ])
+  ];
 
   if (archiveSourcePaths.length === 0) {
     throw new Error(`Policy ${args.policy.policySlug} did not find pyrosa-iam root-only paths to archive.`);
@@ -1418,7 +1458,10 @@ async function createPyrosaIamBackup(args: {
       artifactPaths: {
         config: configPaths,
         env: envPaths,
-        httpd: httpdPaths
+        httpd: httpdPaths,
+        pgadminBridgeService: pgadminBridgeServicePaths,
+        pgadminBridgeVhost: pgadminBridgeVhostPaths,
+        pgadminConfig: pgadminConfigPaths
       },
       archivePath
     },

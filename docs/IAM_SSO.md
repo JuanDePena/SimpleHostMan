@@ -449,6 +449,53 @@ Pyrosa app login routing as of `2026-06-10`:
     `provider_provisioning_status=manual_ready`. The Authentik pgAdmin binding
     remains only as metadata and rollback reference. Apache rendering is still
     not automatic.
+- On 2026-06-11 UTC, the post-promotion pgAdmin double-login was removed by
+  enabling pgAdmin webserver authentication behind the already-active IAM
+  bridge:
+  - `/srv/containers/apps/pyrosa-pgadmin/config/config_local.py` now uses
+    `AUTHENTICATION_SOURCES = ["webserver", "internal"]`;
+  - `WEBSERVER_REMOTE_USER = "X-Pyrosa-IAM-Email"` maps the bridge-provided IAM
+    identity into pgAdmin;
+  - `WEBSERVER_AUTO_CREATE_USER = False` keeps pgAdmin users explicitly
+    provisioned;
+  - rollback copies were saved under
+    `/etc/simplehost/rollback/pgadmin-webserver-auth-20260611T132253Z` and
+    `/etc/simplehost/rollback/pgadmin-webserver-user-20260611T133728Z`;
+  - pgAdmin now has `webmaster@pyrosa.com.do` as its original internal
+    Administrator and `it@pyrosa.com.do` as an explicitly provisioned
+    `webserver` User;
+  - direct header checks and public bridge checks for both identities returned
+    `302` to `/browser/` and issued `pga4_session_v2`, while public requests
+    without IAM session still redirect to
+    `https://iam.pyrosa.com.do/oauth/gateway/start`.
+  - Operator browser validation confirmed that `it@pyrosa.com.do (webserver)`
+    lands in the pgAdmin browser workspace without the internal pgAdmin login
+    form.
+- Post-enforcement backup and burn-in checks on 2026-06-11 UTC:
+  - the Pyrosa IAM root-config backup handler in source was extended so the
+    next SimpleHostMan release archives the IAM root config, IAM env file, IAM
+    vhost, `pyrosa-iam-pgadmin-gateway-bridge.service`, the promoted
+    `/etc/httpd/conf.d/pyrosa-pgadmin.conf`, and
+    `/srv/containers/apps/pyrosa-pgadmin/config/config_local.py`;
+  - the forced verification run used the rebuilt source runner because
+    `release/current` still needs a SimpleHostMan release activation before the
+    scheduled timer gets this expanded coverage;
+  - forced backup policy runs succeeded and replicated to the secondary:
+    `backup-run-920bd6a9-9493-40c6-bcee-c94515c37d70`
+    (`pyrosa-iam-database-daily`),
+    `backup-run-8b57ef07-eac8-4e7b-8364-fbd9558fe6e7`
+    (`pyrosa-iam-files-daily`), and
+    `backup-run-2f96cfae-04b7-4768-bfc9-322118743a5b`
+    (`pyrosa-iam-root-config-daily`);
+  - root-config artifact:
+    `/srv/backups/iam/pyrosa-iam/root-config/pyrosa-iam-root-config-daily-2026-06-11T14-05-11-606Z/pyrosa-iam-root-config.tar.gz`;
+  - the generated candidate
+    `platform/httpd/vhosts/pyrosa-pgadmin-iam-bridge.conf.candidate` matches
+    the live pgAdmin vhost after comment/blank-line normalization;
+  - `httpd -t` returned `Syntax OK`;
+  - bridge, httpd and pgAdmin logs had no post-fix error/traceback/500 entries
+    after `2026-06-11T13:40:00Z`; Pyrosa IAM only logged expected
+    `gateway_login_required` 401s for unauthenticated checks.
 - The same 2026-06-11 validation confirmed the current public SimpleHostMan
   posture:
   - `https://vps-prd.pyrosa.com.do:3200/` redirects unauthenticated clients to
@@ -517,6 +564,22 @@ Promotion policy decision on 2026-06-11 UTC:
 - The IAM UI exposes the active provider, selected native login provider, outer
   gate and rollback provider as separate facts so the posture is not confused
   with a hard cutover.
+- Promotion from Authentik to Pyrosa IAM for SimpleHostMan requires a separate
+  explicit maintenance window and all of these gates:
+  - public operator login through the normal Authentik-protected SimpleHostMan
+    URL is validated with MFA and local active-operator enforcement;
+  - logout revokes/clears the Pyrosa IAM session material and preserves a
+    working Authentik rollback path;
+  - backup evidence covers Pyrosa IAM database, files, root config, bridge
+    services and active Apache vhosts, and the latest run is replicated to the
+    secondary;
+  - IAM Apache rendering from PostgreSQL metadata has parity with the live
+    vhost output before any binding is changed from `metadata_only` to
+    `apache_managed`;
+  - burn-in logs for bridge/IAM/httpd show no unexplained 5xx or gateway
+    failures after the last promotion change.
+- Until those gates are satisfied, `pyrosa-iam` may protect selected pilot
+  surfaces such as pgAdmin, but SimpleHostMan's public edge remains Authentik.
 
 Historical Accounts OAuth pilot:
 

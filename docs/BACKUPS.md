@@ -470,6 +470,46 @@ Final cleanup evidence:
 - live IAM, Authentik and Apache services were not changed
 - scratch database and temporary dump copy were removed.
 
+### Execution record: 2026-06-11 Pyrosa IAM pgAdmin bridge post-enforcement backup
+
+Forced at `2026-06-11T14:05Z` after the pgAdmin webserver-auth handoff behind
+the Pyrosa IAM gateway bridge. The forced verification used the rebuilt source
+runner so the archive could include the expanded pgAdmin bridge coverage before
+the next SimpleHostMan release activation updates `release/current`.
+
+Validated policy runs:
+
+- `backup-run-920bd6a9-9493-40c6-bcee-c94515c37d70`
+  - policy: `pyrosa-iam-database-daily`
+  - status: `succeeded`
+  - artifact:
+    `/srv/backups/databases/pyrosa-iam/pyrosa-iam-database-daily-2026-06-11T14-05-11-606Z/app_pyrosa_iam.dump`
+  - replicated to:
+    `/srv/backups/databases/pyrosa-iam/primary-replicated/pyrosa-iam-database-daily-2026-06-11T14-05-11-606Z`
+- `backup-run-8b57ef07-eac8-4e7b-8364-fbd9558fe6e7`
+  - policy: `pyrosa-iam-files-daily`
+  - status: `succeeded`
+  - artifact:
+    `/srv/backups/apps/pyrosa-iam/pyrosa-iam-files-daily-2026-06-11T14-05-11-606Z/pyrosa-iam-files.tar.gz`
+  - replicated to:
+    `/srv/backups/apps/pyrosa-iam/primary-replicated/pyrosa-iam-files-daily-2026-06-11T14-05-11-606Z`
+- `backup-run-2f96cfae-04b7-4768-bfc9-322118743a5b`
+  - policy: `pyrosa-iam-root-config-daily`
+  - status: `succeeded`
+  - artifact:
+    `/srv/backups/iam/pyrosa-iam/root-config/pyrosa-iam-root-config-daily-2026-06-11T14-05-11-606Z/pyrosa-iam-root-config.tar.gz`
+  - replicated to:
+    `/srv/backups/iam/pyrosa-iam/root-config/primary-replicated/pyrosa-iam-root-config-daily-2026-06-11T14-05-11-606Z`
+
+Root-config archive contents verified:
+
+- `/etc/pyrosa-iam`
+- `/etc/containers/systemd/env/app-pyrosa-iam.env`
+- `/etc/httpd/conf.d/pyrosa-iam.conf`
+- `/etc/systemd/system/pyrosa-iam-pgadmin-gateway-bridge.service`
+- `/etc/httpd/conf.d/pyrosa-pgadmin.conf`
+- `/srv/containers/apps/pyrosa-pgadmin/config/config_local.py`
+
 Final IAM rollout backup validation on `2026-05-02`:
 
 - policy: `iam-authentik-primary-daily`

@@ -72,6 +72,9 @@ export interface BackupPyrosaIamRunDetails {
     config: string[];
     env: string[];
     httpd: string[];
+    pgadminBridgeService: string[];
+    pgadminBridgeVhost: string[];
+    pgadminConfig: string[];
   };
   archivePath: string;
 }
