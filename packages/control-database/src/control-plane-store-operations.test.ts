@@ -527,6 +527,26 @@ test("LDAP IAM gateway candidate migration remains metadata-only and excludes re
   assert.doesNotMatch(migrationSql, /render_mode = 'apache_managed'/);
 });
 
+test("LDAP IAM bridge promotion migration records Apache-managed active posture", () => {
+  const migrationSql = readFileSync(
+    new URL("../migrations/0043_ldap_iam_bridge_promoted.sql", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(migrationSql, /iam-binding-pyrosa-ldap-pyrosa-iam-gateway/);
+  assert.match(migrationSql, /status = 'active'/);
+  assert.match(migrationSql, /render_mode = 'apache_managed'/);
+  assert.match(migrationSql, /provider_provisioning_status = 'manual_ready'/);
+  assert.match(migrationSql, /"promotionState": "manual_active"/);
+  assert.match(migrationSql, /pyrosa-iam-ldap-gateway-bridge\.service/);
+  assert.match(migrationSql, /iam-apache-iam-binding-pyrosa-ldap-pyrosa-iam-gateway-2026-06-11T221305380Z/);
+  assert.match(migrationSql, /"publicUnauthenticatedGet": "302 gateway_login_required"/);
+  assert.match(migrationSql, /"publicUnauthenticatedPost": "401 gateway_login_required"/);
+  assert.match(migrationSql, /"iamGatewayCheck": "204 aal2 PYROSA Operators"/);
+  assert.match(migrationSql, /"publicAal2Get": "200 lam_login"/);
+  assert.match(migrationSql, /"lamAuthMode": "iam_gateway_then_lam_native_login"/);
+});
+
 test("metadata-only apps do not emit proxy or container reconciliation plans", async () => {
   const appRow = {
     app_id: "app-pyrosa-iam",

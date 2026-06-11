@@ -582,6 +582,29 @@ Pyrosa app login routing as of `2026-06-10`:
 - SimpleHostMan release `2606.11.22` activates these LDAP dry-run artifacts in
   `/opt/simplehostman/release/current` for repeatable candidate validation, with
   no Apache or systemd promotion.
+- Later on 2026-06-11 UTC, the LDAP bridge was promoted after a real
+  MFA-backed IAM validation:
+  - the IAM gateway return allowlist was extended at runtime to include
+    `https://ldap.pyrosa.com.do`, with the previous env backed up under
+    `/etc/simplehost/rollback/pyrosa-iam-env-ldap-gateway-20260611T220938Z`;
+  - `webmaster@pyrosa.com.do` completed password plus TOTP MFA through
+    `/oauth/gateway/start`, and `/oauth/gateway/check` returned `204` with
+    `mfa=true`, `aal2`, and groups `PYROSA Operators,admin`;
+  - `pyrosa-iam-ldap-gateway-bridge.service` was installed and enabled on
+    `127.0.0.1:10145`;
+  - `/etc/httpd/conf.d/pyrosa-ldap.conf` was replaced with the bridge vhost by
+    the root helper after `httpd -t`, with rollback saved under
+    `/etc/simplehost/rollback/iam-apache-iam-binding-pyrosa-ldap-pyrosa-iam-gateway-2026-06-11T221305380Z`;
+  - public unauthenticated `GET https://ldap.pyrosa.com.do/` now returns
+    `302 gateway_login_required`, and unauthenticated
+    `POST /lam/templates/login.php` returns `401 gateway_login_required`;
+  - an MFA-backed public browser-like flow reaches
+    `https://ldap.pyrosa.com.do/lam/templates/login.php` with `200 OK` and the
+    LAM page. LDAP Account Manager still uses its native login behind the IAM
+    gateway; no LAM webserver-auth handoff is enabled yet.
+  - SimpleHostMan migration `0043_ldap_iam_bridge_promoted.sql` records
+    `iam-binding-pyrosa-ldap-pyrosa-iam-gateway` as
+    `active`/`apache_managed`/`manual_ready` with `lastApacheApply` evidence.
 - Decision on 2026-06-11 UTC: because Pyrosa IAM is still in development and
   the dependent apps are being adjusted in the same window, legacy technical
   aliases do not need a telemetry-release grace period. Pyrosa IAM source now
@@ -649,9 +672,9 @@ Promotion policy decision on 2026-06-11 UTC:
   the SimpleHostMan administrative URL.
 - No public vhost, DNS or traffic change is implied by this metadata decision.
 - The selected policy is
-  `native_oauth_login_under_authentik_outer_gate`; after pgAdmin, the next
-  low-risk surface for live enforcement work is LDAP Account Manager, currently
-  metadata-only until its bridge runtime and dry-run vhost are validated.
+  `native_oauth_login_under_authentik_outer_gate`; pgAdmin and LDAP Account
+  Manager are now protected by Pyrosa IAM gateway bridges, while SimpleHostMan's
+  own public edge remains behind Authentik.
 - The IAM UI exposes the active provider, selected native login provider, outer
   gate and rollback provider as separate facts so the posture is not confused
   with a hard cutover.

@@ -74,30 +74,30 @@ Current state:
   `/etc/simplehost/rollback/iam-apache-iam-binding-pyrosa-pgadmin-pyrosa-iam-gateway-2026-06-11T183729868Z`.
 - `https://pgadmin.pyrosa.com.do/` returns the expected Pyrosa IAM gateway
   redirect and `pyrosa-iam` now marks `gateway_proxy` as `available`.
-- `ldap.pyrosa.com.do` is recorded as the next Pyrosa IAM gateway candidate in
-  metadata only. Its binding remains `candidate`/`metadata_only`/`pending`;
-  no bridge, Apache render or traffic change has been applied.
-- The LDAP gateway candidate artifacts exist in source:
-  `platform/host/systemd/pyrosa-iam-ldap-gateway-bridge.service` and
-  `platform/httpd/vhosts/pyrosa-ldap-iam-bridge.conf.candidate`. Dry-run
-  validation passed with the bridge running ephemerally on `127.0.0.1:10145`:
-  health returned `ok`, unauthenticated `GET /lam/` returned
-  `302 gateway_login_required`, unauthenticated `POST /lam/templates/login.php`
-  returned `401 gateway_login_required`, and the live public LDAP vhost still
-  returned its direct `/lam/` redirect.
-- SimpleHostMan release `2606.11.22` makes those LDAP dry-run artifacts
-  available under `/opt/simplehostman/release/current` without installing the
-  bridge unit, enabling it, or changing Apache traffic.
+- `iam-binding-pyrosa-ldap-pyrosa-iam-gateway` is now the second active
+  `apache_managed` binding. Its successful apply wrote
+  `/etc/httpd/conf.d/pyrosa-ldap.conf`, recorded checksum
+  `543a3404e1a3cdbde5d54117481fb8a786fe332f878761928dd70d90e4022185`, and
+  saved rollback under
+  `/etc/simplehost/rollback/iam-apache-iam-binding-pyrosa-ldap-pyrosa-iam-gateway-2026-06-11T221305380Z`.
+- `pyrosa-iam-ldap-gateway-bridge.service` is active on `127.0.0.1:10145`.
+  Public unauthenticated `GET https://ldap.pyrosa.com.do/` returns
+  `302 gateway_login_required`; unauthenticated `POST /lam/templates/login.php`
+  returns `401 gateway_login_required`; an MFA-backed IAM operator session
+  reaches `https://ldap.pyrosa.com.do/lam/templates/login.php` with `200 OK`.
+  LAM still presents its native login after the IAM gateway.
+- SimpleHostMan release `2606.11.22` provided the LDAP artifacts used for this
+  promotion, and migration `0043_ldap_iam_bridge_promoted.sql` records the
+  active `apache_managed` posture.
 - `repos.pyrosa.com.do` is explicitly excluded from gateway promotion because
   it is public package repository traffic.
 
 Pending work:
 
-- validate LDAP Account Manager behavior with a real MFA-backed IAM session
-  through the candidate bridge before promoting any additional binding to
-  `apache_managed`
 - keep each future apply scoped to one binding with an explicit rollback path
   and post-change smoke check
+- evaluate whether LAM should remain IAM-gated plus native-login, or gain a
+  later webserver-auth handoff if LDAP Account Manager supports it safely
 
 ### 3. Complete Pyrosa IAM Provider Capability Decisions
 
