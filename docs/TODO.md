@@ -122,6 +122,10 @@ Current state:
   dropped the temporary databases afterward. Evidence is recorded in
   [`BACKUPS.md`](/opt/simplehostman/src/docs/BACKUPS.md) and
   [`IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md).
+- `pyrosa-iam` release `v2606.110826` retired legacy technical aliases and was
+  deployed on 2026-06-11 UTC. Loopback/public `/login` now sets only
+  `PYROSA_IAM_SESSION`; gateway checks emit only `X-Pyrosa-IAM-*`; the public
+  gateway remains blocked by internal allowlist as expected.
 
 Pending work:
 
@@ -135,9 +139,6 @@ Pending work:
   point
 - execute the pgAdmin pilot from the new metadata-only `pyrosa-iam/gateway`
   candidate after vhost parity and rollback are ready
-- release and deploy the Pyrosa IAM alias-retirement build, then verify `/login`
-  and `/oauth/gateway/check` use only `PYROSA_IAM_SESSION` and
-  `X-Pyrosa-IAM-*`
 
 ### 4. Implement Pyrosa IAM OIDC/Gateway Provider Support
 

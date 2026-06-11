@@ -428,6 +428,19 @@ Pyrosa app login routing as of `2026-06-10`:
   Historical Account Center names, database/API paths still owned by the
   account portal, and archived migration documents remain outside this alias
   retirement.
+- `pyrosa-iam` release `v2606.110826` was published and deployed on
+  2026-06-11 UTC with the alias retirement. Validation passed:
+  - `app-pyrosa-iam.service` active after restart;
+  - loopback health returned `{"ok":true,"service":"pyrosa-iam"}`;
+  - loopback and public `/login` set only `PYROSA_IAM_SESSION`;
+  - loopback `/oauth/gateway/check` failed closed with `401` and only
+    `X-Pyrosa-IAM-*` headers;
+  - public `/oauth/gateway/check` remained protected by the internal endpoint
+    allowlist with `403 oauth_internal_ip_forbidden` and only
+    `X-Pyrosa-IAM-*` headers;
+  - `https://accounts.pyrosa.com.do/` redirected to `/login`, and
+    `/login` redirected to `/auth/iam/start?return_to=%2Fui`; the Account
+    Center decommission message was not present.
 - On 2026-06-11 UTC, an IAM/DR scratch restore drill validated current
   recoverability without changing live services:
   - Pyrosa IAM root-config archive:
