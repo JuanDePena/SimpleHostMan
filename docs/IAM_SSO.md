@@ -561,6 +561,24 @@ Pyrosa app login routing as of `2026-06-10`:
   and no bridge service, Apache render or traffic change is applied. The same
   decision explicitly excludes `repos.pyrosa.com.do` because it is public
   package repository traffic, not an administrative browser surface.
+- Later on 2026-06-11 UTC, the LDAP gateway candidate gained source artifacts
+  and a dry-run validation:
+  - `platform/host/systemd/pyrosa-iam-ldap-gateway-bridge.service` keeps the
+    candidate bridge on `127.0.0.1:10145` when explicitly installed later;
+  - `platform/httpd/vhosts/pyrosa-ldap-iam-bridge.conf.candidate` points the
+    LDAP vhost at that bridge, with the same Pyrosa IAM trusted-header stripping
+    used by the pgAdmin pilot;
+  - renderer parity for the LDAP candidate passed against
+    `packages/control-contracts/src/iam-apache-renderer.test.ts`;
+  - `httpd -t` with the candidate include returned `Syntax OK`;
+  - an ephemeral bridge process on `127.0.0.1:10145` returned local health
+    `ok`, redirected unauthenticated `GET /lam/` to
+    `https://iam.pyrosa.com.do/oauth/gateway/start`, and failed closed for
+    unauthenticated `POST /lam/templates/login.php` with `401`;
+  - the live public `https://ldap.pyrosa.com.do/` vhost remained unchanged and
+    continued returning the direct `/lam/` redirect.
+  This remains a dry-run only; the LDAP bridge is not installed, enabled or
+  selected by Apache.
 - Decision on 2026-06-11 UTC: because Pyrosa IAM is still in development and
   the dependent apps are being adjusted in the same window, legacy technical
   aliases do not need a telemetry-release grace period. Pyrosa IAM source now

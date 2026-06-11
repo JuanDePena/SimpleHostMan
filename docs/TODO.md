@@ -77,13 +77,22 @@ Current state:
 - `ldap.pyrosa.com.do` is recorded as the next Pyrosa IAM gateway candidate in
   metadata only. Its binding remains `candidate`/`metadata_only`/`pending`;
   no bridge, Apache render or traffic change has been applied.
+- The LDAP gateway candidate artifacts exist in source:
+  `platform/host/systemd/pyrosa-iam-ldap-gateway-bridge.service` and
+  `platform/httpd/vhosts/pyrosa-ldap-iam-bridge.conf.candidate`. Dry-run
+  validation passed with the bridge running ephemerally on `127.0.0.1:10145`:
+  health returned `ok`, unauthenticated `GET /lam/` returned
+  `302 gateway_login_required`, unauthenticated `POST /lam/templates/login.php`
+  returned `401 gateway_login_required`, and the live public LDAP vhost still
+  returned its direct `/lam/` redirect.
 - `repos.pyrosa.com.do` is explicitly excluded from gateway promotion because
   it is public package repository traffic.
 
 Pending work:
 
-- build and dry-run the LDAP Account Manager gateway bridge before promoting
-  any additional binding to `apache_managed`
+- validate LDAP Account Manager behavior with a real MFA-backed IAM session
+  through the candidate bridge before promoting any additional binding to
+  `apache_managed`
 - keep each future apply scoped to one binding with an explicit rollback path
   and post-change smoke check
 
@@ -111,8 +120,8 @@ Pending work:
 - decide whether SimpleHostMan should consume OIDC directly, OAuth
   introspection directly, or both before any promotion from Authentik
 - keep LDAP Account Manager as the next `gateway_proxy` candidate, but only
-  after a dedicated bridge runtime, dry-run vhost parity, unsafe-method
-  fail-closed checks and LAM login/webserver-auth behavior are validated
+  after LAM login/webserver-auth behavior is validated through the candidate
+  bridge and a rollback window is approved
 - keep SAML disabled unless a concrete SP pilot requirement appears
 
 ## Deferred Unless Explicitly Requested

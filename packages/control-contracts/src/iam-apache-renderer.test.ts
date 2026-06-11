@@ -48,6 +48,46 @@ function createPgadminGatewayBinding(): IamBindingSummary {
   };
 }
 
+function createLdapGatewayBinding(): IamBindingSummary {
+  const now = "2026-06-11T00:00:00.000Z";
+
+  return {
+    bindingId: "iam-binding-pyrosa-ldap-pyrosa-iam-gateway",
+    providerSlug: "pyrosa-iam",
+    providerDisplayName: "Pyrosa IAM",
+    targetKind: "app",
+    targetSlug: "pyrosa-ldap",
+    externalUrl: "https://ldap.pyrosa.com.do/",
+    internalUrl: "http://host.containers.internal:10142",
+    authMode: "proxy",
+    mfaPolicy: "required",
+    status: "candidate",
+    renderMode: "metadata_only",
+    renderEnabled: false,
+    providerProvisioningStatus: "pending",
+    allowedGroups: ["PYROSA Operators"],
+    config: {
+      gatewayProxy: {
+        provider: "pyrosa-iam",
+        bridgeMode: "local_outpost",
+        bridgeListenUrl: "http://127.0.0.1:10145",
+        requiredGroups: ["PYROSA Operators"],
+        requiredAssuranceLevel: "aal2"
+      },
+      render: {
+        mode: "metadata_only",
+        enabled: false,
+        candidateVhost: "platform/httpd/vhosts/pyrosa-ldap-iam-bridge.conf.candidate",
+        liveVhost: "/etc/httpd/conf.d/pyrosa-ldap.conf",
+        parityRequiredBeforeApply: true
+      }
+    },
+    notes: "Candidate Pyrosa IAM gateway metadata for LDAP Account Manager.",
+    createdAt: now,
+    updatedAt: now
+  };
+}
+
 test("renders the pgAdmin Pyrosa IAM Apache bridge vhost from IAM binding metadata", async () => {
   const rendered = renderPyrosaIamGatewayApacheVhost(createPgadminGatewayBinding());
   const candidate = await readFile(
@@ -59,6 +99,23 @@ test("renders the pgAdmin Pyrosa IAM Apache bridge vhost from IAM binding metada
   assert.equal(rendered.upstreamUrl, "http://127.0.0.1:10144/");
   assert.equal(rendered.certificateName, "pyrosa.com.do");
   assert.equal(rendered.logName, "pyrosa-pgadmin_iam_bridge");
+  assert.equal(
+    normalizeApacheVhostForParity(rendered.content),
+    normalizeApacheVhostForParity(candidate)
+  );
+});
+
+test("renders the LDAP Pyrosa IAM Apache bridge vhost from IAM binding metadata", async () => {
+  const rendered = renderPyrosaIamGatewayApacheVhost(createLdapGatewayBinding());
+  const candidate = await readFile(
+    new URL("../../../platform/httpd/vhosts/pyrosa-ldap-iam-bridge.conf.candidate", import.meta.url),
+    "utf8"
+  );
+
+  assert.equal(rendered.serverName, "ldap.pyrosa.com.do");
+  assert.equal(rendered.upstreamUrl, "http://127.0.0.1:10145/");
+  assert.equal(rendered.certificateName, "pyrosa.com.do");
+  assert.equal(rendered.logName, "pyrosa-ldap_iam_bridge");
   assert.equal(
     normalizeApacheVhostForParity(rendered.content),
     normalizeApacheVhostForParity(candidate)

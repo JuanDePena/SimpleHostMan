@@ -1,0 +1,47 @@
+# Candidate only. Do not install over /etc/httpd/conf.d/pyrosa-ldap.conf
+# until pyrosa-iam-ldap-gateway-bridge.service is active and rollback has
+# been confirmed.
+
+<VirtualHost *:80>
+  ServerName ldap.pyrosa.com.do
+
+  RewriteEngine On
+  RewriteCond %{REQUEST_URI} !^/\.well-known/acme-challenge/
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L,NE]
+</VirtualHost>
+
+<IfModule mod_ssl.c>
+<VirtualHost *:443>
+  ServerName ldap.pyrosa.com.do
+
+  SSLEngine on
+  SSLCertificateFile /etc/ssl/simplehostman/pyrosa.com.do/fullchain.pem
+  SSLCertificateKeyFile /etc/ssl/simplehostman/pyrosa.com.do/privkey.pem
+
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+  RequestHeader unset X-Pyrosa-IAM-Gateway early
+  RequestHeader unset X-Pyrosa-IAM-User-Id early
+  RequestHeader unset X-Pyrosa-IAM-Email early
+  RequestHeader unset X-Pyrosa-IAM-Username early
+  RequestHeader unset X-Pyrosa-IAM-Role early
+  RequestHeader unset X-Pyrosa-IAM-Groups early
+  RequestHeader unset X-Pyrosa-IAM-Assurance-Level early
+  RequestHeader unset X-Pyrosa-IAM-Mfa early
+  RequestHeader unset X-Pyrosa-Account-User-Id early
+  RequestHeader unset X-Pyrosa-Accounts-User-Id early
+
+  RequestHeader set X-Forwarded-Proto "https"
+  RequestHeader set X-Forwarded-Port "443"
+  ProxyPreserveHost On
+  ProxyRequests Off
+  ProxyPass / http://127.0.0.1:10145/ retry=0 timeout=120
+  ProxyPassReverse / http://127.0.0.1:10145/
+
+  ErrorLog /var/log/httpd/pyrosa-ldap_iam_bridge_ssl_error.log
+  CustomLog /var/log/httpd/pyrosa-ldap_iam_bridge_ssl_access.log combined
+</VirtualHost>
+</IfModule>
