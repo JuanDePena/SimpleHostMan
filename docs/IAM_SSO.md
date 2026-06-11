@@ -472,14 +472,19 @@ Pyrosa app login routing as of `2026-06-10`:
     lands in the pgAdmin browser workspace without the internal pgAdmin login
     form.
 - Post-enforcement backup and burn-in checks on 2026-06-11 UTC:
-  - the Pyrosa IAM root-config backup handler in source was extended so the
-    next SimpleHostMan release archives the IAM root config, IAM env file, IAM
-    vhost, `pyrosa-iam-pgadmin-gateway-bridge.service`, the promoted
+  - the Pyrosa IAM root-config backup handler was extended so the scheduled
+    SimpleHostMan worker archives the IAM root config, IAM env file, IAM vhost,
+    `pyrosa-iam-pgadmin-gateway-bridge.service`, the promoted
     `/etc/httpd/conf.d/pyrosa-pgadmin.conf`, and
     `/srv/containers/apps/pyrosa-pgadmin/config/config_local.py`;
-  - the forced verification run used the rebuilt source runner because
-    `release/current` still needs a SimpleHostMan release activation before the
-    scheduled timer gets this expanded coverage;
+  - SimpleHostMan release `2606.11.14` was activated through the full release
+    deploy path after a rehearsal caught that the minimal control-only
+    promotion artifact did not include the worker entrypoint;
+  - `/opt/simplehostman/release/current` points to
+    `/opt/simplehostman/release/releases/2606.11.14`;
+  - loopback `/healthz` returned SimpleHostMan `2606.11.14`;
+  - `simplehost-control.service`, `simplehost-worker.service` and the backup
+    timers were active after the release activation;
   - forced backup policy runs succeeded and replicated to the secondary:
     `backup-run-920bd6a9-9493-40c6-bcee-c94515c37d70`
     (`pyrosa-iam-database-daily`),
@@ -489,9 +494,19 @@ Pyrosa app login routing as of `2026-06-10`:
     (`pyrosa-iam-root-config-daily`);
   - root-config artifact:
     `/srv/backups/iam/pyrosa-iam/root-config/pyrosa-iam-root-config-daily-2026-06-11T14-05-11-606Z/pyrosa-iam-root-config.tar.gz`;
+  - after release activation, the same root-config policy also succeeded from
+    `release/current` as `backup-run-d4b78600-6160-44bb-9901-0d69517eb2a1`;
+  - release-current root-config artifact:
+    `/srv/backups/iam/pyrosa-iam/root-config/pyrosa-iam-root-config-daily-2026-06-11T15-28-24-997Z/pyrosa-iam-root-config.tar.gz`;
   - the generated candidate
     `platform/httpd/vhosts/pyrosa-pgadmin-iam-bridge.conf.candidate` matches
     the live pgAdmin vhost after comment/blank-line normalization;
+  - `apps/control/src/iam-apache-renderer.ts` now renders the Pyrosa IAM
+    gateway-proxy Apache vhost from IAM binding metadata;
+  - `apps/control/src/iam-apache-renderer.test.ts` validates the pgAdmin
+    generated output against the committed candidate artifact;
+  - normalized generated/candidate/live parity passed for the pgAdmin vhost
+    with `36` normalized lines on both sides;
   - `httpd -t` returned `Syntax OK`;
   - bridge, httpd and pgAdmin logs had no post-fix error/traceback/500 entries
     after `2026-06-11T13:40:00Z`; Pyrosa IAM only logged expected
@@ -502,7 +517,7 @@ Pyrosa app login routing as of `2026-06-10`:
     the Authentik outpost start URL;
   - `https://vps-prd.pyrosa.com.do:3200/auth/pyrosa-iam/start` is also guarded
     by Authentik at the public edge;
-  - loopback `/healthz` returned SimpleHostMan `2606.10.06`;
+  - loopback `/healthz` returned SimpleHostMan `2606.11.14`;
   - loopback `/auth/pyrosa-iam/start -> IAM login -> MFA -> callback` still
     creates `shp_session` and clears the temporary OAuth cookie, preserving the
     inner Pyrosa IAM pilot behind the Authentik outer gate.
@@ -575,7 +590,8 @@ Promotion policy decision on 2026-06-11 UTC:
     secondary;
   - IAM Apache rendering from PostgreSQL metadata has parity with the live
     vhost output before any binding is changed from `metadata_only` to
-    `apache_managed`;
+    `apache_managed`; the pgAdmin renderer parity check satisfies this for the
+    first Pyrosa IAM gateway-proxy pilot;
   - burn-in logs for bridge/IAM/httpd show no unexplained 5xx or gateway
     failures after the last promotion change.
 - Until those gates are satisfied, `pyrosa-iam` may protect selected pilot
