@@ -605,6 +605,10 @@ Pyrosa app login routing as of `2026-06-10`:
   - SimpleHostMan migration `0043_ldap_iam_bridge_promoted.sql` records
     `iam-binding-pyrosa-ldap-pyrosa-iam-gateway` as
     `active`/`apache_managed`/`manual_ready` with `lastApacheApply` evidence.
+- SimpleHostMan release `2606.11.23` packages the LDAP bridge promotion
+  metadata and documentation into `/opt/simplehostman/release/current`; it does
+  not introduce another public traffic change beyond the already-promoted LDAP
+  gateway vhost.
 - Decision on 2026-06-11 UTC: because Pyrosa IAM is still in development and
   the dependent apps are being adjusted in the same window, legacy technical
   aliases do not need a telemetry-release grace period. Pyrosa IAM source now

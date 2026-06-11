@@ -9,7 +9,7 @@ belongs in the feature runbook that owns the behavior, not in this tracker.
 
 - canonical source tree: `/opt/simplehostman/src`
 - canonical runtime root: `/opt/simplehostman/release`
-- active control-plane release: `2606.11.22`
+- active control-plane release: `2606.11.23`
 - implemented IAM/SSO state:
   [`IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md)
 - implemented operational inspection and hardening evidence:
@@ -35,7 +35,8 @@ Current state:
 - Pyrosa IAM source release `v2606.112122` is published and deployed with
   Account Center/IAM documentation alignment, pgAdmin gateway-pilot state
   recorded, namespace guard passing and runtime health validated.
-- Release `2606.11.22` is active from `/opt/simplehostman/release/current`.
+- Release `2606.11.23` is active from `/opt/simplehostman/release/current` and
+  includes the LDAP IAM bridge promotion metadata in migration `0043`.
 - The post-release Pyrosa IAM root-config backup succeeded from
   `release/current` as
   `backup-run-d4b78600-6160-44bb-9901-0d69517eb2a1` and replicated two
