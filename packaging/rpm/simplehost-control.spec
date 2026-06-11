@@ -36,6 +36,8 @@ cp packaging/systemd/postgresql@apps.service.d/40-pgdg18-binary.conf %{buildroot
 mkdir -p %{buildroot}/etc/simplehost
 cp packaging/env/simplehost-control.env.example %{buildroot}/etc/simplehost/
 cp packaging/env/simplehost-worker.env.example %{buildroot}/etc/simplehost/
+mkdir -p %{buildroot}/etc/sudoers.d
+cp packaging/sudoers/simplehost-iam-apache %{buildroot}/etc/sudoers.d/
 
 %post
 ln -sfn /opt/simplehostman/release/releases/%{version} /opt/simplehostman/release/current
@@ -60,3 +62,4 @@ ln -sfn /opt/simplehostman/release/releases/%{version} /opt/simplehostman/releas
 /etc/systemd/system/postgresql@apps.service.d/40-pgdg18-binary.conf
 /etc/simplehost/simplehost-control.env.example
 /etc/simplehost/simplehost-worker.env.example
+%attr(0440,root,root) /etc/sudoers.d/simplehost-iam-apache

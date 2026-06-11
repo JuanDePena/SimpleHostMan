@@ -32,6 +32,7 @@ const rootEndpoints = [
   "GET /v1/oauth/pilot/profile",
   "GET /v1/iam/summary",
   "PUT /v1/iam/bindings/:bindingId",
+  "POST /v1/iam/bindings/:bindingId/apache/apply",
   "GET /v1/users",
   "POST /v1/users",
   "GET /v1/inventory/summary",

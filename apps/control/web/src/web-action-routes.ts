@@ -176,6 +176,24 @@ export const handleActionWebRoutes: WebRouteHandler = async ({
     return true;
   }
 
+  if (request.method === "POST" && url.pathname === "/actions/iam/apache-apply") {
+    const token = await requireSessionToken({ requireSession });
+    const form = await readFormBody(request);
+    const returnTo = form.get("returnTo") ?? "/";
+    const bindingId = form.get("bindingId")?.trim() ?? "";
+    const result = await api.applyIamApacheBinding(token, bindingId);
+
+    redirect(
+      response,
+      noticeReturnTo(
+        returnTo,
+        `Applied IAM Apache vhost ${result.result.liveVhostPath}.`,
+        "success"
+      )
+    );
+    return true;
+  }
+
   if (request.method === "POST" && url.pathname === "/actions/zone-sync") {
     const token = await requireSessionToken({ requireSession });
     const form = await readFormBody(request);

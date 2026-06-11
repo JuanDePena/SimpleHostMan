@@ -2,8 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-import type { IamBindingSummary } from "@simplehost/control-contracts";
-
+import type { IamBindingSummary } from "./iam.js";
 import {
   normalizeApacheVhostForParity,
   renderPyrosaIamGatewayApacheVhost
@@ -59,6 +58,7 @@ test("renders the pgAdmin Pyrosa IAM Apache bridge vhost from IAM binding metada
   assert.equal(rendered.serverName, "pgadmin.pyrosa.com.do");
   assert.equal(rendered.upstreamUrl, "http://127.0.0.1:10144/");
   assert.equal(rendered.certificateName, "pyrosa.com.do");
+  assert.equal(rendered.logName, "pyrosa-pgadmin_iam_bridge");
   assert.equal(
     normalizeApacheVhostForParity(rendered.content),
     normalizeApacheVhostForParity(candidate)

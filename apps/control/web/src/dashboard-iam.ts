@@ -383,6 +383,13 @@ function renderBindingDetailPanel(args: {
     label: mode
   }));
   const disabledAttribute = currentUserIsAdmin ? "" : " disabled";
+  const canApplyApache =
+    currentUserIsAdmin &&
+    binding.renderMode === "apache_managed" &&
+    binding.status === "active" &&
+    binding.providerSlug === "pyrosa-iam" &&
+    binding.authMode === "proxy" &&
+    binding.providerProvisioningStatus === "manual_ready";
 
   return `<article class="panel detail-shell">
     <div class="section-head">
@@ -501,6 +508,15 @@ function renderBindingDetailPanel(args: {
           : `<p class="empty">${escapeHtml(copy.iamAdminRequired)}</p>`
       }
     </form>
+    ${
+      currentUserIsAdmin
+        ? `<form method="post" action="/actions/iam/apache-apply" class="toolbar">
+            <input type="hidden" name="returnTo" value="${escapeHtml(currentPath)}" />
+            <input type="hidden" name="bindingId" value="${escapeHtml(binding.bindingId)}" />
+            <button type="submit"${canApplyApache ? "" : " disabled"}>${escapeHtml(copy.iamApplyApacheAction)}</button>
+          </form>`
+        : ""
+    }
     ${renderUiAuthMetadata(binding, copy)}
     ${renderOauthLoginMetadata(binding, copy)}
     ${binding.notes ? `<p class="muted">${escapeHtml(binding.notes)}</p>` : ""}

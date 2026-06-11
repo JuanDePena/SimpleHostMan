@@ -24,7 +24,9 @@ import type {
   Fail2BanApplyRequest,
   FirewallApplyRequest,
   IamBindingMutationRequest,
+  IamApacheApplyRecordRequest,
   IamOverview,
+  IamBindingSummary,
   InventoryImportSummary,
   InventoryStateSnapshot,
   JobClaimRequest,
@@ -593,6 +595,14 @@ export interface ControlPlaneStore {
     request: IamBindingMutationRequest,
     presentedToken: string | null
   ): Promise<IamOverview>;
+  getIamBindingForApacheApply(
+    bindingId: string,
+    presentedToken: string | null
+  ): Promise<IamBindingSummary>;
+  recordIamApacheApplyResult(
+    request: IamApacheApplyRecordRequest,
+    presentedToken: string | null
+  ): Promise<IamOverview>;
   upsertEnvironmentParameter(
     request: EnvironmentParameterMutationRequest,
     presentedToken: string | null
@@ -733,6 +743,8 @@ export type ControlPlaneOperationsMethods = Pick<
   | "listEnvironmentParameters"
   | "getIamOverview"
   | "upsertIamBinding"
+  | "getIamBindingForApacheApply"
+  | "recordIamApacheApplyResult"
   | "upsertEnvironmentParameter"
   | "deleteEnvironmentParameter"
   | "getRustDeskNodeHealth"

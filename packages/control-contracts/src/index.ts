@@ -8,3 +8,4 @@ export * from "./mail.js";
 export * from "./backups.js";
 export * from "./operations.js";
 export * from "./iam.js";
+export * from "./iam-apache-renderer.js";

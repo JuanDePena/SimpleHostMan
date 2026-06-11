@@ -59,6 +59,9 @@ function createStubApi(
     updateIamBinding: async () => {
       throw new Error("Unexpected IAM binding update in test");
     },
+    applyIamApacheBinding: async () => {
+      throw new Error("Unexpected IAM Apache apply in test");
+    },
     loadParameters: async () => {
       throw new Error("Unexpected parameters load in test");
     },

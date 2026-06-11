@@ -1,10 +1,40 @@
-import type { IamBindingSummary } from "@simplehost/control-contracts";
+import type { IamBindingSummary } from "./iam.js";
 
 export interface RenderedIamApacheVhost {
   serverName: string;
   upstreamUrl: string;
   certificateName: string;
+  logName: string;
   content: string;
+}
+
+export interface IamApacheApplyResult {
+  bindingId: string;
+  providerSlug: string;
+  authMode: string;
+  targetKind: string;
+  targetSlug: string;
+  serverName: string;
+  upstreamUrl: string;
+  certificateName: string;
+  liveVhostPath: string;
+  backupPath?: string;
+  rollbackDirectory: string;
+  contentSha256: string;
+  renderedLineCount: number;
+  appliedAt: string;
+  httpdSyntaxValidated: boolean;
+  httpdReloaded: boolean;
+}
+
+export interface IamApacheApplyRecordRequest {
+  bindingId: string;
+  result: IamApacheApplyResult;
+}
+
+export interface IamApacheApplyResponse {
+  result: IamApacheApplyResult;
+  overview: import("./iam.js").IamOverview;
 }
 
 const pyrosaIamHeaderNames = [
@@ -118,6 +148,7 @@ export function renderPyrosaIamGatewayApacheVhost(
     serverName,
     upstreamUrl,
     certificateName,
+    logName,
     content: `<VirtualHost *:80>
   ServerName ${serverName}
 

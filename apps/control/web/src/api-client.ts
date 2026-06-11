@@ -23,6 +23,7 @@ import {
   type Fail2BanApplyRequest,
   type FirewallApplyRequest,
   type IamBindingMutationRequest,
+  type IamApacheApplyResponse,
   type IamOverview,
   type InventoryStateSnapshot,
   type JobDispatchResponse,
@@ -109,6 +110,7 @@ export interface ControlWebApi extends ControlAuthSurface {
   createUser(token: string, request: CreateUserRequest): Promise<CreateUserResponse>;
   loadIamOverview(token: string): Promise<IamOverview>;
   updateIamBinding(token: string, request: IamBindingMutationRequest): Promise<IamOverview>;
+  applyIamApacheBinding(token: string, bindingId: string): Promise<IamApacheApplyResponse>;
   loadParameters(token: string): Promise<EnvironmentParametersSnapshot>;
   upsertParameter(
     token: string,
@@ -375,6 +377,15 @@ export function createControlWebApiFromRequest(request: ControlWebApiRequest): C
           method: "PUT",
           token,
           body: updateRequest
+        }
+      );
+    },
+    applyIamApacheBinding(token: string, bindingId: string): Promise<IamApacheApplyResponse> {
+      return request<IamApacheApplyResponse>(
+        `/v1/iam/bindings/${encodeURIComponent(bindingId)}/apache/apply`,
+        {
+          method: "POST",
+          token
         }
       );
     },

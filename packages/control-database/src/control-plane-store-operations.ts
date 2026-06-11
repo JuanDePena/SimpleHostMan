@@ -21,8 +21,10 @@ import {
   iamProviderCapabilityStatuses,
   iamProviderProvisioningStatuses,
   type IamAuthMode,
+  type IamApacheApplyRecordRequest,
   type IamBindingMutationRequest,
   type IamBindingRenderMode,
+  type IamBindingSummary,
   type IamBindingStatus,
   type IamMfaPolicy,
   type IamOverview,
@@ -156,6 +158,14 @@ function parseStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : [];
 }
 
+function readRecord(value: unknown): Record<string, unknown> | undefined {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  return value as Record<string, unknown>;
+}
+
 function parseIamProviderCapabilityStatus(value: unknown): IamProviderCapabilitySummary[] {
   if (!Array.isArray(value)) {
     return [];
@@ -192,6 +202,16 @@ function parseIamProviderCapabilityStatus(value: unknown): IamProviderCapability
       }
     ];
   });
+}
+
+function setProviderCapabilityStatus(
+  current: IamProviderCapabilitySummary[],
+  next: IamProviderCapabilitySummary
+): IamProviderCapabilitySummary[] {
+  const updated = current.filter((entry) => entry.key !== next.key);
+
+  updated.push(next);
+  return updated;
 }
 
 function isIncludedValue<T extends readonly string[]>(
@@ -292,6 +312,63 @@ function toIamBindingSummary(row: IamBindingRow): IamOverview["bindings"][number
     notes: row.notes ?? undefined,
     createdAt: normalizeDatabaseTimestamp(row.created_at),
     updatedAt: normalizeDatabaseTimestamp(row.updated_at)
+  };
+}
+
+async function loadIamBindingSummaryById(
+  client: PoolClient,
+  bindingId: string
+): Promise<IamBindingSummary> {
+  const result = await client.query<IamBindingRow>(
+    `SELECT
+       bindings.binding_id,
+       providers.slug AS provider_slug,
+       providers.display_name AS provider_display_name,
+       bindings.target_kind,
+       bindings.target_slug,
+       bindings.external_url,
+       bindings.internal_url,
+       bindings.auth_mode,
+       bindings.mfa_policy,
+       bindings.status,
+       bindings.render_mode,
+       bindings.provider_provisioning_status,
+       bindings.allowed_groups,
+       bindings.config_json,
+       bindings.notes,
+       bindings.created_at,
+       bindings.updated_at
+     FROM control_plane_iam_bindings bindings
+     INNER JOIN control_plane_iam_providers providers
+       ON providers.provider_id = bindings.provider_id
+     WHERE bindings.binding_id = $1`,
+    [bindingId]
+  );
+  const row = result.rows[0];
+
+  if (!row) {
+    throw new Error(`IAM binding ${bindingId} does not exist.`);
+  }
+
+  return toIamBindingSummary(row);
+}
+
+function normalizeIamApacheApplyRecordRequest(
+  request: IamApacheApplyRecordRequest
+): IamApacheApplyRecordRequest {
+  const bindingId = request.bindingId?.trim();
+
+  if (!bindingId) {
+    throw new Error("IAM binding id is required.");
+  }
+
+  if (request.result.bindingId !== bindingId) {
+    throw new Error("IAM Apache apply result does not match the binding id.");
+  }
+
+  return {
+    bindingId,
+    result: request.result
   };
 }
 
@@ -3157,6 +3234,148 @@ export function createControlPlaneOperationsMethods(
               normalized.providerProvisioningStatus ?? existing.provider_provisioning_status
           }
         });
+
+        return buildIamOverview(client);
+      });
+    },
+
+    async getIamBindingForApacheApply(bindingId, presentedToken) {
+      return withTransaction(pool, async (client) => {
+        await requireAuthorizedUser(client, presentedToken, ["platform_admin"]);
+        return loadIamBindingSummaryById(client, bindingId.trim());
+      });
+    },
+
+    async recordIamApacheApplyResult(request, presentedToken) {
+      return withTransaction(pool, async (client) => {
+        const actor = await requireAuthorizedUser(client, presentedToken, ["platform_admin"]);
+        const normalized = normalizeIamApacheApplyRecordRequest(request);
+        const existing = await loadIamBindingSummaryById(client, normalized.bindingId);
+        const renderConfig = {
+          ...((existing.config.render &&
+          typeof existing.config.render === "object" &&
+          !Array.isArray(existing.config.render)
+            ? existing.config.render
+            : {}) as Record<string, unknown>),
+          mode: "apache_managed",
+          enabled: true,
+          lastAppliedAt: normalized.result.appliedAt,
+          liveVhost: normalized.result.liveVhostPath,
+          rollbackDirectory: normalized.result.rollbackDirectory,
+          backupPath: normalized.result.backupPath ?? null,
+          contentSha256: normalized.result.contentSha256,
+          renderedLineCount: normalized.result.renderedLineCount,
+          httpdSyntaxValidated: normalized.result.httpdSyntaxValidated,
+          httpdReloaded: normalized.result.httpdReloaded
+        };
+
+        await client.query(
+          `UPDATE control_plane_iam_bindings
+           SET render_mode = 'apache_managed',
+               provider_provisioning_status = 'manual_ready',
+               config_json = jsonb_set(
+                 jsonb_set(
+                   COALESCE(config_json, '{}'::jsonb),
+                   '{render}',
+                   $2::jsonb,
+                   TRUE
+                 ),
+                 '{lastApacheApply}',
+                 $3::jsonb,
+                 TRUE
+               ),
+               updated_at = NOW()
+           WHERE binding_id = $1`,
+          [
+            normalized.bindingId,
+            JSON.stringify(renderConfig),
+            JSON.stringify(normalized.result)
+          ]
+        );
+
+        await insertAuditEvent(client, {
+          actorType: "user",
+          actorId: actor.userId,
+          eventType: "iam.apache_vhost.applied",
+          entityType: "iam_binding",
+          entityId: normalized.bindingId,
+          payload: {
+            targetKind: existing.targetKind,
+            targetSlug: existing.targetSlug,
+            provider: existing.providerSlug,
+            authMode: existing.authMode,
+            renderMode: "apache_managed",
+            liveVhostPath: normalized.result.liveVhostPath,
+            backupPath: normalized.result.backupPath,
+            rollbackDirectory: normalized.result.rollbackDirectory,
+            contentSha256: normalized.result.contentSha256,
+            appliedAt: normalized.result.appliedAt
+          }
+        });
+
+        if (
+          existing.providerSlug === "pyrosa-iam" &&
+          existing.authMode === "proxy" &&
+          existing.targetSlug === "pyrosa-pgadmin"
+        ) {
+          const providerResult = await client.query<IamProviderRow>(
+            `SELECT
+               provider_id,
+               slug,
+               display_name,
+               kind,
+               status,
+               base_url,
+               capabilities,
+               config_json,
+               notes,
+               created_at,
+               updated_at
+             FROM control_plane_iam_providers
+             WHERE slug = 'pyrosa-iam'`
+          );
+          const provider = providerResult.rows[0];
+
+          if (provider) {
+            const providerConfig = provider.config_json ?? {};
+            const capabilityStatus = setProviderCapabilityStatus(
+              parseIamProviderCapabilityStatus(providerConfig.capabilityStatus),
+              {
+                key: "gateway_proxy",
+                status: "available",
+                notes:
+                  "Validated with pgAdmin Apache-managed Pyrosa IAM gateway bridge and rollback metadata."
+              }
+            );
+            const providerCapabilities = Array.from(
+              new Set([...parseStringArray(provider.capabilities), "proxy"])
+            );
+
+            await client.query(
+              `UPDATE control_plane_iam_providers
+               SET capabilities = $2::jsonb,
+                   config_json = $3::jsonb,
+                   updated_at = NOW()
+               WHERE provider_id = $1`,
+              [
+                provider.provider_id,
+                JSON.stringify(providerCapabilities),
+                JSON.stringify({
+                  ...providerConfig,
+                  capabilityStatus,
+                  gatewayProxy: {
+                    ...(readRecord(providerConfig.gatewayProxy) ?? {}),
+                    status: "available",
+                    validatedByBindingId: normalized.bindingId,
+                    validatedAt: normalized.result.appliedAt,
+                    validatedLiveVhost: normalized.result.liveVhostPath,
+                    rollbackDirectory: normalized.result.rollbackDirectory
+                  }
+                })
+              ]
+            );
+          }
+        }
 
         return buildIamOverview(client);
       });

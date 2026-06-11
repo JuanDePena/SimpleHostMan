@@ -69,6 +69,14 @@ activate_local() {
   normalize_api_env /etc/simplehost/control.env.example
   normalize_api_env /etc/simplehost/control.env
   sync_worker_job_secret
+  install -d /etc/sudoers.d
+  install -m 0440 "${release_dir}/packaging/sudoers/simplehost-iam-apache" /etc/sudoers.d/simplehost-iam-apache
+  if command -v visudo >/dev/null 2>&1; then
+    visudo -cf /etc/sudoers.d/simplehost-iam-apache >/dev/null
+  fi
+  if id simplehost >/dev/null 2>&1; then
+    install -d -o simplehost -g simplehost -m 0750 /var/lib/simplehost/iam-apache
+  fi
   systemctl daemon-reload
 
   if [[ "${mode}" == "disabled" ]]; then
@@ -116,6 +124,10 @@ activate_remote() {
      install -m 0644 '${remote_release_dir}/packaging/env/simplehost-control.env.example' /etc/simplehost/control.env.example && \
      install -m 0644 '${remote_release_dir}/packaging/env/simplehost-worker.env.example' /etc/simplehost/worker.env.example && \
      install -m 0644 '${remote_release_dir}/packaging/env/simplehost-pgbackrest-offhost.env.example' /etc/simplehost/pgbackrest-offhost.env.example && \
+     install -d /etc/sudoers.d && \
+     install -m 0440 '${remote_release_dir}/packaging/sudoers/simplehost-iam-apache' /etc/sudoers.d/simplehost-iam-apache && \
+     if command -v visudo >/dev/null 2>&1; then visudo -cf /etc/sudoers.d/simplehost-iam-apache >/dev/null; fi && \
+     if id simplehost >/dev/null 2>&1; then install -d -o simplehost -g simplehost -m 0750 /var/lib/simplehost/iam-apache; fi && \
      if [ ! -f /etc/simplehost/control.env ]; then install -m 0640 '${remote_release_dir}/packaging/env/simplehost-control.env.example' /etc/simplehost/control.env; fi && \
      if [ ! -f /etc/simplehost/worker.env ]; then install -m 0640 '${remote_release_dir}/packaging/env/simplehost-worker.env.example' /etc/simplehost/worker.env; fi && \
      if [ ! -f /etc/simplehost/pgbackrest-offhost.env ]; then install -m 0640 '${remote_release_dir}/packaging/env/simplehost-pgbackrest-offhost.env.example' /etc/simplehost/pgbackrest-offhost.env; fi && \
