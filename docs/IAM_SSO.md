@@ -553,6 +553,14 @@ Pyrosa app login routing as of `2026-06-10`:
   SHA-256 checksum and rendered line count for Apache-managed bindings. This is
   an observability release only; it does not promote another binding or change
   public traffic.
+- On 2026-06-11 UTC, SimpleHostMan migration
+  `0042_pyrosa_iam_ldap_gateway_candidate.sql` records
+  `iam-binding-pyrosa-ldap-pyrosa-iam-gateway` as the next metadata-only
+  Pyrosa IAM gateway candidate. LDAP Account Manager remains on the existing
+  direct public vhost; the binding is `candidate`/`metadata_only`/`pending`,
+  and no bridge service, Apache render or traffic change is applied. The same
+  decision explicitly excludes `repos.pyrosa.com.do` because it is public
+  package repository traffic, not an administrative browser surface.
 - Decision on 2026-06-11 UTC: because Pyrosa IAM is still in development and
   the dependent apps are being adjusted in the same window, legacy technical
   aliases do not need a telemetry-release grace period. Pyrosa IAM source now
@@ -620,8 +628,9 @@ Promotion policy decision on 2026-06-11 UTC:
   the SimpleHostMan administrative URL.
 - No public vhost, DNS or traffic change is implied by this metadata decision.
 - The selected policy is
-  `native_oauth_login_under_authentik_outer_gate`; the next low-risk surface for
-  live enforcement work remains the pgAdmin pilot.
+  `native_oauth_login_under_authentik_outer_gate`; after pgAdmin, the next
+  low-risk surface for live enforcement work is LDAP Account Manager, currently
+  metadata-only until its bridge runtime and dry-run vhost are validated.
 - The IAM UI exposes the active provider, selected native login provider, outer
   gate and rollback provider as separate facts so the posture is not confused
   with a hard cutover.

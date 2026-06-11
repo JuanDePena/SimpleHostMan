@@ -74,11 +74,16 @@ Current state:
   `/etc/simplehost/rollback/iam-apache-iam-binding-pyrosa-pgadmin-pyrosa-iam-gateway-2026-06-11T183729868Z`.
 - `https://pgadmin.pyrosa.com.do/` returns the expected Pyrosa IAM gateway
   redirect and `pyrosa-iam` now marks `gateway_proxy` as `available`.
+- `ldap.pyrosa.com.do` is recorded as the next Pyrosa IAM gateway candidate in
+  metadata only. Its binding remains `candidate`/`metadata_only`/`pending`;
+  no bridge, Apache render or traffic change has been applied.
+- `repos.pyrosa.com.do` is explicitly excluded from gateway promotion because
+  it is public package repository traffic.
 
 Pending work:
 
-- choose the next low-risk administrative surface before promoting any
-  additional binding to `apache_managed`
+- build and dry-run the LDAP Account Manager gateway bridge before promoting
+  any additional binding to `apache_managed`
 - keep each future apply scoped to one binding with an explicit rollback path
   and post-change smoke check
 
@@ -105,8 +110,9 @@ Pending work:
 
 - decide whether SimpleHostMan should consume OIDC directly, OAuth
   introspection directly, or both before any promotion from Authentik
-- decide which additional administrative apps, if any, should use
-  `gateway_proxy` after pgAdmin burn-in
+- keep LDAP Account Manager as the next `gateway_proxy` candidate, but only
+  after a dedicated bridge runtime, dry-run vhost parity, unsafe-method
+  fail-closed checks and LAM login/webserver-auth behavior are validated
 - keep SAML disabled unless a concrete SP pilot requirement appears
 
 ## Deferred Unless Explicitly Requested

@@ -507,6 +507,26 @@ test("pgAdmin IAM bridge promotion migration records manual active posture", () 
   assert.doesNotMatch(migrationSql, /render_mode = 'apache_managed'/);
 });
 
+test("LDAP IAM gateway candidate migration remains metadata-only and excludes repos", () => {
+  const migrationSql = readFileSync(
+    new URL("../migrations/0042_pyrosa_iam_ldap_gateway_candidate.sql", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(migrationSql, /iam-binding-pyrosa-ldap-pyrosa-iam-gateway/);
+  assert.match(migrationSql, /pyrosa-ldap/);
+  assert.match(migrationSql, /https:\/\/ldap\.pyrosa\.com\.do\//);
+  assert.match(migrationSql, /http:\/\/host\.containers\.internal:10142/);
+  assert.match(migrationSql, /metadata_only/);
+  assert.match(migrationSql, /'pending'/);
+  assert.match(migrationSql, /pyrosa-iam-ldap-gateway-bridge\.service/);
+  assert.match(migrationSql, /pyrosa-ldap-iam-bridge\.conf\.candidate/);
+  assert.match(migrationSql, /direct_lam_login/);
+  assert.match(migrationSql, /repos\.pyrosa\.com\.do remains public package repository traffic/);
+  assert.doesNotMatch(migrationSql, /iam-binding-pyrosa-repos/);
+  assert.doesNotMatch(migrationSql, /render_mode = 'apache_managed'/);
+});
+
 test("metadata-only apps do not emit proxy or container reconciliation plans", async () => {
   const appRow = {
     app_id: "app-pyrosa-iam",
