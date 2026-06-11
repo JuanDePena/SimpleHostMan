@@ -571,6 +571,20 @@ Pyrosa app login routing as of `2026-06-10`:
   - `https://accounts.pyrosa.com.do/` redirected to `/login`, and
     `/login` redirected to `/auth/iam/start?return_to=%2Fui`; the Account
     Center decommission message was not present.
+- `pyrosa-iam` release `v2606.112122` was published and deployed on
+  2026-06-11 UTC after aligning the Account Center/IAM documentation, recording
+  pgAdmin as the first Apache-managed gateway pilot, and fixing remaining IAM
+  namespace leftovers in source-level runtime defaults. Validation passed:
+  - `npm run test:run`, `npm run typecheck`, `npm run build` and
+    `npm run check:namespaces`;
+  - `app-pyrosa-iam.service` restarted and remained active;
+  - loopback health returned `{"ok":true,"service":"pyrosa-iam"}`;
+  - public OIDC discovery returned issuer `https://iam.pyrosa.com.do` with the
+    expected authorization and JWKS endpoints;
+  - public `https://pgadmin.pyrosa.com.do/` returned
+    `302 gateway_login_required` to
+    `https://iam.pyrosa.com.do/oauth/gateway/start`;
+  - SimpleHostMan loopback health remained `ok` on release `2606.11.18`.
 - On 2026-06-11 UTC, an IAM/DR scratch restore drill validated current
   recoverability without changing live services:
   - Pyrosa IAM root-config archive:

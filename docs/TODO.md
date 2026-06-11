@@ -32,6 +32,9 @@ Current state:
 - Pyrosa IAM OAuth login is validated behind that outer gate: MFA, callback,
   local active-operator enforcement, `shp_session` creation, logout and token
   revocation all have audit evidence.
+- Pyrosa IAM source release `v2606.112122` is published and deployed with
+  Account Center/IAM documentation alignment, pgAdmin gateway-pilot state
+  recorded, namespace guard passing and runtime health validated.
 - Release `2606.11.18` is active from `/opt/simplehostman/release/current`.
 - The post-release Pyrosa IAM root-config backup succeeded from
   `release/current` as
