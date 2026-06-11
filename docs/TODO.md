@@ -43,6 +43,10 @@ Current state:
   `/etc/simplehost/rollback/pgadmin-iam-bridge-dry-run-20260611T095546Z`, and
   migration `0039_pgadmin_iam_bridge_candidate.sql` records this metadata with
   `trafficChanged=false`.
+- Pyrosa IAM source now has a gateway login start contract for this bridge:
+  `/oauth/gateway/start` carries an allowlisted HTTPS `return_to` through IAM
+  login/MFA, and `/oauth/gateway/check` emits versioned `X-Pyrosa-IAM-*`
+  forward-auth headers.
 - The bridge candidate is not active in traffic. The live Apache vhost still
   points directly at pgAdmin until the dry-run is promoted explicitly.
 - No automatic Apache or Authentik API apply should happen until parity and
@@ -53,7 +57,7 @@ Pending work:
 - compare the final enforceable candidate vhost against the current direct
   pgAdmin vhost
 - activate the bridge service in a hold/rollback window, then promote the
-  candidate vhost only after local health and login redirects validate
+  candidate vhost only after local health and deployed login redirects validate
 - validate unauthenticated redirect, MFA login, pgAdmin behavior after SSO,
   unsafe-method handling, and local break-glass access
 - run or confirm a post-enforcement backup covering Authentik state

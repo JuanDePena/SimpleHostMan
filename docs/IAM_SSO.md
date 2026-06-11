@@ -421,8 +421,11 @@ Pyrosa app login routing as of `2026-06-10`:
   - SimpleHostMan migration `0039_pgadmin_iam_bridge_candidate.sql` records the
     bridge service, candidate vhost, dry-run path and `trafficChanged=false` in
     the pgAdmin IAM binding metadata.
-  - The candidate remains dry-run only until bridge runtime, login redirect,
-    unsafe-method behavior and rollback are validated.
+  - Pyrosa IAM source now implements `/oauth/gateway/start` with HTTPS
+    return-origin allowlisting and carries the target through login/MFA; gateway
+    checks emit versioned `X-Pyrosa-IAM-*` forward-auth headers.
+  - The candidate remains dry-run only until bridge runtime, deployed login
+    redirect behavior, unsafe-method behavior and rollback are validated.
 - The same 2026-06-11 validation confirmed the current public SimpleHostMan
   posture:
   - `https://vps-prd.pyrosa.com.do:3200/` redirects unauthenticated clients to
