@@ -579,6 +579,9 @@ Pyrosa app login routing as of `2026-06-10`:
     continued returning the direct `/lam/` redirect.
   This remains a dry-run only; the LDAP bridge is not installed, enabled or
   selected by Apache.
+- SimpleHostMan release `2606.11.22` activates these LDAP dry-run artifacts in
+  `/opt/simplehostman/release/current` for repeatable candidate validation, with
+  no Apache or systemd promotion.
 - Decision on 2026-06-11 UTC: because Pyrosa IAM is still in development and
   the dependent apps are being adjusted in the same window, legacy technical
   aliases do not need a telemetry-release grace period. Pyrosa IAM source now
