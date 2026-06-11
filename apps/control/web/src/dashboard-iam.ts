@@ -172,6 +172,65 @@ function renderOauthLoginMetadata(binding: IamBindingSummary, copy: WebCopy): st
   </div>`;
 }
 
+function readRecord(value: unknown): Record<string, unknown> | undefined {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+function renderApacheApplyMetadata(binding: IamBindingSummary, copy: WebCopy): string {
+  const lastApacheApply = readRecord(binding.config.lastApacheApply);
+
+  if (!lastApacheApply) {
+    return "";
+  }
+
+  const stringValue = (key: string) =>
+    typeof lastApacheApply[key] === "string" && lastApacheApply[key].trim().length > 0
+      ? (lastApacheApply[key] as string)
+      : undefined;
+  const renderedLineCount =
+    typeof lastApacheApply.renderedLineCount === "number"
+      ? String(lastApacheApply.renderedLineCount)
+      : undefined;
+
+  const monoFact = (value: string | undefined) =>
+    value ? `<span class="mono">${escapeHtml(value)}</span>` : escapeHtml(copy.none);
+
+  return `<div class="stack">
+    <h4>${escapeHtml(copy.iamApacheApplyTitle)}</h4>
+    ${renderActionFacts(
+      [
+        {
+          label: copy.iamApacheAppliedAtLabel,
+          value: escapeHtml(stringValue("appliedAt") ?? copy.none)
+        },
+        {
+          label: copy.iamApacheLiveVhostLabel,
+          value: monoFact(stringValue("liveVhostPath"))
+        },
+        {
+          label: copy.iamApacheRollbackLabel,
+          value: monoFact(stringValue("rollbackDirectory"))
+        },
+        {
+          label: copy.iamApacheBackupLabel,
+          value: monoFact(stringValue("backupPath"))
+        },
+        {
+          label: copy.iamApacheChecksumLabel,
+          value: monoFact(stringValue("contentSha256"))
+        },
+        {
+          label: copy.iamApacheRenderedLinesLabel,
+          value: escapeHtml(renderedLineCount ?? copy.none)
+        }
+      ],
+      { className: "action-card-facts-wide-labels" }
+    )}
+  </div>`;
+}
+
 function renderOperationalState(args: {
   data: DashboardData;
   renderPill: (value: string, tone?: "default" | "success" | "danger" | "muted") => string;
@@ -519,6 +578,7 @@ function renderBindingDetailPanel(args: {
     }
     ${renderUiAuthMetadata(binding, copy)}
     ${renderOauthLoginMetadata(binding, copy)}
+    ${renderApacheApplyMetadata(binding, copy)}
     ${binding.notes ? `<p class="muted">${escapeHtml(binding.notes)}</p>` : ""}
   </article>`;
 }

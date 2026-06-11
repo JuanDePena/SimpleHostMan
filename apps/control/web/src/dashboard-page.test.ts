@@ -1012,6 +1012,51 @@ test("iam workspace lists providers and protected bindings", () => {
   assert.match(html, /action="\/actions\/iam\/binding"/);
 });
 
+test("iam workspace shows latest Apache apply evidence for managed bindings", () => {
+  const data = createDashboardData();
+  data.iam.bindings.push({
+    bindingId: "iam-binding-pyrosa-pgadmin-pyrosa-iam-gateway",
+    providerSlug: "pyrosa-iam",
+    providerDisplayName: "Pyrosa IAM",
+    targetKind: "app",
+    targetSlug: "pyrosa-pgadmin",
+    externalUrl: "https://pgadmin.pyrosa.com.do/",
+    internalUrl: "http://host.containers.internal:10143/",
+    authMode: "proxy",
+    mfaPolicy: "required",
+    status: "active",
+    renderMode: "apache_managed",
+    renderEnabled: true,
+    providerProvisioningStatus: "manual_ready",
+    allowedGroups: ["PYROSA Operators"],
+    config: {
+      lastApacheApply: {
+        bindingId: "iam-binding-pyrosa-pgadmin-pyrosa-iam-gateway",
+        liveVhostPath: "/etc/httpd/conf.d/pyrosa-pgadmin.conf",
+        backupPath:
+          "/etc/simplehost/rollback/iam-apache-iam-binding-pyrosa-pgadmin-pyrosa-iam-gateway-2026-06-11T183729868Z/pyrosa-pgadmin.conf",
+        rollbackDirectory:
+          "/etc/simplehost/rollback/iam-apache-iam-binding-pyrosa-pgadmin-pyrosa-iam-gateway-2026-06-11T183729868Z",
+        contentSha256: "fdc031ac2256b30689f338e7d6400eca4eece5b0c8bdce775f31b24048f37ec9",
+        renderedLineCount: 36,
+        appliedAt: "2026-06-11T18:37:29.868Z"
+      }
+    },
+    notes: "First Apache-managed Pyrosa IAM gateway binding.",
+    createdAt: "2026-06-11T18:00:00.000Z",
+    updatedAt: "2026-06-11T18:37:29.868Z"
+  });
+
+  const html = renderView(data, "iam", "iam-binding-pyrosa-pgadmin-pyrosa-iam-gateway");
+  const detail = detailRegion(html, "Apache apply evidence");
+
+  assert.match(detail, /2026-06-11T18:37:29\.868Z/);
+  assert.match(detail, /\/etc\/httpd\/conf\.d\/pyrosa-pgadmin\.conf/);
+  assert.match(detail, /iam-apache-iam-binding-pyrosa-pgadmin-pyrosa-iam-gateway-2026-06-11T183729868Z/);
+  assert.match(detail, /fdc031ac2256b30689f338e7d6400eca4eece5b0c8bdce775f31b24048f37ec9/);
+  assert.match(detail, />36</);
+});
+
 test("storage workspace shows selected node tracked path usage beside storage detail", () => {
   const data = createDashboardData();
   data.nodeHealth[0] = {
