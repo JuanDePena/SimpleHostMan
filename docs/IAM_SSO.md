@@ -426,6 +426,29 @@ Pyrosa app login routing as of `2026-06-10`:
     checks emit versioned `X-Pyrosa-IAM-*` forward-auth headers.
   - The candidate remains dry-run only until bridge runtime, deployed login
     redirect behavior, unsafe-method behavior and rollback are validated.
+- Later on 2026-06-11 UTC, the pgAdmin bridge candidate was promoted manually
+  with rollback held:
+  - `pyrosa-iam` was restarted with the deployed `/oauth/gateway/start`
+    contract and the pgAdmin return origin allowlisted.
+  - `pyrosa-iam-pgadmin-gateway-bridge.service` was enabled and started on
+    `127.0.0.1:10144`.
+  - `/etc/httpd/conf.d/pyrosa-pgadmin.conf` was replaced with the bridge vhost
+    after `httpd -t` returned `Syntax OK`; the previous direct vhost was saved
+    under `/etc/simplehost/rollback/pgadmin-iam-promote-20260611T115746Z`.
+  - Public unauthenticated `GET https://pgadmin.pyrosa.com.do/login` now
+    returns `302 gateway_login_required` to
+    `https://iam.pyrosa.com.do/oauth/gateway/start`.
+  - Public unauthenticated `POST https://pgadmin.pyrosa.com.do/login` now
+    returns `401 gateway_login_required`, preserving fail-closed behavior for
+    unsafe methods.
+  - A temporary AAL2 IAM session reached pgAdmin through the public vhost with
+    `200 OK`, while a temporary AAL1 session was redirected for MFA; all
+    temporary smoke sessions were deleted afterward.
+  - SimpleHostMan migration `0040_pgadmin_iam_bridge_promoted.sql` marks the
+    Pyrosa IAM pgAdmin binding `active`/`metadata_only` with
+    `provider_provisioning_status=manual_ready`. The Authentik pgAdmin binding
+    remains only as metadata and rollback reference. Apache rendering is still
+    not automatic.
 - The same 2026-06-11 validation confirmed the current public SimpleHostMan
   posture:
   - `https://vps-prd.pyrosa.com.do:3200/` redirects unauthenticated clients to

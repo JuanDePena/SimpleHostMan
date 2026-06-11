@@ -488,6 +488,25 @@ test("pgAdmin IAM bridge candidate migration remains metadata-only", () => {
   assert.doesNotMatch(migrationSql, /render_mode = 'apache_managed'/);
 });
 
+test("pgAdmin IAM bridge promotion migration records manual active posture", () => {
+  const migrationSql = readFileSync(
+    new URL("../migrations/0040_pgadmin_iam_bridge_promoted.sql", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(migrationSql, /iam-binding-pyrosa-pgadmin-pyrosa-iam-gateway/);
+  assert.match(migrationSql, /status = 'active'/);
+  assert.match(migrationSql, /provider_provisioning_status = 'manual_ready'/);
+  assert.match(migrationSql, /"promotionState": "manual_active"/);
+  assert.match(migrationSql, /pgadmin-iam-promote-20260611T115746Z/);
+  assert.match(migrationSql, /"publicUnauthenticatedGet": "302 gateway_login_required"/);
+  assert.match(migrationSql, /"publicUnauthenticatedPost": "401 gateway_login_required"/);
+  assert.match(migrationSql, /"temporarySessionsCleaned": true/);
+  assert.match(migrationSql, /iam-binding-pgadmin/);
+  assert.match(migrationSql, /Retained as metadata and rollback reference/);
+  assert.doesNotMatch(migrationSql, /render_mode = 'apache_managed'/);
+});
+
 test("metadata-only apps do not emit proxy or container reconciliation plans", async () => {
   const appRow = {
     app_id: "app-pyrosa-iam",
