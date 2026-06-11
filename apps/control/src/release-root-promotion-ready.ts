@@ -8,14 +8,8 @@ import {
 } from "./release-root-promotion-deployment.js";
 import { readCombinedControlReleaseRootPromotionManifest } from "./release-root-promotion-promotion.js";
 import { startCombinedControlReleaseRootPromotion } from "./release-root-promotion-runner.js";
-import {
-  applyCombinedControlReleaseRootPromotion,
-  readCombinedControlReleaseRootPromotionApplyManifest
-} from "./release-root-promotion.js";
-import {
-  applyCombinedControlReleaseRootStaging,
-  readCombinedControlReleaseRootStagingApplyManifest
-} from "./release-root-staging.js";
+import { applyCombinedControlReleaseRootPromotion } from "./release-root-promotion.js";
+import { applyCombinedControlReleaseRootStaging } from "./release-root-staging.js";
 
 export interface CombinedControlReleaseRootPromotionReadyCheck {
   readonly name: string;
@@ -60,38 +54,21 @@ export async function runCombinedControlReleaseRootPromotionReady(args: {
   host?: string;
   port?: number;
 } = {}): Promise<CombinedControlReleaseRootPromotionReadyResult> {
-  const existingPromotion =
-    await readCombinedControlReleaseRootPromotionApplyManifest({
-      workspaceRoot: args.workspaceRoot,
-      targetId: args.targetId,
-      version: args.version
-    });
+  await applyCombinedControlReleaseRootStaging({
+    workspaceRoot: args.workspaceRoot,
+    sandboxId: args.targetId ? `${args.targetId}-staging` : undefined,
+    version: args.version,
+    host: args.host,
+    port: args.port,
+    clean: false
+  });
 
-  if (!existingPromotion) {
-    const existingStaging =
-      await readCombinedControlReleaseRootStagingApplyManifest({
-        workspaceRoot: args.workspaceRoot,
-        version: args.version
-      });
-
-    if (!existingStaging) {
-      await applyCombinedControlReleaseRootStaging({
-        workspaceRoot: args.workspaceRoot,
-        sandboxId: args.targetId ? `${args.targetId}-staging` : undefined,
-        version: args.version,
-        host: args.host,
-        port: args.port,
-        clean: false
-      });
-    }
-
-    await applyCombinedControlReleaseRootPromotion({
-      workspaceRoot: args.workspaceRoot,
-      targetId: args.targetId,
-      version: args.version,
-      clean: false
-    });
-  }
+  await applyCombinedControlReleaseRootPromotion({
+    workspaceRoot: args.workspaceRoot,
+    targetId: args.targetId,
+    version: args.version,
+    clean: false
+  });
 
   const runtime = await startCombinedControlReleaseRootPromotion({
     workspaceRoot: args.workspaceRoot,

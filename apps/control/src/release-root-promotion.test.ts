@@ -27,7 +27,7 @@ async function login(origin: string) {
 }
 
 test("release-root promotion applies actual staging into an emulated live root and matches staging behavior", async () => {
-  const version = "0.1.0";
+  const version = createCombinedControlReleaseRootStagingLayout().version;
   const targetId = "release-root-promotion";
   const sandboxId = `${targetId}-staging`;
 

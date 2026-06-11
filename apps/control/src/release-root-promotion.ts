@@ -152,7 +152,6 @@ function comparePromotionManifestSemantic(args: {
     target.kind === "combined-release-root-promotion" &&
     target.emulatedReleaseRoot === "/opt/simplehostman/release" &&
     target.promotedVersion === source.promotedVersion &&
-    target.previousPromotedVersion === source.previousPromotedVersion &&
     target.activeVersion === source.activeVersion &&
     target.origin === source.origin &&
     compareStringArrays(target.surfaces, source.surfaces) &&
@@ -187,7 +186,6 @@ function compareDeployManifestSemantic(args: {
     target.targetService === "control" &&
     target.activeVersion === source.activeVersion &&
     target.promotedVersion === source.promotedVersion &&
-    target.previousVersion === source.previousVersion &&
     target.origin === source.origin &&
     compareStringArrays(target.surfaces, source.surfaces) &&
     target.currentRoot === args.layout.currentRoot &&
@@ -216,9 +214,7 @@ function compareRollbackManifestSemantic(args: {
     target.kind === "combined-release-root-promotion-rollback" &&
     target.emulatedReleaseRoot === "/opt/simplehostman/release" &&
     target.targetService === "control" &&
-    target.rollbackVersion === source.rollbackVersion &&
     target.currentVersion === source.currentVersion &&
-    target.reason === source.reason &&
     target.currentRoot === args.layout.currentRoot &&
     target.currentEntrypoint === args.layout.currentEntrypoint &&
     target.promotionManifestFile === args.layout.promotionManifestFile

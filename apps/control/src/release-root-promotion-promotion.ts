@@ -55,6 +55,16 @@ function safeReadJson<T>(filePath: string): T | null {
   }
 }
 
+function isReleaseRootPromotionManifest(
+  value: unknown
+): value is CombinedControlReleaseRootPromotionManifest {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    (value as { kind?: unknown }).kind === "combined-release-root-promotion"
+  );
+}
+
 async function readPromotionStartupManifest(layout: CombinedControlReleaseRootPromotionLayout) {
   return JSON.parse(
     await readFile(layout.startupManifestFile, "utf8")
@@ -155,10 +165,10 @@ export async function promoteCombinedControlReleaseRootPromotionVersion(args: {
   history: CombinedControlReleaseRootPromotionHistory;
 }> {
   const layout = createCombinedControlReleaseRootPromotionLayout(args);
-  const previousPromotion =
-    safeReadJson<CombinedControlReleaseRootPromotionManifest>(
-      layout.promotionManifestFile
-    );
+  const previousPromotionCandidate = safeReadJson<unknown>(layout.promotionManifestFile);
+  const previousPromotion = isReleaseRootPromotionManifest(previousPromotionCandidate)
+    ? previousPromotionCandidate
+    : null;
   const activation = await activateCombinedControlReleaseRootPromotionVersion(args);
   const active = await resolveActiveCombinedControlReleaseRootPromotion({
     workspaceRoot: layout.workspaceRoot,
