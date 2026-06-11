@@ -456,6 +456,22 @@ test("pyrosa iam pgAdmin candidate migration records loopback validation and gat
   assert.match(migrationSql, /PYROSA_ACCOUNTS_SESSION/);
 });
 
+test("pyrosa iam simplehost policy migration keeps authentik as outer gate", () => {
+  const migrationSql = readFileSync(
+    new URL("../migrations/0038_pyrosa_iam_simplehost_policy.sql", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(migrationSql, /selected_native_login_policy/);
+  assert.match(migrationSql, /native_oauth_login_under_authentik_outer_gate/);
+  assert.match(migrationSql, /iam-binding-simplehost-control-pyrosa-iam-oauth/);
+  assert.match(migrationSql, /"activeOuterGate": "authentik"/);
+  assert.match(migrationSql, /"rollbackProvider": "authentik"/);
+  assert.match(migrationSql, /"publicEntryPointChange": false/);
+  assert.doesNotMatch(migrationSql, /status = 'active'/);
+  assert.doesNotMatch(migrationSql, /render_mode = 'apache_managed'/);
+});
+
 test("metadata-only apps do not emit proxy or container reconciliation plans", async () => {
   const appRow = {
     app_id: "app-pyrosa-iam",
@@ -548,7 +564,13 @@ test("buildIamOverview maps provider capabilities and protected bindings", async
           config_json: {
             oauthLogin: {
               clientId: "client-simplehost-control-oauth-pilot",
-              promotionState: "candidate"
+              promotionState: "selected_native_login_policy",
+              promotionPolicy: "native_oauth_login_under_authentik_outer_gate"
+            },
+            promotionPolicy: {
+              selectedPolicy: "native_oauth_login_under_authentik_outer_gate",
+              activeOuterGate: "authentik",
+              rollbackProvider: "authentik"
             }
           },
           notes: "OAuth candidate.",
@@ -595,6 +617,18 @@ test("buildIamOverview maps provider capabilities and protected bindings", async
   assert.equal(overview.operationalState.activeControlAuthMode, "trusted_proxy_headers");
   assert.equal(overview.operationalState.candidateControlProviderSlug, "pyrosa-iam");
   assert.equal(overview.operationalState.candidateControlAuthMode, "oauth_login");
+  assert.equal(overview.operationalState.nativeControlProviderSlug, "pyrosa-iam");
+  assert.equal(overview.operationalState.nativeControlAuthMode, "oauth_login");
+  assert.equal(
+    overview.operationalState.nativeControlPromotionState,
+    "selected_native_login_policy"
+  );
+  assert.equal(
+    overview.operationalState.nativeControlPromotionPolicy,
+    "native_oauth_login_under_authentik_outer_gate"
+  );
+  assert.equal(overview.operationalState.nativeControlOuterGateProviderSlug, "authentik");
+  assert.equal(overview.operationalState.nativeControlRollbackProviderSlug, "authentik");
   assert.equal(overview.operationalState.lastOAuthLoginEmail, "it@pyrosa.com.do");
   assert.equal(overview.operationalState.lastOAuthFailureReason, "missing_email");
 });

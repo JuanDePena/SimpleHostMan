@@ -75,7 +75,7 @@ Pending work:
 - document the renderer parity and apply procedure in
   [`IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md)
 
-### 3. Decide Pyrosa IAM Promotion Policy For SimpleHostMan
+### 3. Confirm Pyrosa IAM Promotion Policy Before Any Public Cutover
 
 Current state:
 
@@ -126,17 +126,19 @@ Current state:
   deployed on 2026-06-11 UTC. Loopback/public `/login` now sets only
   `PYROSA_IAM_SESSION`; gateway checks emit only `X-Pyrosa-IAM-*`; the public
   gateway remains blocked by internal allowlist as expected.
+- `pyrosa-iam/oauth_login` is now the selected native SimpleHostMan login
+  policy in metadata, using
+  `native_oauth_login_under_authentik_outer_gate`.
+- Authentik remains the active public outer gate and rollback provider; this
+  policy does not change vhosts, DNS or public entry points.
 
 Pending work:
 
-- decide whether to promote the `control:simplehost-control`
-  `pyrosa-iam/oauth_login` binding from candidate metadata to the selected
-  native login policy while Authentik remains the outer public gate
-- keep Authentik as rollback and as the active reverse-proxy provider until a
-  separate explicit cutover is approved
 - run one manual operator browser validation through the normal public
   Authentik-protected SimpleHostMan URL before changing any user-facing entry
   point
+- keep Authentik as rollback and as the active reverse-proxy provider until a
+  separate explicit public cutover is approved
 - execute the pgAdmin pilot from the new metadata-only `pyrosa-iam/gateway`
   candidate after vhost parity and rollback are ready
 

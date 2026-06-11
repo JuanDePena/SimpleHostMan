@@ -185,6 +185,9 @@ function renderOperationalState(args: {
   const candidateProvider = state.candidateControlProviderSlug
     ? `${state.candidateControlProviderSlug} / ${state.candidateControlAuthMode ?? copy.none}`
     : copy.none;
+  const nativeProvider = state.nativeControlProviderSlug
+    ? `${state.nativeControlProviderSlug} / ${state.nativeControlAuthMode ?? copy.none}`
+    : copy.none;
   const lastLogin = state.lastOAuthLoginAt
     ? [
         state.lastOAuthLoginEmail ?? copy.none,
@@ -218,6 +221,28 @@ function renderOperationalState(args: {
         {
           label: copy.iamCandidateProviderLabel,
           value: `<span class="mono">${escapeHtml(candidateProvider)}</span>`
+        },
+        {
+          label: copy.iamNativeProviderLabel,
+          value: `<span class="mono">${escapeHtml(nativeProvider)}</span>`
+        },
+        {
+          label: copy.iamNativePolicyLabel,
+          value: state.nativeControlPromotionPolicy
+            ? `<span class="mono">${escapeHtml(state.nativeControlPromotionPolicy)}</span>`
+            : escapeHtml(copy.none)
+        },
+        {
+          label: copy.iamOuterGateLabel,
+          value: state.nativeControlOuterGateProviderSlug
+            ? `<span class="mono">${escapeHtml(state.nativeControlOuterGateProviderSlug)}</span>`
+            : escapeHtml(copy.none)
+        },
+        {
+          label: copy.iamRollbackProviderLabel,
+          value: state.nativeControlRollbackProviderSlug
+            ? `<span class="mono">${escapeHtml(state.nativeControlRollbackProviderSlug)}</span>`
+            : escapeHtml(copy.none)
         },
         {
           label: copy.iamLastOAuthLoginLabel,

@@ -321,12 +321,47 @@ function buildIamOperationalState(args: {
       binding.status === "candidate" &&
       binding.authMode === "oauth_login"
   );
+  const nativeControlBinding = args.bindings.find(
+    (binding) =>
+      binding.targetKind === "control" &&
+      binding.targetSlug === "simplehost-control" &&
+      binding.providerSlug === "pyrosa-iam" &&
+      binding.authMode === "oauth_login"
+  );
+  const oauthLogin =
+    nativeControlBinding?.config.oauthLogin &&
+    typeof nativeControlBinding.config.oauthLogin === "object"
+      ? (nativeControlBinding.config.oauthLogin as Record<string, unknown>)
+      : undefined;
+  const promotionPolicy =
+    nativeControlBinding?.config.promotionPolicy &&
+    typeof nativeControlBinding.config.promotionPolicy === "object"
+      ? (nativeControlBinding.config.promotionPolicy as Record<string, unknown>)
+      : undefined;
 
   return {
     activeControlProviderSlug: activeControlBinding?.providerSlug,
     activeControlAuthMode: activeControlBinding?.authMode,
     candidateControlProviderSlug: candidateControlBinding?.providerSlug,
     candidateControlAuthMode: candidateControlBinding?.authMode,
+    nativeControlProviderSlug: nativeControlBinding?.providerSlug,
+    nativeControlAuthMode: nativeControlBinding?.authMode,
+    nativeControlPromotionState:
+      typeof oauthLogin?.promotionState === "string" ? oauthLogin.promotionState : undefined,
+    nativeControlPromotionPolicy:
+      typeof promotionPolicy?.selectedPolicy === "string"
+        ? promotionPolicy.selectedPolicy
+        : typeof oauthLogin?.promotionPolicy === "string"
+          ? oauthLogin.promotionPolicy
+          : undefined,
+    nativeControlOuterGateProviderSlug:
+      typeof promotionPolicy?.activeOuterGate === "string"
+        ? promotionPolicy.activeOuterGate
+        : undefined,
+    nativeControlRollbackProviderSlug:
+      typeof promotionPolicy?.rollbackProvider === "string"
+        ? promotionPolicy.rollbackProvider
+        : undefined,
     lastOAuthLoginAt: args.lastOAuthLogin
       ? normalizeDatabaseTimestamp(args.lastOAuthLogin.occurred_at)
       : undefined,

@@ -102,6 +102,12 @@ export interface IamOperationalState {
   activeControlAuthMode?: IamAuthMode;
   candidateControlProviderSlug?: string;
   candidateControlAuthMode?: IamAuthMode;
+  nativeControlProviderSlug?: string;
+  nativeControlAuthMode?: IamAuthMode;
+  nativeControlPromotionState?: string;
+  nativeControlPromotionPolicy?: string;
+  nativeControlOuterGateProviderSlug?: string;
+  nativeControlRollbackProviderSlug?: string;
   lastOAuthLoginAt?: string;
   lastOAuthLoginProvider?: string;
   lastOAuthLoginEmail?: string;

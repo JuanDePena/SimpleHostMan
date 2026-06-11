@@ -462,6 +462,20 @@ Pyrosa app login routing as of `2026-06-10`:
     `authentik_flows_flow=15`;
   - no `drill_*` PostgreSQL databases remained after cleanup.
 
+Promotion policy decision on 2026-06-11 UTC:
+
+- `pyrosa-iam/oauth_login` is the selected native SimpleHostMan login policy in
+  control-plane metadata.
+- Authentik remains the active public outer gate and the rollback provider for
+  the SimpleHostMan administrative URL.
+- No public vhost, DNS or traffic change is implied by this metadata decision.
+- The selected policy is
+  `native_oauth_login_under_authentik_outer_gate`; the next low-risk surface for
+  live enforcement work remains the pgAdmin pilot.
+- The IAM UI exposes the active provider, selected native login provider, outer
+  gate and rollback provider as separate facts so the posture is not confused
+  with a hard cutover.
+
 Historical Accounts OAuth pilot:
 
 - The 2026-06-08 and 2026-06-09 Accounts OAuth pilots validated the original
