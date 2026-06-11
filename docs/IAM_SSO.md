@@ -407,6 +407,22 @@ Pyrosa app login routing as of `2026-06-10`:
     native nginx-style subrequest auth module, so real gateway enforcement
     still needs an Apache bridge/outpost implementation before traffic can be
     cut over.
+- On 2026-06-11 UTC, the pgAdmin pilot gained a concrete bridge candidate:
+  - `platform/iam/pyrosa-iam-gateway-bridge.mjs` is a local HTTP outpost that
+    calls `http://127.0.0.1:10134/oauth/gateway/check`, fails closed, strips
+    client-supplied identity headers, requires `aal2`/MFA and `PYROSA
+    Operators`, then proxies to pgAdmin.
+  - `platform/host/systemd/pyrosa-iam-pgadmin-gateway-bridge.service` keeps the
+    bridge on `127.0.0.1:10144`.
+  - `platform/httpd/vhosts/pyrosa-pgadmin-iam-bridge.conf.candidate` points the
+    pgAdmin vhost at the bridge instead of directly at `127.0.0.1:10143`.
+  - Dry-run artifacts were generated under
+    `/etc/simplehost/rollback/pgadmin-iam-bridge-dry-run-20260611T095546Z`.
+  - SimpleHostMan migration `0039_pgadmin_iam_bridge_candidate.sql` records the
+    bridge service, candidate vhost, dry-run path and `trafficChanged=false` in
+    the pgAdmin IAM binding metadata.
+  - The candidate remains dry-run only until bridge runtime, login redirect,
+    unsafe-method behavior and rollback are validated.
 - The same 2026-06-11 validation confirmed the current public SimpleHostMan
   posture:
   - `https://vps-prd.pyrosa.com.do:3200/` redirects unauthenticated clients to

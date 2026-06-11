@@ -472,6 +472,22 @@ test("pyrosa iam simplehost policy migration keeps authentik as outer gate", () 
   assert.doesNotMatch(migrationSql, /render_mode = 'apache_managed'/);
 });
 
+test("pgAdmin IAM bridge candidate migration remains metadata-only", () => {
+  const migrationSql = readFileSync(
+    new URL("../migrations/0039_pgadmin_iam_bridge_candidate.sql", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(migrationSql, /iam-binding-pyrosa-pgadmin-pyrosa-iam-gateway/);
+  assert.match(migrationSql, /local_outpost/);
+  assert.match(migrationSql, /http:\/\/127\.0\.0\.1:10144/);
+  assert.match(migrationSql, /pyrosa-iam-pgadmin-gateway-bridge\.service/);
+  assert.match(migrationSql, /pyrosa-pgadmin-iam-bridge\.conf\.candidate/);
+  assert.match(migrationSql, /pgadmin-iam-bridge-dry-run-20260611T095546Z/);
+  assert.match(migrationSql, /"trafficChanged": false/);
+  assert.doesNotMatch(migrationSql, /render_mode = 'apache_managed'/);
+});
+
 test("metadata-only apps do not emit proxy or container reconciliation plans", async () => {
   const appRow = {
     app_id: "app-pyrosa-iam",

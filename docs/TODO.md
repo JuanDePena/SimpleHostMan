@@ -35,19 +35,25 @@ Current state:
   `httpd -t` with the candidate include returned `Syntax OK`.
 - The current live pgAdmin vhost still proxies directly to
   `http://127.0.0.1:10143/`.
-- Real gateway enforcement still needs an Apache forward-auth bridge/outpost
-  because the available Apache modules do not provide nginx-style subrequest
-  auth out of the box.
+- Real gateway enforcement now has a local outpost candidate:
+  `platform/iam/pyrosa-iam-gateway-bridge.mjs`,
+  `platform/host/systemd/pyrosa-iam-pgadmin-gateway-bridge.service`, and
+  `platform/httpd/vhosts/pyrosa-pgadmin-iam-bridge.conf.candidate`.
+- Dry-run artifacts were generated under
+  `/etc/simplehost/rollback/pgadmin-iam-bridge-dry-run-20260611T095546Z`, and
+  migration `0039_pgadmin_iam_bridge_candidate.sql` records this metadata with
+  `trafficChanged=false`.
+- The bridge candidate is not active in traffic. The live Apache vhost still
+  points directly at pgAdmin until the dry-run is promoted explicitly.
 - No automatic Apache or Authentik API apply should happen until parity and
   rollback are confirmed.
 
 Pending work:
 
-- implement or select the Apache forward-auth bridge/outpost needed by the
-  Pyrosa IAM gateway candidate, or choose Authentik proxy enforcement as the
-  first live pgAdmin enforcement step
 - compare the final enforceable candidate vhost against the current direct
   pgAdmin vhost
+- activate the bridge service in a hold/rollback window, then promote the
+  candidate vhost only after local health and login redirects validate
 - validate unauthenticated redirect, MFA login, pgAdmin behavior after SSO,
   unsafe-method handling, and local break-glass access
 - run or confirm a post-enforcement backup covering Authentik state

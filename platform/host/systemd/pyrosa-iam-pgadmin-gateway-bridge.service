@@ -1,0 +1,29 @@
+[Unit]
+Description=Pyrosa IAM pgAdmin Gateway Bridge
+After=network-online.target app-pyrosa-iam.service app-pyrosa-pgadmin.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=simplehost
+Group=simplehost
+WorkingDirectory=/opt/simplehostman/release/current
+Environment=PYROSA_IAM_GATEWAY_BRIDGE_LISTEN_HOST=127.0.0.1
+Environment=PYROSA_IAM_GATEWAY_BRIDGE_LISTEN_PORT=10144
+Environment=PYROSA_IAM_GATEWAY_CHECK_URL=http://127.0.0.1:10134/oauth/gateway/check
+Environment=PYROSA_IAM_GATEWAY_UPSTREAM_URL=http://127.0.0.1:10143
+Environment=PYROSA_IAM_GATEWAY_LOGIN_URL=https://iam.pyrosa.com.do/oauth/gateway/start
+Environment=PYROSA_IAM_GATEWAY_PUBLIC_URL=https://pgadmin.pyrosa.com.do/
+Environment="PYROSA_IAM_GATEWAY_REQUIRED_GROUP=PYROSA Operators"
+Environment=PYROSA_IAM_GATEWAY_REQUIRE_MFA=true
+ExecStart=/usr/bin/node /opt/simplehostman/release/current/platform/iam/pyrosa-iam-gateway-bridge.mjs
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/run
+
+[Install]
+WantedBy=multi-user.target
