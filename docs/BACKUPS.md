@@ -418,6 +418,56 @@ Post-enforcement Authentik backup on `2026-05-02`:
   - `1` `https://code.pyrosa.com.do` proxy provider
   - `1` embedded-outpost/provider link
   - `1` MFA-required validation stage
+
+### Execution record: 2026-06-11 IAM/DR scratch drill
+
+Restore-test id: `20260611T073653Z`.
+
+Operational notes:
+
+- Current PostgreSQL custom dumps were created by PostgreSQL `18.3` with dump
+  format `1.16-0`.
+- Use `/usr/pgsql-18/bin/pg_restore` for these dumps. The host default
+  `/usr/bin/pg_restore` is PostgreSQL `16.13` and cannot read them.
+- Backup directories are root-only. For PostgreSQL restore tests, copy the
+  selected dump to a temporary readable scratch/staging path, restore from
+  there, and remove the staged dump after validation.
+
+Validated artifacts:
+
+- Pyrosa IAM root-only runtime config:
+  `/srv/backups/iam/pyrosa-iam/root-config/pyrosa-iam-root-config-daily-2026-06-11T02-05-03-877Z/pyrosa-iam-root-config.tar.gz`
+  - scratch target:
+    `/tmp/simplehostman-iam-dr-drill-20260611T073653Z/pyrosa-iam-root`
+  - restored archive entries: `6`
+  - expected contents included `/etc/pyrosa-iam`, the IAM env file and the
+    live Apache vhost fragment
+- Pyrosa IAM PostgreSQL database:
+  `/srv/backups/databases/pyrosa-iam/pyrosa-iam-database-daily-2026-06-10T02-54-05-604Z/app_pyrosa_iam.dump`
+  - scratch database:
+    `drill_pyrosa_iam_20260611t073653z`
+  - restored counts: `account_users=2`, `auth_clients=2`, `mfa_methods=6`,
+    `oauth_scopes=9`
+  - cleanup: scratch database dropped
+- Authentik PostgreSQL database:
+  `/srv/backups/iam/authentik/primary/iam-authentik-primary-daily-2026-06-11T04-35-04-830Z/app_authentik.dump`
+  - scratch database:
+    `drill_authentik_20260611t073653z`
+  - restored counts: `authentik_core_user=3`,
+    `authentik_core_application=2`, `authentik_core_provider=2`,
+    `authentik_flows_flow=15`
+  - cleanup: scratch database dropped
+- Authentik files:
+  `/srv/backups/iam/authentik/primary/iam-authentik-primary-daily-2026-06-11T04-35-04-830Z/authentik-files.tar.gz`
+  - scratch target:
+    `/tmp/simplehostman-iam-dr-drill-20260611T073653Z/authentik-files`
+  - restored archive entries: `12`
+
+Final cleanup evidence:
+
+- no `drill_*` PostgreSQL databases remained after the test
+- temporary staged dump copies were removed from the scratch directory
+- live IAM, Authentik and Apache services were not changed
 - scratch database and temporary dump copy were removed.
 
 Final IAM rollout backup validation on `2026-05-02`:

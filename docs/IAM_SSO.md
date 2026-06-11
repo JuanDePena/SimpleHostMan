@@ -1,6 +1,6 @@
 # IAM And SSO Runbook
 
-Updated on `2026-06-10`.
+Updated on `2026-06-11`.
 
 ## Scope
 
@@ -368,7 +368,8 @@ Pyrosa app login routing as of `2026-06-10`:
   - `app-pyrosa-iam.service` active;
   - loopback health returned `{"ok":true,"service":"pyrosa-iam"}`;
   - `/login` served the IAM UI and set the new `PYROSA_IAM_SESSION` cookie
-    while keeping the legacy `PYROSA_ACCOUNTS_SESSION` compatibility cookie;
+    while still keeping the then-active legacy `PYROSA_ACCOUNTS_SESSION`
+    compatibility cookie, before the 2026-06-11 alias-retirement decision;
   - public OIDC discovery returned issuer `https://iam.pyrosa.com.do` with the
     expected authorization, token and JWKS endpoints;
   - the gateway endpoint stayed fail-closed where no valid session was present.
@@ -392,11 +393,61 @@ Pyrosa app login routing as of `2026-06-10`:
   `iam-binding-pyrosa-pgadmin-pyrosa-iam-gateway` as the next administrative
   pilot candidate. The pgAdmin binding is metadata-only and does not render
   Apache or change public traffic.
-- Legacy `PYROSA_ACCOUNTS_SESSION` and `X-Pyrosa-Account(s)-*`
-  compatibility names remain accepted during the migration, but the canonical
-  target is now `PYROSA_IAM_*` and `X-Pyrosa-IAM-*`. They should be retired
-  only after dependent apps and proxy pilots report clean canonical-name usage
-  for one release.
+- On 2026-06-11 UTC, the pgAdmin IAM pilot was rehearsed in dry-run only:
+  - current direct vhost copied to
+    `/etc/simplehost/rollback/pgadmin-iam-dry-run-20260611T072225Z/pyrosa-pgadmin.conf.current`;
+  - candidate vhost rendered to
+    `/etc/simplehost/rollback/pgadmin-iam-dry-run-20260611T072225Z/pyrosa-pgadmin.pyrosa-iam-gateway.candidate.conf`;
+  - the live `pgadmin.pyrosa.com.do` vhost continued proxying directly to
+    `http://127.0.0.1:10143/`;
+  - `httpd -t` with the candidate include returned `Syntax OK`;
+  - the candidate explicitly unsets incoming `X-Pyrosa-IAM-*` and legacy
+    `X-Pyrosa-Account(s)-*` headers before proxying;
+  - Apache has `proxy`, `headers`, `rewrite`, `ssl` and `lua` modules, but no
+    native nginx-style subrequest auth module, so real gateway enforcement
+    still needs an Apache bridge/outpost implementation before traffic can be
+    cut over.
+- The same 2026-06-11 validation confirmed the current public SimpleHostMan
+  posture:
+  - `https://vps-prd.pyrosa.com.do:3200/` redirects unauthenticated clients to
+    the Authentik outpost start URL;
+  - `https://vps-prd.pyrosa.com.do:3200/auth/pyrosa-iam/start` is also guarded
+    by Authentik at the public edge;
+  - loopback `/healthz` returned SimpleHostMan `2606.10.06`;
+  - loopback `/auth/pyrosa-iam/start -> IAM login -> MFA -> callback` still
+    creates `shp_session` and clears the temporary OAuth cookie, preserving the
+    inner Pyrosa IAM pilot behind the Authentik outer gate.
+- Decision on 2026-06-11 UTC: because Pyrosa IAM is still in development and
+  the dependent apps are being adjusted in the same window, legacy technical
+  aliases do not need a telemetry-release grace period. Pyrosa IAM source now
+  targets only canonical names:
+  - no read/write fallback for `PYROSA_ACCOUNTS_SESSION`;
+  - no runtime/script fallback to `PYROSA_ACCOUNTS_*` env names;
+  - no browser storage fallback to `pyrosa-accounts-*`;
+  - no emitted `X-Pyrosa-Account-*` or `X-Pyrosa-Accounts-*` headers.
+  Historical Account Center names, database/API paths still owned by the
+  account portal, and archived migration documents remain outside this alias
+  retirement.
+- On 2026-06-11 UTC, an IAM/DR scratch restore drill validated current
+  recoverability without changing live services:
+  - Pyrosa IAM root-config archive:
+    `/srv/backups/iam/pyrosa-iam/root-config/pyrosa-iam-root-config-daily-2026-06-11T02-05-03-877Z/pyrosa-iam-root-config.tar.gz`;
+  - Pyrosa IAM database dump:
+    `/srv/backups/databases/pyrosa-iam/pyrosa-iam-database-daily-2026-06-10T02-54-05-604Z/app_pyrosa_iam.dump`;
+  - Authentik database/files archive:
+    `/srv/backups/iam/authentik/primary/iam-authentik-primary-daily-2026-06-11T04-35-04-830Z`;
+  - restore scratch:
+    `/tmp/simplehostman-iam-dr-drill-20260611T073653Z`;
+  - PostgreSQL custom dumps require `/usr/pgsql-18/bin/pg_restore`; the host
+    `/usr/bin/pg_restore` from PostgreSQL `16.13` cannot read dump format
+    `1.16`;
+  - temporary restore databases were created, validated and dropped;
+  - Pyrosa IAM restored counts: `account_users=2`, `auth_clients=2`,
+    `mfa_methods=6`, `oauth_scopes=9`;
+  - Authentik restored counts: `authentik_core_user=3`,
+    `authentik_core_application=2`, `authentik_core_provider=2`,
+    `authentik_flows_flow=15`;
+  - no `drill_*` PostgreSQL databases remained after cleanup.
 
 Historical Accounts OAuth pilot:
 

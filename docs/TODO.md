@@ -1,6 +1,6 @@
 # SimpleHost TODO
 
-Updated on `2026-06-10`.
+Updated on `2026-06-11`.
 
 This file tracks only work that is still open. Closed implementation evidence
 belongs in the feature runbook that owns the behavior, not in this tracker.
@@ -30,16 +30,24 @@ Current state:
   `iam-binding-pyrosa-pgadmin-pyrosa-iam-gateway` as the next
   `pyrosa-iam` gateway candidate with `render_mode=metadata_only`; no Apache
   or traffic change has been applied.
+- The 2026-06-11 dry-run created a rollback copy and candidate vhost under
+  `/etc/simplehost/rollback/pgadmin-iam-dry-run-20260611T072225Z`, and
+  `httpd -t` with the candidate include returned `Syntax OK`.
+- The current live pgAdmin vhost still proxies directly to
+  `http://127.0.0.1:10143/`.
+- Real gateway enforcement still needs an Apache forward-auth bridge/outpost
+  because the available Apache modules do not provide nginx-style subrequest
+  auth out of the box.
 - No automatic Apache or Authentik API apply should happen until parity and
   rollback are confirmed.
 
 Pending work:
 
-- decide whether the first pgAdmin pilot is Authentik proxy enforcement,
-  Pyrosa IAM gateway dry-run, or Authentik first followed by Pyrosa IAM
-- prepare a direct-vhost rollback copy before enforcement
-- render the candidate pgAdmin vhost in dry-run and compare it to the current
-  direct pgAdmin vhost
+- implement or select the Apache forward-auth bridge/outpost needed by the
+  Pyrosa IAM gateway candidate, or choose Authentik proxy enforcement as the
+  first live pgAdmin enforcement step
+- compare the final enforceable candidate vhost against the current direct
+  pgAdmin vhost
 - validate unauthenticated redirect, MFA login, pgAdmin behavior after SSO,
   unsafe-method handling, and local break-glass access
 - run or confirm a post-enforcement backup covering Authentik state
@@ -67,29 +75,7 @@ Pending work:
 - document the renderer parity and apply procedure in
   [`IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md)
 
-### 3. Run An IAM/DR Restore Drill
-
-Current state:
-
-- Authentik runs on the primary during normal operation.
-- The secondary carries restored Authentik files, vhosts, units, pinned image,
-  and standby posture, but services remain held behind
-  `/etc/simplehost/iam/authentik/SECONDARY_PROMOTED`.
-- Automatic IAM failover remains disabled.
-
-Pending work:
-
-- choose a current replicated Authentik backup as the drill source
-- restore database and files into scratch targets
-- verify users, MFA devices, applications, providers, outpost links, branding,
-  and recovery posture from the restored state
-- optionally rehearse the secondary promotion procedure without enabling
-  automatic failover
-- record drill evidence in
-  [`BACKUPS.md`](/opt/simplehostman/src/docs/BACKUPS.md) and
-  [`IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md)
-
-### 4. Decide Pyrosa IAM Promotion Policy For SimpleHostMan
+### 3. Decide Pyrosa IAM Promotion Policy For SimpleHostMan
 
 Current state:
 
@@ -101,7 +87,8 @@ Current state:
 - SimpleHostMan release `2606.10.06` supports
   `SIMPLEHOST_OAUTH_LOGIN_PROVIDER_SLUG=pyrosa-iam`,
   `/auth/pyrosa-iam/*`, `/v1/auth/pyrosa-iam/*`, public PKCE clients without
-  `client_secret`, IAM snake_case claims and inherited compatibility aliases.
+  `client_secret`, IAM snake_case claims and the current Pyrosa IAM pilot
+  contract.
 - `pyrosa-iam` runs on the primary at `127.0.0.1:10134`, uses
   `app_pyrosa_iam`, and is cataloged in SimpleHostMan as `metadata-only`.
 - Public `https://iam.pyrosa.com.do` now proxies to the loopback IAM runtime
@@ -127,6 +114,14 @@ Current state:
   `https://iam.pyrosa.com.do/ui-auth/authorize`.
 - `pyrosa-demosync` and legacy `pyrosa-sync` remain intentionally outside this
   transition because they keep local/application-owned login.
+- On 2026-06-11 UTC, public SimpleHostMan remained protected by Authentik while
+  the loopback Pyrosa IAM OAuth flow still completed through MFA, callback,
+  `shp_session` creation and temporary OAuth cookie cleanup.
+- On 2026-06-11 UTC, a scratch IAM/DR restore drill restored Pyrosa IAM and
+  Authentik databases plus IAM/Auth file archives into temporary targets and
+  dropped the temporary databases afterward. Evidence is recorded in
+  [`BACKUPS.md`](/opt/simplehostman/src/docs/BACKUPS.md) and
+  [`IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md).
 
 Pending work:
 
@@ -140,11 +135,11 @@ Pending work:
   point
 - execute the pgAdmin pilot from the new metadata-only `pyrosa-iam/gateway`
   candidate after vhost parity and rollback are ready
-- retire inherited `X-Pyrosa-Accounts-*`, cookie and storage aliases after all
-  dependent clients have moved to the new `PYROSA_IAM_*` and
-  `X-Pyrosa-IAM-*` names
+- release and deploy the Pyrosa IAM alias-retirement build, then verify `/login`
+  and `/oauth/gateway/check` use only `PYROSA_IAM_SESSION` and
+  `X-Pyrosa-IAM-*`
 
-### 5. Implement Pyrosa IAM OIDC/Gateway Provider Support
+### 4. Implement Pyrosa IAM OIDC/Gateway Provider Support
 
 Current state:
 
@@ -172,28 +167,6 @@ Pending work:
 - promote `gateway_proxy` only after a non-critical Apache forward-auth pilot
   validates rollback and unsafe-method behavior
 - record SimpleHostMan readiness evidence in
-  [`IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md)
-
-### 6. Retire Legacy Accounts IAM Compatibility Aliases
-
-Current state:
-
-- `pyrosa-iam` writes canonical IAM names but still accepts compatibility
-  aliases inherited from the cloned Accounts runtime.
-- The legacy names include `PYROSA_ACCOUNTS_SESSION`,
-  `X-Pyrosa-Account-*`, `X-Pyrosa-Accounts-*`, and remaining
-  `PYROSA_ACCOUNTS_*` runtime fallbacks.
-- This compatibility is intentional while Directory, NewSync, DemoERP,
-  SimpleHostMan, pgAdmin and any proxy pilot finish their migration.
-
-Pending work:
-
-- confirm every active app consumes `PYROSA_IAM_*`, `PYROSA_IAM_SESSION` and
-  `X-Pyrosa-IAM-*` where IAM headers/cookies are relevant
-- add telemetry or log checks for legacy-cookie/header usage during one release
-- remove write-side legacy aliases first while keeping read-side fallback
-- remove read-side fallback only after a clean release and documented rollback
-- record final removal evidence in the Pyrosa IAM compatibility guide and
   [`IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md)
 
 ## Deferred Unless Explicitly Requested
