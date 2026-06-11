@@ -547,6 +547,12 @@ Pyrosa app login routing as of `2026-06-10`:
   - `pyrosa-iam` provider metadata now marks `gateway_proxy` as `available`
     based on the Apache-managed pgAdmin pilot, while Authentik remains the
     active outer provider for SimpleHostMan.
+- On 2026-06-11 UTC, SimpleHostMan release `2606.11.21` made the stored
+  `lastApacheApply` record visible in the IAM dashboard binding detail. The UI
+  shows the apply timestamp, live vhost, rollback directory, backup file,
+  SHA-256 checksum and rendered line count for Apache-managed bindings. This is
+  an observability release only; it does not promote another binding or change
+  public traffic.
 - Decision on 2026-06-11 UTC: because Pyrosa IAM is still in development and
   the dependent apps are being adjusted in the same window, legacy technical
   aliases do not need a telemetry-release grace period. Pyrosa IAM source now

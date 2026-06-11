@@ -9,7 +9,7 @@ belongs in the feature runbook that owns the behavior, not in this tracker.
 
 - canonical source tree: `/opt/simplehostman/src`
 - canonical runtime root: `/opt/simplehostman/release`
-- active control-plane release: `2606.11.18`
+- active control-plane release: `2606.11.21`
 - implemented IAM/SSO state:
   [`IAM_SSO.md`](/opt/simplehostman/src/docs/IAM_SSO.md)
 - implemented operational inspection and hardening evidence:
@@ -35,7 +35,7 @@ Current state:
 - Pyrosa IAM source release `v2606.112122` is published and deployed with
   Account Center/IAM documentation alignment, pgAdmin gateway-pilot state
   recorded, namespace guard passing and runtime health validated.
-- Release `2606.11.18` is active from `/opt/simplehostman/release/current`.
+- Release `2606.11.21` is active from `/opt/simplehostman/release/current`.
 - The post-release Pyrosa IAM root-config backup succeeded from
   `release/current` as
   `backup-run-d4b78600-6160-44bb-9901-0d69517eb2a1` and replicated two
@@ -62,6 +62,10 @@ Current state:
   render from binding metadata, spool under `/var/lib/simplehost/iam-apache`,
   privileged root helper, `httpd -t`, Apache reload, rollback copy and
   `lastApacheApply` metadata.
+- SimpleHostMan release `2606.11.21` exposes the latest
+  `lastApacheApply` record in the IAM dashboard so operators can see apply
+  time, live vhost, rollback path, backup file, checksum and rendered line
+  count before expanding the pattern to another binding.
 - `iam-binding-pyrosa-pgadmin-pyrosa-iam-gateway` is the first active
   `apache_managed` binding. Its successful apply wrote
   `/etc/httpd/conf.d/pyrosa-pgadmin.conf`, recorded checksum

@@ -1,6 +1,6 @@
 {
   "name": "@simplehost/agent",
-  "version": "2606.11.18",
+  "version": "2606.11.21",
   "private": true,
   "type": "module",
   "main": "dist/index.js",
