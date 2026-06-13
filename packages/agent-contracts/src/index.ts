@@ -159,6 +159,8 @@ export interface ContainerReconcilePayload {
   image: string;
   description?: string;
   exec?: string;
+  workingDirectory?: string;
+  user?: string;
   network?: string;
   publishPorts?: string[];
   volumes?: string[];
@@ -1005,6 +1007,8 @@ export function isContainerReconcilePayload(
     typeof payload.image === "string" &&
     (payload.description === undefined || typeof payload.description === "string") &&
     (payload.exec === undefined || typeof payload.exec === "string") &&
+    (payload.workingDirectory === undefined || typeof payload.workingDirectory === "string") &&
+    (payload.user === undefined || typeof payload.user === "string") &&
     (payload.network === undefined || typeof payload.network === "string") &&
     (payload.publishPorts === undefined ||
       (Array.isArray(payload.publishPorts) &&

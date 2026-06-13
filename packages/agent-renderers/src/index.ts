@@ -204,6 +204,8 @@ export function renderQuadletContainerUnit(
     `ContainerName=${payload.containerName}`,
     `Image=${payload.image}`,
     ...(payload.exec ? [`Exec=${payload.exec}`] : []),
+    ...(payload.workingDirectory ? [`WorkingDir=${payload.workingDirectory}`] : []),
+    ...(payload.user ? [`User=${payload.user}`] : []),
     ...(payload.network ? [`Network=${payload.network}`] : []),
     ...publishPorts.map((publishPort) => `PublishPort=${publishPort}`),
     ...(envFilePath ? [`EnvironmentFile=${envFilePath}`] : []),

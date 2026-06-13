@@ -1894,6 +1894,19 @@ function validateContainerPayload(payload: ContainerReconcilePayload): void {
     assertSingleLineValue(payload.exec, "Container exec");
   }
 
+  if (payload.workingDirectory) {
+    assertSingleLineValue(payload.workingDirectory, "Container working directory");
+    assertAbsolutePathValue(payload.workingDirectory, "Container working directory");
+  }
+
+  if (payload.user) {
+    assertSingleLineValue(payload.user, "Container user");
+
+    if (!/^[A-Za-z0-9_.:@-]+$/.test(payload.user)) {
+      throw new Error(`Container user ${payload.user} is not safe.`);
+    }
+  }
+
   if (payload.network) {
     assertSingleLineValue(payload.network, "Container network");
 

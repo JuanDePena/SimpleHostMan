@@ -1486,6 +1486,32 @@ function isPgAdminRuntime(app: AppContainerDispatchRow): boolean {
   return app.slug === "pyrosa-pgadmin" || app.runtime_image.includes("pgadmin");
 }
 
+function resolveNodeRuntimeProfile(app: AppContainerDispatchRow):
+  | {
+      envPrefix: string;
+      healthPath: string;
+      workingDirectory: string;
+    }
+  | undefined {
+  if (app.slug === "pyrosa-ui") {
+    return {
+      envPrefix: "PYROSA_UI",
+      healthPath: "/__pyrosa_ui_health",
+      workingDirectory: `${app.storage_root}/apps/theme-studio`
+    };
+  }
+
+  if (app.slug === "pyrosa-platform") {
+    return {
+      envPrefix: "PYROSA_PLATFORM",
+      healthPath: "/__pyrosa_platform_health",
+      workingDirectory: `${app.storage_root}/ui`
+    };
+  }
+
+  return undefined;
+}
+
 function deriveDefaultEmailFromHostname(hostname: string): string {
   const domain = hostname.replace(/^pgadmin\./, "");
 
@@ -1693,7 +1719,7 @@ export async function buildAppContainerPlans(
     environment.DB_PASSWORD = desiredPassword;
   }
 
-  const publishPorts = [`127.0.0.1:${app.backend_port}:80`];
+  let publishPorts = [`127.0.0.1:${app.backend_port}:80`];
   let volumes = [
     `${app.storage_root}/app:/var/www/html:Z`,
     `${app.storage_root}/uploads:/var/www/html/public/uploads:Z`,
@@ -1704,6 +1730,9 @@ export async function buildAppContainerPlans(
     `${app.storage_root}/app`,
     `${app.storage_root}/uploads`
   ];
+  let exec: string | undefined;
+  let workingDirectory: string | undefined;
+  let user: string | undefined;
 
   if (isPgAdminRuntime(app)) {
     environment.PGADMIN_DEFAULT_EMAIL = deriveDefaultEmailFromHostname(app.canonical_domain);
@@ -1719,11 +1748,35 @@ export async function buildAppContainerPlans(
     ];
   }
 
+  const nodeRuntimeProfile = resolveNodeRuntimeProfile(app);
+  if (nodeRuntimeProfile) {
+    environment.APP_DATA_DIR = app.storage_root;
+    environment.APP_UPLOADS_DIR = `${app.storage_root}/storage/uploads`;
+    environment[`${nodeRuntimeProfile.envPrefix}_HOST`] = "0.0.0.0";
+    environment[`${nodeRuntimeProfile.envPrefix}_PORT`] = String(app.backend_port);
+    environment[`${nodeRuntimeProfile.envPrefix}_ACCESS_LOG`] = "1";
+    environment[`${nodeRuntimeProfile.envPrefix}_HEALTH_PATH`] = nodeRuntimeProfile.healthPath;
+    environment[`${nodeRuntimeProfile.envPrefix}_HEALTH_DETAILS`] = "0";
+    environment[`${nodeRuntimeProfile.envPrefix}_APP_ROOT`] = nodeRuntimeProfile.workingDirectory;
+    environment[`${nodeRuntimeProfile.envPrefix}_DIST_DIR`] = `${nodeRuntimeProfile.workingDirectory}/dist`;
+    environment[`${nodeRuntimeProfile.envPrefix}_VERSION`] = "2606";
+    environment[`${nodeRuntimeProfile.envPrefix}_BRANCH`] = "main";
+    publishPorts = [`127.0.0.1:${app.backend_port}:${app.backend_port}`];
+    volumes = [`${app.storage_root}:${app.storage_root}:Z`];
+    hostDirectories = [app.storage_root];
+    exec = "node server.mjs";
+    workingDirectory = nodeRuntimeProfile.workingDirectory;
+    user = "node";
+  }
+
   const payload: ContainerReconcilePayload = {
     serviceName: `app-${app.slug}.service`,
     containerName: `app-${app.slug}`,
     image: app.runtime_image,
     description: `Managed app runtime for ${app.slug}`,
+    exec,
+    workingDirectory,
+    user,
     publishPorts,
     volumes,
     hostDirectories,

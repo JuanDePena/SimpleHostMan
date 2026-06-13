@@ -578,6 +578,19 @@ test("pyrosa ui and platform runtime-root migration avoids mounting source repos
   assert.doesNotMatch(migrationSql, /\/srv\/containers\/apps\/pyrosa-platform',/);
 });
 
+test("pyrosa ui and platform node-runtime migration promotes source app roots", () => {
+  const migrationSql = readFileSync(
+    new URL("../migrations/0046_pyrosa_ui_platform_node_runtime.sql", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(migrationSql, /'docker\.io\/library\/node:22-bookworm-slim'/);
+  assert.match(migrationSql, /'\/srv\/containers\/apps\/pyrosa-ui\/app'/);
+  assert.match(migrationSql, /'\/srv\/containers\/apps\/pyrosa-platform\/app'/);
+  assert.match(migrationSql, /WHERE slug = 'pyrosa-ui'/);
+  assert.match(migrationSql, /WHERE slug = 'pyrosa-platform'/);
+});
+
 test("metadata-only apps do not emit proxy or container reconciliation plans", async () => {
   const appRow = {
     app_id: "app-pyrosa-iam",
@@ -882,6 +895,54 @@ test("buildZoneDnsPlans publishes node hostnames and dispatches primary plus sec
   assert.deepEqual(plans[0]?.payload.primaryAddresses, ["51.222.204.86", "10.89.0.1"]);
   assert.equal(plans[0]?.payload.deliveryRole, "primary");
   assert.equal(plans[1]?.payload.deliveryRole, "secondary");
+});
+
+test("buildAppContainerPlans promotes pyrosa-ui as a Node runtime", async () => {
+  const client = {
+    query: async () => ({
+      rows: [
+        {
+          slug: "pyrosa-ui",
+          backend_port: 10164,
+          runtime_image: "docker.io/library/node:22-bookworm-slim",
+          storage_root: "/srv/containers/apps/pyrosa-ui/app",
+          primary_node_id: "primary",
+          standby_node_id: "secondary",
+          mode: "active-passive",
+          canonical_domain: "ui.pyrosa.com.do",
+          aliases: [],
+          database_engine: null,
+          database_name: null,
+          database_user: null,
+          database_primary_node_id: null,
+          database_primary_wireguard_address: null,
+          desired_password: null
+        }
+      ]
+    })
+  } as unknown as PoolClient;
+
+  const result = await buildAppContainerPlans(client, "pyrosa-ui", null);
+  const payload = result.plans[0]?.payload;
+
+  assert.equal(result.credentialMissing, false);
+  assert.equal(result.plans.length, 2);
+  assert.equal(payload?.image, "docker.io/library/node:22-bookworm-slim");
+  assert.equal(payload?.exec, "node server.mjs");
+  assert.equal(payload?.workingDirectory, "/srv/containers/apps/pyrosa-ui/app/apps/theme-studio");
+  assert.equal(payload?.user, "node");
+  assert.deepEqual(payload?.publishPorts, ["127.0.0.1:10164:10164"]);
+  assert.deepEqual(payload?.volumes, [
+    "/srv/containers/apps/pyrosa-ui/app:/srv/containers/apps/pyrosa-ui/app:Z"
+  ]);
+  assert.deepEqual(payload?.hostDirectories, ["/srv/containers/apps/pyrosa-ui/app"]);
+  assert.equal(payload?.environment?.PYROSA_UI_HOST, "0.0.0.0");
+  assert.equal(payload?.environment?.PYROSA_UI_PORT, "10164");
+  assert.equal(payload?.environment?.PYROSA_UI_HEALTH_PATH, "/__pyrosa_ui_health");
+  assert.equal(
+    payload?.environment?.PYROSA_UI_DIST_DIR,
+    "/srv/containers/apps/pyrosa-ui/app/apps/theme-studio/dist"
+  );
 });
 
 test("buildAppContainerPlans preserves pgAdmin data and config mounts", async () => {

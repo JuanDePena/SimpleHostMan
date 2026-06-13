@@ -84,6 +84,8 @@ export interface ContainerReconcilePayload {
   image: string;
   description?: string;
   exec?: string;
+  workingDirectory?: string;
+  user?: string;
   network?: string;
   publishPorts?: string[];
   volumes?: string[];
