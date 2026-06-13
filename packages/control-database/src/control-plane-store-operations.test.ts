@@ -591,6 +591,23 @@ test("pyrosa ui and platform node-runtime migration promotes source app roots", 
   assert.match(migrationSql, /WHERE slug = 'pyrosa-platform'/);
 });
 
+test("pyrosa democrm runtime migration registers app, database and IAM binding", () => {
+  const migrationSql = readFileSync(
+    new URL("../migrations/0047_pyrosa_democrm_runtime.sql", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(migrationSql, /'pyrosa-democrm'/);
+  assert.match(migrationSql, /'democrm\.pyrosa\.com\.do'/);
+  assert.match(migrationSql, /10166/);
+  assert.match(migrationSql, /'app_pyrosa_democrm'/);
+  assert.match(migrationSql, /'record-pyrosa-democrm-a-51-222-204-86'/);
+  assert.match(migrationSql, /'pyrosa-democrm-files-daily'/);
+  assert.match(migrationSql, /'iam-binding-pyrosa-democrm'/);
+  assert.match(migrationSql, /"clientSlug": "crm"/);
+  assert.match(migrationSql, /"supportApps": \["pyrosa-platform", "pyrosa-iam", "pyrosa-accounts"\]/);
+});
+
 test("metadata-only apps do not emit proxy or container reconciliation plans", async () => {
   const appRow = {
     app_id: "app-pyrosa-iam",
