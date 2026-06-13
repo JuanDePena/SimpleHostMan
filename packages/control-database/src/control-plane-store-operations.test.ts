@@ -939,6 +939,7 @@ test("buildAppContainerPlans promotes pyrosa-ui as a Node runtime", async () => 
   assert.equal(payload?.environment?.PYROSA_UI_HOST, "0.0.0.0");
   assert.equal(payload?.environment?.PYROSA_UI_PORT, "10164");
   assert.equal(payload?.environment?.PYROSA_UI_HEALTH_PATH, "/__pyrosa_ui_health");
+  assert.equal(payload?.environment?.SIMPLEHOST_CONTAINER_PROFILE, "node-app-v1");
   assert.equal(
     payload?.environment?.PYROSA_UI_DIST_DIR,
     "/srv/containers/apps/pyrosa-ui/app/apps/theme-studio/dist"

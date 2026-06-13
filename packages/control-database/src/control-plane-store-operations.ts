@@ -1761,6 +1761,7 @@ export async function buildAppContainerPlans(
     environment[`${nodeRuntimeProfile.envPrefix}_DIST_DIR`] = `${nodeRuntimeProfile.workingDirectory}/dist`;
     environment[`${nodeRuntimeProfile.envPrefix}_VERSION`] = "2606";
     environment[`${nodeRuntimeProfile.envPrefix}_BRANCH`] = "main";
+    environment.SIMPLEHOST_CONTAINER_PROFILE = "node-app-v1";
     publishPorts = [`127.0.0.1:${app.backend_port}:${app.backend_port}`];
     volumes = [`${app.storage_root}:${app.storage_root}:Z`];
     hostDirectories = [app.storage_root];

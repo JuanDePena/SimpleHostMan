@@ -82,6 +82,7 @@ activate_local() {
   if [[ "${mode}" == "disabled" ]]; then
     systemctl disable simplehost-control.service simplehost-worker.service simplehost-backup-runner.timer simplehost-pgbackrest-control-full.timer simplehost-pgbackrest-control-incr.timer simplehost-pgbackrest-apps-full.timer simplehost-pgbackrest-apps-incr.timer simplehost-pgbackrest-offhost-sync.timer || true
     systemctl stop simplehost-control.service simplehost-worker.service simplehost-backup-runner.timer simplehost-backup-runner.service simplehost-pgbackrest-control-full.timer simplehost-pgbackrest-control-incr.timer simplehost-pgbackrest-apps-full.timer simplehost-pgbackrest-apps-incr.timer simplehost-pgbackrest-offhost-sync.timer simplehost-pgbackrest-offhost-sync.service || true
+    systemctl try-restart simplehost-agent.service || true
     echo "Installed control runtime ${version} locally in disabled mode"
     return
   fi
@@ -89,6 +90,7 @@ activate_local() {
   systemctl enable simplehost-control.service simplehost-worker.service simplehost-backup-runner.timer simplehost-pgbackrest-control-full.timer simplehost-pgbackrest-control-incr.timer simplehost-pgbackrest-apps-full.timer simplehost-pgbackrest-apps-incr.timer simplehost-pgbackrest-offhost-sync.timer
   systemctl restart simplehost-control.service simplehost-worker.service
   systemctl restart simplehost-backup-runner.timer simplehost-pgbackrest-control-full.timer simplehost-pgbackrest-control-incr.timer simplehost-pgbackrest-apps-full.timer simplehost-pgbackrest-apps-incr.timer simplehost-pgbackrest-offhost-sync.timer
+  systemctl try-restart simplehost-agent.service || true
   systemctl is-active simplehost-control.service simplehost-worker.service simplehost-backup-runner.timer simplehost-pgbackrest-control-full.timer simplehost-pgbackrest-control-incr.timer simplehost-pgbackrest-apps-full.timer simplehost-pgbackrest-apps-incr.timer simplehost-pgbackrest-offhost-sync.timer
   echo "Installed control runtime ${version} locally in active mode"
 }
@@ -141,7 +143,8 @@ activate_remote() {
   if [[ "${mode}" == "disabled" ]]; then
     ssh "${target_host}" \
       "systemctl disable simplehost-control.service simplehost-worker.service simplehost-backup-runner.timer simplehost-pgbackrest-control-full.timer simplehost-pgbackrest-control-incr.timer simplehost-pgbackrest-apps-full.timer simplehost-pgbackrest-apps-incr.timer simplehost-pgbackrest-offhost-sync.timer || true && \
-       systemctl stop simplehost-control.service simplehost-worker.service simplehost-backup-runner.timer simplehost-backup-runner.service simplehost-pgbackrest-control-full.timer simplehost-pgbackrest-control-incr.timer simplehost-pgbackrest-apps-full.timer simplehost-pgbackrest-apps-incr.timer simplehost-pgbackrest-offhost-sync.timer simplehost-pgbackrest-offhost-sync.service || true"
+       systemctl stop simplehost-control.service simplehost-worker.service simplehost-backup-runner.timer simplehost-backup-runner.service simplehost-pgbackrest-control-full.timer simplehost-pgbackrest-control-incr.timer simplehost-pgbackrest-apps-full.timer simplehost-pgbackrest-apps-incr.timer simplehost-pgbackrest-offhost-sync.timer simplehost-pgbackrest-offhost-sync.service || true && \
+       systemctl try-restart simplehost-agent.service || true"
     echo "Installed control runtime ${version} on ${target_host} in disabled mode"
     return
   fi
@@ -150,6 +153,7 @@ activate_remote() {
     "systemctl enable simplehost-control.service simplehost-worker.service simplehost-backup-runner.timer simplehost-pgbackrest-control-full.timer simplehost-pgbackrest-control-incr.timer simplehost-pgbackrest-apps-full.timer simplehost-pgbackrest-apps-incr.timer simplehost-pgbackrest-offhost-sync.timer && \
      systemctl restart simplehost-control.service simplehost-worker.service && \
      systemctl restart simplehost-backup-runner.timer simplehost-pgbackrest-control-full.timer simplehost-pgbackrest-control-incr.timer simplehost-pgbackrest-apps-full.timer simplehost-pgbackrest-apps-incr.timer simplehost-pgbackrest-offhost-sync.timer && \
+     systemctl try-restart simplehost-agent.service || true && \
      systemctl is-active simplehost-control.service simplehost-worker.service simplehost-backup-runner.timer simplehost-pgbackrest-control-full.timer simplehost-pgbackrest-control-incr.timer simplehost-pgbackrest-apps-full.timer simplehost-pgbackrest-apps-incr.timer simplehost-pgbackrest-offhost-sync.timer"
   echo "Installed control runtime ${version} on ${target_host} in active mode"
 }
