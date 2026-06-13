@@ -547,6 +547,37 @@ test("LDAP IAM bridge promotion migration records Apache-managed active posture"
   assert.match(migrationSql, /"lamAuthMode": "iam_gateway_then_lam_native_login"/);
 });
 
+test("pyrosa ui and platform catalog migration registers apps, sites, DNS and backups", () => {
+  const migrationSql = readFileSync(
+    new URL("../migrations/0044_pyrosa_ui_platform_catalog.sql", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(migrationSql, /'pyrosa-ui'/);
+  assert.match(migrationSql, /'ui\.pyrosa\.com\.do'/);
+  assert.match(migrationSql, /10164/);
+  assert.match(migrationSql, /'pyrosa-platform'/);
+  assert.match(migrationSql, /'platform\.pyrosa\.com\.do'/);
+  assert.match(migrationSql, /10165/);
+  assert.match(migrationSql, /'active-passive'/);
+  assert.match(migrationSql, /'record-pyrosa-ui-a-51-222-204-86'/);
+  assert.match(migrationSql, /'record-pyrosa-platform-a-51-222-204-86'/);
+  assert.match(migrationSql, /'pyrosa-ui-files-daily'/);
+  assert.match(migrationSql, /'pyrosa-platform-files-daily'/);
+});
+
+test("pyrosa ui and platform runtime-root migration avoids mounting source repos", () => {
+  const migrationSql = readFileSync(
+    new URL("../migrations/0045_pyrosa_ui_platform_runtime_roots.sql", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(migrationSql, /'\/srv\/containers\/apps\/pyrosa-ui\/runtime'/);
+  assert.match(migrationSql, /'\/srv\/containers\/apps\/pyrosa-platform\/runtime'/);
+  assert.doesNotMatch(migrationSql, /\/srv\/containers\/apps\/pyrosa-ui',/);
+  assert.doesNotMatch(migrationSql, /\/srv\/containers\/apps\/pyrosa-platform',/);
+});
+
 test("metadata-only apps do not emit proxy or container reconciliation plans", async () => {
   const appRow = {
     app_id: "app-pyrosa-iam",
