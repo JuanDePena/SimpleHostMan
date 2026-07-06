@@ -176,6 +176,8 @@ If you need implementation details, architecture, or runbooks, start here:
 - [Backups](/opt/simplehostman/src/docs/BACKUPS.md)
 - [Operational Views](/opt/simplehostman/src/docs/OPERATIONAL_VIEWS.md)
 - [PostgreSQL Upgrade Path](/opt/simplehostman/src/docs/POSTGRESQL_UPGRADE.md)
+- [code-server + Codex Extension Runbook](/opt/simplehostman/src/docs/CODE_SERVER_CODEX.md) - important when Codex freezes, shows a blank panel, or needs a clean reinstall in browser-based
+  `code-server`
 
 If you need detailed boundaries for the main product surfaces:
 

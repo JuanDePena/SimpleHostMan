@@ -130,6 +130,11 @@ Read this when working on operator UI or shared visual primitives:
 
 - `/opt/simplehostman/src/docs/UI_STYLE.md`
 
+Read this before changing `code-server`, the browser Codex extension, webview
+resource handling, or related auth/session cleanup:
+
+- `/opt/simplehostman/src/docs/CODE_SERVER_CODEX.md`
+
 Read these when working on service-specific behavior:
 
 - `/opt/simplehostman/src/docs/DNS.md`
@@ -145,3 +150,6 @@ Read these when working on service-specific behavior:
   PostgreSQL migrations; do not reintroduce a source-controlled YAML catalog.
 - If a change affects both source layout and architecture, update the migration docs in the same turn.
 - If a task touches releases or systemd, verify whether it is only source-level rehearsal work or a live runtime change before changing anything live.
+- If troubleshooting the Codex extension in browser-based `code-server`, prefer
+  the cleanup/reinstall path in `/opt/simplehostman/src/docs/CODE_SERVER_CODEX.md`
+  before patching `vscode-resource`, Apache webview aliases, or PowerDNS records.
