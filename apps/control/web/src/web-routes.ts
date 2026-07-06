@@ -32,6 +32,9 @@ export interface ControlWebRuntimeConfig {
     host: string;
     port: number;
   };
+  rustdesk?: {
+    publicHostname: string | null;
+  };
   oauthResourceServer?: {
     enabled: boolean;
     issuer: string | null;

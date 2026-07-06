@@ -170,7 +170,22 @@ function createConfig(): ControlWebRuntimeConfig {
     api: { host: "127.0.0.1", port: 4100 },
     env: "test",
     version: "0.1.0-test",
-    web: { host: "127.0.0.1", port: 3200 }
+    web: { host: "127.0.0.1", port: 3200 },
+    rustdesk: {
+      publicHostname: "rustdesk.pyrosa.com.do"
+    }
+  };
+}
+
+function createRustDeskConnection() {
+  return {
+    generatedAt: "2026-07-06T14:00:00.000Z",
+    publicHostname: "rustdesk.pyrosa.com.do",
+    publicKey: "test-public-key",
+    relayHostname: "rustdesk.pyrosa.com.do",
+    txtRecordFqdn: "_rustdesk.pyrosa.com.do",
+    txtRecordValue: "host=rustdesk.pyrosa.com.do;key=test-public-key",
+    status: "ready" as const
   };
 }
 
@@ -236,6 +251,105 @@ test("web healthz reports web runtime metadata", async () => {
   assert.equal(payload.service, "web");
   assert.equal(payload.environment, "test");
   assert.equal(payload.upstreamApi, "127.0.0.1:4100");
+});
+
+test("RustDesk public host serves splash and connect without operator routes", async () => {
+  const handler = createControlWebSurface(
+    {
+      config: createConfig(),
+      startedAt: Date.now()
+    },
+    createStubApi({
+      loadRustDeskPublicConnection: async () => createRustDeskConnection()
+    })
+  ).requestListener;
+
+  const splashResponse = await invokeRequestHandler(handler, {
+    method: "GET",
+    url: "/",
+    headers: {
+      host: "rustdesk.pyrosa.com.do"
+    }
+  });
+
+  assert.equal(splashResponse.statusCode, 200);
+  assert.match(splashResponse.bodyText, /RustDesk/);
+  assert.match(splashResponse.bodyText, /rustdesk\.pyrosa\.com\.do/);
+  assert.match(splashResponse.bodyText, /rustdesk-splash-card/);
+  assert.doesNotMatch(splashResponse.bodyText, /View connection details|Ver datos de conexión/);
+  assert.doesNotMatch(splashResponse.bodyText, /href="\/connect"/);
+  assert.doesNotMatch(splashResponse.bodyText, /The public key and quick steps/);
+  assert.doesNotMatch(splashResponse.bodyText, /La clave pública y los pasos rápidos/);
+  assert.doesNotMatch(splashResponse.bodyText, /Public reference|Referencia pública/);
+  assert.doesNotMatch(splashResponse.bodyText, /stable hostname points to the active node/);
+
+  const splashHeadResponse = await invokeRequestHandler(handler, {
+    method: "HEAD",
+    url: "/",
+    headers: {
+      host: "rustdesk.pyrosa.com.do"
+    }
+  });
+
+  assert.equal(splashHeadResponse.statusCode, 200);
+  assert.equal(splashHeadResponse.bodyText, "");
+
+  const connectResponse = await invokeRequestHandler(handler, {
+    method: "GET",
+    url: "/connect",
+    headers: {
+      host: "rustdesk.pyrosa.com.do"
+    }
+  });
+
+  assert.equal(connectResponse.statusCode, 200);
+  assert.match(connectResponse.bodyText, /ID Server/);
+  assert.match(connectResponse.bodyText, /Relay Server/);
+  assert.match(connectResponse.bodyText, /test-public-key/);
+  assert.match(connectResponse.bodyText, /name="returnTo" value="\/connect"/);
+  assert.doesNotMatch(connectResponse.bodyText, /Login de operador|Operator login/);
+
+  const legacyResponse = await invokeRequestHandler(handler, {
+    method: "GET",
+    url: "/connect/rustdesk?lang=es",
+    headers: {
+      host: "rustdesk.pyrosa.com.do"
+    }
+  });
+
+  assert.equal(legacyResponse.statusCode, 301);
+  assert.equal(legacyResponse.headers.location, "/connect?lang=es");
+
+  const loginResponse = await invokeRequestHandler(handler, {
+    method: "GET",
+    url: "/login",
+    headers: {
+      host: "rustdesk.pyrosa.com.do"
+    }
+  });
+
+  assert.equal(loginResponse.statusCode, 404);
+});
+
+test("legacy RustDesk connect path redirects to the public RustDesk host", async () => {
+  const handler = createControlWebSurface(
+    {
+      config: createConfig(),
+      startedAt: Date.now()
+    },
+    createStubApi()
+  ).requestListener;
+
+  const response = await invokeRequestHandler(handler, {
+    method: "GET",
+    url: "/connect/rustdesk",
+    headers: {
+      host: "vps-prd.pyrosa.com.do:3200"
+    }
+  });
+
+  assert.equal(response.statusCode, 301);
+  assert.equal(response.headers.location, "https://rustdesk.pyrosa.com.do/connect");
 });
 
 test("overview forwards the selected status interval to dashboard loading", async () => {

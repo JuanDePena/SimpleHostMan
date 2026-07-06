@@ -19,10 +19,14 @@ export function renderRustDeskConnectPage(
   locale: WebLocale,
   connection: RustDeskPublicConnectionInfo,
   options: {
+    connectionPath?: string;
     hasSession?: boolean;
     notice?: PanelNotice;
+    showOperatorAction?: boolean;
   } = {}
 ): string {
+  const connectionPath = options.connectionPath ?? "/connect/rustdesk";
+  const showOperatorAction = options.showOperatorAction ?? true;
   const copy =
     locale === "es"
       ? {
@@ -149,7 +153,7 @@ export function renderRustDeskConnectPage(
   const heroActions = `<div class="connect-hero-actions">
       <div class="locale-switch" role="group" aria-label="${escapeHtml(copy.languageLabel)}">
         <form method="post" action="/preferences/locale" class="inline-form">
-          <input type="hidden" name="returnTo" value="/connect/rustdesk" />
+          <input type="hidden" name="returnTo" value="${escapeHtml(connectionPath)}" />
           <input type="hidden" name="locale" value="es" />
           <button
             type="submit"
@@ -158,7 +162,7 @@ export function renderRustDeskConnectPage(
           >ES</button>
         </form>
         <form method="post" action="/preferences/locale" class="inline-form">
-          <input type="hidden" name="returnTo" value="/connect/rustdesk" />
+          <input type="hidden" name="returnTo" value="${escapeHtml(connectionPath)}" />
           <input type="hidden" name="locale" value="en" />
           <button
             type="submit"
@@ -167,9 +171,11 @@ export function renderRustDeskConnectPage(
           >EN</button>
         </form>
       </div>
-      <a class="button-link" href="${escapeHtml(copy.operatorHref)}">${escapeHtml(
-        copy.operatorLabel
-      )}</a>
+      ${showOperatorAction
+        ? `<a class="button-link" href="${escapeHtml(copy.operatorHref)}">${escapeHtml(
+            copy.operatorLabel
+          )}</a>`
+        : ""}
     </div>`;
   const statusTone = connection.status === "ready" ? "success" : "danger";
   const updatedLabel = formatDate(connection.generatedAt, locale);
@@ -502,5 +508,210 @@ export function renderRustDeskConnectPage(
           });
         })();
       </script>`
+  });
+}
+
+export function renderRustDeskSplashPage(
+  locale: WebLocale,
+  connection: RustDeskPublicConnectionInfo
+): string {
+  const copy =
+    locale === "es"
+      ? {
+          title: "RustDesk",
+          heading: "RustDesk",
+          eyebrow: "Acceso remoto Pyrosa",
+          subheading:
+            "Servidor RustDesk self-hosted para conexiones remotas administradas por SimpleHostMan.",
+          statusLabel: "Estado",
+          readyLabel: "listo",
+          incompleteLabel: "incompleto",
+          hostnameLabel: "Hostname",
+          updatedLabel: "Actualizado",
+          purposeTitle: "Uso",
+          purposeBody:
+            "Usa este hostname en clientes RustDesk configurados para el servidor OSS propio.",
+          missingValueLabel: "Pendiente"
+        }
+      : {
+          title: "RustDesk",
+          heading: "RustDesk",
+          eyebrow: "Pyrosa remote access",
+          subheading:
+            "Self-hosted RustDesk server for remote connections managed by SimpleHostMan.",
+          statusLabel: "Status",
+          readyLabel: "ready",
+          incompleteLabel: "incomplete",
+          hostnameLabel: "Hostname",
+          updatedLabel: "Updated",
+          purposeTitle: "Use",
+          purposeBody:
+            "Use this hostname in RustDesk clients configured for the self-hosted OSS server.",
+          missingValueLabel: "Pending"
+        };
+
+  const statusTone = connection.status === "ready" ? "success" : "danger";
+  const metaBadge = (label: string, value: string, tone: "success" | "danger" | "muted" = "muted") =>
+    `<div class="splash-meta-row splash-meta-row-${tone}">
+      <dt>${escapeHtml(label)}</dt>
+      <dd>${escapeHtml(value)}</dd>
+    </div>`;
+
+  return renderPanelShell({
+    lang: locale,
+    title: copy.title,
+    heading: copy.heading,
+    pageClassName: "page-rustdesk-splash",
+    body: `<style>
+        .page-rustdesk-splash {
+          display: grid;
+          place-items: center;
+          width: min(100vw - 1.2rem, 42rem);
+          min-height: 100vh;
+          margin: 0 auto;
+          padding: 1rem 0;
+        }
+
+        .page-rustdesk-splash > .hero {
+          display: none;
+        }
+
+        .rustdesk-splash-card {
+          display: grid;
+          gap: 1rem;
+          width: 100%;
+          padding: clamp(1.1rem, 4vw, 1.7rem);
+          border: 1px solid rgba(13, 32, 56, 0.1);
+          border-radius: 1rem;
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(246, 251, 255, 0.93)),
+            linear-gradient(135deg, rgba(0, 127, 255, 0.07), rgba(64, 218, 180, 0.08));
+          box-shadow:
+            0 1.8rem 4.2rem rgba(16, 39, 68, 0.16),
+            0 0.35rem 1rem rgba(0, 127, 255, 0.08);
+        }
+
+        .rustdesk-splash-heading {
+          display: grid;
+          gap: 0.34rem;
+        }
+
+        .rustdesk-splash-eyebrow {
+          margin: 0;
+          color: var(--navy-soft);
+          font-size: var(--font-size-kicker);
+          letter-spacing: 0.16em;
+          text-transform: uppercase;
+        }
+
+        .rustdesk-splash-heading h1 {
+          margin: 0;
+          color: var(--navy-deep);
+          font-size: clamp(2.1rem, 8vw, 3.4rem);
+          line-height: 0.94;
+        }
+
+        .rustdesk-splash-subheading {
+          max-width: 34rem;
+          margin: 0;
+          color: var(--text-subtle);
+          font-size: 1rem;
+          line-height: 1.55;
+        }
+
+        .splash-meta-list {
+          display: grid;
+          gap: 0.72rem;
+          margin: 0;
+          padding: 0.84rem 0 0;
+          border-top: 1px solid rgba(13, 32, 56, 0.1);
+        }
+
+        .splash-meta-row {
+          display: grid;
+          grid-template-columns: 8.5rem minmax(0, 1fr);
+          gap: 0.9rem;
+          align-items: baseline;
+        }
+
+        .splash-meta-row dt {
+          color: var(--muted);
+          font-size: 0.72rem;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .splash-meta-row dd {
+          min-width: 0;
+          margin: 0;
+          color: var(--navy-deep);
+          font-weight: 700;
+          overflow-wrap: anywhere;
+        }
+
+        .splash-meta-row-success dd {
+          color: #557d16;
+        }
+
+        .splash-meta-row-danger dd {
+          color: var(--danger);
+        }
+
+        .rustdesk-splash-note {
+          display: grid;
+          gap: 0.35rem;
+          margin: 0.1rem 0 0;
+          padding-top: 0.9rem;
+          border-top: 1px solid rgba(13, 32, 56, 0.1);
+        }
+
+        .rustdesk-splash-note h2 {
+          margin: 0;
+          color: var(--navy-deep);
+          font-size: 1rem;
+        }
+
+        .rustdesk-splash-note p {
+          margin: 0;
+          color: var(--text-subtle);
+          line-height: 1.55;
+        }
+
+        @media (max-width: 560px) {
+          .page-rustdesk-splash {
+            width: min(100vw - 0.72rem, 42rem);
+            align-items: start;
+            padding-top: 0.72rem;
+          }
+
+          .splash-meta-row {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 0.18rem;
+          }
+        }
+      </style>
+      <article class="rustdesk-splash-card">
+        <div class="rustdesk-splash-heading">
+          <p class="rustdesk-splash-eyebrow">${escapeHtml(copy.eyebrow)}</p>
+          <h1>${escapeHtml(copy.heading)}</h1>
+          <p class="rustdesk-splash-subheading">${escapeHtml(copy.subheading)}</p>
+        </div>
+        <dl class="splash-meta-list">
+          ${metaBadge(
+            copy.statusLabel,
+            connection.status === "ready" ? copy.readyLabel : copy.incompleteLabel,
+            statusTone
+          )}
+          ${metaBadge(
+            copy.hostnameLabel,
+            connection.publicHostname ?? copy.missingValueLabel
+          )}
+          ${metaBadge(copy.updatedLabel, formatDate(connection.generatedAt, locale))}
+        </dl>
+        <section class="rustdesk-splash-note">
+          <h2>${escapeHtml(copy.purposeTitle)}</h2>
+          <p>${escapeHtml(copy.purposeBody)}</p>
+        </section>
+      </article>`
   });
 }
