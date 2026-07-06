@@ -31,6 +31,7 @@ const config = {
   upstreamUrl: requiredUrl("PYROSA_IAM_GATEWAY_UPSTREAM_URL"),
   loginUrl: requiredUrl("PYROSA_IAM_GATEWAY_LOGIN_URL"),
   publicUrl: requiredUrl("PYROSA_IAM_GATEWAY_PUBLIC_URL"),
+  apiPathPrefixes: parsePathPrefixes(env("PYROSA_IAM_GATEWAY_API_PREFIXES", "")),
   requiredGroup: env("PYROSA_IAM_GATEWAY_REQUIRED_GROUP", ""),
   requireMfa: env("PYROSA_IAM_GATEWAY_REQUIRE_MFA", "true") !== "false",
   timeoutMs: Number(env("PYROSA_IAM_GATEWAY_TIMEOUT_MS", "5000"))
@@ -157,6 +158,11 @@ function denyOrRedirect(req, res, status, errorCode) {
   res.setHeader("X-Pyrosa-IAM-Gateway", "bridge");
   res.setHeader("X-Pyrosa-IAM-Error-Code", errorCode);
 
+  if (shouldDenyWithoutRedirect(req)) {
+    sendText(res, status, "Pyrosa IAM gateway denied the request.\n");
+    return;
+  }
+
   if ((req.method === "GET" || req.method === "HEAD") && (status === 401 || status === 403)) {
     const redirectUrl = new URL(config.loginUrl);
     redirectUrl.searchParams.set("return_to", new URL(req.url ?? "/", config.publicUrl).toString());
@@ -167,6 +173,22 @@ function denyOrRedirect(req, res, status, errorCode) {
   }
 
   sendText(res, status, "Pyrosa IAM gateway denied the request.\n");
+}
+
+function shouldDenyWithoutRedirect(req) {
+  if (config.apiPathPrefixes.length === 0) {
+    return false;
+  }
+  const pathname = requestPathname(req);
+  return config.apiPathPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+function requestPathname(req) {
+  try {
+    return new URL(req.url ?? "/", config.publicUrl).pathname || "/";
+  } catch {
+    return "/";
+  }
 }
 
 function proxyToUpstream(req, res, identityHeaders) {
@@ -242,6 +264,22 @@ function normalizeHeaders(headers) {
     normalized[name.toLowerCase()] = Array.isArray(value) ? value.join(",") : String(value ?? "");
   }
   return normalized;
+}
+
+function parsePathPrefixes(value) {
+  return value
+    .split(",")
+    .map((prefix) => normalizePathPrefix(prefix))
+    .filter(Boolean);
+}
+
+function normalizePathPrefix(prefix) {
+  const trimmed = prefix.trim();
+  if (!trimmed) {
+    return "";
+  }
+  const path = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  return path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
 }
 
 function sendText(res, status, message) {
