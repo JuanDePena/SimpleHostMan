@@ -67,6 +67,15 @@ SimpleHostMan is built around a few explicit goals:
 5. Keep packaging, release, promotion, cutover, and rollback first-class.
 6. Treat documentation, platform assets, and release flows as part of the product, not as side notes.
 
+## Release Governance
+
+SimpleHostMan keeps its own release-root flow, but every release must preserve
+version or tag, commit, environment, build/test validation, minimum evidence,
+rollback path, and owner. Pyrosa apps use UTC tags in the `vYYMM.DDHHmm`
+format; SimpleHostMan records its release-root version and active
+`/opt/simplehostman/release/current` target. When Platform catalogs a release,
+it tracks version, channel, environment, health, evidence, and owner.
+
 ## Current Scope
 
 The platform is intentionally opinionated around the current operating stack:
