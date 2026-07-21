@@ -141,6 +141,13 @@ export function renderBackupPolicyDesiredStatePanels(args: {
         )
       },
       {
+        label: `${copy.backupPolicyColRetention} (replica)`,
+        value: renderers.renderPill(
+          String(selectedBackupPolicy.replicaRetentionDays ?? selectedBackupPolicy.retentionDays),
+          "success"
+        )
+      },
+      {
         label: copy.storageRootLabel,
         value: `<span class="mono">${escapeHtml(selectedBackupPolicy.storageLocation)}</span>`,
         className: "detail-item-span-two"
@@ -266,6 +273,9 @@ export function renderBackupPolicyDesiredStatePanels(args: {
             </label>
             <label>Retention days
               <input type="number" name="retentionDays" min="1" value="${escapeHtml(String(selectedBackupPolicy.retentionDays))}" required />
+            </label>
+            <label>Replica retention days
+              <input type="number" name="replicaRetentionDays" min="1" value="${escapeHtml(selectedBackupPolicy.replicaRetentionDays === undefined ? "" : String(selectedBackupPolicy.replicaRetentionDays))}" placeholder="Same as local" />
             </label>
           </div>
         </article>

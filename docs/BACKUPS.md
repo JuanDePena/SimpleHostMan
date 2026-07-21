@@ -56,9 +56,21 @@ the replicated run directory at `0700`, and records the destination in
 `details.replication`.
 
 After a run is replicated, the runner applies the same policy retention window
-to the replica storage root on the target node. This keeps directories such as
+to the replica storage root on the target node unless the policy defines a
+separate replica-retention window. This keeps directories such as
 `primary-replicated` from accumulating backup runs beyond the configured
 retention.
+
+Local and replica retention are independent policy fields. When replica
+retention is omitted it inherits local retention for backward compatibility.
+The general storage-maintenance timer audits backup sizes but never deletes
+backup runs; see
+[`STORAGE_MAINTENANCE.md`](/opt/simplehostman/src/docs/STORAGE_MAINTENANCE.md).
+
+The legacy production `db-pyrosa-sync-daily` policy intentionally keeps seven
+daily generations both locally and on the replicated target. Each full logical
+generation currently uses several gigabytes, so the same bounded window is
+required on both capacity-constrained nodes.
 
 Replica path rules:
 

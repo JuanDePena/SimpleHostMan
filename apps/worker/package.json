@@ -1,6 +1,6 @@
 {
   "name": "@simplehost/worker",
-  "version": "2606.13.01",
+  "version": "2607.21.13",
   "private": true,
   "type": "module",
   "main": "dist/index.js",
@@ -12,6 +12,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "start:backup-cycle": "node dist/backup-cycle.js",
+    "start:storage-maintenance": "node dist/storage-maintenance-cycle.js",
     "test": "pnpm build && node --test dist/**/*.test.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "clean": "rm -rf dist"

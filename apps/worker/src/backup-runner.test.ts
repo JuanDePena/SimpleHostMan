@@ -13,8 +13,14 @@ import {
   policyCoversPostgresqlControl,
   policyCoversPyrosaIam,
   resolveLocalNodeId,
+  resolveReplicaRetentionDays,
   shouldRunPolicyAtTime
 } from "./backup-runner.js";
+
+test("replica retention can exceed local retention without changing legacy policies", () => {
+  assert.equal(resolveReplicaRetentionDays({ retentionDays: 7, replicaRetentionDays: 14 }), 14);
+  assert.equal(resolveReplicaRetentionDays({ retentionDays: 14 }), 14);
+});
 
 test("matchesCronExpression supports wildcards, steps, and explicit values", () => {
   assert.equal(matchesCronExpression("0 3 * * *", new Date("2026-04-25T03:00:00Z")), true);

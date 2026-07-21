@@ -183,6 +183,7 @@ If you need implementation details, architecture, or runbooks, start here:
 - [Workspace Guide](/opt/simplehostman/src/docs/AGENTS.md)
 - [Database Platform](/opt/simplehostman/src/docs/DATABASES.md)
 - [Backups](/opt/simplehostman/src/docs/BACKUPS.md)
+- [Storage Maintenance](/opt/simplehostman/src/docs/STORAGE_MAINTENANCE.md)
 - [Operational Views](/opt/simplehostman/src/docs/OPERATIONAL_VIEWS.md)
 - [PostgreSQL Upgrade Path](/opt/simplehostman/src/docs/POSTGRESQL_UPGRADE.md)
 - [code-server + Codex Extension Runbook](/opt/simplehostman/src/docs/CODE_SERVER_CODEX.md) - important when Codex freezes, shows a blank panel, or needs a clean reinstall in browser-based

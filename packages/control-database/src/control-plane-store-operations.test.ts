@@ -608,6 +608,29 @@ test("pyrosa democrm runtime migration registers app, database and IAM binding",
   assert.match(migrationSql, /"supportApps": \["pyrosa-platform", "pyrosa-iam", "pyrosa-accounts"\]/);
 });
 
+test("storage maintenance migration separates local and replica retention for pyrosa-sync", () => {
+  const migrationSql = readFileSync(
+    new URL("../migrations/0048_storage_maintenance_replica_retention.sql", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(migrationSql, /replica_retention_days/);
+  assert.match(migrationSql, /policy_slug = 'db-pyrosa-sync-daily'/);
+  assert.match(migrationSql, /retention_days = 7/);
+  assert.match(migrationSql, /replica_retention_days = 14/);
+});
+
+test("pyrosa-sync retention is seven days on both local and replica storage", () => {
+  const migrationSql = readFileSync(
+    new URL("../migrations/0049_pyrosa_sync_uniform_seven_day_retention.sql", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(migrationSql, /policy_slug = 'db-pyrosa-sync-daily'/);
+  assert.match(migrationSql, /retention_days = 7/);
+  assert.match(migrationSql, /replica_retention_days = 7/);
+});
+
 test("metadata-only apps do not emit proxy or container reconciliation plans", async () => {
   const appRow = {
     app_id: "app-pyrosa-iam",

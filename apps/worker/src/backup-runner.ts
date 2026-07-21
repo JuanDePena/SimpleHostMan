@@ -103,6 +103,12 @@ interface BackupReplicationPlan {
   connectTimeoutSeconds: number;
 }
 
+export function resolveReplicaRetentionDays(
+  policy: Pick<BackupPolicySummary, "retentionDays" | "replicaRetentionDays">
+): number {
+  return policy.replicaRetentionDays ?? policy.retentionDays;
+}
+
 function stripQuotes(value: string): string {
   const trimmed = value.trim();
 
@@ -723,7 +729,7 @@ async function replicateBackupRun(args: {
 
   const retentionCommand = buildRemoteBackupRetentionCommand(
     plan.replicaStorageLocation,
-    args.policy.retentionDays
+    resolveReplicaRetentionDays(args.policy)
   );
 
   if (retentionCommand) {

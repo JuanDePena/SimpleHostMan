@@ -27,6 +27,8 @@ cp packaging/systemd/simplehost-control.service %{buildroot}/etc/systemd/system/
 cp packaging/systemd/simplehost-worker.service %{buildroot}/etc/systemd/system/
 cp packaging/systemd/simplehost-backup-runner.service %{buildroot}/etc/systemd/system/
 cp packaging/systemd/simplehost-backup-runner.timer %{buildroot}/etc/systemd/system/
+cp packaging/systemd/simplehost-storage-maintenance.service %{buildroot}/etc/systemd/system/
+cp packaging/systemd/simplehost-storage-maintenance.timer %{buildroot}/etc/systemd/system/
 mkdir -p %{buildroot}/etc/systemd/system/postgresql@control.service.d
 mkdir -p %{buildroot}/etc/systemd/system/postgresql@apps.service.d
 cp packaging/systemd/postgresql@control.service.d/30-postgresql-setup.conf %{buildroot}/etc/systemd/system/postgresql@control.service.d/
@@ -36,6 +38,7 @@ cp packaging/systemd/postgresql@apps.service.d/40-pgdg18-binary.conf %{buildroot
 mkdir -p %{buildroot}/etc/simplehost
 cp packaging/env/simplehost-control.env.example %{buildroot}/etc/simplehost/
 cp packaging/env/simplehost-worker.env.example %{buildroot}/etc/simplehost/
+cp packaging/env/simplehost-storage-maintenance.env.example %{buildroot}/etc/simplehost/
 mkdir -p %{buildroot}/etc/sudoers.d
 cp packaging/sudoers/simplehost-iam-apache %{buildroot}/etc/sudoers.d/
 
@@ -44,11 +47,13 @@ ln -sfn /opt/simplehostman/release/releases/%{version} /opt/simplehostman/releas
 %systemd_post simplehost-control.service
 %systemd_post simplehost-worker.service
 %systemd_post simplehost-backup-runner.timer
+%systemd_post simplehost-storage-maintenance.timer
 
 %postun
 %systemd_postun_with_restart simplehost-control.service
 %systemd_postun_with_restart simplehost-worker.service
 %systemd_postun_with_restart simplehost-backup-runner.timer
+%systemd_postun_with_restart simplehost-storage-maintenance.timer
 
 %files
 /opt/simplehostman/release/releases/%{version}
@@ -56,10 +61,13 @@ ln -sfn /opt/simplehostman/release/releases/%{version} /opt/simplehostman/releas
 /etc/systemd/system/simplehost-worker.service
 /etc/systemd/system/simplehost-backup-runner.service
 /etc/systemd/system/simplehost-backup-runner.timer
+/etc/systemd/system/simplehost-storage-maintenance.service
+/etc/systemd/system/simplehost-storage-maintenance.timer
 /etc/systemd/system/postgresql@control.service.d/30-postgresql-setup.conf
 /etc/systemd/system/postgresql@control.service.d/40-pgdg18-binary.conf
 /etc/systemd/system/postgresql@apps.service.d/30-postgresql-setup.conf
 /etc/systemd/system/postgresql@apps.service.d/40-pgdg18-binary.conf
 /etc/simplehost/simplehost-control.env.example
 /etc/simplehost/simplehost-worker.env.example
+/etc/simplehost/simplehost-storage-maintenance.env.example
 %attr(0440,root,root) /etc/sudoers.d/simplehost-iam-apache

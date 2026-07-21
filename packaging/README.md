@@ -27,6 +27,8 @@ Packaging is now organized by artifact type and aligned to the unified runtime n
 - `simplehost-worker.service`
 - `simplehost-backup-runner.service`
 - `simplehost-backup-runner.timer`
+- `simplehost-storage-maintenance.service`
+- `simplehost-storage-maintenance.timer`
 - `simplehost-agent.service`
 - `postgresql@control.service.d/*.conf`
 - `postgresql@apps.service.d/*.conf`

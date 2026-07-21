@@ -13,6 +13,8 @@ Responsibilities:
 - automatic operational history cleanup
 - background operational work that should not run in the request path
 - compiled backup-cycle entrypoint used by the root-owned backup timer/runtime
+- governed storage inventory and bounded cleanup used by the root-owned
+  storage-maintenance timer
 
 The worker keeps agent job polling separate from reconciliation cadence:
 `SIMPLEHOST_WORKER_POLL_INTERVAL_MS` still controls node poll hints, while
@@ -27,3 +29,8 @@ runs the automatic purge. Both values are UI-managed parameters in the
 Parameters view by default.
 
 This app remains operationally separate from `apps/control` even after the source migration.
+
+The storage-maintenance entrypoint defaults to dry-run, protects active and
+rollback-relevant releases, never removes Podman containers or volumes, and
+delegates backup and Platform Genesis recovery retention to their owners. See
+`docs/STORAGE_MAINTENANCE.md`.

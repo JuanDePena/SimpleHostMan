@@ -1,6 +1,6 @@
 {
   "name": "@simplehost/control-api",
-  "version": "2606.13.01",
+  "version": "2607.21.13",
   "private": true,
   "type": "module",
   "main": "dist/index.js",

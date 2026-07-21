@@ -204,6 +204,14 @@ Expected state:
 - Persistent data is on host bind mounts
 - No application container is listening on a public address unless explicitly intended
 
+## Storage maintenance
+
+Podman image cleanup is governed by
+[`STORAGE_MAINTENANCE.md`](/opt/simplehostman/src/docs/STORAGE_MAINTENANCE.md).
+The scheduled cycle may remove only images unused by every container and older
+than the configured minimum. It never runs `podman system prune --volumes` and
+does not manually remove `overlay` or per-container `shm` mountpoints.
+
 ## Non-goals
 
 - Kubernetes

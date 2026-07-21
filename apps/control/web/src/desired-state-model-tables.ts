@@ -176,7 +176,12 @@ export function buildDesiredStateTableModel<Copy extends DesiredStateModelCopy>(
       escapeHtml(policy.tenantSlug),
       `<span class="mono">${escapeHtml(policy.targetNodeId)}</span>`,
       `<span class="mono">${escapeHtml(policy.schedule)}</span>`,
-      renderPill(String(policy.retentionDays), policy.retentionDays > 0 ? "success" : "muted")
+      renderPill(
+        policy.replicaRetentionDays === undefined
+          ? String(policy.retentionDays)
+          : `${policy.retentionDays} / ${policy.replicaRetentionDays} replica`,
+        policy.retentionDays > 0 ? "success" : "muted"
+      )
     ],
     searchText: [
       policy.policySlug,
@@ -184,6 +189,7 @@ export function buildDesiredStateTableModel<Copy extends DesiredStateModelCopy>(
       policy.targetNodeId,
       policy.schedule,
       String(policy.retentionDays),
+      String(policy.replicaRetentionDays ?? policy.retentionDays),
       policy.resourceSelectors.join(" ")
     ]
       .join(" ")

@@ -53,6 +53,7 @@ export interface DesiredStateBackupPolicyInput {
   targetNodeId: string;
   schedule: string;
   retentionDays: number;
+  replicaRetentionDays?: number;
   storageLocation: string;
   resourceSelectors: string[];
 }

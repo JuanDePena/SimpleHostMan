@@ -1,0 +1,18 @@
+[Unit]
+Description=SimpleHost governed storage maintenance
+After=local-fs.target network-online.target simplehost-backup-runner.service
+Wants=network-online.target
+ConditionPathIsDirectory=/opt/simplehostman/release/releases
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/simplehost/storage-maintenance.env
+WorkingDirectory=/opt/simplehostman/release/current
+ExecStart=/usr/bin/flock --nonblock --conflict-exit-code 75 /run/lock/simplehost-storage-maintenance.lock /usr/bin/node /opt/simplehostman/release/current/apps/worker/dist/storage-maintenance-cycle.js --apply --json
+SuccessExitStatus=75
+Nice=15
+IOSchedulingClass=idle
+IOSchedulingPriority=7
+CPUWeight=10
+TimeoutStartSec=45min
+NoNewPrivileges=true

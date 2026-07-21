@@ -325,6 +325,7 @@ export interface BackupPolicyRow {
   target_node_id: string;
   schedule: string;
   retention_days: number;
+  replica_retention_days: number | null;
   storage_location: string;
   resource_selectors: string[];
 }

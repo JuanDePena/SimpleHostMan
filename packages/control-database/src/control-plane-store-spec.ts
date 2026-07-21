@@ -680,6 +680,7 @@ export async function buildDesiredStateSpecFromDatabase(
        policies.target_node_id,
        policies.schedule,
        policies.retention_days,
+       policies.replica_retention_days,
        policies.storage_location,
        policies.resource_selectors
      FROM control_plane_backup_policies policies
@@ -807,6 +808,7 @@ export async function buildDesiredStateSpecFromDatabase(
       targetNodeId: row.target_node_id,
       schedule: row.schedule,
       retentionDays: row.retention_days,
+      replicaRetentionDays: row.replica_retention_days ?? undefined,
       storageLocation: row.storage_location,
       resourceSelectors: row.resource_selectors
     })),
@@ -1259,18 +1261,20 @@ export async function applyDesiredStateSpec(
          policy_slug,
          schedule,
          retention_days,
+         replica_retention_days,
          storage_location,
          resource_selectors,
          created_at,
          updated_at
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, NOW(), NOW())
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, NOW(), NOW())
        ON CONFLICT (policy_slug)
        DO UPDATE SET
          tenant_id = EXCLUDED.tenant_id,
          target_node_id = EXCLUDED.target_node_id,
          schedule = EXCLUDED.schedule,
          retention_days = EXCLUDED.retention_days,
+         replica_retention_days = EXCLUDED.replica_retention_days,
          storage_location = EXCLUDED.storage_location,
          resource_selectors = EXCLUDED.resource_selectors,
          updated_at = EXCLUDED.updated_at`,
@@ -1281,6 +1285,7 @@ export async function applyDesiredStateSpec(
         policy.policySlug,
         policy.schedule,
         policy.retentionDays,
+        policy.replicaRetentionDays ?? null,
         policy.storageLocation,
         JSON.stringify(policy.resourceSelectors)
       ]

@@ -33,6 +33,8 @@ install -m 0644 "${release_dir}/packaging/systemd/simplehost-control.service" /e
 install -m 0644 "${release_dir}/packaging/systemd/simplehost-worker.service" /etc/systemd/system/simplehost-worker.service
 install -m 0644 "${release_dir}/packaging/systemd/simplehost-backup-runner.service" /etc/systemd/system/simplehost-backup-runner.service
 install -m 0644 "${release_dir}/packaging/systemd/simplehost-backup-runner.timer" /etc/systemd/system/simplehost-backup-runner.timer
+install -m 0644 "${release_dir}/packaging/systemd/simplehost-storage-maintenance.service" /etc/systemd/system/simplehost-storage-maintenance.service
+install -m 0644 "${release_dir}/packaging/systemd/simplehost-storage-maintenance.timer" /etc/systemd/system/simplehost-storage-maintenance.timer
 install -d /etc/systemd/system/postgresql@control.service.d /etc/systemd/system/postgresql@apps.service.d
 install -m 0644 "${release_dir}/packaging/systemd/postgresql@control.service.d/30-postgresql-setup.conf" /etc/systemd/system/postgresql@control.service.d/30-postgresql-setup.conf
 install -m 0644 "${release_dir}/packaging/systemd/postgresql@control.service.d/40-pgdg18-binary.conf" /etc/systemd/system/postgresql@control.service.d/40-pgdg18-binary.conf
@@ -40,6 +42,10 @@ install -m 0644 "${release_dir}/packaging/systemd/postgresql@apps.service.d/30-p
 install -m 0644 "${release_dir}/packaging/systemd/postgresql@apps.service.d/40-pgdg18-binary.conf" /etc/systemd/system/postgresql@apps.service.d/40-pgdg18-binary.conf
 install -m 0644 "${release_dir}/packaging/env/simplehost-control.env.example" /etc/simplehost/control.env.example
 install -m 0644 "${release_dir}/packaging/env/simplehost-worker.env.example" /etc/simplehost/worker.env.example
+install -m 0644 "${release_dir}/packaging/env/simplehost-storage-maintenance.env.example" /etc/simplehost/storage-maintenance.env.example
+if [[ ! -f /etc/simplehost/storage-maintenance.env ]]; then
+  install -m 0640 "${release_dir}/packaging/env/simplehost-storage-maintenance.env.example" /etc/simplehost/storage-maintenance.env
+fi
 systemctl daemon-reload
 
 echo "Installed control bundle ${bundle_path} into ${release_dir}"

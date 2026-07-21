@@ -285,6 +285,9 @@ export function buildDesiredStateCreateTab<Copy extends DesiredStateCreateCopy>(
             <label>Retention days
               <input type="number" name="retentionDays" min="1" required />
             </label>
+            <label>Replica retention days
+              <input type="number" name="replicaRetentionDays" min="1" placeholder="Same as local" />
+            </label>
             <label>Storage location
               <input name="storageLocation" required />
             </label>

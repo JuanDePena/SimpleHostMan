@@ -3866,6 +3866,7 @@ export function createControlPlaneOperationsMethods(
              policies.target_node_id,
              policies.schedule,
              policies.retention_days,
+             policies.replica_retention_days,
              policies.storage_location,
              policies.resource_selectors
            FROM control_plane_backup_policies policies

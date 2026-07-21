@@ -190,6 +190,15 @@ export function renderSelectedBackupPolicyPanel<Copy extends BackupCopy>(
         value: escapeHtml(String(selectedBackupPolicySummary.retentionDays))
       },
       {
+        label: `${copy.backupPolicyColRetention} (replica)`,
+        value: escapeHtml(
+          String(
+            selectedBackupPolicySummary.replicaRetentionDays ??
+              selectedBackupPolicySummary.retentionDays
+          )
+        )
+      },
+      {
         label: copy.storageLocationLabel,
         value: `<span class="mono">${escapeHtml(selectedBackupPolicySummary.storageLocation)}</span>`
       },

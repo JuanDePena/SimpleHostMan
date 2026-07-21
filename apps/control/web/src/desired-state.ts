@@ -470,6 +470,13 @@ export function parseBackupPolicyForm(
     "Retention days",
     { min: 1 }
   );
+  const replicaRetentionDaysValue = parseOptionalNumber(
+    form.get("replicaRetentionDays")?.trim() ?? ""
+  );
+  const replicaRetentionDays =
+    replicaRetentionDaysValue === undefined
+      ? undefined
+      : assertPositiveInt(replicaRetentionDaysValue, "Replica retention days", { min: 1 });
 
   return {
     policySlug: assertSlug(form.get("policySlug")?.trim() ?? "", "Policy slug"),
@@ -477,6 +484,7 @@ export function parseBackupPolicyForm(
     targetNodeId: assertSlug(form.get("targetNodeId")?.trim() ?? "", "Target node"),
     schedule: assertCronish(form.get("schedule")?.trim() ?? "", "Schedule"),
     retentionDays,
+    replicaRetentionDays,
     storageLocation: assertRequired(
       form.get("storageLocation")?.trim() ?? "",
       "Storage location"

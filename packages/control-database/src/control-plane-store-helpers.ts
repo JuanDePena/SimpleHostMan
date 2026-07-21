@@ -410,6 +410,7 @@ export function toBackupPolicySummary(
     targetNodeId: row.target_node_id,
     schedule: row.schedule,
     retentionDays: row.retention_days,
+    replicaRetentionDays: row.replica_retention_days ?? undefined,
     storageLocation: row.storage_location,
     resourceSelectors: row.resource_selectors
   };

@@ -423,6 +423,56 @@ Current status on `2026-05-02`:
 Replica rebuilds should still be treated as maintenance-window tasks. Do not
 start the replica from an empty datadir and do not reuse a stale datadir.
 
+### Storage and replication review on 2026-07-21
+
+A read-only inspection found that `/srv/containers/mariadb` is live database
+storage, not a backup directory:
+
+- primary datadir: about 84 GiB;
+- primary logical table and index data: about 8 GiB;
+- primary binary logs: 77 files and about 74.47 GiB;
+- replica datadir: about 102 GiB;
+- replica logical table and index data: about 8 GiB;
+- replica binary and relay logs: about 94 GiB;
+- files older than the proposed seven-day boundary: about 55.56 GiB on the
+  primary and 93.25 GiB on the replica; these are only capacity estimates, not
+  authorization to purge before replication converges;
+- `pyrosa-sync`, `pyrosa-demosync` and their legacy workers remained active on
+  the primary throughout the inspection.
+
+The replica was stopped at primary file `mariadb-bin.000173`, GTID
+`0-1-14834933`, with relay read/write errors `1594` and `1595`. Both the primary
+binlog at the executed position and the corresponding relay-log segment passed
+`mariadb-binlog --verify-binlog-checksum`; the most likely trigger is the prior
+secondary filesystem pressure, but this remains an operational inference until
+replication resumes and converges.
+
+Both servers report a 10-day expiry but also
+`slave_connections_needed_for_purge = 1`. The primary currently has no
+connected replica and the secondary has no downstream replica, so automatic
+purging is blocked on both nodes. Do not manually delete files from the datadir
+or run `RESET MASTER`.
+
+Safe recovery order:
+
+1. preserve the current GTID and replication-status evidence;
+2. use `START REPLICA` first now that the secondary has free space;
+3. if the relay error repeats, use a controlled `STOP REPLICA`, `CHANGE MASTER
+   TO MASTER_USE_GTID=slave_pos`, `START REPLICA` sequence so MariaDB discards
+   and reacquires relay logs without changing `gtid_slave_pos` or exposing the
+   stored replication credential;
+4. wait for both threads to report `Yes`, lag to converge, and primary/replica
+   GTIDs plus representative row counts to agree;
+5. persist a seven-day binlog expiry on both nodes, retain
+   `slave_connections_needed_for_purge = 1` on the primary, and set it to `0`
+   on the terminal replica because it has no downstream consumer;
+6. only after convergence, purge through MariaDB SQL up to the seven-day
+   boundary, never with filesystem commands.
+
+This recovery and purge is a separate controlled change from SimpleHost backup
+retention. The review itself performed no MariaDB DDL, DML, replication restart,
+binlog purge, or datadir mutation.
+
 Replica seed or rebuild sequence:
 
 1. Confirm `pgBackRest`, MariaDB logical dumps, and app-file backups are fresh.
