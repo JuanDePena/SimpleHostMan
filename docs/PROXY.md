@@ -174,6 +174,49 @@ Renewal rule:
 - Renew automatically
 - Reload Apache only after successful renewal
 
+### Managed Pyrosa application certificate
+
+The certificate originally copied from the legacy VPS under
+`/etc/ssl/simplehostman/pyrosa.com.do/` was only a migration bridge and must
+not remain an unmanaged wildcard. Current Pyrosa application vhosts keep that
+stable path, but its files are symlinks to the Certbot-managed
+`pyrosa-apps` lineage.
+
+Because HTTP-01 cannot issue a wildcard certificate, the lineage contains the
+exact `pyrosa.com.do` names discovered from Apache vhosts that reference the
+managed path. New applications may use an individual Certbot lineage, as
+`store.pyrosa.com.do` does, or rerun the governed configuration script to add
+their exact hostname:
+
+```bash
+/opt/simplehostman/src/scripts/control/configure-pyrosa-apps-certificate.sh --list-domains
+/opt/simplehostman/src/scripts/control/configure-pyrosa-apps-certificate.sh
+```
+
+The first command audits the exact discovered names without changing the
+certificate or runtime. The second issues or expands the lineage and performs
+the coordinated activation.
+
+The deploy hook
+`platform/host/letsencrypt/renewal-hooks/deploy/simplehost-pyrosa-apps-sync.sh`
+validates the renewed certificate and key, activates the stable managed path,
+reloads Apache, replicates the lineage to the passive node, validates its
+Apache configuration, and reloads Apache there. The primary node owns renewal;
+the passive node consumes the replicated lineage and does not independently
+renew it.
+
+Operational verification on `2026-07-23`:
+
+- Certbot issued the ECDSA `pyrosa-apps` lineage for the `24` exact names
+  reported by `--list-domains`; it expires on `2026-10-21`.
+- `certbot renew --cert-name pyrosa-apps --dry-run` completed successfully.
+- all `24` public names passed TLS hostname validation, including
+  `directory.pyrosa.com.do`.
+- the stable managed path resolves to the `pyrosa-apps` archive on both nodes,
+  and a Pyrosa vhost that exists on the passive node serves that lineage.
+- vhosts absent from the passive node, such as Directory and Store, are not
+  made failover-ready merely by replicating certificate material.
+
 ## Backend application policy
 
 - Proxy to `127.0.0.1:<port>` targets only

@@ -289,16 +289,21 @@ The WordPress table prefix remains `wppy_`.
 
 ### TLS
 
-The existing Let's Encrypt wildcard certificate from `vps-old` was installed temporarily under
-`/etc/ssl/simplehostman/pyrosa.com.do/` on both nodes so HTTPS serves the correct virtual host before
-new certificate issuance is attempted from SimpleHostMan.
+The original Let's Encrypt wildcard certificate from `vps-old` was installed
+temporarily under `/etc/ssl/simplehostman/pyrosa.com.do/` on both nodes. That
+migration bridge was retired on `2026-07-23`: the stable path now contains
+symlinks to the Certbot-managed `pyrosa-apps` lineage and is activated by the
+SimpleHostMan renewal deploy hook.
 
 Certificate summary:
 
-- subject `CN=*.pyrosa.com.do`
-- issuer `Let's Encrypt R13`
-- valid from `2026-04-24`
-- valid until `2026-07-23`
+- lineage `pyrosa-apps`
+- exact SANs discovered from the Apache vhosts that use the stable managed path
+- issuer `Let's Encrypt YE2`
+- valid from `2026-07-23`
+- valid until `2026-10-21`
+- automatic renewal owned by the primary node and replicated to the passive
+  node after validation
 
 ### DNS
 
@@ -416,8 +421,11 @@ schema compatibility pass for PostgreSQL has been performed.
 
 ### TLS And Proxying
 
-The existing Pyrosa wildcard certificate under `/etc/ssl/simplehostman/pyrosa.com.do/` is used by
-the `demoportal.pyrosa.com.do` HTTPS vhost on both nodes.
+The stable Pyrosa certificate path under
+`/etc/ssl/simplehostman/pyrosa.com.do/` is used by the
+`demoportal.pyrosa.com.do` HTTPS vhost on both nodes. Since `2026-07-23`, that
+path resolves to the Certbot-managed `pyrosa-apps` lineage rather than to the
+temporary imported wildcard.
 
 Proxy behavior:
 
@@ -1734,3 +1742,30 @@ Validation:
   without `502` or `503` responses
 - the temporary failed `sync` and `demosync` worker unit states caused by controlled container
   restarts were reset; all worker units are active again on `primary`
+
+## Pyrosa Store Runtime Review
+
+Reviewed on `2026-07-23`; no duplicate application or vhost was created.
+
+SimpleHostMan desired state already contains:
+
+- application `app-pyrosa-store` with slug `pyrosa-store`
+- site `site-pyrosa-store` with canonical domain `store.pyrosa.com.do`
+- primary node `primary`, backend port `10171`, and runtime mode
+  `metadata-only`
+- source root `/srv/containers/apps/pyrosa-store/app`
+
+Live primary state:
+
+- `app-pyrosa-store.service` is active with no observed restarts
+- Podman publishes the application only on `127.0.0.1:10171`
+- `/etc/httpd/conf.d/pyrosa-store.conf` terminates HTTPS and proxies to that
+  loopback backend
+- the individual Certbot lineage `store.pyrosa.com.do` is valid until
+  `2026-10-13`, and its renewal dry run completed successfully
+- `https://store.pyrosa.com.do/` returns `200`
+
+The passive node does not currently contain the Store service, source root, or
+vhost. This is recorded as a failover-readiness gap, not as a primary runtime
+incident: the current `metadata-only` catalog entry does not by itself
+materialize a passive Store runtime.
