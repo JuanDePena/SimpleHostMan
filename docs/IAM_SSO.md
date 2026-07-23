@@ -1456,3 +1456,18 @@ The durable recovery contract is:
 The secret is excluded from Git, documentation, command output, logs and
 application upstream headers. Absence keeps IAM at `503`; an incorrect value
 returns `403`.
+
+The recovery was published and promoted the same day:
+
+- SimpleHostMan commit `799acd1`, release `2607.23.10`;
+- IAM runtime-template commit `5c945c4`;
+- root-only configuration backup
+  `/etc/pyrosa-iam/backups/gateway-trust-20260723T105816Z`;
+- IAM, pgAdmin, LDAP and both Helpers bridges active with `NRestarts=0`;
+- no secret and a wrong secret rejected with `403 gateway_proxy_unauthorized`;
+- the correct bridge secret without a browser session returned
+  `401 gateway_login_required`;
+- public pgAdmin, LDAP, Helpers and Helpers DFR returned `302` to the IAM
+  gateway start flow, and each allowed return URL continued to IAM `/login`;
+- pgAdmin remained active throughout and its loopback upstream returned `200`;
+- `systemctl --failed` reported zero failed units after the promotion.
