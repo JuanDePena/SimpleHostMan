@@ -1424,3 +1424,35 @@ conditions are true for that app:
 - Authentik backup and restore have been validated.
 - The operator can recover or reset MFA without using the browser path being
   protected.
+
+## Forward-auth v2 trust recovery on 2026-07-23
+
+The IAM promotion that activated forward-auth contract v2 exposed an incomplete
+runtime handoff in the previously promoted gateway bridges. IAM correctly
+failed closed with `503 gateway_trust_not_configured`; pgAdmin itself remained
+healthy on its loopback upstream. The same missing trust material affected the
+LDAP and Helpers bridges before IAM could evaluate session, AAL2 or the
+`PYROSA Operators` group.
+
+The durable recovery contract is:
+
+- one generated 32-byte-or-longer secret, stored only in
+  `/etc/pyrosa-iam/secrets/gateway-trusted-proxy.env`;
+- directory mode `0700` and file mode `0600 root:root`;
+- `PYROSA_IAM_OAUTH_GATEWAY_TRUSTED_PROXY_SECRET` consumed by IAM and
+  `PYROSA_IAM_GATEWAY_TRUSTED_PROXY_SECRET` consumed by the bridges, with both
+  values required to be identical;
+- every bridge replaces any client-provided
+  `X-Pyrosa-IAM-Gateway-Secret` on the internal subrequest and strips the
+  header before proxying to the protected application;
+- `/opt/simplehostman/release/current/scripts/control/configure-pyrosa-iam-gateway-trust.sh`
+  installs the root-only material, IAM Quadlet EnvironmentFile and systemd
+  drop-ins idempotently, preserving a timestamped configuration backup under
+  `/etc/pyrosa-iam/backups`;
+- configuration and source promotion are followed by IAM and bridge restarts,
+  then negative secret tests, anonymous redirect validation and an
+  authenticated AAL2 browser check.
+
+The secret is excluded from Git, documentation, command output, logs and
+application upstream headers. Absence keeps IAM at `503`; an incorrect value
+returns `403`.

@@ -34,6 +34,7 @@ const config = {
   apiPathPrefixes: parsePathPrefixes(env("PYROSA_IAM_GATEWAY_API_PREFIXES", "")),
   requiredGroup: env("PYROSA_IAM_GATEWAY_REQUIRED_GROUP", ""),
   requireMfa: env("PYROSA_IAM_GATEWAY_REQUIRE_MFA", "true") !== "false",
+  trustedProxySecret: requiredSecret("PYROSA_IAM_GATEWAY_TRUSTED_PROXY_SECRET"),
   timeoutMs: Number(env("PYROSA_IAM_GATEWAY_TIMEOUT_MS", "5000"))
 };
 
@@ -86,6 +87,14 @@ function requiredUrl(name) {
   return new URL(value);
 }
 
+function requiredSecret(name) {
+  const value = process.env[name] ?? "";
+  if (Buffer.byteLength(value) < 32) {
+    throw new Error(`${name} must contain at least 32 bytes.`);
+  }
+  return value;
+}
+
 function isLocalHealthRequest(req) {
   if (req.url !== "/__pyrosa_iam_gateway_health") {
     return false;
@@ -102,6 +111,7 @@ function checkIamSession(req) {
     "X-Forwarded-Host": req.headers.host ?? "",
     "X-Forwarded-Proto": "https"
   });
+  headers["X-Pyrosa-IAM-Gateway-Secret"] = config.trustedProxySecret;
 
   return new Promise((resolve, reject) => {
     const client = config.checkUrl.protocol === "https:" ? https : http;

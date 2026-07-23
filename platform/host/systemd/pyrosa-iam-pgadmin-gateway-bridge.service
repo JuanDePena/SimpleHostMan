@@ -8,6 +8,7 @@ Type=simple
 User=simplehost
 Group=simplehost
 WorkingDirectory=/opt/simplehostman/release/current
+EnvironmentFile=/etc/pyrosa-iam/secrets/gateway-trusted-proxy.env
 Environment=PYROSA_IAM_GATEWAY_BRIDGE_LISTEN_HOST=127.0.0.1
 Environment=PYROSA_IAM_GATEWAY_BRIDGE_LISTEN_PORT=10144
 Environment=PYROSA_IAM_GATEWAY_CHECK_URL=http://127.0.0.1:10134/oauth/gateway/check

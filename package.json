@@ -1,6 +1,6 @@
 {
   "name": "simplehost-source",
-  "version": "2607.21.13",
+  "version": "2607.23.10",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.32.1",
@@ -71,6 +71,7 @@
     "start:agent": "pnpm --filter @simplehost/agent start",
     "start:cli": "pnpm --filter @simplehost/agent-cli start",
     "test": "pnpm -r --if-present test",
+    "test:iam-gateway-bridge": "node --test platform/iam/pyrosa-iam-gateway-bridge.test.mjs",
     "build:control": "tsc -b apps/control/tsconfig.json",
     "typecheck:control": "pnpm --dir apps/control typecheck:local",
     "build:control-runtime": "tsc -b tsconfig.control.json",
