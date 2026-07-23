@@ -441,11 +441,11 @@ storage, not a backup directory:
   the primary throughout the inspection.
 
 The replica was stopped at primary file `mariadb-bin.000173`, GTID
-`0-1-14834933`, with relay read/write errors `1594` and `1595`. Both the primary
-binlog at the executed position and the corresponding relay-log segment passed
-`mariadb-binlog --verify-binlog-checksum`; the most likely trigger is the prior
-secondary filesystem pressure, but this remains an operational inference until
-replication resumes and converges.
+`0-1-14834933`, with relay read/write errors `1594` and `1595`. The primary
+binlog segment at the executed position passed
+`mariadb-binlog --verify-binlog-checksum`, while the corresponding relay-log
+read failed with `Event truncated`. This proved that recovery had to discard
+only the local relay copy and reacquire it from the intact primary source.
 
 Both servers report a 10-day expiry but also
 `slave_connections_needed_for_purge = 1`. The primary currently has no
@@ -470,8 +470,54 @@ Safe recovery order:
    boundary, never with filesystem commands.
 
 This recovery and purge is a separate controlled change from SimpleHost backup
-retention. The review itself performed no MariaDB DDL, DML, replication restart,
-binlog purge, or datadir mutation.
+retention. The initial review performed no MariaDB DDL, DML, replication
+restart, binlog purge, or datadir mutation.
+
+### Replication recovery and seven-day purge completed on 2026-07-21
+
+The controlled recovery completed without restarting the primary or stopping
+any MariaDB-backed application:
+
+1. `START REPLICA` reproduced errors `1594` and `1595`.
+2. `STOP REPLICA` remained blocked in `Killing slave`; the duplicate operator
+   clients were cancelled before they could execute any later statement.
+3. The passive replica was configured with `relay_log_recovery=ON`,
+   `relay_log_purge=ON`, and a 4 GiB `relay_log_space_limit`, then restarted.
+   MariaDB discarded the corrupt relay copy and resumed from
+   `gtid_slave_pos=0-1-14834933`.
+4. The replica caught up to the primary with both threads `Yes`, lag `0`, and
+   both error numbers `0`. Three consecutive observations reached identical
+   GTIDs; exact counts for representative stable tables matched, while live
+   audit tables continued advancing normally.
+5. Seven-day binlog retention was persisted and applied dynamically. The
+   terminal replica uses `slave_connections_needed_for_purge=0`; the primary
+   retains `1` so automatic purge requires its replica to be connected.
+6. With the replica online and current, `PURGE BINARY LOGS BEFORE
+   UTC_TIMESTAMP() - INTERVAL 7 DAY` removed only primary files older than the
+   boundary.
+
+Observed result:
+
+- primary: 78 binlogs / about 80.27 GB became 20 binlogs / about 20.60 GB;
+- primary root filesystem: about 94% became 76%, with about 75 GB available;
+- secondary root filesystem: about 95% became 66%, with about 68 GB available;
+- final sampled GTID: `0-1-18436132` on both nodes;
+- `Slaves_connected=1`, replica `Yes/Yes`, lag `0`, errors `0/0`;
+- `mariadb-check --all-databases --fast` passed on both nodes;
+- local and public Sync/DemoSync routes returned HTTP `200`.
+
+Persistent settings:
+
+- primary: `binlog_expire_logs_seconds=604800` and
+  `slave_connections_needed_for_purge=1`;
+- replica: the same seven-day expiry,
+  `slave_connections_needed_for_purge=0`, relay recovery/purge enabled, and a
+  4 GiB relay space limit.
+
+The replica config file must remain mode `0644`. A root-only `0600` bind-mounted
+config cannot be read after the image switches to the `mysql` user and causes
+MariaDB to start with unsafe defaults. Always verify effective values after a
+restart with SQL, not only with `mariadbd --print-defaults` as root.
 
 Replica seed or rebuild sequence:
 

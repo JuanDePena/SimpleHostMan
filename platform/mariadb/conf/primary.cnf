@@ -8,6 +8,9 @@ binlog_format=ROW
 log_slave_updates=ON
 gtid_strict_mode=ON
 
+binlog_expire_logs_seconds=604800
+slave_connections_needed_for_purge=1
+
 innodb_flush_log_at_trx_commit=1
 sync_binlog=1
 innodb_buffer_pool_size=1G
