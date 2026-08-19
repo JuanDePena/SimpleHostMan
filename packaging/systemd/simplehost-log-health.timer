@@ -1,0 +1,13 @@
+[Unit]
+Description=Check SimpleHost active log file hourly
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=1h
+RandomizedDelaySec=3min
+AccuracySec=1min
+Persistent=true
+Unit=simplehost-log-health.service
+
+[Install]
+WantedBy=timers.target

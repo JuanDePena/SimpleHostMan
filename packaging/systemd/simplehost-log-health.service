@@ -1,0 +1,14 @@
+[Unit]
+Description=SimpleHost active log-file health guard
+After=rsyslog.service
+Requires=rsyslog.service
+OnFailure=simplehost-unit-failure@%n.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/simplehost/storage-resilience.env
+WorkingDirectory=/opt/simplehostman/release/current
+ExecStart=/usr/bin/node /opt/simplehostman/release/current/apps/worker/dist/log-health-cycle.js
+StateDirectory=simplehost-log-health
+StateDirectoryMode=0750
+NoNewPrivileges=false

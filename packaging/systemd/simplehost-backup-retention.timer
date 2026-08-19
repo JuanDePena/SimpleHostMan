@@ -1,0 +1,12 @@
+[Unit]
+Description=Apply SimpleHost backup retention daily
+
+[Timer]
+OnCalendar=*-*-* 06:30:00 UTC
+Persistent=true
+RandomizedDelaySec=10min
+AccuracySec=1min
+Unit=simplehost-backup-retention.service
+
+[Install]
+WantedBy=timers.target

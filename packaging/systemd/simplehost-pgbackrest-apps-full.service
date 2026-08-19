@@ -2,6 +2,7 @@
 Description=SimpleHost pgBackRest full backup for postgresql@apps
 Wants=network-online.target
 After=network-online.target postgresql@apps.service
+OnFailure=simplehost-unit-failure@%n.service
 
 [Service]
 Type=oneshot

@@ -1,0 +1,11 @@
+[Unit]
+Description=Record failure evidence for %i
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/simplehostman/release/current
+EnvironmentFile=-/etc/simplehost/storage-resilience.env
+ExecStart=/usr/bin/node /opt/simplehostman/release/current/apps/worker/dist/unit-failure-recorder.js --unit %i
+StateDirectory=simplehost-unit-failures
+StateDirectoryMode=0750
+NoNewPrivileges=true

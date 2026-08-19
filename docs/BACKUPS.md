@@ -67,6 +67,14 @@ The general storage-maintenance timer audits backup sizes but never deletes
 backup runs; see
 [`STORAGE_MAINTENANCE.md`](/opt/simplehostman/src/docs/STORAGE_MAINTENANCE.md).
 
+`simplehost-backup-retention.timer` also applies the same desired-state local
+and replica windows every day, independently of backup creation. It protects
+the newest generation and removes only older expired run directories. This is
+the bounded recovery mechanism when a scheduled backup or replication attempt
+fails before the normal post-run retention step. Operational thresholds and
+health reports are documented in
+[`STORAGE_RESILIENCE.md`](/opt/simplehostman/src/docs/STORAGE_RESILIENCE.md).
+
 The legacy production `db-pyrosa-sync-daily` policy intentionally keeps seven
 daily generations both locally and on the replicated target. Each full logical
 generation currently uses several gigabytes, so the same bounded window is

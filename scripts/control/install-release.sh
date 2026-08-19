@@ -36,6 +36,15 @@ install -m 0644 "${repo_root}/packaging/systemd/simplehost-backup-runner.service
 install -m 0644 "${repo_root}/packaging/systemd/simplehost-backup-runner.timer" /etc/systemd/system/simplehost-backup-runner.timer
 install -m 0644 "${repo_root}/packaging/systemd/simplehost-storage-maintenance.service" /etc/systemd/system/simplehost-storage-maintenance.service
 install -m 0644 "${repo_root}/packaging/systemd/simplehost-storage-maintenance.timer" /etc/systemd/system/simplehost-storage-maintenance.timer
+install -m 0644 "${repo_root}/packaging/systemd/simplehost-capacity-guard.service" /etc/systemd/system/simplehost-capacity-guard.service
+install -m 0644 "${repo_root}/packaging/systemd/simplehost-capacity-guard.timer" /etc/systemd/system/simplehost-capacity-guard.timer
+install -m 0644 "${repo_root}/packaging/systemd/simplehost-backup-retention.service" /etc/systemd/system/simplehost-backup-retention.service
+install -m 0644 "${repo_root}/packaging/systemd/simplehost-backup-retention.timer" /etc/systemd/system/simplehost-backup-retention.timer
+install -m 0644 "${repo_root}/packaging/systemd/simplehost-pgbackrest-health.service" /etc/systemd/system/simplehost-pgbackrest-health.service
+install -m 0644 "${repo_root}/packaging/systemd/simplehost-pgbackrest-health.timer" /etc/systemd/system/simplehost-pgbackrest-health.timer
+install -m 0644 "${repo_root}/packaging/systemd/simplehost-log-health.service" /etc/systemd/system/simplehost-log-health.service
+install -m 0644 "${repo_root}/packaging/systemd/simplehost-log-health.timer" /etc/systemd/system/simplehost-log-health.timer
+install -m 0644 "${repo_root}/packaging/systemd/simplehost-unit-failure@.service" /etc/systemd/system/simplehost-unit-failure@.service
 install -m 0644 "${repo_root}/packaging/systemd/simplehost-pgbackrest-control-full.service" /etc/systemd/system/simplehost-pgbackrest-control-full.service
 install -m 0644 "${repo_root}/packaging/systemd/simplehost-pgbackrest-control-full.timer" /etc/systemd/system/simplehost-pgbackrest-control-full.timer
 install -m 0644 "${repo_root}/packaging/systemd/simplehost-pgbackrest-control-incr.service" /etc/systemd/system/simplehost-pgbackrest-control-incr.service
@@ -56,6 +65,10 @@ install -m 0644 "${repo_root}/packaging/env/simplehost-control.env.example" /etc
 install -m 0644 "${repo_root}/packaging/env/simplehost-worker.env.example" /etc/simplehost/worker.env.example
 install -m 0644 "${repo_root}/packaging/env/simplehost-storage-maintenance.env.example" /etc/simplehost/storage-maintenance.env.example
 install -m 0644 "${repo_root}/packaging/env/simplehost-pgbackrest-offhost.env.example" /etc/simplehost/pgbackrest-offhost.env.example
+install -m 0644 "${repo_root}/packaging/env/simplehost-storage-resilience.env.example" /etc/simplehost/storage-resilience.env.example
+install -d /etc/systemd/system/logrotate.timer.d
+install -m 0644 "${repo_root}/packaging/systemd/logrotate.timer.d/20-simplehost-frequency.conf" /etc/systemd/system/logrotate.timer.d/20-simplehost-frequency.conf
+install -m 0644 "${repo_root}/packaging/logrotate/rsyslog" /etc/logrotate.d/rsyslog
 install -d /etc/sudoers.d
 install -m 0440 "${repo_root}/packaging/sudoers/simplehost-iam-apache" /etc/sudoers.d/simplehost-iam-apache
 if command -v visudo >/dev/null 2>&1; then
@@ -69,6 +82,9 @@ if [[ ! -f /etc/simplehost/pgbackrest-offhost.env ]]; then
 fi
 if [[ ! -f /etc/simplehost/storage-maintenance.env ]]; then
   install -m 0640 "${repo_root}/packaging/env/simplehost-storage-maintenance.env.example" /etc/simplehost/storage-maintenance.env
+fi
+if [[ ! -f /etc/simplehost/storage-resilience.env ]]; then
+  install -m 0640 "${repo_root}/packaging/env/simplehost-storage-resilience.env.example" /etc/simplehost/storage-resilience.env
 fi
 bash "${release_dir}/scripts/control/normalize-api-env.sh" /etc/simplehost/control.env.example
 

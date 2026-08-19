@@ -1,6 +1,6 @@
 {
   "name": "@simplehost/worker",
-  "version": "2607.23.10",
+  "version": "2608.19.15",
   "private": true,
   "type": "module",
   "main": "dist/index.js",
@@ -12,6 +12,10 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "start:backup-cycle": "node dist/backup-cycle.js",
+    "start:backup-retention": "node dist/backup-retention-cycle.js",
+    "start:capacity-guard": "node dist/storage-capacity-guard-cycle.js",
+    "start:pgbackrest-health": "node dist/pgbackrest-health-cycle.js",
+    "start:log-health": "node dist/log-health-cycle.js",
     "start:storage-maintenance": "node dist/storage-maintenance-cycle.js",
     "test": "pnpm build && node --test dist/**/*.test.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",

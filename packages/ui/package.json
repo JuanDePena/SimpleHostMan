@@ -1,6 +1,6 @@
 {
   "name": "@simplehost/ui",
-  "version": "2607.23.10",
+  "version": "2608.19.15",
   "private": true,
   "type": "module",
   "main": "dist/index.js",

@@ -1,0 +1,18 @@
+[Unit]
+Description=SimpleHost policy-driven backup retention
+After=network-online.target postgresql@control.service simplehost-backup-runner.service
+Wants=network-online.target
+OnFailure=simplehost-unit-failure@%n.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/simplehost/storage-resilience.env
+WorkingDirectory=/opt/simplehostman/release/current
+ExecStart=/usr/bin/flock --nonblock --conflict-exit-code 75 /run/lock/simplehost-backup-retention.lock /usr/bin/node /opt/simplehostman/release/current/apps/worker/dist/backup-retention-cycle.js
+SuccessExitStatus=75
+StateDirectory=simplehost-backup-retention
+StateDirectoryMode=0750
+Nice=15
+IOSchedulingClass=idle
+IOSchedulingPriority=7
+TimeoutStartSec=45min

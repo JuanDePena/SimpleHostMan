@@ -14,6 +14,7 @@ import {
   policyCoversPyrosaIam,
   resolveLocalNodeId,
   resolveReplicaRetentionDays,
+  selectBackupRetentionCandidates,
   shouldRunPolicyAtTime
 } from "./backup-runner.js";
 
@@ -330,16 +331,36 @@ test("deriveReplicaStorageLocation nests generic policy roots by source node", (
 });
 
 test("buildRemoteBackupRetentionCommand prunes only old replica root children", () => {
-  assert.equal(
-    buildRemoteBackupRetentionCommand("/srv/backups/mail-adudoc/primary-replicated", 14),
-    "find '/srv/backups/mail-adudoc/primary-replicated' -mindepth 1 -maxdepth 1 -mtime +13 -exec rm -rf -- {} +"
+  const command = buildRemoteBackupRetentionCommand(
+    "/srv/backups/mail-adudoc/primary-replicated",
+    14
   );
-  assert.equal(
-    buildRemoteBackupRetentionCommand("/srv/backups/tenant's/primary-replicated", 1),
-    "find '/srv/backups/tenant'\\''s/primary-replicated' -mindepth 1 -maxdepth 1 -mtime +0 -exec rm -rf -- {} +"
+  assert.match(command ?? "", /\/usr\/bin\/bash -c/);
+  assert.match(command ?? "", /index=1/);
+  assert.match(command ?? "", /14 days ago/);
+  assert.match(command ?? "", /\[\[ -d/);
+  assert.match(command ?? "", /-xdev -type d/);
+  assert.match(command ?? "", /-depth -delete/);
+  assert.match(
+    buildRemoteBackupRetentionCommand("/srv/backups/tenant's/primary-replicated", 1) ?? "",
+    /tenant.*primary-replicated/
   );
   assert.equal(
     buildRemoteBackupRetentionCommand("/srv/backups/mail-adudoc/primary-replicated", 0),
     undefined
   );
+});
+
+test("retention preserves the newest directory even when every generation is expired", () => {
+  const candidates = selectBackupRetentionCandidates(
+    [
+      { name: "newest", path: "/backup/newest", mtimeMs: 300, isDirectory: true },
+      { name: "older", path: "/backup/older", mtimeMs: 200, isDirectory: true },
+      { name: "oldest", path: "/backup/oldest", mtimeMs: 100, isDirectory: true },
+      { name: "metadata", path: "/backup/metadata", mtimeMs: 50, isDirectory: false }
+    ],
+    1_000
+  );
+
+  assert.deepEqual(candidates.map((entry) => entry.name), ["older", "oldest"]);
 });

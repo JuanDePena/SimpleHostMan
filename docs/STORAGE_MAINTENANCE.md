@@ -1,6 +1,7 @@
 # Governed Storage Maintenance
 
 Date introduced: 2026-07-21
+Last updated: 2026-08-19
 
 ## Scope
 
@@ -82,6 +83,13 @@ Backup deletion remains owned by the SimpleHostMan backup runner and pgBackRest:
 - PostgreSQL physical backups and WAL: pgBackRest timers and expiry;
 - the storage-maintenance cycle: inventory and capacity reporting only.
 
+Since 2026-08-19, `simplehost-backup-retention.timer` applies desired-state
+logical-backup retention every day independently of whether a new backup was
+created. The newest local and replica generation is always protected. This
+closes the accumulation gap caused by a failed or skipped scheduled backup.
+pgBackRest expiry remains internal to pgBackRest and is monitored separately by
+`simplehost-pgbackrest-health.timer`.
+
 Policies support separate local and replica retention. A null replica value
 inherits the local retention for compatibility. The `db-pyrosa-sync-daily`
 policy uses:
@@ -162,11 +170,14 @@ systemctl cat simplehost-storage-maintenance.service
 systemctl cat simplehost-storage-maintenance.timer
 ```
 
-The timer runs Sundays at `07:15 UTC`, after the scheduled weekly pgBackRest
-full backups and off-host repository copy, with up to 20 minutes of randomized
+The timer runs daily at `07:15 UTC`, after logical-backup retention and outside
+the normal full pgBackRest start times, with up to 20 minutes of randomized
 delay. `Persistent=true` allows a missed run to be evaluated after boot. It is
 enabled on both nodes, including the passive node where the control and backup
 worker timers remain disabled.
+
+Capacity, backup retention, pgBackRest, and log-health controls are documented
+in [`STORAGE_RESILIENCE.md`](/opt/simplehostman/src/docs/STORAGE_RESILIENCE.md).
 
 ## Validation
 

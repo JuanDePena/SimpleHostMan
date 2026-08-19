@@ -1,0 +1,13 @@
+[Unit]
+Description=Check SimpleHost pgBackRest health hourly
+
+[Timer]
+OnBootSec=10min
+OnCalendar=*-*-* *:10:00 UTC
+Persistent=true
+RandomizedDelaySec=3min
+AccuracySec=1min
+Unit=simplehost-pgbackrest-health.service
+
+[Install]
+WantedBy=timers.target

@@ -45,6 +45,24 @@ export interface BackupCycleOutcome {
   runs: BackupRunSummary[];
 }
 
+export interface BackupRetentionCycleOutcome {
+  localNodeId: string;
+  policies: Array<{
+    policySlug: string;
+    localRemoved: string[];
+    replicaStorageLocation?: string;
+    replicaRetentionApplied: boolean;
+    error?: string;
+  }>;
+}
+
+export interface BackupRetentionEntry {
+  name: string;
+  path: string;
+  mtimeMs: number;
+  isDirectory: boolean;
+}
+
 interface BackupRuntimeEnv {
   SIMPLEHOST_NODE_ID?: string;
   SIMPLEHOST_HOSTNAME?: string;
@@ -104,7 +122,7 @@ interface BackupReplicationPlan {
 }
 
 export function resolveReplicaRetentionDays(
-  policy: Pick<BackupPolicySummary, "retentionDays" | "replicaRetentionDays">
+  policy: { retentionDays: number; replicaRetentionDays?: number | null }
 ): number {
   return policy.replicaRetentionDays ?? policy.retentionDays;
 }
@@ -609,9 +627,17 @@ export function buildRemoteBackupRetentionCommand(
     return undefined;
   }
 
-  const findMtimeDays = Math.max(0, Math.ceil(retentionDays) - 1);
+  const script = [
+    "set -euo pipefail",
+    `root=${shellQuote(storageLocation)}`,
+    "[[ -d \"$root\" ]] || exit 0",
+    `cutoff=$(date -u -d '${retentionDays} days ago' +%s)`,
+    "entries=()",
+    "while IFS= read -r -d '' record; do entries+=(\"${record#* }\"); done < <(find \"$root\" -mindepth 1 -maxdepth 1 -xdev -type d -printf '%T@ %p\\0' | sort -z -nr)",
+    "for ((index=1; index<${#entries[@]}; index++)); do candidate=${entries[$index]}; mtime=$(stat -c %Y -- \"$candidate\"); if (( mtime < cutoff )); then find \"$candidate\" -xdev -depth -delete; fi; done"
+  ].join("; ");
 
-  return `find ${shellQuote(storageLocation)} -mindepth 1 -maxdepth 1 -mtime +${findMtimeDays} -exec rm -rf -- {} +`;
+  return `/usr/bin/bash -c ${shellQuote(script)}`;
 }
 
 function resolveBackupReplicationPlan(args: {
@@ -754,26 +780,50 @@ function buildRunStamp(date: Date): string {
   return date.toISOString().replace(/[:.]/g, "-");
 }
 
-async function applyRetention(storageLocation: string, retentionDays: number): Promise<void> {
+export function selectBackupRetentionCandidates(
+  entries: BackupRetentionEntry[],
+  cutoffMs: number
+): BackupRetentionEntry[] {
+  const directories = entries
+    .filter((entry) => entry.isDirectory)
+    .sort((left, right) => right.mtimeMs - left.mtimeMs || left.name.localeCompare(right.name));
+
+  return directories.slice(1).filter((entry) => entry.mtimeMs < cutoffMs);
+}
+
+async function applyRetention(storageLocation: string, retentionDays: number): Promise<string[]> {
   if (retentionDays <= 0) {
-    return;
+    return [];
   }
 
   const cutoff = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
   const entries = await readdir(storageLocation, { withFileTypes: true }).catch(() => []);
+  const inventory = (
+    await Promise.all(
+      entries.map(async (entry): Promise<BackupRetentionEntry | undefined> => {
+        const targetPath = join(storageLocation, entry.name);
+        const targetStat = await stat(targetPath).catch(() => undefined);
 
-  await Promise.all(
-    entries.map(async (entry) => {
-      const targetPath = join(storageLocation, entry.name);
-      const targetStat = await stat(targetPath).catch(() => undefined);
+        if (!targetStat) {
+          return undefined;
+        }
 
-      if (!targetStat || targetStat.mtimeMs >= cutoff) {
-        return;
-      }
+        return {
+          name: entry.name,
+          path: targetPath,
+          mtimeMs: targetStat.mtimeMs,
+          isDirectory: entry.isDirectory()
+        };
+      })
+    )
+  ).filter((entry): entry is BackupRetentionEntry => entry !== undefined);
+  const candidates = selectBackupRetentionCandidates(inventory, cutoff);
 
-      await rm(targetPath, { recursive: true, force: true });
-    })
-  );
+  for (const candidate of candidates) {
+    await rm(candidate.path, { recursive: true, force: true });
+  }
+
+  return candidates.map((candidate) => candidate.name);
 }
 
 function findNodeRuntime(nodeHealth: NodeHealthSnapshot[], nodeId: string): NodeHealthSnapshot | undefined {
@@ -1828,6 +1878,76 @@ export async function runBackupCycle(options: BackupCliOptions = {}): Promise<Ba
       skippedPolicies,
       localNodeId: context.localNodeId,
       runs
+    };
+  } finally {
+    await controlPlaneStore.close();
+  }
+}
+
+export async function runBackupRetentionCycle(): Promise<BackupRetentionCycleOutcome> {
+  const runtimeEnv = await buildRuntimeEnv();
+  const { controlPlaneStore, context } = await buildExecutionContext(runtimeEnv);
+
+  try {
+    const policies = context.backupPolicies.filter(
+      (policy) => policy.targetNodeId === context.localNodeId
+    );
+    const outcomes: BackupRetentionCycleOutcome["policies"] = [];
+
+    for (const policy of policies) {
+      let localRemoved: string[] = [];
+
+      try {
+        await mkdir(policy.storageLocation, { recursive: true });
+        localRemoved = await applyRetention(policy.storageLocation, policy.retentionDays);
+        const replicationPlan = resolveBackupReplicationPlan({
+          context,
+          policy,
+          runDirectory: join(policy.storageLocation, "retention-only")
+        });
+        let replicaRetentionApplied = false;
+
+        if (replicationPlan) {
+          const retentionCommand = buildRemoteBackupRetentionCommand(
+            replicationPlan.replicaStorageLocation,
+            resolveReplicaRetentionDays(policy)
+          );
+
+          if (retentionCommand) {
+            await runCommand({
+              command: replicationPlan.sshBinary,
+              commandArgs: [
+                "-o",
+                "BatchMode=yes",
+                "-o",
+                `ConnectTimeout=${replicationPlan.connectTimeoutSeconds}`,
+                replicationPlan.targetHost,
+                retentionCommand
+              ]
+            });
+            replicaRetentionApplied = true;
+          }
+        }
+
+        outcomes.push({
+          policySlug: policy.policySlug,
+          localRemoved,
+          replicaStorageLocation: replicationPlan?.replicaStorageLocation,
+          replicaRetentionApplied
+        });
+      } catch (error) {
+        outcomes.push({
+          policySlug: policy.policySlug,
+          localRemoved,
+          replicaRetentionApplied: false,
+          error: error instanceof Error ? error.message : "retention failed"
+        });
+      }
+    }
+
+    return {
+      localNodeId: context.localNodeId,
+      policies: outcomes
     };
   } finally {
     await controlPlaneStore.close();

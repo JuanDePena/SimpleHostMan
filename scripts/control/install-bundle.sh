@@ -35,6 +35,15 @@ install -m 0644 "${release_dir}/packaging/systemd/simplehost-backup-runner.servi
 install -m 0644 "${release_dir}/packaging/systemd/simplehost-backup-runner.timer" /etc/systemd/system/simplehost-backup-runner.timer
 install -m 0644 "${release_dir}/packaging/systemd/simplehost-storage-maintenance.service" /etc/systemd/system/simplehost-storage-maintenance.service
 install -m 0644 "${release_dir}/packaging/systemd/simplehost-storage-maintenance.timer" /etc/systemd/system/simplehost-storage-maintenance.timer
+install -m 0644 "${release_dir}/packaging/systemd/simplehost-capacity-guard.service" /etc/systemd/system/simplehost-capacity-guard.service
+install -m 0644 "${release_dir}/packaging/systemd/simplehost-capacity-guard.timer" /etc/systemd/system/simplehost-capacity-guard.timer
+install -m 0644 "${release_dir}/packaging/systemd/simplehost-backup-retention.service" /etc/systemd/system/simplehost-backup-retention.service
+install -m 0644 "${release_dir}/packaging/systemd/simplehost-backup-retention.timer" /etc/systemd/system/simplehost-backup-retention.timer
+install -m 0644 "${release_dir}/packaging/systemd/simplehost-pgbackrest-health.service" /etc/systemd/system/simplehost-pgbackrest-health.service
+install -m 0644 "${release_dir}/packaging/systemd/simplehost-pgbackrest-health.timer" /etc/systemd/system/simplehost-pgbackrest-health.timer
+install -m 0644 "${release_dir}/packaging/systemd/simplehost-log-health.service" /etc/systemd/system/simplehost-log-health.service
+install -m 0644 "${release_dir}/packaging/systemd/simplehost-log-health.timer" /etc/systemd/system/simplehost-log-health.timer
+install -m 0644 "${release_dir}/packaging/systemd/simplehost-unit-failure@.service" /etc/systemd/system/simplehost-unit-failure@.service
 install -d /etc/systemd/system/postgresql@control.service.d /etc/systemd/system/postgresql@apps.service.d
 install -m 0644 "${release_dir}/packaging/systemd/postgresql@control.service.d/30-postgresql-setup.conf" /etc/systemd/system/postgresql@control.service.d/30-postgresql-setup.conf
 install -m 0644 "${release_dir}/packaging/systemd/postgresql@control.service.d/40-pgdg18-binary.conf" /etc/systemd/system/postgresql@control.service.d/40-pgdg18-binary.conf
@@ -43,8 +52,15 @@ install -m 0644 "${release_dir}/packaging/systemd/postgresql@apps.service.d/40-p
 install -m 0644 "${release_dir}/packaging/env/simplehost-control.env.example" /etc/simplehost/control.env.example
 install -m 0644 "${release_dir}/packaging/env/simplehost-worker.env.example" /etc/simplehost/worker.env.example
 install -m 0644 "${release_dir}/packaging/env/simplehost-storage-maintenance.env.example" /etc/simplehost/storage-maintenance.env.example
+install -m 0644 "${release_dir}/packaging/env/simplehost-storage-resilience.env.example" /etc/simplehost/storage-resilience.env.example
+install -d /etc/systemd/system/logrotate.timer.d
+install -m 0644 "${release_dir}/packaging/systemd/logrotate.timer.d/20-simplehost-frequency.conf" /etc/systemd/system/logrotate.timer.d/20-simplehost-frequency.conf
+install -m 0644 "${release_dir}/packaging/logrotate/rsyslog" /etc/logrotate.d/rsyslog
 if [[ ! -f /etc/simplehost/storage-maintenance.env ]]; then
   install -m 0640 "${release_dir}/packaging/env/simplehost-storage-maintenance.env.example" /etc/simplehost/storage-maintenance.env
+fi
+if [[ ! -f /etc/simplehost/storage-resilience.env ]]; then
+  install -m 0640 "${release_dir}/packaging/env/simplehost-storage-resilience.env.example" /etc/simplehost/storage-resilience.env
 fi
 systemctl daemon-reload
 

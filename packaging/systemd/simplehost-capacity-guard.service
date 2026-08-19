@@ -1,0 +1,16 @@
+[Unit]
+Description=SimpleHost capacity guard
+After=local-fs.target
+OnFailure=simplehost-unit-failure@%n.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/simplehost/storage-resilience.env
+WorkingDirectory=/opt/simplehostman/release/current
+ExecStart=/usr/bin/node /opt/simplehostman/release/current/apps/worker/dist/storage-capacity-guard-cycle.js
+StateDirectory=simplehost-capacity-guard
+StateDirectoryMode=0750
+Nice=10
+IOSchedulingClass=idle
+IOSchedulingPriority=7
+NoNewPrivileges=true

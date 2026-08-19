@@ -1,8 +1,8 @@
 [Unit]
-Description=Run governed SimpleHost storage maintenance weekly
+Description=Run governed SimpleHost storage maintenance daily
 
 [Timer]
-OnCalendar=Sun *-*-* 07:15:00 UTC
+OnCalendar=*-*-* 07:15:00 UTC
 Persistent=true
 RandomizedDelaySec=20min
 AccuracySec=1min

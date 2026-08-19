@@ -3,6 +3,7 @@ Description=SimpleHost governed storage maintenance
 After=local-fs.target network-online.target simplehost-backup-runner.service
 Wants=network-online.target
 ConditionPathIsDirectory=/opt/simplehostman/release/releases
+OnFailure=simplehost-unit-failure@%n.service
 
 [Service]
 Type=oneshot

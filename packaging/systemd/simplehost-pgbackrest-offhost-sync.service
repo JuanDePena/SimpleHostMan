@@ -2,6 +2,7 @@
 Description=SimpleHost pgBackRest off-host repository sync
 Wants=network-online.target
 After=network-online.target
+OnFailure=simplehost-unit-failure@%n.service
 
 [Service]
 Type=oneshot
