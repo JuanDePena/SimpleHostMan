@@ -157,6 +157,9 @@ export function createDashboardBootstrap(
       aliases: [],
       quotas: []
     },
+    ddns: {
+      hosts: []
+    },
     packages: {
       generatedAt: new Date().toISOString(),
       nodeCount: 0,
@@ -560,6 +563,9 @@ export function createStubApiSurface(args: {
         return;
       case "/v1/packages/summary":
         writeJson(response, 200, args.dashboard.packages);
+        return;
+      case "/v1/ddns/hosts":
+        writeJson(response, 200, args.dashboard.ddns);
         return;
       case "/v1/parameters":
         writeJson(response, 200, args.dashboard.parameters);
