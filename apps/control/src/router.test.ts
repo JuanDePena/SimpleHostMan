@@ -211,6 +211,37 @@ test("routes /v1/* requests to the API surface", async () => {
   assert.deepEqual(JSON.parse(response.bodyText), { source: "api" });
 });
 
+test("routes dynamic DNS update requests to the API surface", async () => {
+  let apiCalls = 0;
+  let webCalls = 0;
+
+  const handler = createCombinedControlRequestHandler({
+    surface: createStubBootstrapSurface({
+      context: createTestContext(),
+      apiSurface: createStubApiSurface(async (_request, response) => {
+        apiCalls += 1;
+        response.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
+        response.end("good 127.0.0.1");
+      }),
+      webSurface: createStubWebSurface(async (_request, response) => {
+        webCalls += 1;
+        response.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
+        response.end("web");
+      })
+    })
+  });
+
+  const response = await invokeRequestHandler(handler, {
+    method: "GET",
+    url: "/nic/update?hostname=router.example.com&myip=127.0.0.1"
+  });
+
+  assert.equal(apiCalls, 1);
+  assert.equal(webCalls, 0);
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.bodyText, "good 127.0.0.1");
+});
+
 test("routes non-/v1 requests to the web surface", async () => {
   let apiCalls = 0;
   let webCalls = 0;

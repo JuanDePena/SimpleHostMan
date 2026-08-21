@@ -21,7 +21,9 @@ export function createCombinedControlRouteSurface(
   const isHealthRequest = (context: CombinedControlRequestContext) =>
     context.method === "GET" && context.pathname === "/healthz";
   const isApiRequest = (context: CombinedControlRequestContext) =>
-    context.pathname === "/v1" || context.pathname.startsWith("/v1/");
+    context.pathname === "/nic/update" ||
+    context.pathname === "/v1" ||
+    context.pathname.startsWith("/v1/");
   const isWebRequest = (context: CombinedControlRequestContext) =>
     !isHealthRequest(context) && !isApiRequest(context);
   const match = (context: CombinedControlRequestContext): "api" | "health" | "web" => {
