@@ -25,6 +25,7 @@ import {
   createCombinedControlReleaseRootStagingLayout,
   type CombinedControlReleaseRootStagingLayout
 } from "./release-root-staging-layout.js";
+import { createReleaseTreeCopyOptions } from "./release-tree-copy.js";
 
 type PromotionStepKind = "ensure-dir" | "copy-tree" | "copy-file" | "write-symlink";
 
@@ -425,7 +426,7 @@ export async function applyCombinedControlReleaseRootPromotion(args: {
         }
         await removePathIfExists(step.target);
         await mkdir(dirname(step.target), { recursive: true });
-        await cp(step.source, step.target, { recursive: true });
+        await cp(step.source, step.target, createReleaseTreeCopyOptions(step.source));
         break;
       case "copy-file":
         if (!step.source) {

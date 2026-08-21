@@ -13,6 +13,7 @@ import { applyCombinedControlReleaseRootPromotion } from "./release-root-promoti
 import { createCombinedControlReleaseRootPromotionLayout } from "./release-root-promotion-layout.js";
 import { startExistingCombinedControlReleaseRootPromotion } from "./release-root-promotion-runner.js";
 import { applyCombinedControlReleaseRootStaging } from "./release-root-staging.js";
+import { createReleaseTreeCopyOptions } from "./release-tree-copy.js";
 
 async function login(origin: string) {
   const response = await fetch(new URL("/auth/login", origin), {
@@ -55,7 +56,11 @@ test("release-root promotion keeps inventory and can switch active versions", as
     version: versionB
   }).releaseVersionRoot;
   await mkdir(dirname(versionBRoot), { recursive: true });
-  await cp(layoutA.releaseVersionRoot, versionBRoot, { recursive: true });
+  await cp(
+    layoutA.releaseVersionRoot,
+    versionBRoot,
+    createReleaseTreeCopyOptions(layoutA.releaseVersionRoot)
+  );
   await syncCombinedControlReleaseRootPromotionInventory({ targetId });
   await activateCombinedControlReleaseRootPromotionVersion({
     targetId,

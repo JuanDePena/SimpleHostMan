@@ -12,6 +12,7 @@ import {
   createCombinedControlReleaseRootCutoverTargetLayout,
   type CombinedControlReleaseRootCutoverTargetLayout
 } from "./release-root-cutover-target-layout.js";
+import { createReleaseTreeCopyOptions } from "./release-tree-copy.js";
 
 export interface CombinedControlReleaseRootCutoverTargetApplyRecord {
   readonly kind: CombinedControlReleaseRootCutoverStep["kind"];
@@ -170,7 +171,7 @@ export async function applyCombinedControlReleaseRootCutoverTarget(args: {
         }
         await removePathIfExists(step.target);
         await mkdir(dirname(step.target), { recursive: true });
-        await cp(step.source, step.target, { recursive: true });
+        await cp(step.source, step.target, createReleaseTreeCopyOptions(step.source));
         break;
       case "copy-file":
         if (!step.source) {

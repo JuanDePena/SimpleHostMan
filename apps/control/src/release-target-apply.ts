@@ -12,6 +12,7 @@ import {
   type CombinedControlReleaseShadowHandoffStep
 } from "./release-shadow-handoff.js";
 import { packCombinedControlReleaseShadow } from "./release-shadow-pack.js";
+import { createReleaseTreeCopyOptions } from "./release-tree-copy.js";
 
 export interface CombinedControlReleaseTargetApplyRecord {
   readonly kind: CombinedControlReleaseShadowHandoffStep["kind"];
@@ -156,7 +157,7 @@ export async function applyCombinedControlReleaseTarget(args: {
         }
         await removePathIfExists(target);
         await mkdir(dirname(target), { recursive: true });
-        await cp(source, target, { recursive: true });
+        await cp(source, target, createReleaseTreeCopyOptions(source));
         break;
       case "copy-file":
         if (!source) {

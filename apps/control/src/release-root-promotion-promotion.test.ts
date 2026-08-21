@@ -11,6 +11,7 @@ import {
 import { createCombinedControlReleaseRootPromotionLayout } from "./release-root-promotion-layout.js";
 import { applyCombinedControlReleaseRootPromotion } from "./release-root-promotion.js";
 import { applyCombinedControlReleaseRootStaging } from "./release-root-staging.js";
+import { createReleaseTreeCopyOptions } from "./release-tree-copy.js";
 
 test("release-root promotion tracks promoted versions and rollback history", async () => {
   const targetId = "release-root-promotion-history";
@@ -40,7 +41,11 @@ test("release-root promotion tracks promoted versions and rollback history", asy
     version: versionB
   });
   await mkdir(dirname(versionBLayout.releaseVersionRoot), { recursive: true });
-  await cp(layoutA.releaseVersionRoot, versionBLayout.releaseVersionRoot, { recursive: true });
+  await cp(
+    layoutA.releaseVersionRoot,
+    versionBLayout.releaseVersionRoot,
+    createReleaseTreeCopyOptions(layoutA.releaseVersionRoot)
+  );
   await syncCombinedControlReleaseRootPromotionInventory({ targetId });
 
   const promotedB = await promoteCombinedControlReleaseRootPromotionVersion({

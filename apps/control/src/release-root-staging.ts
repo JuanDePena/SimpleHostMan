@@ -8,6 +8,7 @@ import type {
 } from "./release-shadow-handoff.js";
 import { readCombinedControlReleaseShadowHandoffManifest } from "./release-shadow-handoff.js";
 import { packCombinedControlReleaseShadow } from "./release-shadow-pack.js";
+import { createReleaseTreeCopyOptions } from "./release-tree-copy.js";
 import {
   createCombinedControlReleaseRootStagingLayout,
   type CombinedControlReleaseRootStagingLayout
@@ -252,7 +253,7 @@ export async function applyCombinedControlReleaseRootStaging(args: {
         }
         await removePathIfExists(step.target);
         await mkdir(dirname(step.target), { recursive: true });
-        await cp(step.source, step.target, { recursive: true });
+        await cp(step.source, step.target, createReleaseTreeCopyOptions(step.source));
         break;
       case "copy-file":
         if (!step.source) {

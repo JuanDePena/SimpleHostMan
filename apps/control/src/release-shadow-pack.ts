@@ -24,6 +24,7 @@ import {
 } from "./release-shadow-handoff.js";
 import type { CombinedControlReleaseSandboxBundle } from "./release-sandbox-bundle.js";
 import { packCombinedControlReleaseSandbox } from "./release-sandbox-pack.js";
+import { createReleaseTreeCopyOptions } from "./release-tree-copy.js";
 import {
   type CombinedControlReleaseShadowPromotionHistory,
   type CombinedControlReleaseShadowPromotionManifest,
@@ -124,9 +125,11 @@ export async function packCombinedControlReleaseShadow(args: {
     });
 
     await removePathIfExists(shadowReleaseLayout.releaseVersionRoot);
-    await cp(sourceReleaseLayout.releaseVersionRoot, shadowReleaseLayout.releaseVersionRoot, {
-      recursive: true
-    });
+    await cp(
+      sourceReleaseLayout.releaseVersionRoot,
+      shadowReleaseLayout.releaseVersionRoot,
+      createReleaseTreeCopyOptions(sourceReleaseLayout.releaseVersionRoot)
+    );
 
     const sourceBundle = JSON.parse(
       await readFile(sourceReleaseLayout.bundleManifestFile, "utf8")
