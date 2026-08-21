@@ -28,6 +28,9 @@ rm -rf "${temp_dir}/.git" "${temp_dir}/node_modules"
 
 rm -rf "${release_dir}"
 mv "${temp_dir}" "${release_dir}"
+if command -v restorecon >/dev/null 2>&1; then
+  restorecon -R "${release_dir}"
+fi
 ln -sfn "${release_dir}" "${runtime_root}/current"
 
 install -m 0644 "${repo_root}/packaging/systemd/simplehost-agent.service" /etc/systemd/system/simplehost-agent.service

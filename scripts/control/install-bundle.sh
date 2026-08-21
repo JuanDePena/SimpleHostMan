@@ -27,6 +27,9 @@ release_dir="${runtime_root}/releases/${version}"
 
 rm -rf "${release_dir}"
 mv "${release_source}" "${release_dir}"
+if command -v restorecon >/dev/null 2>&1; then
+  restorecon -R "${release_dir}"
+fi
 ln -sfn "${release_dir}" "${runtime_root}/current"
 
 install -m 0644 "${release_dir}/packaging/systemd/simplehost-control.service" /etc/systemd/system/simplehost-control.service

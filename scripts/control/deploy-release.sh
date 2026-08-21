@@ -105,6 +105,7 @@ activate_remote() {
   ssh "${target_host}" \
     "install -d '${runtime_root}/releases' /etc/simplehost /var/log/simplehost && \
      ln -sfn '${remote_release_dir}' '${runtime_root}/current' && \
+     if command -v restorecon >/dev/null 2>&1; then restorecon -R '${remote_release_dir}'; fi && \
      install -m 0644 '${remote_release_dir}/packaging/systemd/simplehost-control.service' /etc/systemd/system/simplehost-control.service && \
      install -m 0644 '${remote_release_dir}/packaging/systemd/simplehost-worker.service' /etc/systemd/system/simplehost-worker.service && \
      install -m 0644 '${remote_release_dir}/packaging/systemd/simplehost-backup-runner.service' /etc/systemd/system/simplehost-backup-runner.service && \
