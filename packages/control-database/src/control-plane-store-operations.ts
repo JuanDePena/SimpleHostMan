@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { isIP } from "node:net";
 
 import { Pool, type PoolClient } from "pg";
 
@@ -7,6 +8,8 @@ import {
   type ContainerReconcilePayload,
   createDefaultMailPolicy,
   createDispatchedJobEnvelope,
+  type DdnsHostSummary,
+  type DdnsRecordType,
   type DnsSyncPayload,
   type EnvironmentParameterMutationRequest,
   type EnvironmentParameterSummary,
@@ -48,10 +51,16 @@ import {
 } from "@simplehost/control-contracts";
 
 import { requireAuthorizedUser } from "./control-plane-store-auth.js";
+import {
+  createOpaqueSessionToken,
+  createPasswordHash,
+  verifyPasswordHash
+} from "./auth.js";
 import { insertAuditEvent, withTransaction } from "./control-plane-store-db.js";
 import {
   createDesiredStateVersion,
   createQueuedDispatchJob,
+  createStableId,
   createResourceDriftSummary,
   decodeDesiredPassword,
   encodeStoredJobPayload,
@@ -66,7 +75,8 @@ import {
   toNodeHealthSnapshot,
   toReconciliationRunSummary,
   toRegisteredNodeState,
-  toReportedJobResult
+  toReportedJobResult,
+  relativeRecordNameForZone
 } from "./control-plane-store-helpers.js";
 import {
   buildMailMtaStsHostname,
@@ -86,6 +96,7 @@ import type {
   BackupRunRow,
   ControlPlaneOperationsMethods,
   DatabaseDispatchRow,
+  DdnsHostRow,
   DriftStatusRow,
   EnvironmentParameterRow,
   IamBindingRow,
@@ -132,6 +143,87 @@ const environmentParameterKeyPattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const sensitiveParameterKeyPattern =
   /(PASSWORD|PASS|TOKEN|SECRET|PRIVATE|CREDENTIAL|DATABASE_URL|DSN|COOKIE|SALT|KEY)/i;
 const dayMs = 24 * 60 * 60 * 1000;
+const ddnsMinimumTtl = 60;
+const ddnsMaximumTtl = 86400;
+
+function normalizeDdnsHostname(value: string): string {
+  return value.trim().replace(/\.$/, "").toLowerCase();
+}
+
+function normalizeDdnsUsername(value: string | undefined, hostname: string): string {
+  const username = value?.trim();
+  return username || hostname;
+}
+
+function normalizeDdnsTtl(value: number | undefined): number {
+  if (typeof value !== "number" || !Number.isInteger(value)) {
+    return 300;
+  }
+
+  return Math.max(ddnsMinimumTtl, Math.min(ddnsMaximumTtl, value));
+}
+
+function recordTypeForIpAddress(ipAddress: string): DdnsRecordType | null {
+  const family = isIP(ipAddress);
+
+  if (family === 4) {
+    return "A";
+  }
+
+  if (family === 6) {
+    return "AAAA";
+  }
+
+  return null;
+}
+
+function toDdnsHostSummary(row: DdnsHostRow): DdnsHostSummary {
+  return {
+    hostname: row.hostname,
+    zoneName: row.zone_name,
+    recordName: row.record_name,
+    recordType: row.record_type,
+    username: row.username,
+    ttl: Number(row.ttl),
+    enabled: Boolean(row.enabled),
+    lastIp: row.last_ip ?? undefined,
+    lastSeenAt: row.last_seen_at ? normalizeDatabaseTimestamp(row.last_seen_at) : undefined,
+    lastUpdatedAt: row.last_updated_at
+      ? normalizeDatabaseTimestamp(row.last_updated_at)
+      : undefined,
+    createdAt: normalizeDatabaseTimestamp(row.created_at),
+    updatedAt: normalizeDatabaseTimestamp(row.updated_at)
+  };
+}
+
+async function listDdnsHostRows(client: PoolClient): Promise<DdnsHostRow[]> {
+  const result = await client.query<DdnsHostRow>(
+    `SELECT
+       hosts.host_id,
+       hosts.hostname,
+       hosts.zone_id,
+       zones.zone_name,
+       hosts.record_name,
+       hosts.record_type,
+       hosts.username,
+       hosts.password_hash,
+       hosts.password_salt,
+       hosts.password_params,
+       hosts.ttl,
+       hosts.enabled,
+       hosts.last_ip,
+       hosts.last_seen_at,
+       hosts.last_updated_at,
+       hosts.created_at,
+       hosts.updated_at
+     FROM control_plane_ddns_hosts hosts
+     INNER JOIN control_plane_dns_zones zones
+       ON zones.zone_id = hosts.zone_id
+     ORDER BY hosts.hostname ASC`
+  );
+
+  return result.rows;
+}
 
 function normalizeDatabaseTimestamp(value: Date | string): string {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
@@ -2475,6 +2567,409 @@ export function createControlPlaneOperationsMethods(
   void refreshResourceDriftSummaries();
 
   return {
+    async listDdnsHosts(presentedToken) {
+      return withTransaction(pool, async (client) => {
+        await requireAuthorizedUser(client, presentedToken, [
+          "platform_admin",
+          "platform_operator"
+        ]);
+
+        return {
+          hosts: (await listDdnsHostRows(client)).map(toDdnsHostSummary)
+        };
+      });
+    },
+
+    async upsertDdnsHost(request, presentedToken) {
+      return withTransaction(pool, async (client) => {
+        const actor = await requireAuthorizedUser(client, presentedToken, [
+          "platform_admin",
+          "platform_operator"
+        ]);
+        const hostname = normalizeDdnsHostname(request.hostname ?? "");
+
+        if (!hostname) {
+          throw new Error("DDNS hostname is required.");
+        }
+
+        const recordType = request.recordType ?? "A";
+
+        if (recordType !== "A" && recordType !== "AAAA") {
+          throw new Error("DDNS recordType must be A or AAAA.");
+        }
+
+        const zoneResult = request.zoneName
+          ? await client.query<{ zone_id: string; zone_name: string }>(
+              `SELECT zone_id, zone_name
+               FROM control_plane_dns_zones
+               WHERE zone_name = $1`,
+              [normalizeDdnsHostname(request.zoneName)]
+            )
+          : await client.query<{ zone_id: string; zone_name: string }>(
+              `SELECT zone_id, zone_name
+               FROM control_plane_dns_zones
+               WHERE $1 = zone_name OR $1 LIKE '%.' || zone_name
+               ORDER BY length(zone_name) DESC
+               LIMIT 1`,
+              [hostname]
+            );
+        const zone = zoneResult.rows[0];
+
+        if (!zone) {
+          throw new Error(`No managed DNS zone contains ${hostname}.`);
+        }
+
+        const recordName = relativeRecordNameForZone(hostname, zone.zone_name);
+        const existingResult = await client.query<DdnsHostRow>(
+          `SELECT
+             hosts.host_id,
+             hosts.hostname,
+             hosts.zone_id,
+             zones.zone_name,
+             hosts.record_name,
+             hosts.record_type,
+             hosts.username,
+             hosts.password_hash,
+             hosts.password_salt,
+             hosts.password_params,
+             hosts.ttl,
+             hosts.enabled,
+             hosts.last_ip,
+             hosts.last_seen_at,
+             hosts.last_updated_at,
+             hosts.created_at,
+             hosts.updated_at
+           FROM control_plane_ddns_hosts hosts
+           INNER JOIN control_plane_dns_zones zones
+             ON zones.zone_id = hosts.zone_id
+           WHERE hosts.hostname = $1`,
+          [hostname]
+        );
+        const existing = existingResult.rows[0];
+        const generatedPassword = request.password?.trim()
+          ? undefined
+          : existing
+            ? undefined
+            : createOpaqueSessionToken();
+        const nextPassword = request.password?.trim() || generatedPassword;
+        const passwordHash = nextPassword
+          ? await createPasswordHash(nextPassword)
+          : existing
+            ? {
+                hash: existing.password_hash,
+                salt: existing.password_salt,
+                params: existing.password_params
+              }
+            : await createPasswordHash(createOpaqueSessionToken());
+
+        await client.query(
+          `INSERT INTO control_plane_ddns_hosts (
+             host_id,
+             hostname,
+             zone_id,
+             record_name,
+             record_type,
+             username,
+             password_hash,
+             password_salt,
+             password_params,
+             ttl,
+             enabled,
+             created_at,
+             updated_at
+           )
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11, NOW(), NOW())
+           ON CONFLICT (hostname)
+           DO UPDATE SET
+             zone_id = EXCLUDED.zone_id,
+             record_name = EXCLUDED.record_name,
+             record_type = EXCLUDED.record_type,
+             username = EXCLUDED.username,
+             password_hash = EXCLUDED.password_hash,
+             password_salt = EXCLUDED.password_salt,
+             password_params = EXCLUDED.password_params,
+             ttl = EXCLUDED.ttl,
+             enabled = EXCLUDED.enabled,
+             updated_at = NOW()`,
+          [
+            existing?.host_id ?? createStableId("ddns", hostname),
+            hostname,
+            zone.zone_id,
+            recordName,
+            recordType,
+            normalizeDdnsUsername(request.username, hostname),
+            passwordHash.hash,
+            passwordHash.salt,
+            JSON.stringify(passwordHash.params),
+            normalizeDdnsTtl(request.ttl),
+            request.enabled ?? true
+          ]
+        );
+
+        await insertAuditEvent(client, {
+          actorType: "user",
+          actorId: actor.userId,
+          eventType: existing ? "ddns.host.updated" : "ddns.host.created",
+          entityType: "ddns_host",
+          entityId: hostname,
+          payload: {
+            zoneName: zone.zone_name,
+            recordName,
+            recordType,
+            username: normalizeDdnsUsername(request.username, hostname),
+            ttl: normalizeDdnsTtl(request.ttl),
+            enabled: request.enabled ?? true
+          }
+        });
+
+        const host = (await listDdnsHostRows(client)).find((entry) => entry.hostname === hostname);
+
+        if (!host) {
+          throw new Error(`DDNS host ${hostname} could not be loaded after save.`);
+        }
+
+        return {
+          host: toDdnsHostSummary(host),
+          password: generatedPassword
+        };
+      });
+    },
+
+    async deleteDdnsHost(hostname, presentedToken) {
+      return withTransaction(pool, async (client) => {
+        const actor = await requireAuthorizedUser(client, presentedToken, [
+          "platform_admin",
+          "platform_operator"
+        ]);
+        const normalizedHostname = normalizeDdnsHostname(hostname);
+
+        await client.query(
+          `DELETE FROM control_plane_ddns_hosts
+           WHERE hostname = $1`,
+          [normalizedHostname]
+        );
+
+        await insertAuditEvent(client, {
+          actorType: "user",
+          actorId: actor.userId,
+          eventType: "ddns.host.deleted",
+          entityType: "ddns_host",
+          entityId: normalizedHostname
+        });
+
+        return {
+          hosts: (await listDdnsHostRows(client)).map(toDdnsHostSummary)
+        };
+      });
+    },
+
+    async updateDdnsHost(request) {
+      return withTransaction(pool, async (client) => {
+        const hostname = normalizeDdnsHostname(request.hostname ?? "");
+        const username = request.username?.trim() ?? "";
+        const password = request.password ?? "";
+
+        if (!hostname || !username || !password) {
+          return {
+            status: "badauth",
+            changed: false
+          };
+        }
+
+        const hostResult = await client.query<DdnsHostRow>(
+          `SELECT
+             hosts.host_id,
+             hosts.hostname,
+             hosts.zone_id,
+             zones.zone_name,
+             hosts.record_name,
+             hosts.record_type,
+             hosts.username,
+             hosts.password_hash,
+             hosts.password_salt,
+             hosts.password_params,
+             hosts.ttl,
+             hosts.enabled,
+             hosts.last_ip,
+             hosts.last_seen_at,
+             hosts.last_updated_at,
+             hosts.created_at,
+             hosts.updated_at
+           FROM control_plane_ddns_hosts hosts
+           INNER JOIN control_plane_dns_zones zones
+             ON zones.zone_id = hosts.zone_id
+           WHERE hosts.hostname = $1`,
+          [hostname]
+        );
+        const host = hostResult.rows[0];
+
+        if (!host || !host.enabled) {
+          return {
+            status: "nohost",
+            hostname,
+            changed: false
+          };
+        }
+
+        const passwordMatches = await verifyPasswordHash(password, {
+          hash: host.password_hash,
+          salt: host.password_salt,
+          params: host.password_params
+        });
+
+        if (host.username !== username || !passwordMatches) {
+          return {
+            status: "badauth",
+            hostname,
+            changed: false
+          };
+        }
+
+        const ipAddress = request.ipAddress?.trim() ?? "";
+        const incomingRecordType = recordTypeForIpAddress(ipAddress);
+
+        if (!incomingRecordType || incomingRecordType !== host.record_type) {
+          await client.query(
+            `UPDATE control_plane_ddns_hosts
+             SET last_seen_at = NOW(),
+                 updated_at = NOW()
+             WHERE host_id = $1`,
+            [host.host_id]
+          );
+
+          return {
+            status: "badip",
+            hostname,
+            ipAddress,
+            changed: false
+          };
+        }
+
+        const existingRecordResult = await client.query<{ value: string; ttl: number }>(
+          `SELECT value, ttl
+           FROM control_plane_dns_records
+           WHERE zone_id = $1
+             AND name = $2
+             AND type = $3
+           ORDER BY value ASC`,
+          [host.zone_id, host.record_name, host.record_type]
+        );
+        const existingRecords = existingRecordResult.rows;
+        const unchanged =
+          existingRecords.length === 1 &&
+          existingRecords[0]?.value === ipAddress &&
+          Number(existingRecords[0]?.ttl) === Number(host.ttl);
+
+        if (unchanged) {
+          await client.query(
+            `UPDATE control_plane_ddns_hosts
+             SET last_ip = $2,
+                 last_seen_at = NOW(),
+                 updated_at = NOW()
+             WHERE host_id = $1`,
+            [host.host_id, ipAddress]
+          );
+
+          return {
+            status: "nochg",
+            hostname,
+            ipAddress,
+            changed: false
+          };
+        }
+
+        await client.query(
+          `DELETE FROM control_plane_dns_records
+           WHERE zone_id = $1
+             AND name = $2
+             AND type = $3`,
+          [host.zone_id, host.record_name, host.record_type]
+        );
+        await client.query(
+          `INSERT INTO control_plane_dns_records (
+             record_id,
+             zone_id,
+             name,
+             type,
+             value,
+             ttl,
+             created_at,
+             updated_at
+           )
+           VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())`,
+          [
+            createStableId("record", host.zone_name, host.record_name, host.record_type, ipAddress),
+            host.zone_id,
+            host.record_name,
+            host.record_type,
+            ipAddress,
+            host.ttl
+          ]
+        );
+        await client.query(
+          `UPDATE control_plane_ddns_hosts
+           SET last_ip = $2,
+               last_seen_at = NOW(),
+               last_updated_at = NOW(),
+               updated_at = NOW()
+           WHERE host_id = $1`,
+          [host.host_id, ipAddress]
+        );
+
+        const desiredStateVersion = createDesiredStateVersion();
+        const jobs = (await buildZoneDnsPlans(client, host.zone_name)).map((plan) =>
+          createQueuedDispatchJob(
+            createDispatchedJobEnvelope(
+              "dns.sync",
+              plan.nodeId,
+              desiredStateVersion,
+              plan.payload as unknown as Record<string, unknown>
+            ),
+            `zone:${host.zone_name}`,
+            "dns"
+          )
+        );
+
+        await insertDispatchedJobs(
+          client,
+          jobs,
+          null,
+          `ddns.update:${hostname}`,
+          jobPayloadKey
+        );
+        await insertAuditEvent(client, {
+          actorType: "system",
+          actorId: "ddns",
+          eventType: "ddns.host.updated",
+          entityType: "ddns_host",
+          entityId: hostname,
+          payload: {
+            zoneName: host.zone_name,
+            recordName: host.record_name,
+            recordType: host.record_type,
+            ipAddress,
+            userAgent: request.userAgent,
+            remoteAddress: request.remoteAddress
+          }
+        });
+        resourceDriftCache = undefined;
+
+        return {
+          status: "good",
+          hostname,
+          ipAddress,
+          changed: true,
+          dispatch: {
+            desiredStateVersion,
+            jobs: jobs.map((job) => ({
+              ...job.envelope,
+              payload: sanitizePayload(job.envelope.payload) as Record<string, unknown>
+            }))
+          }
+        };
+      });
+    },
+
     async dispatchZoneSync(zoneName, presentedToken) {
       return withTransaction(pool, async (client) => {
         const actor = await requireAuthorizedUser(client, presentedToken, [

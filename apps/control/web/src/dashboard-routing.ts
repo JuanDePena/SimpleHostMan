@@ -7,6 +7,7 @@ export type DashboardView =
   | "tenants"
   | "nodes"
   | "zones"
+  | "ddns"
   | "proxies"
   | "apps"
   | "databases"
@@ -90,6 +91,7 @@ export interface DashboardCopyLabels {
   navTenants: string;
   navNodes: string;
   navZones: string;
+  navDdns: string;
   navProxies: string;
   navApps: string;
   navDatabases: string;
@@ -127,6 +129,7 @@ export interface DashboardCopyLabels {
   tenantWorkspaceDescription: string;
   nodeWorkspaceDescription: string;
   zoneWorkspaceDescription: string;
+  ddnsWorkspaceDescription: string;
   proxyWorkspaceDescription: string;
   appWorkspaceDescription: string;
   databaseWorkspaceDescription: string;
@@ -184,6 +187,7 @@ export function normalizeDashboardView(value: string | null | undefined): Dashbo
     case "tenants":
     case "nodes":
     case "zones":
+    case "ddns":
     case "proxies":
     case "apps":
     case "databases":
@@ -288,6 +292,8 @@ function getObjectViewLabel(
       return copy.navNodes;
     case "zones":
       return copy.navZones;
+    case "ddns":
+      return copy.navDdns;
     case "proxies":
       return copy.navProxies;
     case "apps":
@@ -478,6 +484,8 @@ export function getDashboardSubheading(copy: DashboardCopyLabels, view: Dashboar
       return copy.nodeWorkspaceDescription;
     case "zones":
       return copy.zoneWorkspaceDescription;
+    case "ddns":
+      return copy.ddnsWorkspaceDescription;
     case "proxies":
       return copy.proxyWorkspaceDescription;
     case "apps":

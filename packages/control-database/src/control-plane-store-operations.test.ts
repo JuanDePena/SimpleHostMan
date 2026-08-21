@@ -631,6 +631,19 @@ test("pyrosa-sync retention is seven days on both local and replica storage", ()
   assert.match(migrationSql, /replica_retention_days = 7/);
 });
 
+test("dynamic DNS migration scopes credentials to managed DNS records", () => {
+  const migrationSql = readFileSync(
+    new URL("../migrations/0050_dynamic_dns.sql", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(migrationSql, /CREATE TABLE IF NOT EXISTS control_plane_ddns_hosts/);
+  assert.match(migrationSql, /REFERENCES control_plane_dns_zones\(zone_id\)/);
+  assert.match(migrationSql, /CHECK \(record_type IN \('A', 'AAAA'\)\)/);
+  assert.match(migrationSql, /UNIQUE \(zone_id, record_name, record_type\)/);
+  assert.match(migrationSql, /password_hash/);
+});
+
 test("metadata-only apps do not emit proxy or container reconciliation plans", async () => {
   const appRow = {
     app_id: "app-pyrosa-iam",

@@ -46,6 +46,7 @@ export const navigationCopyByLocale = {
     navTenants: "Tenants",
     navNodes: "Nodes",
     navZones: "DNS Zones",
+    navDdns: "Dynamic DNS",
     navProxies: "Proxies",
     navApps: "Apps",
     navDatabases: "Databases",
@@ -58,6 +59,8 @@ export const navigationCopyByLocale = {
     tenantWorkspaceDescription: "Tenant scope, related resources and recent platform activity.",
     nodeWorkspaceDescription: "Health, desired topology and operator actions by node.",
     zoneWorkspaceDescription: "DNS zones, records, dispatch state and related drift.",
+    ddnsWorkspaceDescription:
+      "Dynamic DNS hosts, scoped credentials and UniFi-compatible update settings.",
     proxyWorkspaceDescription: "Virtual hosts, proxy routing and operator-facing ingress per app.",
     appWorkspaceDescription: "Runtime topology, proxy operations and app-linked resources.",
     databaseWorkspaceDescription: "Database topology, reconcile posture and related operations.",
@@ -161,6 +164,7 @@ export const navigationCopyByLocale = {
     navTenants: "Tenants",
     navNodes: "Nodos",
     navZones: "Zonas DNS",
+    navDdns: "DNS dinámico",
     navProxies: "Proxies",
     navApps: "Apps",
     navDatabases: "Bases de datos",
@@ -174,6 +178,8 @@ export const navigationCopyByLocale = {
       "Alcance del tenant, recursos relacionados y actividad reciente de plataforma.",
     nodeWorkspaceDescription: "Salud, topología deseada y acciones operativas por nodo.",
     zoneWorkspaceDescription: "Zonas DNS, registros, estado de dispatch y drift relacionado.",
+    ddnsWorkspaceDescription:
+      "Hosts DDNS, credenciales acotadas y configuración de actualización compatible con UniFi.",
     proxyWorkspaceDescription:
       "Virtual hosts, enrutamiento proxy e ingress operator-facing por app.",
     appWorkspaceDescription:

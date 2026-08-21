@@ -18,6 +18,7 @@ import {
 } from "./dashboard-routing.js";
 import { renderAuditWorkspace } from "./dashboard-audit.js";
 import { renderBackupsWorkspace } from "./dashboard-backups.js";
+import { renderDdnsWorkspace } from "./dashboard-ddns.js";
 import { renderResourceDriftWorkspace } from "./dashboard-drift.js";
 import { renderJobHistoryWorkspace } from "./dashboard-jobs.js";
 import { renderNodeHealthWorkspace } from "./dashboard-node-health.js";
@@ -520,6 +521,19 @@ export function renderDashboardPage(args: RenderDashboardArgs): string {
           focus,
           zoneWorkspaceTab
         );
+      case "ddns":
+        return renderDdnsWorkspace({
+          copy,
+          data,
+          locale,
+          currentPath,
+          focus,
+          formatDate,
+          renderDetailGrid,
+          renderFocusLink: renderFocusLinkWithPill,
+          renderPill,
+          renderSignalStrip
+        });
       case "proxies":
         return renderDesiredStateObjectWorkspaceView(
           data,

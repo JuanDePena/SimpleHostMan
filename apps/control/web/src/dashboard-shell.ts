@@ -332,6 +332,13 @@ export function renderDashboardShell<Copy extends DashboardShellCopy>(args: {
             (view === "desired-state" && resolvedDesiredStateTab === "desired-state-zones")
         },
         {
+          id: "ddns",
+          label: copy.navDdns,
+          href: buildDashboardViewUrl("ddns", undefined, focus),
+          badge: String(data.ddns.hosts.length),
+          active: view === "ddns"
+        },
+        {
           id: "apps",
           label: copy.navApps,
           href: buildDashboardViewUrl("apps", undefined, focus),

@@ -86,6 +86,15 @@ function createStubApi(
     syncZone: async () => {
       throw new Error("Unexpected zone sync in test");
     },
+    loadDdnsHosts: async () => {
+      return { hosts: [] };
+    },
+    upsertDdnsHost: async () => {
+      throw new Error("Unexpected DDNS host upsert in test");
+    },
+    deleteDdnsHost: async () => {
+      throw new Error("Unexpected DDNS host delete in test");
+    },
     reconcileApp: async () => {
       throw new Error("Unexpected app reconcile in test");
     },
@@ -742,6 +751,8 @@ test("parameter and history actions call the authenticated API and return to the
   const savedRequests: Array<{ key: string; value?: string; sensitive?: boolean }> = [];
   const deletedKeys: string[] = [];
   const createdUsers: Array<{ email: string; displayName: string; globalRoles?: string[] }> = [];
+  const savedDdnsHosts: Array<{ hostname: string; username?: string; password?: string }> = [];
+  const deletedDdnsHosts: string[] = [];
   const handler = createControlWebSurface(
     {
       config: createConfig(),
@@ -767,6 +778,31 @@ test("parameter and history actions call the authenticated API and return to the
       deleteParameter: async (token, key) => {
         assert.equal(token, "test-token");
         deletedKeys.push(key);
+      },
+      upsertDdnsHost: async (token, request) => {
+        assert.equal(token, "test-token");
+        savedDdnsHosts.push({
+          hostname: request.hostname,
+          username: request.username,
+          password: request.password
+        });
+        return {
+          host: {
+            hostname: request.hostname,
+            zoneName: request.zoneName ?? "ddns.pyrosa.com.do",
+            recordName: "router",
+            recordType: request.recordType ?? "A",
+            username: request.username ?? request.hostname,
+            ttl: request.ttl ?? 300,
+            enabled: request.enabled ?? true,
+            createdAt: "2026-04-30T00:00:00.000Z",
+            updatedAt: "2026-04-30T00:00:00.000Z"
+          }
+        };
+      },
+      deleteDdnsHost: async (token, hostname) => {
+        assert.equal(token, "test-token");
+        deletedDdnsHosts.push(hostname);
       },
       createUser: async (token, request) => {
         assert.equal(token, "test-token");
@@ -866,6 +902,41 @@ test("parameter and history actions call the authenticated API and return to the
   });
   assert.match(String(createUserResponse.headers.location), /view=operators/);
   assert.match(String(createUserResponse.headers.location), /focus=user-2/);
+
+  const ddnsUpsertResponse = await invokeRequestHandler(handler, {
+    method: "POST",
+    url: "/actions/ddns/upsert",
+    body: "hostname=router.ddns.pyrosa.com.do&zoneName=ddns.pyrosa.com.do&recordType=A&username=router&password=secret&ttl=300&enabled=on&returnTo=%2F%3Fview%3Dddns",
+    headers: {
+      "content-type": "application/x-www-form-urlencoded; charset=utf-8",
+      cookie: "shp_session=test-token"
+    }
+  });
+
+  assert.equal(ddnsUpsertResponse.statusCode, 303);
+  assert.deepEqual(savedDdnsHosts[0], {
+    hostname: "router.ddns.pyrosa.com.do",
+    username: "router",
+    password: "secret"
+  });
+  assert.match(String(ddnsUpsertResponse.headers.location), /view=ddns/);
+  assert.match(
+    String(ddnsUpsertResponse.headers.location),
+    /focus=router\.ddns\.pyrosa\.com\.do/
+  );
+
+  const ddnsDeleteResponse = await invokeRequestHandler(handler, {
+    method: "POST",
+    url: "/actions/ddns/delete",
+    body: "hostname=router.ddns.pyrosa.com.do&returnTo=%2F%3Fview%3Dddns",
+    headers: {
+      "content-type": "application/x-www-form-urlencoded; charset=utf-8",
+      cookie: "shp_session=test-token"
+    }
+  });
+
+  assert.equal(ddnsDeleteResponse.statusCode, 303);
+  assert.deepEqual(deletedDdnsHosts, ["router.ddns.pyrosa.com.do"]);
 });
 
 test("mail validation failures redirect back to the dashboard with an operator-facing notice", async () => {

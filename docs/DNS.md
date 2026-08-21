@@ -35,6 +35,79 @@ The goal is to replace legacy DNS hosted on an older cPanel VPS with a PowerDNS 
 - `SimpleHost Agent` on the secondary explicitly runs `pdns_control retrieve <zone> <primary-ip>` after each `dns.sync`, so replication no longer depends on manual LMDB copies.
 - The current live PowerDNS-managed customer zones are `adudoc.com` and `gomezrosado.com.do`; `gomezrosado.com.do` is publicly delegated to the OVH-hostname nameservers, while `adudoc.com` may still be externally delegated until its registrar cutover is completed.
 
+## Dynamic DNS
+
+SimpleHost Control exposes a small DynDNS2-compatible update endpoint for
+routers and firewalls that need to publish a changing public address into a
+managed PowerDNS zone.
+
+Public update endpoint:
+
+```text
+GET /nic/update?hostname=<fqdn>&myip=<ip-address>
+Authorization: Basic <ddns-username:ddns-password>
+```
+
+The endpoint is intentionally narrow:
+
+- each DDNS credential is scoped to one managed hostname and one record type;
+- supported record types are `A` and `AAAA`;
+- the update mutates `control_plane_dns_records`, not live PowerDNS directly;
+- when the IP changes, SimpleHost Control enqueues `dns.sync` for the owning
+  zone so both authoritative nodes converge through the normal agent path;
+- if the IP is unchanged, the endpoint returns `nochg <ip>` and only updates
+  the DDNS host observation timestamp.
+
+Client-style responses:
+
+```text
+good <ip>   # record changed and dns.sync was queued
+nochg <ip>  # record already matched
+nohost      # hostname is not configured or is disabled
+badauth     # Basic auth is missing or invalid
+badip <ip>  # address is not valid for the configured record type
+```
+
+Management API:
+
+```text
+GET    /v1/ddns/hosts
+POST   /v1/ddns/hosts
+DELETE /v1/ddns/hosts/:hostname
+```
+
+Example host registration:
+
+```bash
+curl -fsS \
+  -H "Authorization: Bearer $SIMPLEHOST_TOKEN" \
+  -H "Content-Type: application/json" \
+  -X POST https://control.example.com/v1/ddns/hosts \
+  -d '{
+    "hostname": "router.example.com",
+    "recordType": "A",
+    "username": "router-example",
+    "ttl": 300
+  }'
+```
+
+If `password` is omitted, the response includes a generated password once. If
+an existing host is updated without `password`, the current DDNS credential is
+preserved.
+
+Example UniFi configuration using the custom/DynDNS-style provider:
+
+```text
+Service: dyndns or custom
+Hostname: router.example.com
+Username: router-example
+Password: <generated-ddns-password>
+Server: control.example.com/nic/update?hostname=%h&myip=%i
+```
+
+Use HTTPS at the proxy layer for the public control hostname. Do not expose the
+PowerDNS API publicly for DDNS.
+
 ## Selected platform
 
 Target DNS stack:

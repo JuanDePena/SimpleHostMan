@@ -19,6 +19,10 @@ import type {
   DesiredStateApplyResponse,
   DesiredStateExportResponse,
   DispatchedJobEnvelope,
+  DdnsHostMutationResponse,
+  DdnsHostUpdateRequest,
+  DdnsHostUpdateResponse,
+  DdnsHostsResponse,
   EnvironmentParameterMutationRequest,
   EnvironmentParametersSnapshot,
   Fail2BanApplyRequest,
@@ -55,6 +59,7 @@ import type {
   TenantMembershipRole,
   TenantMembershipSummary,
   TrustedProxyLoginRequest,
+  UpsertDdnsHostRequest,
   UpsertMailAliasRequest,
   UpsertMailDomainRequest,
   UpsertMailPolicyRequest,
@@ -267,6 +272,26 @@ export interface ZoneDispatchRow {
   public_ipv4: string;
   wireguard_address: string;
   desired_updated_at: Date | string;
+}
+
+export interface DdnsHostRow {
+  host_id: string;
+  hostname: string;
+  zone_id: string;
+  zone_name: string;
+  record_name: string;
+  record_type: "A" | "AAAA";
+  username: string;
+  password_hash: string;
+  password_salt: string;
+  password_params: StoredPasswordHash["params"];
+  ttl: number;
+  enabled: boolean;
+  last_ip: string | null;
+  last_seen_at: Date | string | null;
+  last_updated_at: Date | string | null;
+  created_at: Date | string;
+  updated_at: Date | string;
 }
 
 export interface AppDispatchRow {
@@ -543,6 +568,16 @@ export interface ControlPlaneStore {
     zoneName: string,
     presentedToken: string | null
   ): Promise<JobDispatchResponse>;
+  listDdnsHosts(presentedToken: string | null): Promise<DdnsHostsResponse>;
+  upsertDdnsHost(
+    request: UpsertDdnsHostRequest,
+    presentedToken: string | null
+  ): Promise<DdnsHostMutationResponse>;
+  deleteDdnsHost(
+    hostname: string,
+    presentedToken: string | null
+  ): Promise<DdnsHostsResponse>;
+  updateDdnsHost(request: DdnsHostUpdateRequest): Promise<DdnsHostUpdateResponse>;
   dispatchAppReconcile(
     appSlug: string,
     request: AppReconcileRequest,
@@ -727,6 +762,10 @@ export type ControlPlaneSpecMethods = Pick<
 export type ControlPlaneOperationsMethods = Pick<
   ControlPlaneStore,
   | "dispatchZoneSync"
+  | "listDdnsHosts"
+  | "upsertDdnsHost"
+  | "deleteDdnsHost"
+  | "updateDdnsHost"
   | "dispatchAppReconcile"
   | "getAppProxyPayload"
   | "dispatchDatabaseReconcile"

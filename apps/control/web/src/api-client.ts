@@ -15,6 +15,8 @@ import {
   type CreateUserRequest,
   type CreateUserResponse,
   type DatabaseReconcileRequest,
+  type DdnsHostMutationResponse,
+  type DdnsHostsResponse,
   type DesiredStateApplyRequest,
   type DesiredStateExportResponse,
   type DesiredStateSpec,
@@ -40,17 +42,17 @@ import {
   type PackageInventoryRefreshRequest,
   type PackageInventorySnapshot,
   type ProxyRenderPayload,
+  type ResourceDriftSummary,
   type ResetMailboxCredentialRequest,
   type RotateMailboxCredentialRequest,
-  type UpsertMailPolicyRequest,
-  type ResourceDriftSummary,
-  type RustDeskPublicConnectionInfo
-  ,
+  type RustDeskOverview,
+  type RustDeskPublicConnectionInfo,
+  type UpsertDdnsHostRequest,
   type UpsertMailAliasRequest,
   type UpsertMailDomainRequest,
+  type UpsertMailPolicyRequest,
   type UpsertMailboxQuotaRequest,
-  type UpsertMailboxRequest,
-  type RustDeskOverview
+  type UpsertMailboxRequest
 } from "@simplehost/control-contracts";
 import { type PanelNotice } from "@simplehost/ui";
 import {
@@ -122,6 +124,12 @@ export interface ControlWebApi extends ControlAuthSurface {
   runReconciliation(token: string): Promise<{ generatedJobCount: number; skippedJobCount: number }>;
   purgeOperationalHistory(token: string): Promise<OperationHistoryPurgeSummary>;
   syncZone(token: string, zoneName: string): Promise<JobDispatchResponse>;
+  loadDdnsHosts(token: string): Promise<DdnsHostsResponse>;
+  upsertDdnsHost(
+    token: string,
+    request: UpsertDdnsHostRequest
+  ): Promise<DdnsHostMutationResponse>;
+  deleteDdnsHost(token: string, hostname: string): Promise<void>;
   reconcileApp(
     token: string,
     slug: string,
@@ -288,6 +296,8 @@ export function createControlWebApiFromRequest(request: ControlWebApiRequest): C
       request<RustDeskOverview>("/v1/platform/rustdesk", { token }),
     getMail: (token: string) =>
       request<MailOverview>("/v1/mail/overview", { token }),
+    getDdns: (token: string) =>
+      request<DdnsHostsResponse>("/v1/ddns/hosts", { token }),
     getPackages: (token: string) =>
       request<PackageInventorySnapshot>("/v1/packages/summary", { token }),
     getParameters: (token: string) =>
@@ -442,6 +452,25 @@ export function createControlWebApiFromRequest(request: ControlWebApiRequest): C
           token
         }
       );
+    },
+    loadDdnsHosts(token: string): Promise<DdnsHostsResponse> {
+      return request<DdnsHostsResponse>("/v1/ddns/hosts", { token });
+    },
+    upsertDdnsHost(
+      token: string,
+      upsertRequest: UpsertDdnsHostRequest
+    ): Promise<DdnsHostMutationResponse> {
+      return request<DdnsHostMutationResponse>("/v1/ddns/hosts", {
+        method: "POST",
+        token,
+        body: upsertRequest
+      });
+    },
+    async deleteDdnsHost(token: string, hostname: string): Promise<void> {
+      await request(`/v1/ddns/hosts/${encodeURIComponent(hostname)}`, {
+        method: "DELETE",
+        token
+      });
     },
     reconcileApp(
       token: string,

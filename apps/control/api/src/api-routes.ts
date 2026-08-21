@@ -9,6 +9,7 @@ import {
 } from "@simplehost/control-database";
 
 import { handleAuthRoutes } from "./api-auth-routes.js";
+import { handleDdnsRoutes } from "./api-ddns-routes.js";
 import { handleIamRoutes } from "./api-iam-routes.js";
 import { readBearerToken, writeJson } from "./api-http.js";
 import { handleMailRoutes } from "./api-mail-routes.js";
@@ -40,6 +41,10 @@ const rootEndpoints = [
   "GET /v1/resources/spec",
   "PUT /v1/resources/spec",
   "GET /v1/resources/drift",
+  "GET /v1/ddns/hosts",
+  "POST /v1/ddns/hosts",
+  "DELETE /v1/ddns/hosts/:hostname",
+  "GET /nic/update",
   "POST /v1/reconcile/run",
   "GET /v1/operations/overview",
   "POST /v1/operations/history/purge",
@@ -142,6 +147,7 @@ export function createApiRequestHandler({
       handleAuthRoutes,
       handleOAuthResourceRoutes,
       handleIamRoutes,
+      handleDdnsRoutes,
       handleResourceRoutes,
       handleParameterRoutes,
       handleMailRoutes,

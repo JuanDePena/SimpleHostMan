@@ -4,6 +4,7 @@ export * from "./jobs.js";
 export * from "./auth.js";
 export * from "./inventory.js";
 export * from "./desired-state.js";
+export * from "./ddns.js";
 export * from "./mail.js";
 export * from "./backups.js";
 export * from "./operations.js";

@@ -2,6 +2,7 @@ import type {
   AuditEventSummary,
   AuthenticatedUserSummary,
   BackupsOverview,
+  DdnsHostsResponse,
   DesiredStateExportResponse,
   InventoryStateSnapshot,
   JobHistoryEntry,
@@ -31,6 +32,7 @@ export interface ControlDashboardBootstrap {
   backups: BackupsOverview;
   rustdesk: RustDeskOverview;
   mail: MailOverview;
+  ddns: DdnsHostsResponse;
   packages: PackageInventorySnapshot;
   parameters: EnvironmentParametersSnapshot;
   iam: IamOverview;
@@ -54,6 +56,7 @@ export interface ControlDashboardBootstrapLoaders {
   getBackups(token: string): Promise<BackupsOverview>;
   getRustDesk(token: string): Promise<RustDeskOverview>;
   getMail(token: string): Promise<MailOverview>;
+  getDdns(token: string): Promise<DdnsHostsResponse>;
   getPackages(token: string): Promise<PackageInventorySnapshot>;
   getParameters(token: string): Promise<EnvironmentParametersSnapshot>;
   getIamOverview(token: string): Promise<IamOverview>;
@@ -81,6 +84,7 @@ export async function loadControlDashboardBootstrap(
     backups,
     rustdesk,
     mail,
+    ddns,
     packages,
     parameters,
     iam
@@ -97,6 +101,7 @@ export async function loadControlDashboardBootstrap(
     loaders.getBackups(token),
     loaders.getRustDesk(token),
     loaders.getMail(token),
+    loaders.getDdns(token),
     loaders.getPackages(token),
     loaders.getParameters(token),
     loaders.getIamOverview(token)
@@ -115,6 +120,7 @@ export async function loadControlDashboardBootstrap(
     backups,
     rustdesk,
     mail,
+    ddns,
     packages,
     parameters,
     iam
@@ -139,6 +145,7 @@ export async function loadAuthenticatedControlDashboardBootstrap(
     backups,
     rustdesk,
     mail,
+    ddns,
     packages,
     parameters,
     iam
@@ -154,6 +161,7 @@ export async function loadAuthenticatedControlDashboardBootstrap(
     loaders.getBackups(session.token),
     loaders.getRustDesk(session.token),
     loaders.getMail(session.token),
+    loaders.getDdns(session.token),
     loaders.getPackages(session.token),
     loaders.getParameters(session.token),
     loaders.getIamOverview(session.token)
@@ -174,6 +182,7 @@ export async function loadAuthenticatedControlDashboardBootstrap(
       backups,
       rustdesk,
       mail,
+      ddns,
       packages,
       parameters,
       iam

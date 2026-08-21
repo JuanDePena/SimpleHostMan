@@ -279,6 +279,37 @@ test("parameters workspace edits only UI-created parameters", () => {
   assert.doesNotMatch(runtimeDetail, /Delete parameter/);
 });
 
+test("ddns workspace renders UniFi settings and management forms", () => {
+  const data = createDashboardData();
+  data.ddns = {
+    hosts: [
+      {
+        hostname: "router.ddns.example.com",
+        zoneName: "example.com",
+        recordName: "router.ddns",
+        recordType: "A",
+        username: "router",
+        ttl: 300,
+        enabled: true,
+        lastIp: "198.51.100.8",
+        lastSeenAt: "2026-04-29T00:00:00.000Z",
+        lastUpdatedAt: "2026-04-29T00:00:00.000Z",
+        createdAt: "2026-04-28T00:00:00.000Z",
+        updatedAt: "2026-04-29T00:00:00.000Z"
+      }
+    ]
+  };
+
+  const html = renderView(data, "ddns", "router.ddns.example.com");
+
+  assert.match(html, /id="ddns-hosts"/);
+  assert.match(html, /Service: Custom/);
+  assert.match(html, /Hostname: router\.ddns\.example\.com/);
+  assert.match(html, /Server: https:\/\/example\.com\/nic\/update\?hostname=%h&amp;myip=%i/);
+  assert.match(html, /action="\/actions\/ddns\/upsert"/);
+  assert.match(html, /action="\/actions\/ddns\/delete"/);
+});
+
 test("runtime workspaces select one row and render only that row detail", () => {
   const cases: Array<{
     name: string;

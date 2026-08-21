@@ -4,6 +4,7 @@ import {
   type ControlGlobalRole,
   type CreateUserRequest,
   type DatabaseReconcileRequest,
+  type UpsertDdnsHostRequest,
   type Fail2BanApplyRequest,
   type FirewallApplyRequest,
   type EnvironmentParameterMutationRequest,
@@ -202,6 +203,59 @@ export const handleActionWebRoutes: WebRouteHandler = async ({
     redirect(
       response,
       noticeLocation(`Queued ${result.jobs.length} dns.sync job(s) for ${zoneName}.`, "success")
+    );
+    return true;
+  }
+
+  if (request.method === "POST" && url.pathname === "/actions/ddns/upsert") {
+    const token = await requireSessionToken({ requireSession });
+    const form = await readFormBody(request);
+    const returnTo = form.get("returnTo") ?? "/";
+    const hostname = form.get("hostname")?.trim() ?? "";
+    const password = form.get("password")?.trim() ?? "";
+    const ttl = Number.parseInt(form.get("ttl")?.trim() ?? "", 10);
+    const requestBody: UpsertDdnsHostRequest = {
+      hostname,
+      zoneName: form.get("zoneName")?.trim() || undefined,
+      recordType: (form.get("recordType")?.trim() === "AAAA" ? "AAAA" : "A"),
+      username: form.get("username")?.trim() || undefined,
+      ttl: Number.isInteger(ttl) ? ttl : undefined,
+      enabled: form.get("enabled") === "on"
+    };
+
+    if (password) {
+      requestBody.password = password;
+    }
+
+    const result = await api.upsertDdnsHost(token, requestBody);
+    const nextUrl = new URL(sanitizeReturnTo(returnTo), "http://localhost");
+
+    if (nextUrl.pathname === "/" && nextUrl.searchParams.get("view") === "ddns") {
+      nextUrl.searchParams.set("focus", result.host.hostname);
+    }
+
+    redirect(
+      response,
+      noticeReturnTo(
+        `${nextUrl.pathname}${nextUrl.search}`,
+        `Saved DDNS host ${result.host.hostname}.`,
+        "success"
+      )
+    );
+    return true;
+  }
+
+  if (request.method === "POST" && url.pathname === "/actions/ddns/delete") {
+    const token = await requireSessionToken({ requireSession });
+    const form = await readFormBody(request);
+    const returnTo = form.get("returnTo") ?? "/";
+    const hostname = form.get("hostname")?.trim() ?? "";
+
+    await api.deleteDdnsHost(token, hostname);
+
+    redirect(
+      response,
+      noticeReturnTo(returnTo, `Deleted DDNS host ${hostname}.`, "success")
     );
     return true;
   }
