@@ -305,7 +305,11 @@ test("ddns workspace renders UniFi settings and management forms", () => {
   assert.match(html, /id="ddns-hosts"/);
   assert.match(html, /Service: Custom/);
   assert.match(html, /Hostname: router\.ddns\.example\.com/);
-  assert.match(html, /Server: https:\/\/example\.com\/nic\/update\?hostname=%h&amp;myip=%i/);
+  assert.match(
+    html,
+    /Server: ddns\.pyrosa\.com\.do\/nic\/update\?hostname=%h&amp;myip=%i/
+  );
+  assert.doesNotMatch(html, /Server: https:\/\//);
   assert.match(html, /action="\/actions\/ddns\/upsert"/);
   assert.match(html, /action="\/actions\/ddns\/delete"/);
 });

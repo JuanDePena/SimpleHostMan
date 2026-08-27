@@ -11,6 +11,8 @@ import { type WebCopy } from "./web-copy.js";
 
 type DdnsHost = DashboardData["ddns"]["hosts"][number];
 
+const ddnsPublicHostname = "ddns.pyrosa.com.do";
+
 function selectDdnsHost(hosts: DdnsHost[], focus: string | undefined): DdnsHost | undefined {
   return hosts.find((host) => host.hostname === focus) ?? hosts[0];
 }
@@ -39,9 +41,8 @@ function renderZoneOptions(
   ].join("");
 }
 
-function buildUniFiServerValue(host: DdnsHost | undefined): string {
-  const zoneName = host?.zoneName ?? "ddns.pyrosa.com.do";
-  return `https://${zoneName}/nic/update?hostname=%h&myip=%i`;
+function buildUniFiServerValue(): string {
+  return `${ddnsPublicHostname}/nic/update?hostname=%h&myip=%i`;
 }
 
 function buildRows(args: {
@@ -162,7 +163,7 @@ function renderSelectedPanel(args: {
     return `<article class="panel"><p class="empty">${escapeHtml(copy.ddnsNoHosts)}</p></article>`;
   }
 
-  const serverValue = buildUniFiServerValue(selectedHost);
+  const serverValue = buildUniFiServerValue();
 
   return `<article class="panel detail-shell">
     <div class="section-head">

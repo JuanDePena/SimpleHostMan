@@ -124,11 +124,17 @@ Source-controlled proxy artifacts:
 - [`/opt/simplehostman/src/platform/httpd/conf.d/20-proxy-defaults.conf`](/opt/simplehostman/src/platform/httpd/conf.d/20-proxy-defaults.conf)
 - [`/opt/simplehostman/src/platform/httpd/vhosts/app-vhost.conf.template`](/opt/simplehostman/src/platform/httpd/vhosts/app-vhost.conf.template)
 - [`/opt/simplehostman/src/platform/httpd/vhosts/pyrosa-code.conf`](/opt/simplehostman/src/platform/httpd/vhosts/pyrosa-code.conf)
+- [`/opt/simplehostman/src/platform/httpd/vhosts/pyrosa-ddns.conf`](/opt/simplehostman/src/platform/httpd/vhosts/pyrosa-ddns.conf)
 - [`/opt/simplehostman/src/platform/httpd/vhosts/redirect-vhost.conf.template`](/opt/simplehostman/src/platform/httpd/vhosts/redirect-vhost.conf.template)
 - [`/opt/simplehostman/src/packaging/httpd/simplehost-control-http.conf.template`](/opt/simplehostman/src/packaging/httpd/simplehost-control-http.conf.template)
 - [`/opt/simplehostman/src/packaging/httpd/simplehost-control-https.conf.template`](/opt/simplehostman/src/packaging/httpd/simplehost-control-https.conf.template)
 - [`/opt/simplehostman/src/packaging/httpd/simplehost-ssl-listen.conf`](/opt/simplehostman/src/packaging/httpd/simplehost-ssl-listen.conf)
 - [`/opt/simplehostman/src/scripts/control/configure-public-web.sh`](/opt/simplehostman/src/scripts/control/configure-public-web.sh)
+- [`/opt/simplehostman/src/scripts/control/configure-ddns-public-endpoint.sh`](/opt/simplehostman/src/scripts/control/configure-ddns-public-endpoint.sh)
+
+`ddns.pyrosa.com.do` is intentionally separate from the Authentik-protected
+operator UI. Its dedicated vhost proxies only `/nic/update` to the loopback
+combined control runtime; every other HTTPS path returns `404`.
 
 ## Recommended Apache modules
 

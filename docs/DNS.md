@@ -44,9 +44,13 @@ managed PowerDNS zone.
 Public update endpoint:
 
 ```text
-GET /nic/update?hostname=<fqdn>&myip=<ip-address>
+GET https://ddns.pyrosa.com.do/nic/update?hostname=<fqdn>&myip=<ip-address>
 Authorization: Basic <ddns-username:ddns-password>
 ```
+
+`ddns.pyrosa.com.do` is the update service hostname. It is distinct from the
+managed client hostname, such as `router.ddns.pyrosa.com.do`, and its public
+Apache vhost exposes only `/nic/update` to the local combined control runtime.
 
 The endpoint is intentionally narrow:
 
@@ -102,8 +106,13 @@ Service: dyndns or custom
 Hostname: router.example.com
 Username: router-example
 Password: <generated-ddns-password>
-Server: control.example.com/nic/update?hostname=%h&myip=%i
+Server: ddns.pyrosa.com.do/nic/update?hostname=%h&myip=%i
 ```
+
+Enter the complete update hostname and path in UniFi's `Server` field, without
+the `https://` scheme. UniFi's Inadyn-based client splits this field into the
+HTTPS server and request path; entering only `ddns.pyrosa.com.do` omits the
+required `/nic/update` request path.
 
 Use HTTPS at the proxy layer for the public control hostname. Do not expose the
 PowerDNS API publicly for DDNS.

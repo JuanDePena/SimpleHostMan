@@ -144,7 +144,7 @@ export const resourcesCopyByLocale = {
       "Credential scope, current observation and client settings for this DDNS host.",
     ddnsUnifiTitle: "UniFi settings",
     ddnsUnifiDescription:
-      "Use these values in UniFi Dynamic DNS. Keep the password from the host form.",
+      "Use the complete Server value without https:// so UniFi/Inadyn can split the update hostname and path. Keep the password from the host form.",
     ddnsEditTitle: "Edit DDNS host",
     ddnsEditDescription:
       "Change credential scope, TTL or active state. Leave password blank to keep the current credential.",
@@ -304,7 +304,7 @@ export const resourcesCopyByLocale = {
       "Alcance de credencial, observación actual y configuración cliente para este host DDNS.",
     ddnsUnifiTitle: "Configuración UniFi",
     ddnsUnifiDescription:
-      "Usa estos valores en Dynamic DNS de UniFi. Conserva el password del formulario del host.",
+      "Usa el valor completo de Server sin https:// para que UniFi/Inadyn separe el hostname y la ruta de actualización. Conserva el password del formulario del host.",
     ddnsEditTitle: "Editar host DDNS",
     ddnsEditDescription:
       "Cambia alcance, TTL o estado activo. Deja password en blanco para conservar la credencial actual.",
