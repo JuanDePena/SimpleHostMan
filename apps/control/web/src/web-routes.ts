@@ -56,6 +56,7 @@ export interface ControlWebRuntimeConfig {
     pilotRevokeTokens: boolean;
     loginProviderSlug: "pyrosa-iam";
     loginEnabled: boolean;
+    loginPublicMode?: "local" | "oauth_only";
     loginRedirectUri: string | null;
     loginScope: string | null;
     loginRequiredPrincipalType: string | null;
@@ -72,6 +73,7 @@ export interface StartControlWebServerArgs {
   config: ControlWebRuntimeConfig;
   handleDashboard: (context: WebRouteContext) => Promise<boolean>;
   renderLoginPage: (locale: WebLocale, notice?: PanelNotice) => string;
+  renderOAuthLoginPage: (locale: WebLocale, notice?: PanelNotice) => string;
   startedAt: number;
 }
 
@@ -87,7 +89,8 @@ export function createRequestHandler(args: StartControlWebServerArgs) {
       config: args.config,
       startedAt: args.startedAt,
       handleDashboard: args.handleDashboard,
-      renderLoginPage: args.renderLoginPage
+      renderLoginPage: args.renderLoginPage,
+      renderOAuthLoginPage: args.renderOAuthLoginPage
     });
 
     for (const handler of [
@@ -127,7 +130,8 @@ export function createServerRequestListener(
         config: args.config,
         startedAt: args.startedAt,
         handleDashboard: args.handleDashboard,
-        renderLoginPage: args.renderLoginPage
+        renderLoginPage: args.renderLoginPage,
+        renderOAuthLoginPage: args.renderOAuthLoginPage
       });
 
       if (isUnauthorizedError(error)) {

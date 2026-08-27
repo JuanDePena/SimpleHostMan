@@ -83,7 +83,8 @@ export const handleCoreWebRoutes: WebRouteHandler = async ({
   config,
   startedAt,
   handleDashboard,
-  renderLoginPage
+  renderLoginPage,
+  renderOAuthLoginPage
 }) => {
   const rustdeskPublicHost = isRustDeskPublicHost(request, config);
 
@@ -191,7 +192,8 @@ export const handleCoreWebRoutes: WebRouteHandler = async ({
       config,
       startedAt,
       handleDashboard,
-      renderLoginPage
+      renderLoginPage,
+      renderOAuthLoginPage
     });
   }
 

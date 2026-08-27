@@ -1,6 +1,6 @@
 {
   "name": "@simplehost/control-web",
-  "version": "2608.21.15",
+  "version": "2608.27.15",
   "private": true,
   "type": "module",
   "main": "dist/index.js",

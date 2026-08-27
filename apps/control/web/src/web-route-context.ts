@@ -29,6 +29,7 @@ export interface WebRouteContext {
   startedAt: number;
   handleDashboard: (context: WebRouteContext) => Promise<boolean>;
   renderLoginPage: (locale: WebLocale, notice?: PanelNotice) => string;
+  renderOAuthLoginPage: (locale: WebLocale, notice?: PanelNotice) => string;
 }
 
 export type WebRouteHandler = (context: WebRouteContext) => Promise<boolean>;
@@ -41,6 +42,7 @@ export function createWebRouteContext(args: {
   startedAt: number;
   handleDashboard: WebRouteContext["handleDashboard"];
   renderLoginPage: WebRouteContext["renderLoginPage"];
+  renderOAuthLoginPage: WebRouteContext["renderOAuthLoginPage"];
 }): WebRouteContext {
   const sessionToken = readSessionToken(args.request);
   let resolvedSessionPromise: Promise<ControlResolvedSession> | undefined;
@@ -92,6 +94,7 @@ export function createWebRouteContext(args: {
     config: args.config,
     startedAt: args.startedAt,
     handleDashboard: args.handleDashboard,
-    renderLoginPage: args.renderLoginPage
+    renderLoginPage: args.renderLoginPage,
+    renderOAuthLoginPage: args.renderOAuthLoginPage
   };
 }

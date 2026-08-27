@@ -24,6 +24,7 @@ import {
   writeHtml
 } from "./request.js";
 import { redirectToLogin, renderLoginError } from "./web-auth-helpers.js";
+import { isPublicOAuthOnlyRequest } from "./public-login-policy.js";
 import type { WebRouteHandler } from "./web-route-context.js";
 import type { OverviewMetricsCollector } from "./overview-metrics.js";
 
@@ -31,6 +32,7 @@ export function createDashboardHandler(args: {
   api: ControlWebApi;
   overviewMetrics: OverviewMetricsCollector;
   renderLoginPage: (locale: WebLocale, notice?: PanelNotice) => string;
+  renderOAuthLoginPage: (locale: WebLocale, notice?: PanelNotice) => string;
   version: string;
 }): WebRouteHandler {
   return async function handleDashboard({
@@ -38,6 +40,7 @@ export function createDashboardHandler(args: {
     response,
     url,
     locale,
+    config,
     resolveSession,
     loadAuthenticatedDashboard
   }): Promise<boolean> {
@@ -51,6 +54,24 @@ export function createDashboardHandler(args: {
     const session = await resolveSession();
 
     if (session.state === "anonymous") {
+      if (isPublicOAuthOnlyRequest(request, config)) {
+        if (url.pathname === "/" && config.oauthResourceServer?.loginEnabled) {
+          redirect(response, "/auth/pyrosa-iam/start");
+          return true;
+        }
+
+        const notice = getNoticeFromUrl(url) ?? (
+          config.oauthResourceServer?.loginEnabled
+            ? undefined
+            : {
+                kind: "error" as const,
+                message: "Pyrosa IAM OAuth login is not enabled."
+              }
+        );
+        writeHtml(response, 200, args.renderOAuthLoginPage(locale, notice));
+        return true;
+      }
+
       writeHtml(response, 200, args.renderLoginPage(locale, getNoticeFromUrl(url)));
       return true;
     }

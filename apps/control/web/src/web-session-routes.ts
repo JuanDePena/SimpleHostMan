@@ -17,6 +17,7 @@ import {
   oauthLogoutTokenCookieName
 } from "./oauth-login-routes.js";
 import { renderLoginError } from "./web-auth-helpers.js";
+import { isPublicOAuthOnlyRequest } from "./public-login-policy.js";
 import type { WebRouteHandler } from "./web-route-context.js";
 import type { ControlWebRuntimeConfig } from "./web-routes.js";
 
@@ -100,6 +101,11 @@ export const handleSessionWebRoutes: WebRouteHandler = async ({
   }
 
   if (request.method === "POST" && url.pathname === "/auth/login") {
+    if (isPublicOAuthOnlyRequest(request, config)) {
+      redirect(response, "/auth/pyrosa-iam/start");
+      return true;
+    }
+
     const form = await readFormBody(request);
 
     try {

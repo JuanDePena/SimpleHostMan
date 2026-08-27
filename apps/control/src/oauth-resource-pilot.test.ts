@@ -69,6 +69,7 @@ function createConfig(overrides: Partial<ControlRuntimeConfig["oauthResourceServ
       pilotRevokeTokens: true,
       loginProviderSlug: "pyrosa-iam",
       loginEnabled: false,
+      loginPublicMode: "local",
       loginRedirectUri: "https://vps-prd.pyrosa.com.do:3200/auth/pyrosa-iam/callback",
       loginScope: "profile:read mfa:read",
       loginRequiredPrincipalType: "human",

@@ -15,6 +15,10 @@ export const authCopyByLocale = {
     emailLabel: "Email",
     passwordLabel: "Password",
     signInLabel: "Sign in",
+    oauthLoginAccess: "Pyrosa IAM access",
+    oauthLoginAccessDescription:
+      "Continue with your Pyrosa identity and complete the required MFA challenge.",
+    oauthSignInLabel: "Continue with Pyrosa IAM",
     signOutLabel: "Sign out",
     languageLabel: "Language",
     versionLabel: "Version",
@@ -33,6 +37,10 @@ export const authCopyByLocale = {
     emailLabel: "Correo",
     passwordLabel: "Contraseña",
     signInLabel: "Entrar",
+    oauthLoginAccess: "Acceso con Pyrosa IAM",
+    oauthLoginAccessDescription:
+      "Continúa con tu identidad Pyrosa y completa el desafío MFA requerido.",
+    oauthSignInLabel: "Continuar con Pyrosa IAM",
     signOutLabel: "Salir",
     languageLabel: "Idioma",
     versionLabel: "Versión",

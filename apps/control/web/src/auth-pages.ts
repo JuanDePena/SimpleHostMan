@@ -37,3 +37,28 @@ export function renderLoginPage(locale: WebLocale, notice?: PanelNotice): string
     </section>`
   });
 }
+
+export function renderOAuthLoginPage(locale: WebLocale, notice?: PanelNotice): string {
+  const copy = copyByLocale[locale];
+
+  return renderPanelShell({
+    lang: locale,
+    title: copy.loginTitle,
+    heading: copy.appName,
+    subheading: copy.loginDescription,
+    notice,
+    pageClassName: "page-login",
+    heroAlign: "center",
+    body: `<section class="grid login-shell">
+      <article class="panel login-card">
+        <div class="login-card-header">
+          <h2>${escapeHtml(copy.oauthLoginAccess)}</h2>
+          <p>${escapeHtml(copy.oauthLoginAccessDescription)}</p>
+        </div>
+        <form method="get" action="/auth/pyrosa-iam/start" class="stack">
+          <button type="submit">${escapeHtml(copy.oauthSignInLabel)}</button>
+        </form>
+      </article>
+    </section>`
+  });
+}

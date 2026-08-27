@@ -7,7 +7,7 @@ import {
 } from "@simplehost/control-shared";
 
 import { createHttpControlWebApi, type ControlWebApi } from "./api-client.js";
-import { renderLoginPage } from "./auth-pages.js";
+import { renderLoginPage, renderOAuthLoginPage } from "./auth-pages.js";
 import { createDashboardHandler } from "./dashboard-page-routes.js";
 import {
   createOverviewMetricsCollector,
@@ -61,9 +61,11 @@ export function createControlWebSurface(
       api,
       overviewMetrics,
       renderLoginPage,
+      renderOAuthLoginPage,
       version: context.config.version
     }),
     renderLoginPage,
+    renderOAuthLoginPage,
     startedAt: context.startedAt
   };
 

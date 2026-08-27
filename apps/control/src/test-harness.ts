@@ -333,6 +333,7 @@ export function createTestContext(args: {
         pilotRevokeTokens: true,
         loginProviderSlug: "pyrosa-iam",
         loginEnabled: false,
+        loginPublicMode: "local",
         loginRedirectUri: null,
         loginScope: null,
         loginRequiredPrincipalType: null,

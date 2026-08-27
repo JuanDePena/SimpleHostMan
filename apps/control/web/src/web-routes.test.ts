@@ -224,6 +224,7 @@ function createOAuthLoginConfig(
       pilotRevokeTokens: true,
       loginProviderSlug: "pyrosa-iam",
       loginEnabled: true,
+      loginPublicMode: "local",
       loginRedirectUri: "https://vps-prd.pyrosa.com.do:3200/auth/pyrosa-iam/callback",
       loginScope: "profile:read mfa:read",
       loginRequiredPrincipalType: "human",
@@ -236,6 +237,100 @@ function createOAuthLoginConfig(
     }
   };
 }
+
+test("public oauth_only entrypoint redirects anonymous root to Pyrosa IAM", async () => {
+  const handler = createControlWebSurface(
+    {
+      config: createOAuthLoginConfig({ loginPublicMode: "oauth_only" }),
+      startedAt: Date.now()
+    },
+    createStubApi()
+  ).requestListener;
+
+  const response = await invokeRequestHandler(handler, {
+    method: "GET",
+    url: "/",
+    headers: {
+      "x-simplehost-public-auth-mode": "oauth_only"
+    }
+  });
+
+  assert.equal(response.statusCode, 303);
+  assert.equal(response.headers.location, "/auth/pyrosa-iam/start");
+});
+
+test("public oauth_only login page exposes IAM without local credentials", async () => {
+  const handler = createControlWebSurface(
+    {
+      config: createOAuthLoginConfig({ loginPublicMode: "oauth_only" }),
+      startedAt: Date.now()
+    },
+    createStubApi()
+  ).requestListener;
+
+  const response = await invokeRequestHandler(handler, {
+    method: "GET",
+    url: "/login?notice=Session%20required&kind=error",
+    headers: {
+      "x-simplehost-public-auth-mode": "oauth_only"
+    }
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.match(response.bodyText, /Continuar con Pyrosa IAM/);
+  assert.match(response.bodyText, /action="\/auth\/pyrosa-iam\/start"/);
+  assert.doesNotMatch(response.bodyText, /action="\/auth\/login"/);
+  assert.doesNotMatch(response.bodyText, /name="password"/);
+});
+
+test("oauth_only keeps local password login available on loopback", async () => {
+  const handler = createControlWebSurface(
+    {
+      config: createOAuthLoginConfig({ loginPublicMode: "oauth_only" }),
+      startedAt: Date.now()
+    },
+    createStubApi()
+  ).requestListener;
+
+  const response = await invokeRequestHandler(handler, {
+    method: "GET",
+    url: "/login"
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.match(response.bodyText, /action="\/auth\/login"/);
+  assert.match(response.bodyText, /name="password"/);
+});
+
+test("public oauth_only rejects the local password POST path", async () => {
+  let localLoginCalled = false;
+  const handler = createControlWebSurface(
+    {
+      config: createOAuthLoginConfig({ loginPublicMode: "oauth_only" }),
+      startedAt: Date.now()
+    },
+    createStubApi({
+      login: async () => {
+        localLoginCalled = true;
+        throw new Error("Local login must not be called");
+      }
+    })
+  ).requestListener;
+
+  const response = await invokeRequestHandler(handler, {
+    method: "POST",
+    url: "/auth/login",
+    body: "email=admin%40example.com&password=bad-pass",
+    headers: {
+      "content-type": "application/x-www-form-urlencoded; charset=utf-8",
+      "x-simplehost-public-auth-mode": "oauth_only"
+    }
+  });
+
+  assert.equal(response.statusCode, 303);
+  assert.equal(response.headers.location, "/auth/pyrosa-iam/start");
+  assert.equal(localLoginCalled, false);
+});
 
 test("web healthz reports web runtime metadata", async () => {
   const handler = createControlWebSurface(

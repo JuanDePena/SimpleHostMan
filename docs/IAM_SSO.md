@@ -684,6 +684,16 @@ Promotion policy decision on 2026-06-11 UTC:
   with a hard cutover.
 - Promotion from Authentik to Pyrosa IAM for SimpleHostMan requires a separate
   explicit maintenance window and all of these gates:
+  - release source supports `SIMPLEHOST_OAUTH_LOGIN_PUBLIC_MODE=oauth_only`;
+    only the Apache candidate entrypoint sets
+    `X-SimpleHost-Public-Auth-Mode: oauth_only`, so public anonymous traffic
+    uses `/auth/pyrosa-iam/*`, public `POST /auth/login` is rejected and the
+    direct `127.0.0.1:3200` break-glass page retains local credentials;
+  - the candidate
+    `platform/httpd/vhosts/simplehost-control-pyrosa-iam.conf.candidate`
+    proxies port `3200` directly to the SimpleHostMan loopback runtime and
+    strips Authentik identity headers; it must not be installed before the
+    runtime mode and rollback artifact are verified;
   - public operator login through the normal Authentik-protected SimpleHostMan
     URL is validated with MFA and local active-operator enforcement;
   - logout revokes/clears the Pyrosa IAM session material and preserves a

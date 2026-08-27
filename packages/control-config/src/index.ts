@@ -57,6 +57,7 @@ export interface ControlOAuthResourceServerRuntimeConfig {
   pilotRevokeTokens: boolean;
   loginProviderSlug: "pyrosa-iam";
   loginEnabled: boolean;
+  loginPublicMode: "local" | "oauth_only";
   loginRedirectUri: string | null;
   loginScope: string | null;
   loginRequiredPrincipalType: string | null;
@@ -146,6 +147,22 @@ function readOAuthLoginProviderSlug(_value: string | undefined): "pyrosa-iam" {
   return "pyrosa-iam";
 }
 
+function readOAuthLoginPublicMode(value: string | undefined): "local" | "oauth_only" {
+  const normalized = value?.trim().toLowerCase();
+
+  if (!normalized || normalized === "local") {
+    return "local";
+  }
+
+  if (normalized === "oauth_only") {
+    return "oauth_only";
+  }
+
+  throw new Error(
+    "SIMPLEHOST_OAUTH_LOGIN_PUBLIC_MODE must be either local or oauth_only."
+  );
+}
+
 export function createControlRuntimeConfig(
   env: NodeJS.ProcessEnv = process.env
 ): ControlRuntimeConfig {
@@ -219,6 +236,9 @@ export function createControlRuntimeConfig(
         env.SIMPLEHOST_OAUTH_LOGIN_PROVIDER_SLUG ?? env.SIMPLEHOST_OAUTH_PROVIDER_SLUG
       ),
       loginEnabled: readBoolean(env.SIMPLEHOST_OAUTH_LOGIN_ENABLED, false),
+      loginPublicMode: readOAuthLoginPublicMode(
+        env.SIMPLEHOST_OAUTH_LOGIN_PUBLIC_MODE
+      ),
       loginRedirectUri: readOptionalString(env.SIMPLEHOST_OAUTH_LOGIN_REDIRECT_URI),
       loginScope: readOptionalString(env.SIMPLEHOST_OAUTH_LOGIN_SCOPE),
       loginRequiredPrincipalType: readOptionalString(env.SIMPLEHOST_OAUTH_LOGIN_REQUIRED_PRINCIPAL_TYPE),
