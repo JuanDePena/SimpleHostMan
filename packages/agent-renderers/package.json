@@ -1,6 +1,6 @@
 {
   "name": "@simplehost/agent-renderers",
-  "version": "2608.27.15",
+  "version": "2608.27.20",
   "private": true,
   "type": "module",
   "main": "dist/index.js",

@@ -259,6 +259,28 @@ test("public oauth_only entrypoint redirects anonymous root to Pyrosa IAM", asyn
   assert.equal(response.headers.location, "/auth/pyrosa-iam/start");
 });
 
+test("public oauth_only root renders callback rejection instead of restarting OAuth", async () => {
+  const handler = createControlWebSurface(
+    {
+      config: createOAuthLoginConfig({ loginPublicMode: "oauth_only" }),
+      startedAt: Date.now()
+    },
+    createStubApi()
+  ).requestListener;
+
+  const response = await invokeRequestHandler(handler, {
+    method: "GET",
+    url: "/?notice=Pyrosa+IAM+authenticated+identity+is+not+an+active+SimpleHostMan+operator.&kind=error",
+    headers: {
+      "x-simplehost-public-auth-mode": "oauth_only"
+    }
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.match(response.bodyText, /not an active SimpleHostMan operator/);
+  assert.match(response.bodyText, /action="\/auth\/pyrosa-iam\/start"/);
+});
+
 test("public oauth_only login page exposes IAM without local credentials", async () => {
   const handler = createControlWebSurface(
     {

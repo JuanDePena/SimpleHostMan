@@ -55,12 +55,13 @@ export function createDashboardHandler(args: {
 
     if (session.state === "anonymous") {
       if (isPublicOAuthOnlyRequest(request, config)) {
-        if (url.pathname === "/" && config.oauthResourceServer?.loginEnabled) {
+        const notice = getNoticeFromUrl(url);
+        if (url.pathname === "/" && config.oauthResourceServer?.loginEnabled && !notice) {
           redirect(response, "/auth/pyrosa-iam/start");
           return true;
         }
 
-        const notice = getNoticeFromUrl(url) ?? (
+        const oauthNotice = notice ?? (
           config.oauthResourceServer?.loginEnabled
             ? undefined
             : {
@@ -68,7 +69,7 @@ export function createDashboardHandler(args: {
                 message: "Pyrosa IAM OAuth login is not enabled."
               }
         );
-        writeHtml(response, 200, args.renderOAuthLoginPage(locale, notice));
+        writeHtml(response, 200, args.renderOAuthLoginPage(locale, oauthNotice));
         return true;
       }
 
