@@ -3,6 +3,11 @@
 Verified: 2026-09-17. Owner: SimpleHostMan for catalog and backup execution;
 Documents/Platform retain application runtime and physical-schema ownership.
 
+Update at 12:36 UTC: [primary-local backup policy](BACKUP_LOCAL_ONLY_POLICY.md)
+disables secondary artifact copies by user decision. Both new Documents runs
+succeeded locally without replication. Earlier failures below remain historical;
+local success does not establish off-host recovery or encrypted-blob restore.
+
 ## Catalog adoption
 
 Native migration `0051_pyrosa_documents_managed_catalog.sql` registers:
