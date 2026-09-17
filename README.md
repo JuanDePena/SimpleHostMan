@@ -183,6 +183,7 @@ If you need implementation details, architecture, or runbooks, start here:
 - [Workspace Guide](/opt/simplehostman/src/docs/AGENTS.md)
 - [Database Platform](/opt/simplehostman/src/docs/DATABASES.md)
 - [Backups](/opt/simplehostman/src/docs/BACKUPS.md)
+- [Pyrosa Documents catalog and backups](/opt/simplehostman/src/docs/PYROSA_DOCUMENTS.md)
 - [Storage Maintenance](/opt/simplehostman/src/docs/STORAGE_MAINTENANCE.md)
 - [Storage Resilience](/opt/simplehostman/src/docs/STORAGE_RESILIENCE.md)
 - [Operational Views](/opt/simplehostman/src/docs/OPERATIONAL_VIEWS.md)
